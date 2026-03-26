@@ -187,6 +187,29 @@ body{font-family:"DM Sans",sans-serif;background:var(--navy);color:var(--text-ma
 @media(max-width:900px){.two-col,.three-col{grid-template-columns:1fr}.cards-grid{grid-template-columns:1fr 1fr}}
 
   @keyframes spin { to { transform: rotate(360deg); } }
+
+  .entry-form-box{background:rgba(124,131,253,.07);border:1px solid rgba(124,131,253,.2);border-radius:14px;padding:18px 20px;margin-bottom:16px}
+  .entry-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.05)}
+  .entry-row:last-child{border-bottom:none}
+  .entry-icon{font-size:1.4rem;flex-shrink:0;width:28px;text-align:center}
+  .entry-label{flex:1;font-size:.85rem;font-weight:600;color:var(--text-main)}
+  .entry-input{width:80px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:8px;padding:6px 10px;color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem;text-align:center}
+  .entry-pts{font-size:.75rem;color:var(--text-muted);width:60px;text-align:right}
+  .pending-row{display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:10px;margin-bottom:6px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06)}
+  .pending-row.approved{background:rgba(0,181,160,.06);border-color:rgba(0,181,160,.2)}
+  .pending-row.rejected{background:rgba(239,68,68,.06);border-color:rgba(239,68,68,.15);opacity:.6}
+  .pending-badge{font-size:.68rem;padding:2px 8px;border-radius:6px;font-weight:700;flex-shrink:0}
+  .pending-badge.pending{background:rgba(245,166,35,.15);color:var(--ya-gold)}
+  .pending-badge.approved{background:rgba(0,181,160,.15);color:var(--ya-teal)}
+  .pending-badge.rejected{background:rgba(239,68,68,.15);color:var(--badge-red)}
+  .verify-btn{padding:4px 10px;border-radius:7px;border:1px solid;font-size:.72rem;font-weight:700;cursor:pointer;font-family:DM Sans,sans-serif;transition:all .2s;background:transparent}
+  .verify-btn.approve{border-color:var(--ya-teal);color:var(--ya-teal)}
+  .verify-btn.approve:hover{background:rgba(0,181,160,.12)}
+  .verify-btn.reject{border-color:var(--badge-red);color:var(--badge-red)}
+  .verify-btn.reject:hover{background:rgba(239,68,68,.1)}
+  .verify-btn.edit{border-color:var(--text-muted);color:var(--text-muted)}
+  .session-date-header{font-size:.75rem;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:.07em;margin:14px 0 8px;display:flex;align-items:center;justify-content:space-between}
+
 </style>
 </head>
 <body>
@@ -344,6 +367,7 @@ body{font-family:"DM Sans",sans-serif;background:var(--navy);color:var(--text-ma
         </div>
       </div>
       <div id="youth-scrabble-dash"></div>
+      <div id="youth-pending-entries" style="margin-top:8px"></div>
       <div id="youth-invite-cards"></div>
     </div>
     <!-- YOUTH WORKSHOPS -->
@@ -358,6 +382,49 @@ body{font-family:"DM Sans",sans-serif;background:var(--navy);color:var(--text-ma
     </div>
     <!-- YOUTH SCRABBLE -->
     <div class="page" id="page-youth-scrabble">
+      <!-- ENTRY FORM (shown when logging activity) -->
+      <div id="youth-entry-form" style="display:none;position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,.75);backdrop-filter:blur(4px);overflow-y:auto;padding:20px">
+        <div style="max-width:480px;margin:0 auto;background:var(--card-bg);border-radius:20px;border:1px solid var(--card-border);padding:28px;position:relative">
+          <button onclick="closeEntryForm()" style="position:absolute;top:14px;right:14px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);border-radius:8px;padding:5px 12px;color:var(--text-muted);cursor:pointer;font-family:DM Sans,sans-serif;font-size:.82rem">✕</button>
+          <div style="font-family:Nunito,sans-serif;font-size:1.2rem;font-weight:900;margin-bottom:4px">Log Today&#39;s Activity 🎲</div>
+          <div id="entry-form-date" style="font-size:.8rem;color:var(--text-muted);margin-bottom:18px"></div>
+          <div class="entry-form-box">
+            <div style="font-size:.75rem;font-weight:800;color:var(--ya-gold);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">🎮 Games Club</div>
+            <div class="entry-row">
+              <div class="entry-icon">✅</div>
+              <div class="entry-label">I attended Games Club today</div>
+              <input type="checkbox" id="entry-attended" style="width:18px;height:18px;cursor:pointer;accent-color:var(--ya-teal)">
+              <div class="entry-pts">+1 pt</div>
+            </div>
+            <div class="entry-row">
+              <div class="entry-icon">🎮</div>
+              <div class="entry-label">Games I won today</div>
+              <input type="number" id="entry-games-won" class="entry-input" min="0" max="20" value="0" placeholder="0">
+              <div class="entry-pts">+1 pt each</div>
+            </div>
+          </div>
+          <div class="entry-form-box" style="border-color:rgba(124,131,253,.3);background:rgba(124,131,253,.07)">
+            <div style="font-size:.75rem;font-weight:800;color:var(--lavender);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">🔤 Scrabble Word Game</div>
+            <div class="entry-row">
+              <div class="entry-icon">🔤</div>
+              <div class="entry-label">My Scrabble score today</div>
+              <input type="number" id="entry-scrabble-score" class="entry-input" min="0" max="999" value="" placeholder="0">
+              <div class="entry-pts">raw score</div>
+            </div>
+            <div class="entry-row">
+              <div class="entry-icon">🏅</div>
+              <div class="entry-label">I played the longest word!</div>
+              <input type="checkbox" id="entry-longest-word" style="width:18px;height:18px;cursor:pointer;accent-color:var(--lavender)">
+              <div class="entry-pts">+10 pts</div>
+            </div>
+          </div>
+          <div style="font-size:.75rem;color:var(--text-muted);margin-bottom:14px;padding:10px 14px;background:rgba(245,166,35,.06);border-radius:8px;border:1px solid rgba(245,166,35,.15)">
+            ⏳ Your entry will show as <strong style="color:var(--ya-gold)">pending</strong> until an admin verifies it. Points count once approved!
+          </div>
+          <button onclick="submitYouthEntry()" style="width:100%;padding:12px;border-radius:10px;border:none;background:var(--ya-orange);color:#fff;font-family:Nunito,sans-serif;font-weight:800;font-size:.95rem;cursor:pointer">Submit Entry →</button>
+          <div id="entry-form-feedback" style="margin-top:10px;text-align:center"></div>
+        </div>
+      </div>
       <div class="ya-stripe"></div>
       <div class="page-header">
         <div class="page-title">Scrabble &amp; Games Club <span class="hl">🎲</span></div>
@@ -839,6 +906,14 @@ var SCRABBLE_SCORES={"Ameerah Hammed":{"4-Feb":127,"11-Feb":147},"Azeem Hammed":
 var SCRABBLE_SCORE_TOTALS={"Ameerah Hammed":274,"Azeem Hammed":145,"Juanna Shin":226,"Sophie Hwang":145,"Khanishka Kaur":236};
 var SCRABBLE_SCORE_DATES=["7-Jan","14-Jan","21-Jan","28-Jan","4-Feb","11-Feb","18-Feb","25-Feb","4-Mar","11-Mar","18-Mar"];
 var SCRABBLE_SCORE_PLAYED=["4-Feb","11-Feb"];
+var PENDING_ENTRIES = []; // {id, youth_name, session_date, type, value, pts, status, submitted_at}
+var ENTRY_TYPES = {
+  'games_attended': {label:'Games Club Attended', pts:1, icon:'✅'},
+  'games_won':      {label:'Games Won', pts:'per_win', icon:'🎮'},
+  'scrabble_score': {label:'Scrabble Word Score', pts:'raw', icon:'🔤'},
+  'longest_word':   {label:'Longest Word Bonus', pts:10, icon:'🏅'},
+};
+
 var ADULT_SCRABBLE={"Julie Robertson":{"14-Jan":1,"21-Jan":1,"28-Jan":1,"4-Feb":1,"11-Feb":1,"18-Feb":1,"25-Feb":1,"4-Mar":1,"11-Mar":1,"18-Mar":1},"Olga Korcheva":{"28-Jan":2},"BJ (Bolaji) Hammed":{"7-Jan":1.5,"14-Jan":1.5,"21-Jan":1.5,"28-Jan":1.5,"4-Feb":1.5,"11-Feb":1.5,"25-Feb":1.5,"4-Mar":1.5,"18-Mar":1.5},"Chloe Nayoung Kim":{"4-Feb":2},"Kim Sundset":{"7-Jan":2,"14-Jan":2,"21-Jan":2,"28-Jan":2,"11-Feb":2,"18-Feb":2,"25-Feb":2,"4-Mar":2,"11-Mar":2,"18-Mar":2}};
 var ADULT_SCRABBLE_TOTALS={"Julie Robertson":10,"Olga Korcheva":2,"BJ (Bolaji) Hammed":13.5,"Chloe Nayoung Kim":2,"Kim Sundset":20};
 var SCRABBLE_DATES=["7-Jan","14-Jan","21-Jan","28-Jan","4-Feb","11-Feb","18-Feb","25-Feb","4-Mar","11-Mar","18-Mar"];
@@ -1101,6 +1176,7 @@ function renderYouth(){
       '<div class="stat-card" style="--accent-color:var(--ya-blue)"><div class="stat-label">Upcoming</div><div class="stat-value">'+upcomingCount+'</div><div class="stat-meta">Events to register for</div><div class="stat-icon">&#9193;</div></div>';
   }
   renderVolunteerHistory('youth-vol-history', name);
+  renderYouthPendingEntries(name);
 }
 
 function toggleYouthWs(id,btn){
@@ -2784,7 +2860,8 @@ async function dbStartup() {
   await Promise.all([
     loadEventRegistrations(),
     loadProgramData(),
-    loadComplianceData()
+    loadComplianceData(),
+    loadPendingEntries()
   ]);
   if(banner) banner.style.display = 'none';
   console.log('DB startup complete');
@@ -2817,6 +2894,343 @@ async function loadWorkshopAttendance(youthId, youthName) {
   console.log('Workshop attendance loaded:', rows.length, 'DB records for', youthName,
     '— total:', youthState.workshops.size, 'workshops');
   renderYouth();
+}
+
+
+// ══════════════════════════════════════════
+// YOUTH SELF-ENTRY & ADMIN VERIFICATION
+// ══════════════════════════════════════════
+
+var currentEntryDate = '';
+
+function openEntryForm(){
+  var modal = document.getElementById('youth-entry-form');
+  if(!modal) return;
+  // Set today's date
+  var today = new Date();
+  var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  currentEntryDate = months[today.getMonth()] + ' ' + today.getDate() + ', ' + today.getFullYear();
+  var dateEl = document.getElementById('entry-form-date');
+  if(dateEl) dateEl.textContent = 'Session: ' + currentEntryDate;
+  // Reset form
+  var cb1 = document.getElementById('entry-attended');
+  var cb2 = document.getElementById('entry-longest-word');
+  var n1  = document.getElementById('entry-games-won');
+  var n2  = document.getElementById('entry-scrabble-score');
+  if(cb1) cb1.checked = false;
+  if(cb2) cb2.checked = false;
+  if(n1)  n1.value = '0';
+  if(n2)  n2.value = '';
+  var fb = document.getElementById('entry-form-feedback');
+  if(fb) fb.innerHTML = '';
+  modal.style.display = 'block';
+  document.body.style.overflow = 'hidden';
+}
+
+function closeEntryForm(){
+  var modal = document.getElementById('youth-entry-form');
+  if(modal) modal.style.display = 'none';
+  document.body.style.overflow = '';
+}
+
+function submitYouthEntry(){
+  var name = youthState ? youthState.name : null;
+  if(!name){ alert('Please log in first'); return; }
+
+  var attended    = document.getElementById('entry-attended').checked;
+  var gamesWon    = parseInt(document.getElementById('entry-games-won').value) || 0;
+  var scrabbleScore = parseInt(document.getElementById('entry-scrabble-score').value) || 0;
+  var longestWord = document.getElementById('entry-longest-word').checked;
+
+  if(!attended && gamesWon === 0 && scrabbleScore === 0 && !longestWord){
+    document.getElementById('entry-form-feedback').innerHTML =
+      '<div style="color:var(--badge-red);font-size:.82rem">Please enter at least one activity!</div>';
+    return;
+  }
+
+  var now = new Date().toISOString();
+  var entries = [];
+
+  if(attended){
+    entries.push({
+      id: 'pe_' + Date.now() + '_att',
+      youth_name: name, session_date: currentEntryDate,
+      type: 'games_attended', value: 1, pts: 1,
+      status: 'pending', submitted_at: now
+    });
+  }
+  if(gamesWon > 0){
+    entries.push({
+      id: 'pe_' + (Date.now()+1) + '_gw',
+      youth_name: name, session_date: currentEntryDate,
+      type: 'games_won', value: gamesWon, pts: gamesWon,
+      status: 'pending', submitted_at: now
+    });
+  }
+  if(scrabbleScore > 0){
+    entries.push({
+      id: 'pe_' + (Date.now()+2) + '_ss',
+      youth_name: name, session_date: currentEntryDate,
+      type: 'scrabble_score', value: scrabbleScore, pts: scrabbleScore,
+      status: 'pending', submitted_at: now
+    });
+  }
+  if(longestWord){
+    entries.push({
+      id: 'pe_' + (Date.now()+3) + '_lw',
+      youth_name: name, session_date: currentEntryDate,
+      type: 'longest_word', value: 1, pts: 10,
+      status: 'pending', submitted_at: now
+    });
+  }
+
+  // Add to local PENDING_ENTRIES + save to Supabase
+  entries.forEach(function(e){
+    PENDING_ENTRIES.push(e);
+    savePendingEntry(e);
+  });
+
+  document.getElementById('entry-form-feedback').innerHTML =
+    '<div style="color:var(--ya-teal);font-size:.85rem;font-weight:700">✔ Submitted! Waiting for admin verification.</div>';
+
+  setTimeout(function(){
+    closeEntryForm();
+    renderYouthPendingEntries(name);
+    renderScrabbleDash(name);
+  }, 1500);
+}
+
+async function savePendingEntry(entry){
+  await dbPost('pending_entries', entry);
+}
+
+async function loadPendingEntries(){
+  var rows = await dbGet('pending_entries', 'select=*&order=submitted_at.desc');
+  if(rows && rows.length > 0){
+    PENDING_ENTRIES = rows;
+    console.log('Pending entries loaded:', rows.length);
+  }
+}
+
+// ── YOUTH VIEW: show their own pending entries ──
+function renderYouthPendingEntries(name){
+  var el = document.getElementById('youth-pending-entries');
+  if(!el) return;
+  var mine = PENDING_ENTRIES.filter(function(e){ return e.youth_name === name; });
+  if(mine.length === 0){ el.innerHTML = ''; return; }
+
+  var byDate = {};
+  mine.forEach(function(e){
+    if(!byDate[e.session_date]) byDate[e.session_date] = [];
+    byDate[e.session_date].push(e);
+  });
+
+  var html2 = '<div class="section-box" style="border-color:rgba(245,166,35,.25)">';
+  html2 += '<div class="section-title" style="color:var(--ya-gold)">⏳ My Submitted Entries</div>';
+
+  Object.keys(byDate).sort().reverse().forEach(function(date){
+    html2 += '<div class="session-date-header"><span>' + date + '</span></div>';
+    byDate[date].forEach(function(e){
+      var info = ENTRY_TYPES[e.type] || {};
+      var badge = e.status === 'approved'
+        ? '<span class="pending-badge approved">✔ Verified</span>'
+        : e.status === 'rejected'
+        ? '<span class="pending-badge rejected">✘ Rejected</span>'
+        : '<span class="pending-badge pending">⏳ Pending</span>';
+      var ptsLabel = e.type === 'scrabble_score'
+        ? e.value + ' pts'
+        : '+' + e.pts + ' pt' + (e.pts !== 1 ? 's' : '');
+      html2 += '<div class="pending-row ' + e.status + '">' +
+        '<span style="font-size:1.1rem">' + (info.icon||'📝') + '</span>' +
+        '<div style="flex:1;font-size:.83rem"><strong>' + (info.label||e.type) + '</strong>' +
+        (e.type==='games_won'?' ('+e.value+' wins)':'') + '</div>' +
+        '<span style="font-size:.8rem;color:var(--ya-gold);font-weight:700">' + ptsLabel + '</span>' +
+        badge + '</div>';
+    });
+  });
+
+  html2 += '</div>';
+  el.innerHTML = html2;
+}
+
+// ── ADMIN VIEW: full verification queue ──
+function renderAdminVerificationPanel(){
+  var el = document.getElementById('pending-entries-list');
+  if(!el) return;
+  el.innerHTML = '';
+
+  var pending = PENDING_ENTRIES.filter(function(e){ return e.status === 'pending'; });
+  if(pending.length === 0){
+    el.innerHTML = '<div style="color:var(--text-muted);font-size:.83rem;padding:10px 0">No pending entries — all clear! ✔</div>';
+    return;
+  }
+
+  var byDate = {};
+  pending.forEach(function(e){
+    if(!byDate[e.session_date]) byDate[e.session_date] = [];
+    byDate[e.session_date].push(e);
+  });
+
+  Object.keys(byDate).sort().reverse().forEach(function(date){
+    var dateEntries = byDate[date];
+
+    // Date header with approve-all button
+    var hdr = document.createElement('div');
+    hdr.className = 'session-date-header';
+    var span = document.createElement('span');
+    span.textContent = date + ' (' + dateEntries.length + ' pending)';
+    var approveAllBtn = document.createElement('button');
+    approveAllBtn.className = 'verify-btn approve';
+    approveAllBtn.textContent = 'Approve All for ' + date;
+    approveAllBtn.onclick = (function(d){ return function(){ approveAllForDate(d); }; })(date);
+    hdr.appendChild(span);
+    hdr.appendChild(approveAllBtn);
+    el.appendChild(hdr);
+
+    // Each entry row
+    dateEntries.forEach(function(e){
+      var info = ENTRY_TYPES[e.type] || {};
+      var row = document.createElement('div');
+      row.className = 'pending-row';
+      row.id = 'prow_' + e.id;
+
+      var icon = document.createElement('span');
+      icon.style.cssText = 'font-size:1.1rem;width:24px';
+      icon.textContent = info.icon || 'N/A';
+
+      var infoDiv = document.createElement('div');
+      infoDiv.style.flex = '1';
+      var nameDiv = document.createElement('div');
+      nameDiv.style.cssText = 'font-size:.83rem;font-weight:700';
+      nameDiv.textContent = e.youth_name;
+      var typeDiv = document.createElement('div');
+      typeDiv.style.cssText = 'font-size:.75rem;color:var(--text-muted)';
+      typeDiv.textContent = (info.label || e.type) +
+        (e.type==='games_won' ? ' — ' + e.value + ' wins' : '') +
+        (e.type==='scrabble_score' ? ' — score: ' + e.value : '');
+      infoDiv.appendChild(nameDiv);
+      infoDiv.appendChild(typeDiv);
+
+      var actionsDiv = document.createElement('div');
+      actionsDiv.style.cssText = 'display:flex;align-items:center;gap:8px';
+
+      var ptsInput = document.createElement('input');
+      ptsInput.type = 'number';
+      ptsInput.value = e.pts;
+      ptsInput.min = '0'; ptsInput.max = '999';
+      ptsInput.id = 'pts_' + e.id;
+      ptsInput.style.cssText = 'width:60px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:6px;padding:4px 8px;color:var(--text-main);font-size:.8rem;text-align:center';
+
+      var approveBtn = document.createElement('button');
+      approveBtn.className = 'verify-btn approve';
+      approveBtn.textContent = 'Approve';
+      approveBtn.onclick = (function(id){ return function(){ verifyEntry(id, true); }; })(e.id);
+
+      var rejectBtn = document.createElement('button');
+      rejectBtn.className = 'verify-btn reject';
+      rejectBtn.textContent = 'Reject';
+      rejectBtn.onclick = (function(id){ return function(){ verifyEntry(id, false); }; })(e.id);
+
+      actionsDiv.appendChild(ptsInput);
+      actionsDiv.appendChild(approveBtn);
+      actionsDiv.appendChild(rejectBtn);
+
+      row.appendChild(icon);
+      row.appendChild(infoDiv);
+      row.appendChild(actionsDiv);
+      el.appendChild(row);
+    });
+  });
+}
+
+function verifyEntry(entryId, approve){
+  var entry = PENDING_ENTRIES.find(function(e){ return e.id === entryId; });
+  if(!entry) return;
+
+  // Get potentially edited pts value
+  var ptsInput = document.getElementById('pts_' + entryId);
+  if(ptsInput) entry.pts = parseInt(ptsInput.value) || 0;
+
+  entry.status = approve ? 'approved' : 'rejected';
+
+  if(approve){
+    // Apply points to appropriate leaderboard
+    applyApprovedEntry(entry);
+  }
+
+  // Save to Supabase
+  updatePendingEntry(entry);
+
+  // Update UI
+  var row = document.getElementById('prow_' + entryId);
+  if(row){
+    row.style.opacity = '0';
+    setTimeout(function(){
+      renderAdminVerificationPanel();
+      renderAdminScrabble();
+    }, 300);
+  }
+}
+
+function approveAllForDate(date){
+  var toApprove = PENDING_ENTRIES.filter(function(e){
+    return e.status === 'pending' && e.session_date === date;
+  });
+  toApprove.forEach(function(e){
+    var ptsInput = document.getElementById('pts_' + e.id);
+    if(ptsInput) e.pts = parseInt(ptsInput.value) || e.pts;
+    e.status = 'approved';
+    applyApprovedEntry(e);
+    updatePendingEntry(e);
+  });
+  renderAdminVerificationPanel();
+  renderAdminScrabble();
+}
+
+function approveAllPending(){
+  var pending = PENDING_ENTRIES.filter(function(e){ return e.status === 'pending'; });
+  pending.forEach(function(e){
+    var ptsInput = document.getElementById('pts_' + e.id);
+    if(ptsInput) e.pts = parseInt(ptsInput.value) || e.pts;
+    e.status = 'approved';
+    applyApprovedEntry(e);
+    updatePendingEntry(e);
+  });
+  renderAdminVerificationPanel();
+  renderAdminScrabble();
+}
+
+function rejectAllPending(){
+  if(!confirm('Reject all pending entries?')) return;
+  PENDING_ENTRIES.filter(function(e){ return e.status === 'pending'; })
+    .forEach(function(e){
+      e.status = 'rejected';
+      updatePendingEntry(e);
+    });
+  renderAdminVerificationPanel();
+}
+
+function applyApprovedEntry(entry){
+  if(entry.type === 'games_attended' || entry.type === 'games_won'){
+    // Add to SCRABBLE_TOTALS (attendance/wins leaderboard)
+    SCRABBLE_TOTALS[entry.youth_name] = (SCRABBLE_TOTALS[entry.youth_name] || 0) + entry.pts;
+  } else if(entry.type === 'scrabble_score'){
+    // Add to SCRABBLE_SCORE_TOTALS (word game leaderboard)
+    if(!SCRABBLE_SCORES[entry.youth_name]) SCRABBLE_SCORES[entry.youth_name] = {};
+    SCRABBLE_SCORES[entry.youth_name][entry.session_date] = entry.value;
+    SCRABBLE_SCORE_TOTALS[entry.youth_name] =
+      (SCRABBLE_SCORE_TOTALS[entry.youth_name] || 0) + entry.value;
+  } else if(entry.type === 'longest_word'){
+    // Add 10 pts to word game leaderboard
+    SCRABBLE_SCORE_TOTALS[entry.youth_name] =
+      (SCRABBLE_SCORE_TOTALS[entry.youth_name] || 0) + entry.pts;
+  }
+}
+
+async function updatePendingEntry(entry){
+  await dbPatch('pending_entries',
+    {status: entry.status, pts: entry.pts},
+    'id=eq.' + encodeURIComponent(entry.id));
 }
 
 </script>

@@ -392,7 +392,7 @@ body{font-family:"DM Sans",sans-serif;background:var(--navy);color:var(--text-ma
             <div style="font-size:.75rem;font-weight:800;color:var(--ya-gold);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">🎮 Games Club</div>
             <div class="entry-row">
               <div class="entry-icon">✅</div>
-              <div class="entry-label">I attended Games Club today</div>
+              <div class="entry-label" id="entry-attended-label">I attended Games Club</div>
               <input type="checkbox" id="entry-attended" style="width:18px;height:18px;cursor:pointer;accent-color:var(--ya-teal)">
               <div class="entry-pts">+1 pt</div>
             </div>
@@ -429,7 +429,9 @@ body{font-family:"DM Sans",sans-serif;background:var(--navy);color:var(--text-ma
       <div class="page-header">
         <div class="page-title">Scrabble &amp; Games Club <span class="hl">🎲</span></div>
         <div class="page-sub">Weekly sessions · 1 pt attendance · 1 pt per win · Q1 Trophy at March 31</div>
+        <button onclick="openEntryForm()" style="margin-top:12px;padding:10px 24px;border-radius:10px;border:1px solid var(--ya-orange);background:rgba(232,98,10,.12);color:var(--ya-orange);font-family:Nunito,sans-serif;font-weight:800;font-size:.9rem;cursor:pointer;transition:all .2s" onmouseover="this.style.background='rgba(232,98,10,.22)'" onmouseout="this.style.background='rgba(232,98,10,.12)'">🎲 Log Today&#39;s Activity</button>
       </div>
+      <div id="youth-pending-entries-scrabble" style="margin-top:8px"></div>
       <div id="scrabble-youth-content"></div>
     </div>
 
@@ -606,7 +608,19 @@ body{font-family:"DM Sans",sans-serif;background:var(--navy);color:var(--text-ma
         </div>
         <div class="trophy-banner"><div class="trophy-emoji">🏆</div><div><div class="trophy-title">Q1 2026 Trophy Leader — Sophie Hwang</div><div class="trophy-sub">74 points through March 18 · Award at end of Q1 (March 31)</div></div></div>
         <div class="section-box"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:13px">
-            <span class="section-title" style="margin-bottom:0">🎲 Full Leaderboard</span>
+            <!-- VERIFICATION PANEL -->
+          <div class="section-box" style="border-color:rgba(245,166,35,.3);margin-bottom:16px">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+              <div style="font-family:Nunito,sans-serif;font-size:1rem;font-weight:900;color:var(--ya-gold)">📋 Pending Verification</div>
+              <div style="display:flex;gap:8px">
+                <button onclick="approveAllPending()" style="padding:5px 14px;border-radius:8px;border:1px solid var(--ya-teal);background:rgba(0,181,160,.1);color:var(--ya-teal);font-size:.75rem;font-weight:700;cursor:pointer;font-family:DM Sans,sans-serif">✔ Approve All</button>
+                <button onclick="rejectAllPending()" style="padding:5px 14px;border-radius:8px;border:1px solid var(--badge-red);background:rgba(239,68,68,.1);color:var(--badge-red);font-size:.75rem;font-weight:700;cursor:pointer;font-family:DM Sans,sans-serif">✘ Reject All</button>
+              </div>
+            </div>
+            <div id="pending-entries-list"></div>
+          </div>
+
+          <span class="section-title" style="margin-bottom:0">🎲 Full Leaderboard</span>
             <button class="ws-btn" style="border-color:var(--badge-red);color:var(--badge-red);font-size:.75rem" onclick="toggleCancelPanel()">+ Cancel a Session</button>
           </div>
           <div id="cancel-panel" style="display:none;background:rgba(239,68,68,.07);border:1px solid rgba(239,68,68,.2);border-radius:10px;padding:14px;margin-bottom:14px">
@@ -916,7 +930,7 @@ var ENTRY_TYPES = {
 
 var ADULT_SCRABBLE={"Julie Robertson":{"14-Jan":1,"21-Jan":1,"28-Jan":1,"4-Feb":1,"11-Feb":1,"18-Feb":1,"25-Feb":1,"4-Mar":1,"11-Mar":1,"18-Mar":1},"Olga Korcheva":{"28-Jan":2},"BJ (Bolaji) Hammed":{"7-Jan":1.5,"14-Jan":1.5,"21-Jan":1.5,"28-Jan":1.5,"4-Feb":1.5,"11-Feb":1.5,"25-Feb":1.5,"4-Mar":1.5,"18-Mar":1.5},"Chloe Nayoung Kim":{"4-Feb":2},"Kim Sundset":{"7-Jan":2,"14-Jan":2,"21-Jan":2,"28-Jan":2,"11-Feb":2,"18-Feb":2,"25-Feb":2,"4-Mar":2,"11-Mar":2,"18-Mar":2}};
 var ADULT_SCRABBLE_TOTALS={"Julie Robertson":10,"Olga Korcheva":2,"BJ (Bolaji) Hammed":13.5,"Chloe Nayoung Kim":2,"Kim Sundset":20};
-var SCRABBLE_DATES=["7-Jan","14-Jan","21-Jan","28-Jan","4-Feb","11-Feb","18-Feb","25-Feb","4-Mar","11-Mar","18-Mar"];
+var SCRABBLE_DATES=["7-Jan","14-Jan","21-Jan","28-Jan","4-Feb","11-Feb","18-Feb","25-Feb","4-Mar","11-Mar","18-Mar","25-Mar"];
 var RECURRING_PROGRAMS=[{"id":"rec_scrabble","name":"Scrabble & Games Club","day":"Wednesday","location":"Youth Airdrie","season":"Sep-Apr","note":"Every Wednesday, September through end of April","active":true,"cancellations":[]},{"id":"rec_garden","name":"Summer Garden Program","day":"Wednesday","location":"Youth Airdrie","season":"May-Sep","note":"Every Wednesday, May through end of September","active":true,"cancellations":[]}];
 var PROGRAMS_DATA={"scrabble_2026":{"id":"prog_scrabble_2026","name":"Scrabble & Games Club","season":"Winter/Spring 2026","time":"4:30 PM \u2013 6:30 PM","location":"Youth Airdrie","type":"weekly","day":"Wednesday","dates":["Jan 7, 2026","Jan 14, 2026","Jan 21, 2026","Jan 28, 2026","Feb 4, 2026","Feb 11, 2026","Feb 18, 2026","Feb 25, 2026","Mar 4, 2026","Mar 11, 2026","Mar 18, 2026","Mar 25, 2026","Apr 1, 2026","Apr 8, 2026","Apr 15, 2026","Apr 22, 2026","Apr 29, 2026"],"cancellations":[],"adult_volunteers":{"Jan 14, 2026":["Julie Robertson","BJ (Bolaji) Hammed","Kim Sundset"],"Jan 21, 2026":["Julie Robertson","BJ (Bolaji) Hammed","Kim Sundset"],"Jan 28, 2026":["Julie Robertson","Olga Korcheva","BJ (Bolaji) Hammed","Kim Sundset"],"Feb 4, 2026":["Julie Robertson","BJ (Bolaji) Hammed","Chloe Nayoung Kim"],"Feb 11, 2026":["Julie Robertson","BJ (Bolaji) Hammed","Kim Sundset"],"Feb 18, 2026":["Julie Robertson","Kim Sundset"],"Feb 25, 2026":["Julie Robertson","BJ (Bolaji) Hammed","Kim Sundset"],"Mar 4, 2026":["Julie Robertson","BJ (Bolaji) Hammed","Kim Sundset"],"Mar 11, 2026":["Julie Robertson","Kim Sundset"],"Mar 18, 2026":["Julie Robertson","BJ (Bolaji) Hammed","Kim Sundset"],"Jan 7, 2026":["BJ (Bolaji) Hammed","Kim Sundset"]},"youth_participants":{},"color":"var(--ya-gold)"},"garden_2026":{"id":"prog_garden_2026","name":"Summer Garden Program","season":"Summer 2026","time":"4:30 PM \u2013 6:30 PM","location":"Youth Airdrie","type":"weekly","day":"Wednesday","dates":["May 6, 2026","May 13, 2026","May 20, 2026","May 27, 2026","Jun 3, 2026","Jun 10, 2026","Jun 17, 2026","Jun 24, 2026","Jul 1, 2026","Jul 8, 2026","Jul 15, 2026","Jul 22, 2026","Jul 29, 2026","Aug 5, 2026","Aug 12, 2026","Aug 19, 2026","Aug 26, 2026","Sep 2, 2026","Sep 9, 2026","Sep 16, 2026","Sep 23, 2026","Sep 30, 2026"],"cancellations":[],"adult_volunteers":{},"youth_participants":{},"color":"var(--ya-green)"},"scrabble_2026_27":{"id":"prog_scrabble_2026_27","name":"Scrabble & Games Club","season":"Fall/Winter 2026-27","time":"4:30 PM \u2013 6:30 PM","location":"Youth Airdrie","type":"weekly","day":"Wednesday","dates":["Oct 7, 2026","Oct 14, 2026","Oct 21, 2026","Oct 28, 2026","Nov 4, 2026","Nov 11, 2026","Nov 18, 2026","Nov 25, 2026","Dec 2, 2026","Dec 9, 2026","Dec 16, 2026","Dec 23, 2026","Dec 30, 2026","Jan 6, 2027","Jan 13, 2027","Jan 20, 2027","Jan 27, 2027","Feb 3, 2027","Feb 10, 2027","Feb 17, 2027","Feb 24, 2027","Mar 3, 2027","Mar 10, 2027","Mar 17, 2027","Mar 24, 2027","Mar 31, 2027","Apr 7, 2027","Apr 14, 2027","Apr 21, 2027","Apr 28, 2027"],"cancellations":[],"adult_volunteers":{},"youth_participants":{},"color":"var(--ya-gold)"}};
 var ADULT_COMPLIANCE={"Kim Sundset":{"vsc_issued":"2026-01-16","vsc_expiry":"2030-01-16","vsc_on_file":true,"waiver_date":"2024-09-01","waiver_on_file":true},"Olga Korcheva":{"vsc_issued":"","vsc_expiry":"","vsc_on_file":true,"waiver_date":"2024-09-01","waiver_on_file":true},"Connie Wu":{"vsc_issued":"","vsc_expiry":"","vsc_on_file":true,"waiver_date":"2024-09-01","waiver_on_file":true},"Chloe Nayoung Kim":{"vsc_issued":"","vsc_expiry":"","vsc_on_file":false,"waiver_date":"","waiver_on_file":false},"BJ (Bolaji) Hammed":{"vsc_issued":"","vsc_expiry":"","vsc_on_file":true,"waiver_date":"2024-09-01","waiver_on_file":true},"Roberta Ehigiator":{"vsc_issued":"","vsc_expiry":"","vsc_on_file":true,"waiver_date":"2024-09-01","waiver_on_file":true},"Julie Robertson":{"vsc_issued":"2024-01-30","vsc_expiry":"2029-01-30","vsc_on_file":true,"waiver_date":"2024-09-01","waiver_on_file":true},"Tina Petrow":{"vsc_issued":"","vsc_expiry":"","vsc_on_file":true,"waiver_date":"2024-09-01","waiver_on_file":true},"Mary-Beth Finney (Ursa)":{"vsc_issued":"","vsc_expiry":"","vsc_on_file":true,"waiver_date":"","waiver_on_file":false},"Simisola Obasan (Simi)":{"vsc_issued":"","vsc_expiry":"","vsc_on_file":true,"waiver_date":"2024-09-01","waiver_on_file":true},"Tamanna Kaur":{"vsc_issued":"","vsc_expiry":"","vsc_on_file":false,"waiver_date":"","waiver_on_file":false},"Bolaji Ajoke Hammed":{"vsc_issued":"","vsc_expiry":"","vsc_on_file":false,"waiver_date":"","waiver_on_file":false},"Jollean Chapiel":{"vsc_issued":"2020-12-10","vsc_expiry":"2025-12-10","vsc_on_file":true,"waiver_date":"","waiver_on_file":false},"Mimi Omoare":{"vsc_issued":"","vsc_expiry":"","vsc_on_file":false,"waiver_date":"","waiver_on_file":false},"Alex Strokova":{"vsc_issued":"","vsc_expiry":"","vsc_on_file":false,"waiver_date":"","waiver_on_file":false},"Sudi Hedley":{"vsc_issued":"","vsc_expiry":"","vsc_on_file":false,"waiver_date":"","waiver_on_file":false},"Shameen":{"vsc_issued":"","vsc_expiry":"","vsc_on_file":false,"waiver_date":"","waiver_on_file":false},"Carol Brosoto":{"vsc_issued":"","vsc_expiry":"","vsc_on_file":false,"waiver_date":"","waiver_on_file":false},"Kathy March":{"vsc_issued":"2022-06-06","vsc_expiry":"2027-06-06","vsc_on_file":true,"waiver_date":"","waiver_on_file":false}};
@@ -929,7 +943,7 @@ var YOUTH_AGES={"Aaliyah":10,"Abegail Jbbo-Rustrian":11,"Abigail Robinson":11,"A
 var YOUTH_HOURS={"Aiden Bruce":4,"Ameerah Hammed":2,"Anisim Rashid":5,"Ariel Young":4,"Avery Sengsavang":4,"Azeem Hammed":2,"Cindy Hwang":4,"Connor Sengsavang":4,"Everett Rempel":4,"Haytham":4,"Juanna Shin":4,"Khanishka Kaur":4,"Kinsey Ehigiator":4,"Koby Bolton":4,"Reed Bieganski":5,"Sasha Tumak":4,"Serena Shin":4,"Sophia Tong":2,"Sophie Hwang":4,"Zoya Rashid":5,"Theodore Bourdeau":2,"Alleem Hammed":2,"Eilleen Shin":4,"Denise":2,"Eoin":2,"Polina Strokova":5,"Anastasia Strokova":5};
 var EVENTS_DATA=[{"id":"evt_ton_2026","name":"Taste of Nations","host":"Welcoming Airdrie","date":"January 24, 2026","time":"12:00 PM \u2013 5:00 PM","type":"Event","status":"completed","youth_4hrs":["Sasha Tumak","Koby Bolton","Avery Sengsavang","Connor Sengsavang","Aiden Bruce","Khanishka Kaur","Juanna Shin","Serena Shin","Eilleen Shin"],"youth_2hrs":["Alleem Hammed","Azeem Hammed","Ameerah Hammed","Denise","Eoin","Theodore Bourdeau","Sophia Tong"],"adult_4hrs":["Roberta Ehigiator","Connie Wu","Chloe Nayoung Kim","Sudi Hedley","Shameen"],"adult_2hrs":["BJ (Bolaji) Hammed","Bolaji Ajoke Hammed","Carol Brosoto"],"adult_5hrs":["Julie Robertson","Olga Korcheva","Kim Sundset","Alex Strokova"],"youth_5hrs":["Reed Bieganski","Anisim Rashid","Zoya Rashid","Polina Strokova","Anastasia Strokova"]},{"id":"evt_board_2026","name":"Board Meeting","host":"Youth Airdrie","date":"2026","time":"\u2014","type":"Meeting","status":"completed","adult_2hrs":["Tamanna Kaur","Olga Korcheva","Julie Robertson","Connie Wu","BJ (Bolaji) Hammed","Bolaji Ajoke Hammed","Kim Sundset"]},{"id":"evt_easter_prep_2026","name":"AirdriEaster Preparation","host":"Youth Airdrie","date":"April 2, 2026","time":"6:00 PM - 8:00 PM","location":"Airdrie Public Library - Fortis Room","type":"Event","status":"upcoming","eligible":"all_youth","hours_on_completion":2,"youth_registered":[],"youth_4hrs":[],"youth_2hrs":[],"adult_4hrs":[],"adult_2hrs":[]},{"id":"evt_easter_2026","name":"AirdriEaster Event","host":"Youth Airdrie","date":"April 4, 2026","time":"10:00 AM - 2:00 PM","location":"Airdrie Public Library - Fortis Room","type":"Event","status":"upcoming","eligible":"all_youth","hours_on_completion":4,"youth_registered":[],"youth_4hrs":[],"youth_2hrs":[],"adult_4hrs":[],"adult_2hrs":[]}];
 
-var CONDUCTED_DATES=["7-Jan", "14-Jan", "21-Jan", "28-Jan", "4-Feb", "11-Feb", "18-Feb", "25-Feb", "4-Mar", "11-Mar", "18-Mar"];
+var CONDUCTED_DATES=["7-Jan", "14-Jan", "21-Jan", "28-Jan", "4-Feb", "11-Feb", "18-Feb", "25-Feb", "4-Mar", "11-Mar", "18-Mar","25-Mar"];
 var ALL_YOUTH_NAMES=["Aaliyah","Abegail Jbbo-Rustrian","Abigail Robinson","Adam Choe","Aiden Bruce","Alleem Hammed","Ameerah Hammed","Anastasia Strokova","Anisim Rashid","Anna Choi","Ariel Young","Avery Sengsavang","Azeem Hammed","Caitlen","Chaey Moon","Cindy Hwang","Claire Choe","Connor Sengsavang","David","Denise","Devira","Eilleen Shin","Elijah butler","Elisa Choi","Emma Memedovski","Emma Tumak","Eoin","Everett Rempel","Greyson Riley","Haytham","Ji Hoon","Ji Woo","Juanna Shin","Jude Effah","Khanishka Kaur","Kinsey Ehigiator","Koby Bolton","Kristen Robinson","Lee (Karlee)","Mackensie","Mason Guise","Mason Seo","Navkar Sing","Oliver","Polina Strokova","Preston","Reed Bieganski","Roza","Sasha Tumak","Sebastian Baitson","Serena Shin","Sophia Tong","Sophie Hwang","Taya Allen","Teni Olaniyan","Theodore Bourdeau","Tobi Olaniyan","Zoya Rashid"];
 
 var currentRole=null,youthState=null,adultState=null;
@@ -1026,7 +1040,25 @@ function renderScrabbleYouthPage(name){
     var sessions=SCRABBLE_SESSIONS[name];
     var chips=CONDUCTED_DATES.map(function(dt){
       var pts=sessions[dt];
-      return '<div class="session-chip '+(pts?'has-pts':'')+'"><div class="session-date">'+dt+'</div><div class="session-pts">'+(pts?pts:'—')+'</div></div>';
+      // Check for pending entries for this date
+      // Normalize date comparison: dt is "25-Mar", entry.session_date is "Mar 25, 2026"
+      var pendingForDate=PENDING_ENTRIES.filter(function(e){
+        if(e.youth_name!==name) return false;
+        if(e.type!=='games_attended'&&e.type!=='games_won') return false;
+        if(e.status!=='pending') return false;
+        // Match "25-Mar" against "Mar 25, 2026"
+        var sd=e.session_date; // "Mar 25, 2026"
+        var parts=dt.split('-'); // ["25","Mar"]
+        var matches=sd.indexOf(parts[1])>=0&&sd.indexOf(parts[0])>=0;
+        return matches;
+      });
+      var pendingPts=pendingForDate.reduce(function(s,e){return s+e.pts;},0);
+      var chipClass=pts?'has-pts':pendingPts?'has-pts pending-chip':'';
+      var ptsDisplay=pts?pts:pendingPts?'⏳'+pendingPts:'—';
+      var ptColor=pts?'':'color:var(--ya-gold)';
+      return '<div class="session-chip '+chipClass+'" style="'+(pendingPts&&!pts?'border-color:rgba(245,166,35,.4);background:rgba(245,166,35,.07)':'')+'">'+
+        '<div class="session-date">'+dt+'</div>'+
+        '<div class="session-pts" style="'+ptColor+'">'+ptsDisplay+'</div></div>';
     }).join('');
     var medal=myRank===1?'🏆':myRank===2?'🥈':myRank===3?'🥉':'🎲';
     mySection='<div class="trophy-banner" style="margin-bottom:14px"><div class="trophy-emoji">'+medal+'</div><div><div class="trophy-title">Rank #'+myRank+' · '+myPts+' points</div><div class="trophy-sub">Q1 2026 · Trophy awarded at end of March</div></div></div><div class="section-box" style="margin-bottom:15px"><div class="section-title">📅 My Session History</div><div class="session-grid">'+chips+'</div></div>';
@@ -1448,6 +1480,15 @@ function renderAdmin(){
       return '<tr><td>'+r.n+'</td><td><span class="pill '+(r.vsc.includes('Exp')?'pill-amber':'pill-green')+'">'+r.vsc+'</span></td><td><span class="pill '+(r.w.includes('✗')?'pill-red':'pill-green')+'">'+r.w+'</span></td><td><span class="pill '+(r.t==='Complete'?'pill-green':'pill-amber')+'">'+r.t+'</span></td><td><span class="pill '+(r.l.includes('⭐')?'pill-gold':r.l==='—'?'pill-grey':'pill-blue')+'">'+r.l+'</span></td></tr>';
     }).join('');
   }
+  renderAdminScrabble();
+}
+
+function renderAdminScrabble(){
+  var eid=function(id){return document.getElementById(id);};
+  // Verification panel
+  renderAdminVerificationPanel();
+  renderAdultScrabbleTable();
+  // Attendance leaderboard
   var slb=eid('admin-scrabble-lb');
   if(slb){
     var lb=Object.entries(SCRABBLE_TOTALS).sort(function(a,b){return b[1]-a[1];});
@@ -1460,13 +1501,17 @@ function renderAdmin(){
   if(sthead&&stbody){
     var snames=Object.keys(SCRABBLE_SESSIONS);
     sthead.innerHTML='<th>Date</th>'+snames.map(function(n){return '<th style="font-size:.65rem">'+n.split(' ')[0]+'</th>';}).join('')+'<th>Total</th>';
-    stbody.innerHTML=CONDUCTED_DATES.map(function(dt){
+    // Use all dates including new sessions
+    var allDates = SCRABBLE_DATES.slice();
+    CONDUCTED_DATES.forEach(function(d){ if(allDates.indexOf(d)<0) allDates.push(d); });
+    stbody.innerHTML=allDates.map(function(dt){
       var cols=snames.map(function(n){var pts=SCRABBLE_SESSIONS[n][dt];return '<td style="text-align:center;color:'+(pts?'var(--ya-teal)':'var(--text-muted)')+';font-weight:'+(pts?'700':'400')+'">'+(pts?pts:'—')+'</td>';}).join('');
       var dayTotal=snames.reduce(function(s,n){return s+(SCRABBLE_SESSIONS[n][dt]||0);},0);
       return '<tr><td style="font-weight:600;white-space:nowrap">'+dt+'</td>'+cols+'<td style="font-weight:700;color:var(--ya-gold)">'+dayTotal+'</td></tr>';
     }).join('')+'<tr style="border-top:2px solid var(--card-border)"><td style="font-weight:800">Total</td>'+snames.map(function(n){return '<td style="text-align:center;font-weight:800;color:var(--ya-orange)">'+SCRABBLE_TOTALS[n]+'</td>';}).join('')+'<td style="font-weight:800;color:var(--ya-gold)">515</td></tr>';
   }
 }
+
 
 var loginRole='youth';
 function switchLoginRole(role,btn){
@@ -1488,6 +1533,9 @@ function enterApp(role){
     var preloadedHrs=YOUTH_HOURS[selectedName]||0;
     youthState={name:selectedName,workshops:new Set(attendedWs),hours:preloadedHrs,birthYear:null,age:YOUTH_AGES[selectedName]||null};
     currentRole='youth';
+    // Clear pending entries display immediately on login to prevent bleed
+    var peEl=document.getElementById('youth-pending-entries-scrabble');
+    if(peEl) peEl.innerHTML='';
     // Load any additional workshop attendance from Supabase (overrides static data)
     var yIdx=ALL_YOUTH_NAMES.indexOf(selectedName);
     if(yIdx>=0) loadWorkshopAttendance('y_'+yIdx, selectedName);
@@ -1495,8 +1543,14 @@ function enterApp(role){
     var sel2=document.getElementById('adult-select').value;
     if(!sel2){alert('Please select your name');return;}
     var p=FAC_PROFILES[sel2];
-    adultState={name:p.name,avatar:p.avatar,bg:p.bg,role:p.role,facilitated:p.facilitated.slice(),volunteered:p.volunteered.slice(),hours:p.hours,grandfathered:p.grandfathered||false};
-    currentRole='adult';
+    adultState={name:p.name,avatar:p.avatar,bg:p.bg,role:p.role,facilitated:p.facilitated.slice(),volunteered:p.volunteered.slice(),hours:p.hours,grandfathered:p.grandfathered||false,isAdmin:p.isAdmin||false};
+    currentRole=p.isAdmin?'admin':'adult';
+    // Clear all program panels to prevent previous user's state bleeding in
+    ['scrabble-2026','garden-2026','scrabble-2026-27'].forEach(function(t){
+      var el=document.getElementById('prog-panel-'+t);
+      if(el) el.innerHTML='';
+    });
+    currentProgTab='scrabble-2026';
   }else{currentRole='admin';}
   document.getElementById('login-screen').style.display='none';
   document.getElementById('app').style.display='block';
@@ -1542,6 +1596,16 @@ function showPage(id,navItem){
   document.querySelectorAll('.nav-item').forEach(function(n){n.classList.remove('active');});
   var pg=document.getElementById('page-'+id);if(pg)pg.classList.add('active');
   if(navItem)navItem.classList.add('active');
+  // Re-render scrabble page fresh each time it's navigated to
+  if(id==='youth-scrabble' && youthState && youthState.name){
+    renderScrabbleDash(youthState.name);
+    renderScrabbleYouthPage(youthState.name);
+    renderYouthPendingEntries(youthState.name);
+  }
+  // Re-render admin scrabble tab fresh
+  if(id==='admin-dashboard' && currentRole==='admin'){
+    setTimeout(function(){ renderAdminScrabble(); }, 100);
+  }
 }
 
 function switchTab(tabId,btn){
@@ -1997,7 +2061,10 @@ function renderProgramPanel(tabId){
   if(!prog){panel.innerHTML='<div style="color:var(--text-muted)">No data</div>';return;}
   var isAdmin=adultState&&adultState.isAdmin;
   var myName=adultState?adultState.name:'';
-  var today='Mar 22, 2026';
+  // Use actual current date
+  var _now=new Date();
+  var _months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  var today=_months[_now.getMonth()]+' '+_now.getDate()+', '+_now.getFullYear();
 
   // Stats
   var pastDates=prog.dates.filter(function(d){return isBefore(d,today);});
@@ -2032,7 +2099,7 @@ function renderProgramSessions(tabId){
   var prog=getProgramData(tabId);
   var isAdmin=adultState&&adultState.isAdmin;
   var myName=adultState?adultState.name:'';
-  var today='Mar 22, 2026';
+  var today=(function(){var n=new Date();var m=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];return m[n.getMonth()]+' '+n.getDate()+', '+n.getFullYear();})();
   var cancelled=prog.cancellations||[];
   var upcoming=prog.dates.filter(function(d){return !isBefore(d,today);});
   var past=prog.dates.filter(function(d){return isBefore(d,today);});
@@ -2865,6 +2932,14 @@ async function dbStartup() {
   ]);
   if(banner) banner.style.display = 'none';
   console.log('DB startup complete');
+  // Re-render current view now that all DB data is loaded
+  if(currentRole === 'youth' && youthState && youthState.name){
+    renderYouth();
+  } else if(currentRole === 'admin'){
+    renderAdmin();
+  } else if(currentRole === 'adult' && adultState){
+    renderAdult();
+  }
 }
 
 // Run on page load
@@ -2906,12 +2981,17 @@ var currentEntryDate = '';
 function openEntryForm(){
   var modal = document.getElementById('youth-entry-form');
   if(!modal) return;
-  // Set today's date
-  var today = new Date();
+  // Use the most recent Scrabble session date (last entry in SCRABBLE_DATES)
+  // Keep the same format as SCRABBLE_DATES ("25-Mar") to avoid duplicates
+  currentEntryDate = SCRABBLE_DATES[SCRABBLE_DATES.length - 1]; // e.g. "25-Mar"
   var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  currentEntryDate = months[today.getMonth()] + ' ' + today.getDate() + ', ' + today.getFullYear();
   var dateEl = document.getElementById('entry-form-date');
-  if(dateEl) dateEl.textContent = 'Session: ' + currentEntryDate;
+  // Convert "25-Mar" to friendly "Mar 25, 2026" for display only
+  var _dp=currentEntryDate.split('-');
+  var _friendlyDate=_dp[1]+' '+_dp[0]+', '+new Date().getFullYear();
+  if(dateEl) dateEl.textContent = 'Last session: ' + _friendlyDate + ' (entries recorded for this date)';
+  var attLabel = document.getElementById('entry-attended-label');
+  if(attLabel) attLabel.textContent = 'I attended Games Club on ' + _friendlyDate;
   // Reset form
   var cb1 = document.getElementById('entry-attended');
   var cb2 = document.getElementById('entry-longest-word');
@@ -3014,8 +3094,14 @@ async function loadPendingEntries(){
 
 // ── YOUTH VIEW: show their own pending entries ──
 function renderYouthPendingEntries(name){
-  var el = document.getElementById('youth-pending-entries');
+  var el = document.getElementById('youth-pending-entries-scrabble') ||
+           document.getElementById('youth-pending-entries');
   if(!el) return;
+  // STRICT filter — only show entries for the currently logged-in youth
+  if(!name || !youthState || youthState.name !== name){
+    el.innerHTML = '';
+    return;
+  }
   var mine = PENDING_ENTRIES.filter(function(e){ return e.youth_name === name; });
   if(mine.length === 0){ el.innerHTML = ''; return; }
 
@@ -3029,7 +3115,10 @@ function renderYouthPendingEntries(name){
   html2 += '<div class="section-title" style="color:var(--ya-gold)">⏳ My Submitted Entries</div>';
 
   Object.keys(byDate).sort().reverse().forEach(function(date){
-    html2 += '<div class="session-date-header"><span>' + date + '</span></div>';
+    // Convert "25-Mar" to "Mar 25, 2026" for display
+    var _pp=date.split('-');
+    var _fd=(_pp.length===2)?_pp[1]+' '+_pp[0]+', '+new Date().getFullYear():date;
+    html2 += '<div class="session-date-header"><span>' + _fd + '</span></div>';
     byDate[date].forEach(function(e){
       var info = ENTRY_TYPES[e.type] || {};
       var badge = e.status === 'approved'
@@ -3214,12 +3303,25 @@ function applyApprovedEntry(entry){
   if(entry.type === 'games_attended' || entry.type === 'games_won'){
     // Add to SCRABBLE_TOTALS (attendance/wins leaderboard)
     SCRABBLE_TOTALS[entry.youth_name] = (SCRABBLE_TOTALS[entry.youth_name] || 0) + entry.pts;
+    // Also write into SCRABBLE_SESSIONS so session history table shows it
+    if(!SCRABBLE_SESSIONS[entry.youth_name]) SCRABBLE_SESSIONS[entry.youth_name] = {};
+    var existing = SCRABBLE_SESSIONS[entry.youth_name][entry.session_date] || 0;
+    SCRABBLE_SESSIONS[entry.youth_name][entry.session_date] = existing + entry.pts;
+    // Add to CONDUCTED_DATES only if not already present (normalize format)
+    var normDate = entry.session_date; // already "25-Mar" format now
+    if(CONDUCTED_DATES.indexOf(normDate) < 0 && SCRABBLE_DATES.indexOf(normDate) < 0){
+      CONDUCTED_DATES.push(normDate);
+    }
   } else if(entry.type === 'scrabble_score'){
     // Add to SCRABBLE_SCORE_TOTALS (word game leaderboard)
     if(!SCRABBLE_SCORES[entry.youth_name]) SCRABBLE_SCORES[entry.youth_name] = {};
     SCRABBLE_SCORES[entry.youth_name][entry.session_date] = entry.value;
     SCRABBLE_SCORE_TOTALS[entry.youth_name] =
       (SCRABBLE_SCORE_TOTALS[entry.youth_name] || 0) + entry.value;
+    // Add to SCRABBLE_SCORE_PLAYED if not already there
+    if(SCRABBLE_SCORE_PLAYED.indexOf(entry.session_date) < 0){
+      SCRABBLE_SCORE_PLAYED.push(entry.session_date);
+    }
   } else if(entry.type === 'longest_word'){
     // Add 10 pts to word game leaderboard
     SCRABBLE_SCORE_TOTALS[entry.youth_name] =

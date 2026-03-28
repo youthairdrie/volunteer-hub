@@ -4092,66 +4092,46 @@ async function saveYouthToDB(name, age, workshops) {
 
 async function saveWorkshopAttendance(youthName, workshopId, attended) {
   console.log('Saving workshop attendance:', youthName, workshopId, attended);
-  // Stable name-derived youth_id — never an array index, never drifts
+  // Use a stable name-derived youth_id — NEVER an array index.
+  // This works with the existing unique(youth_id, workshop_id) constraint in the live DB.
   var youthId = 'yn_' + youthName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
 
   if (attended) {
-    // Check if a row already exists for this youth+workshop (by youth_name OR legacy youth_id)
+    // Check if already recorded under the stable yn_ key
     const existing = await dbGet('workshop_attendance',
-      'select=id&youth_name=eq.' + encodeURIComponent(youthName) +
+      'select=id&youth_id=eq.' + encodeURIComponent(youthId) +
       '&workshop_id=eq.' + workshopId + '&limit=1');
     if (existing && existing.length > 0) {
       console.log('Attendance already recorded for', youthName, 'ws', workshopId);
-      return; // already marked, nothing to do
+      return;
     }
-    // Also check legacy y_N id row
-    var idx = ALL_YOUTH_NAMES.indexOf(youthName);
-    if (idx >= 0) {
-      const legacyExisting = await dbGet('workshop_attendance',
-        'select=id&youth_id=eq.y_' + idx + '&workshop_id=eq.' + workshopId + '&limit=1');
-      if (legacyExisting && legacyExisting.length > 0) {
-        // Patch the legacy row to add youth_name
-        await dbPatch('workshop_attendance',
-          { youth_name: youthName },
-          'id=eq.' + legacyExisting[0].id);
-        console.log('Patched legacy row with youth_name for', youthName, 'ws', workshopId);
-        return;
-      }
-    }
-    // Insert fresh row with both youth_name and youth_id
-    const r = await fetch(
-      SUPA_URL + '/rest/v1/workshop_attendance',
-      {
-        method: 'POST',
-        headers: {
-          'apikey': SUPA_KEY,
-          'Authorization': 'Bearer ' + SUPA_KEY,
-          'Content-Type': 'application/json',
-          'Prefer': 'return=minimal'
-        },
-        body: JSON.stringify({ youth_name: youthName, youth_id: youthId, workshop_id: workshopId })
-      }
-    );
+    // Insert using only youth_id — works with original DB schema
+    const r = await fetch(SUPA_URL + '/rest/v1/workshop_attendance', {
+      method: 'POST',
+      headers: {
+        'apikey': SUPA_KEY,
+        'Authorization': 'Bearer ' + SUPA_KEY,
+        'Content-Type': 'application/json',
+        'Prefer': 'return=minimal'
+      },
+      body: JSON.stringify({ youth_id: youthId, workshop_id: workshopId })
+    });
     if (!r.ok) {
       const err = await r.text();
       console.warn('Attendance save failed:', r.status, err);
     } else {
-      console.log('Attendance saved:', youthName, 'ws', workshopId);
+      console.log('Attendance saved:', youthName, '(', youthId, ') ws', workshopId);
     }
   } else {
-    // Delete by youth_name
+    // Delete by stable yn_ key
     await dbDel('workshop_attendance',
-      'youth_name=eq.' + encodeURIComponent(youthName) + '&workshop_id=eq.' + workshopId);
-    // Also delete any legacy y_N row
-    var idx2 = ALL_YOUTH_NAMES.indexOf(youthName);
-    if (idx2 >= 0) {
+      'youth_id=eq.' + encodeURIComponent(youthId) + '&workshop_id=eq.' + workshopId);
+    // Also delete any old index-based row (y_N format) for this person
+    var idx = ALL_YOUTH_NAMES.indexOf(youthName);
+    if (idx >= 0) {
       await dbDel('workshop_attendance',
-        'youth_id=eq.y_' + idx2 + '&workshop_id=eq.' + workshopId);
+        'youth_id=eq.y_' + idx + '&workshop_id=eq.' + workshopId);
     }
-    // And delete by stable yn_ id
-    var youthId2 = 'yn_' + youthName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
-    await dbDel('workshop_attendance',
-      'youth_id=eq.' + encodeURIComponent(youthId2) + '&workshop_id=eq.' + workshopId);
     console.log('Attendance removed:', youthName, 'ws', workshopId);
   }
 }
@@ -4409,21 +4389,41 @@ window.addEventListener('load', function() {
 
 
 async function loadAllWorkshopAttendance() {
-  // Load ALL workshop attendance records and merge into EL_YOUTH
-  // Records stored by youth_name (stable) — not youth_id (index-based, breaks on sort)
+  // Load ALL workshop attendance and merge into EL_YOUTH
   const rows = await dbGet('workshop_attendance', 'select=youth_name,youth_id,workshop_id');
   if(!rows || rows.length === 0){
     console.log('No workshop attendance records in DB');
     return;
   }
+
+  // Build a reverse lookup: yn_khanishka_kaur → "Khanishka Kaur"
+  var ynToName = {};
+  ALL_YOUTH_NAMES.forEach(function(n) {
+    var key = 'yn_' + n.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+    ynToName[key] = n;
+  });
+
   rows.forEach(function(row){
-    // Support both new youth_name-based rows and legacy youth_id-based rows
-    var name = row.youth_name;
-    if(!name && row.youth_id) {
-      var idx = parseInt((row.youth_id || '').replace('y_',''));
-      name = ALL_YOUTH_NAMES[idx];
+    var name = null;
+
+    if(row.youth_name) {
+      // Best case: youth_name stored directly
+      name = row.youth_name;
+    } else if(row.youth_id) {
+      if(row.youth_id.indexOf('yn_') === 0) {
+        // New stable key: look up in reverse map
+        name = ynToName[row.youth_id] || null;
+      } else if(row.youth_id.indexOf('y_') === 0) {
+        // Legacy index-based key
+        var idx = parseInt(row.youth_id.replace('y_', ''));
+        name = ALL_YOUTH_NAMES[idx] || null;
+      }
     }
-    if(!name) return;
+
+    if(!name) {
+      console.warn('Could not resolve youth for row:', row);
+      return;
+    }
     var base = new Set(EL_YOUTH[name] || []);
     base.add(row.workshop_id);
     EL_YOUTH[name] = Array.from(base);
@@ -4433,8 +4433,10 @@ async function loadAllWorkshopAttendance() {
 
 
 async function loadWorkshopAttendance(youthName) {
+  // Query by stable yn_ youth_id — works with existing DB schema (no youth_name column needed)
+  var youthId = 'yn_' + youthName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
   const rows = await dbGet('workshop_attendance',
-    'select=workshop_id&youth_name=eq.' + encodeURIComponent(youthName));
+    'select=workshop_id&youth_id=eq.' + encodeURIComponent(youthId));
   // CRITICAL: check the current user hasn't changed while we were fetching
   if (!youthState || youthState.name !== youthName) {
     console.log('Session changed - ignoring stale workshop data for', youthName);
@@ -4445,7 +4447,7 @@ async function loadWorkshopAttendance(youthName) {
     renderYouth();
     return;
   }
-  // Replace workshops with DB truth - start fresh from EL_YOUTH base + DB records
+  // Merge DB records with hardcoded base
   var baseWs = new Set(EL_YOUTH[youthName] || []);
   rows.forEach(function(row) { baseWs.add(row.workshop_id); });
   youthState.workshops = baseWs;

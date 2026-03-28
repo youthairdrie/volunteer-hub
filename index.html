@@ -4269,6 +4269,7 @@ async function loadAllWorkshopAttendance() {
 }
 
 
+async function loadWorkshopAttendance(youthId, youthName) {
   const rows = await dbGet('workshop_attendance',
     'select=workshop_id&youth_id=eq.' + encodeURIComponent(youthId));
   // CRITICAL: check the current user hasn't changed while we were fetching

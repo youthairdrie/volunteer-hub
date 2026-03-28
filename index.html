@@ -658,8 +658,29 @@ body{font-family:"DM Sans",sans-serif;background:var(--navy);color:var(--text-ma
               <div style="font-size:.78rem;color:var(--text-muted)">Progress columns first · then click any ✔/— cell to toggle attendance · saves instantly</div>
             </div>
             <div style="display:flex;gap:8px;align-items:center">
+              <button onclick="toggleAddELYouthPanel()" id="add-el-youth-btn" class="ws-btn" style="border-color:var(--ya-teal);color:var(--ya-teal);font-size:.75rem">+ Add Youth</button>
               <button id="ws-att-edit-btn" onclick="toggleWsAttEditMode()" class="ws-btn" style="border-color:var(--ya-teal);color:var(--ya-teal);font-size:.75rem">✏️ Edit Attendance</button>
             </div>
+          </div>
+
+          <!-- ADD YOUTH TO EL PANEL -->
+          <div id="add-el-youth-panel" style="display:none;background:rgba(0,181,160,.06);border:1px solid rgba(0,181,160,.25);border-radius:10px;padding:14px;margin-bottom:14px">
+            <div style="font-size:.82rem;font-weight:700;color:var(--ya-teal);margin-bottom:10px">Add Youth to Emerging Leaders</div>
+            <div style="display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:end">
+              <div>
+                <div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px">Full Name</div>
+                <input type="text" id="el-new-name" placeholder="e.g. Jordan Smith" style="width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.15);border-radius:8px;padding:8px 12px;color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.88rem">
+              </div>
+              <div>
+                <div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px">Age (opt.)</div>
+                <input type="number" id="el-new-age" min="5" max="25" placeholder="e.g. 13" style="width:80px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.15);border-radius:8px;padding:8px 12px;color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.88rem">
+              </div>
+              <div style="display:flex;gap:8px;align-items:center;padding-bottom:1px">
+                <button onclick="addELYouth()" style="padding:8px 18px;border-radius:8px;border:none;background:var(--ya-teal);color:#fff;font-family:Nunito,sans-serif;font-weight:800;font-size:.85rem;cursor:pointer;white-space:nowrap">✔ Add</button>
+                <button onclick="toggleAddELYouthPanel()" class="ws-btn">Cancel</button>
+              </div>
+            </div>
+            <div id="el-add-feedback" style="font-size:.8rem;margin-top:8px"></div>
           </div>
           <div id="ws-att-edit-hint" style="display:none;font-size:.78rem;color:var(--ya-teal);background:rgba(0,181,160,.07);border:1px solid rgba(0,181,160,.2);border-radius:8px;padding:8px 12px;margin-bottom:10px">
             ✏️ <strong>Edit mode active</strong> — Click any ✔ or — cell to toggle attendance. Changes save to the database instantly. Click <strong>✏️ Done</strong> to exit.
@@ -2947,6 +2968,66 @@ function closeELInfo(){
 
 
 // ══════════════════════════════════════════
+// ADD YOUTH TO EMERGING LEADERS (ADMIN)
+// ══════════════════════════════════════════
+
+function toggleAddELYouthPanel(){
+  var panel = document.getElementById('add-el-youth-panel');
+  var btn   = document.getElementById('add-el-youth-btn');
+  if(!panel) return;
+  var isOpen = panel.style.display !== 'none';
+  panel.style.display = isOpen ? 'none' : 'block';
+  btn.textContent = isOpen ? '+ Add Youth' : '✕ Close';
+  if(!isOpen){
+    document.getElementById('el-new-name').value = '';
+    document.getElementById('el-new-age').value = '';
+    document.getElementById('el-add-feedback').innerHTML = '';
+    document.getElementById('el-new-name').focus();
+  }
+}
+
+function addELYouth(){
+  var nameEl = document.getElementById('el-new-name');
+  var ageEl  = document.getElementById('el-new-age');
+  var fb     = document.getElementById('el-add-feedback');
+  var name   = nameEl.value.trim();
+  var age    = parseInt(ageEl.value) || null;
+
+  if(!name){ fb.innerHTML = '<span style="color:var(--badge-red)">⚠ Please enter a name.</span>'; return; }
+
+  // Check for duplicates
+  var existing = ALL_YOUTH_NAMES.find(function(n){ return n.toLowerCase() === name.toLowerCase(); });
+  if(existing && EL_YOUTH[existing] !== undefined){
+    fb.innerHTML = '<span style="color:var(--badge-amber)">⚠ "'+existing+'" is already an Emerging Leaders member.</span>'; return;
+  }
+
+  // Add to ALL_YOUTH_NAMES if not already there
+  if(!existing){
+    ALL_YOUTH_NAMES.push(name);
+    ALL_YOUTH_NAMES.sort();
+    rebuildYouthLoginDropdown();
+  } else {
+    name = existing; // use existing casing
+  }
+
+  // Add to EL_YOUTH with empty workshop list
+  EL_YOUTH[name] = [];
+
+  // Age, hours, compliance placeholders
+  if(age) YOUTH_AGES[name] = age;
+  YOUTH_HOURS[name] = YOUTH_HOURS[name] || 0;
+  YOUTH_COMPLIANCE[name] = YOUTH_COMPLIANCE[name] || { waiver_date:'', waiver_on_file:false, photo_date:'', photo_on_file:false };
+
+  fb.innerHTML = '<span style="color:var(--ya-teal)">✔ <strong>'+name+'</strong> added to Emerging Leaders! They now appear in the attendance table.</span>';
+  nameEl.value = '';
+  ageEl.value  = '';
+
+  // Re-render table and bars immediately
+  renderYouthAttendanceTable();
+  renderAdmin();
+}
+
+// ══════════════════════════════════════════
 // YOUTH WORKSHOP ATTENDANCE TABLE (ADMIN)
 // ══════════════════════════════════════════
 
@@ -2972,6 +3053,8 @@ function toggleWsAttEditMode(){
     }
   }
   renderYouthAttendanceTable();
+  // Re-render the attendance bars and stats when exiting edit mode
+  if(!wsAttEditMode) renderAdmin();
 }
 
 function renderYouthAttendanceTable(){
@@ -4136,7 +4219,8 @@ async function dbStartup() {
     loadComplianceData(),
     loadPendingEntries(),
     loadCredentials(),
-    loadScrabbleData()
+    loadScrabbleData(),
+    loadAllWorkshopAttendance()
   ]);
   if(banner) banner.style.display = 'none';
   console.log('DB startup complete');
@@ -4157,7 +4241,34 @@ window.addEventListener('load', function() {
 });
 
 
-async function loadWorkshopAttendance(youthId, youthName) {
+async function loadAllWorkshopAttendance() {
+  // Load ALL workshop attendance records and merge into EL_YOUTH
+  // This ensures admin view shows correct attendance after page reload
+  const rows = await dbGet('workshop_attendance', 'select=youth_id,workshop_id');
+  if(!rows || rows.length === 0){
+    console.log('No workshop attendance records in DB');
+    return;
+  }
+  // Build a map of youth_id → [workshop_ids]
+  var byYouth = {};
+  rows.forEach(function(row){
+    if(!byYouth[row.youth_id]) byYouth[row.youth_id] = [];
+    byYouth[row.youth_id].push(row.workshop_id);
+  });
+  // Merge into EL_YOUTH using ALL_YOUTH_NAMES index mapping
+  Object.keys(byYouth).forEach(function(youthId){
+    var idx = parseInt(youthId.replace('y_',''));
+    var name = ALL_YOUTH_NAMES[idx];
+    if(!name) return;
+    // Start from hardcoded base and add DB records
+    var base = new Set(EL_YOUTH[name] || []);
+    byYouth[youthId].forEach(function(wsId){ base.add(wsId); });
+    EL_YOUTH[name] = Array.from(base);
+  });
+  console.log('All workshop attendance loaded from DB:', rows.length, 'records across', Object.keys(byYouth).length, 'youth');
+}
+
+
   const rows = await dbGet('workshop_attendance',
     'select=workshop_id&youth_id=eq.' + encodeURIComponent(youthId));
   // CRITICAL: check the current user hasn't changed while we were fetching

@@ -688,7 +688,53 @@ body{font-family:"DM Sans",sans-serif;background:var(--navy);color:var(--text-ma
             </div>
             <div id="cancelled-sessions-display" style="margin-top:10px"></div>
           </div><div class="scrabble-leaderboard" id="admin-scrabble-lb"></div></div>
-        <div class="section-box"><div class="section-title">📅 Session History — Attendance &amp; Wins</div><div style="overflow-x:auto"><table class="data-table"><thead><tr id="scrabble-thead"></tr></thead><tbody id="scrabble-tbody"></tbody></table></div></div>
+        <!-- ADD NEW PLAYER PANEL -->
+        <div class="section-box" style="border-color:rgba(0,181,160,.3);margin-bottom:15px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+            <div class="section-title" style="margin-bottom:0;color:var(--ya-teal)">➕ Add New Player</div>
+            <button onclick="toggleAddPlayerPanel()" id="add-player-toggle-btn" class="ws-btn" style="border-color:var(--ya-teal);color:var(--ya-teal);font-size:.75rem">+ Add Player</button>
+          </div>
+          <div id="add-player-panel" style="display:none">
+            <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:10px;align-items:end;flex-wrap:wrap">
+              <div>
+                <div style="font-size:.75rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Player Name</div>
+                <input type="text" id="new-player-name" placeholder="e.g. Alex Smith" style="width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.15);border-radius:8px;padding:8px 12px;color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.88rem">
+              </div>
+              <div>
+                <div style="font-size:.75rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Age (optional)</div>
+                <input type="number" id="new-player-age" min="5" max="25" placeholder="e.g. 12" style="width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.15);border-radius:8px;padding:8px 12px;color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.88rem">
+              </div>
+              <div>
+                <div style="font-size:.75rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Type</div>
+                <select id="new-player-type" class="login-select" style="margin-bottom:0;padding:8px 12px">
+                  <option value="scrabble">🎲 Scrabble Only</option>
+                  <option value="el">📚 Emerging Leaders</option>
+                </select>
+              </div>
+            </div>
+            <div style="margin-top:10px;display:flex;gap:8px;align-items:center">
+              <button onclick="addNewPlayer()" style="padding:8px 20px;border-radius:9px;border:none;background:var(--ya-teal);color:#fff;font-family:Nunito,sans-serif;font-weight:800;font-size:.88rem;cursor:pointer">✔ Add Player</button>
+              <button onclick="toggleAddPlayerPanel()" class="ws-btn">Cancel</button>
+              <div id="add-player-feedback" style="font-size:.82rem;margin-left:6px"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- SESSION HISTORY TABLE -->
+        <div class="section-box">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:13px;flex-wrap:wrap;gap:8px">
+            <div class="section-title" style="margin-bottom:0">📅 Session History — Attendance &amp; Wins</div>
+            <div style="display:flex;gap:8px;align-items:center">
+              <button id="scrabble-edit-btn" onclick="toggleScrabbleEditMode()" class="ws-btn" style="border-color:var(--ya-blue);color:var(--ya-blue);font-size:.75rem">✏️ Edit Mode</button>
+              <button id="scrabble-save-btn" onclick="saveScrabbleEdits()" style="display:none;padding:6px 16px;border-radius:8px;border:none;background:var(--ya-teal);color:#fff;font-family:Nunito,sans-serif;font-weight:800;font-size:.8rem;cursor:pointer">💾 Save Changes</button>
+              <button id="scrabble-cancel-btn" onclick="cancelScrabbleEdits()" style="display:none" class="ws-btn">Cancel</button>
+            </div>
+          </div>
+          <div id="scrabble-edit-hint" style="display:none;font-size:.78rem;color:var(--ya-blue);background:rgba(29,127,212,.08);border:1px solid rgba(29,127,212,.2);border-radius:8px;padding:8px 12px;margin-bottom:10px">
+            ✏️ <strong>Edit mode active</strong> — Click any cell to edit points. Use 0 or leave blank to clear. Press <strong>💾 Save Changes</strong> when done.
+          </div>
+          <div style="overflow-x:auto"><table class="data-table"><thead><tr id="scrabble-thead"></tr></thead><tbody id="scrabble-tbody"></tbody></table></div>
+        </div>
         <div class="section-box">
           <div class="section-title">🙌 Adult Volunteer Hours — Scrabble &amp; Games Club</div>
           <div style="overflow-x:auto">
@@ -1571,10 +1617,20 @@ function renderAdminScrabble(){
     var allDates = SCRABBLE_DATES.slice();
     CONDUCTED_DATES.forEach(function(d){ if(allDates.indexOf(d)<0) allDates.push(d); });
     stbody.innerHTML=allDates.map(function(dt){
-      var cols=snames.map(function(n){var pts=SCRABBLE_SESSIONS[n][dt];return '<td style="text-align:center;color:'+(pts?'var(--ya-teal)':'var(--text-muted)')+';font-weight:'+(pts?'700':'400')+'">'+(pts?pts:'—')+'</td>';}).join('');
-      var dayTotal=snames.reduce(function(s,n){return s+(SCRABBLE_SESSIONS[n][dt]||0);},0);
+      var cols=snames.map(function(n){
+        var pts=SCRABBLE_SESSIONS[n] ? SCRABBLE_SESSIONS[n][dt] : undefined;
+        var cellId='edit_'+n.replace(/\s+/g,'_')+'_'+dt.replace(/\W/g,'_');
+        if(scrabbleEditMode){
+          return '<td style="padding:3px"><input id="'+cellId+'" type="number" min="0" max="99" value="'+(pts||'')+'" placeholder="—" style="width:52px;background:rgba(29,127,212,.1);border:1px solid rgba(29,127,212,.35);border-radius:5px;padding:3px 5px;color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.78rem;text-align:center"></td>';
+        }
+        return '<td style="text-align:center;color:'+(pts?'var(--ya-teal)':'var(--text-muted)')+';font-weight:'+(pts?'700':'400')+'">'+(pts?pts:'—')+'</td>';
+      }).join('');
+      var dayTotal=snames.reduce(function(s,n){return s+(SCRABBLE_SESSIONS[n]?SCRABBLE_SESSIONS[n][dt]||0:0);},0);
       return '<tr><td style="font-weight:600;white-space:nowrap">'+dt+'</td>'+cols+'<td style="font-weight:700;color:var(--ya-gold)">'+dayTotal+'</td></tr>';
-    }).join('')+'<tr style="border-top:2px solid var(--card-border)"><td style="font-weight:800">Total</td>'+snames.map(function(n){return '<td style="text-align:center;font-weight:800;color:var(--ya-orange)">'+SCRABBLE_TOTALS[n]+'</td>';}).join('')+'<td style="font-weight:800;color:var(--ya-gold)">515</td></tr>';
+    }).join('');
+  // Totals row — recalculate dynamically
+  var grandTotal = snames.reduce(function(s,n){ return s+(SCRABBLE_TOTALS[n]||0); }, 0);
+  stbody.innerHTML += '<tr style="border-top:2px solid var(--card-border)"><td style="font-weight:800">Total</td>'+snames.map(function(n){return '<td style="text-align:center;font-weight:800;color:var(--ya-orange)">'+(SCRABBLE_TOTALS[n]||0)+'</td>';}).join('')+'<td style="font-weight:800;color:var(--ya-gold)">'+grandTotal+'</td></tr>';
   }
 }
 
@@ -2634,11 +2690,225 @@ function closeELInfo(){
   document.body.style.overflow='';
 }
 
-// Close modal on backdrop click
-document.addEventListener('click', function(e){
-  var modal=document.getElementById('el-info-modal');
-  if(modal&&e.target===modal){closeELInfo();}
-});
+
+// ══════════════════════════════════════════
+// EDITABLE SCRABBLE SESSION HISTORY TABLE
+// ══════════════════════════════════════════
+
+var scrabbleEditMode = false;
+
+function toggleScrabbleEditMode(){
+  scrabbleEditMode = !scrabbleEditMode;
+  var editBtn   = document.getElementById('scrabble-edit-btn');
+  var saveBtn   = document.getElementById('scrabble-save-btn');
+  var cancelBtn = document.getElementById('scrabble-cancel-btn');
+  var hint      = document.getElementById('scrabble-edit-hint');
+  if(scrabbleEditMode){
+    editBtn.textContent = '✏️ Editing…';
+    editBtn.style.borderColor = 'var(--ya-gold)';
+    editBtn.style.color = 'var(--ya-gold)';
+    saveBtn.style.display = 'inline-block';
+    cancelBtn.style.display = 'inline-block';
+    hint.style.display = 'block';
+  } else {
+    editBtn.textContent = '✏️ Edit Mode';
+    editBtn.style.borderColor = 'var(--ya-blue)';
+    editBtn.style.color = 'var(--ya-blue)';
+    saveBtn.style.display = 'none';
+    cancelBtn.style.display = 'none';
+    hint.style.display = 'none';
+  }
+  renderAdminScrabble();
+}
+
+function cancelScrabbleEdits(){
+  scrabbleEditMode = false;
+  var editBtn   = document.getElementById('scrabble-edit-btn');
+  var saveBtn   = document.getElementById('scrabble-save-btn');
+  var cancelBtn = document.getElementById('scrabble-cancel-btn');
+  var hint      = document.getElementById('scrabble-edit-hint');
+  editBtn.textContent = '✏️ Edit Mode';
+  editBtn.style.borderColor = 'var(--ya-blue)';
+  editBtn.style.color = 'var(--ya-blue)';
+  saveBtn.style.display = 'none';
+  cancelBtn.style.display = 'none';
+  hint.style.display = 'none';
+  renderAdminScrabble();
+}
+
+function saveScrabbleEdits(){
+  var snames = Object.keys(SCRABBLE_SESSIONS);
+  var allDates = SCRABBLE_DATES.slice();
+  CONDUCTED_DATES.forEach(function(d){ if(allDates.indexOf(d)<0) allDates.push(d); });
+
+  snames.forEach(function(name){
+    allDates.forEach(function(dt){
+      var input = document.getElementById('edit_' + name.replace(/\s+/g,'_') + '_' + dt.replace(/\W/g,'_'));
+      if(!input) return;
+      var val = parseInt(input.value);
+      if(!isNaN(val) && val > 0){
+        if(!SCRABBLE_SESSIONS[name]) SCRABBLE_SESSIONS[name] = {};
+        SCRABBLE_SESSIONS[name][dt] = val;
+      } else {
+        // Clear if 0 or blank
+        if(SCRABBLE_SESSIONS[name]) delete SCRABBLE_SESSIONS[name][dt];
+      }
+    });
+    // Recalculate total for this player
+    var total = 0;
+    Object.values(SCRABBLE_SESSIONS[name] || {}).forEach(function(v){ total += v; });
+    SCRABBLE_TOTALS[name] = total;
+  });
+
+  // Flash feedback
+  var saveBtn = document.getElementById('scrabble-save-btn');
+  var orig = saveBtn.textContent;
+  saveBtn.textContent = '✔ Saved!';
+  saveBtn.style.background = 'var(--ya-green)';
+  setTimeout(function(){
+    saveBtn.textContent = orig;
+    saveBtn.style.background = 'var(--ya-teal)';
+  }, 1500);
+
+  scrabbleEditMode = false;
+  var editBtn   = document.getElementById('scrabble-edit-btn');
+  var cancelBtn = document.getElementById('scrabble-cancel-btn');
+  var hint      = document.getElementById('scrabble-edit-hint');
+  editBtn.textContent = '✏️ Edit Mode';
+  editBtn.style.borderColor = 'var(--ya-blue)';
+  editBtn.style.color = 'var(--ya-blue)';
+  saveBtn.style.display = 'none';
+  cancelBtn.style.display = 'none';
+  hint.style.display = 'none';
+  renderAdminScrabble();
+}
+
+// ══════════════════════════════════════════
+// ADD NEW PLAYER TO SCRABBLE CLUB
+// ══════════════════════════════════════════
+
+function toggleAddPlayerPanel(){
+  var panel = document.getElementById('add-player-panel');
+  var btn   = document.getElementById('add-player-toggle-btn');
+  if(!panel) return;
+  var isOpen = panel.style.display !== 'none';
+  panel.style.display = isOpen ? 'none' : 'block';
+  btn.textContent = isOpen ? '+ Add Player' : '✕ Close';
+  if(!isOpen){
+    document.getElementById('new-player-name').value = '';
+    document.getElementById('new-player-age').value = '';
+    document.getElementById('new-player-type').value = 'scrabble';
+    document.getElementById('add-player-feedback').innerHTML = '';
+    document.getElementById('new-player-name').focus();
+  }
+}
+
+function addNewPlayer(){
+  var nameEl = document.getElementById('new-player-name');
+  var ageEl  = document.getElementById('new-player-age');
+  var typeEl = document.getElementById('new-player-type');
+  var fb     = document.getElementById('add-player-feedback');
+
+  var name = nameEl.value.trim();
+  var age  = parseInt(ageEl.value) || null;
+  var type = typeEl.value; // 'scrabble' or 'el'
+
+  if(!name){ fb.innerHTML = '<span style="color:var(--badge-red)">⚠ Please enter a name.</span>'; return; }
+
+  // Check for duplicates (case-insensitive)
+  var existing = ALL_YOUTH_NAMES.find(function(n){ return n.toLowerCase() === name.toLowerCase(); });
+  if(existing){ fb.innerHTML = '<span style="color:var(--badge-amber)">⚠ "'+existing+'" is already in the list.</span>'; return; }
+
+  // Add to master youth names list
+  ALL_YOUTH_NAMES.push(name);
+  ALL_YOUTH_NAMES.sort();
+
+  // Add to scrabble tracking (empty session history)
+  SCRABBLE_SESSIONS[name] = {};
+  SCRABBLE_TOTALS[name] = 0;
+
+  // Add age if provided
+  if(age) YOUTH_AGES[name] = age;
+
+  // Add compliance placeholder
+  YOUTH_COMPLIANCE[name] = { waiver_date:'', waiver_on_file:false, photo_date:'', photo_on_file:false };
+
+  // If Emerging Leaders, add to EL_YOUTH with empty workshop array
+  if(type === 'el'){
+    EL_YOUTH[name] = [];
+  }
+
+  // Add volunteer hours placeholder
+  YOUTH_HOURS[name] = YOUTH_HOURS[name] || 0;
+
+  // Rebuild the login dropdown (custom dropdown list)
+  rebuildYouthLoginDropdown();
+
+  fb.innerHTML = '<span style="color:var(--ya-teal)">✔ <strong>'+name+'</strong> added! They will appear in the login dropdown immediately.</span>';
+  nameEl.value = '';
+  ageEl.value  = '';
+
+  // Re-render table
+  renderAdminScrabble();
+}
+
+function rebuildYouthLoginDropdown(){
+  // Rebuild the hidden native select used by the credential system
+  var nativeSelect = document.getElementById('setup-name-select');
+  if(nativeSelect){
+    // Collect current adult options
+    var adultOptions = [];
+    Array.from(nativeSelect.options).forEach(function(o){
+      if(!o.value.startsWith('y_')) adultOptions.push({value:o.value, text:o.text});
+    });
+    nativeSelect.innerHTML = '<option value="">— Select your name —</option>';
+    // Youth options (sorted, re-indexed)
+    ALL_YOUTH_NAMES.sort().forEach(function(name, i){
+      var opt = document.createElement('option');
+      opt.value = 'y_' + i;
+      opt.textContent = name;
+      nativeSelect.appendChild(opt);
+    });
+    // Re-add adult options
+    adultOptions.forEach(function(o){
+      var opt = document.createElement('option');
+      opt.value = o.value;
+      opt.textContent = o.text;
+      nativeSelect.appendChild(opt);
+    });
+  }
+
+  // Rebuild the visible custom dropdown list (cdd-list)
+  var cddList = document.getElementById('cdd-list');
+  if(cddList){
+    // Remove existing youth items and group label
+    var toRemove = [];
+    cddList.querySelectorAll('.cdd-group-label, .cdd-item').forEach(function(el){
+      if(!el.getAttribute('data-value') || el.getAttribute('data-value').startsWith('y_')){
+        toRemove.push(el);
+      }
+    });
+    toRemove.forEach(function(el){ el.remove(); });
+
+    // Re-insert youth group at top
+    var firstItem = cddList.firstChild;
+    var youthLabel = document.createElement('div');
+    youthLabel.className = 'cdd-group-label';
+    youthLabel.textContent = '🌱 Youth Members';
+    cddList.insertBefore(youthLabel, firstItem);
+
+    ALL_YOUTH_NAMES.sort().forEach(function(name, i){
+      var item = document.createElement('div');
+      item.className = 'cdd-item';
+      item.setAttribute('data-value', 'y_' + i);
+      item.setAttribute('onclick', 'selectCustomName(this)');
+      item.textContent = name;
+      cddList.insertBefore(item, firstItem);
+    });
+  }
+}
+
+
 
 
 // ═══════════════════════════════════════════

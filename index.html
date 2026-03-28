@@ -4408,24 +4408,28 @@ async function loadAllWorkshopAttendance() {
   // Load ALL workshop attendance and merge into EL_YOUTH
   const rows = await dbGet('workshop_attendance', 'select=youth_name,youth_id,workshop_id');
 
-  // Show visible debug banner
+  // Show visible debug banner — stays until dismissed
   function showLoadDebug(msg, isError) {
     var el = document.getElementById('ws-load-debug');
     if(!el) {
       el = document.createElement('div');
       el.id = 'ws-load-debug';
-      el.style.cssText = 'position:fixed;top:12px;left:12px;right:12px;z-index:9999;color:#fff;font-family:monospace;font-size:.72rem;padding:10px 14px;border-radius:8px;white-space:pre-wrap;max-height:160px;overflow-y:auto';
+      el.style.cssText = 'position:fixed;top:8px;left:8px;right:8px;z-index:9999;color:#fff;font-family:monospace;font-size:.72rem;padding:10px 14px;border-radius:8px;white-space:pre-wrap;max-height:160px;overflow-y:auto;cursor:pointer';
+      el.title = 'Click to dismiss';
+      el.onclick = function(){ el.parentNode && el.parentNode.removeChild(el); };
       document.body.appendChild(el);
     }
     el.style.background = isError ? '#4a1010' : '#0e2a3a';
     el.style.border = '1px solid ' + (isError ? '#c94a00' : '#0d9488');
-    el.textContent = msg;
-    clearTimeout(el._timer);
-    el._timer = setTimeout(function(){ if(el.parentNode) el.parentNode.removeChild(el); }, 12000);
+    el.textContent = msg + ' (click to dismiss)';
   }
 
-  if(!rows || rows.length === 0){
-    showLoadDebug('⚠ No rows in workshop_attendance table', true);
+  if(rows === null || rows === undefined) {
+    showLoadDebug('⚠ DB query failed (null) — network or auth issue', true);
+    return;
+  }
+  if(rows.length === 0){
+    showLoadDebug('⚠ workshop_attendance table is empty — no rows found', true);
     console.log('No workshop attendance records in DB');
     return;
   }
@@ -4460,10 +4464,9 @@ async function loadAllWorkshopAttendance() {
     EL_YOUTH[name] = Array.from(base);
   });
 
-  var msg = '📋 Attendance load: ' + rows.length + ' rows, ' + resolved + ' resolved';
+  var msg = '📋 DB load: ' + rows.length + ' rows, ' + resolved + ' resolved';
   if(unresolved.length > 0) {
-    msg += '\n⚠ Could not resolve: ' + unresolved.join(', ');
-    msg += '\nKnown yn_ keys: ' + Object.keys(ynToName).slice(0,5).join(', ') + '...';
+    msg += '\n⚠ Unresolved: ' + unresolved.join(', ');
     showLoadDebug(msg, true);
   } else {
     showLoadDebug(msg, false);

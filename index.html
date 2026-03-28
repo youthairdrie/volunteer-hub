@@ -3020,6 +3020,9 @@ function addELYouth(){
   nameEl.value = '';
   ageEl.value  = '';
 
+  // Save to Supabase so name persists across reloads
+  saveYouthToDB(name, age, []);
+
   // Re-render table and bars immediately
   renderYouthAttendanceTable();
   renderAdmin();
@@ -3631,6 +3634,9 @@ function addNewPlayer(){
   nameEl.value = '';
   ageEl.value  = '';
 
+  // Save to Supabase so name persists across reloads
+  saveYouthToDB(name, age, type === 'el' ? [] : null);
+
   // Re-render table
   renderAdminScrabble();
 }
@@ -4004,17 +4010,113 @@ async function migrateWorkshopAttendanceToNames() {
   console.log('Legacy workshop_attendance migration complete.');
 }
 
-// ── PERSISTENT SAVE FUNCTIONS ──
+// ── LOAD YOUTH FROM SUPABASE (picks up admin-added youth) ──
+async function loadYouthData() {
+  const rows = await dbGet('youth', 'select=id,name,age,workshops');
+  if(!rows || rows.length === 0) {
+    console.log('No youth rows in DB');
+    return;
+  }
+  var added = 0;
+  rows.forEach(function(row) {
+    var name = row.name;
+    if(!name) return;
+    // Only process youth whose DB id starts with 'yn_' (admin-added via the app)
+    // Skip the original 'y_N' migration rows — those are already in the hardcoded JS arrays
+    var isAdminAdded = row.id && row.id.indexOf('yn_') === 0;
+    if(!isAdminAdded) return;
+
+    // Add to ALL_YOUTH_NAMES if not already present
+    if(ALL_YOUTH_NAMES.indexOf(name) < 0) {
+      ALL_YOUTH_NAMES.push(name);
+      added++;
+    }
+    // Restore EL_YOUTH entry
+    var wsArr = row.workshops || [];
+    var base = new Set(EL_YOUTH[name] || []);
+    wsArr.forEach(function(w){ base.add(w); });
+    EL_YOUTH[name] = Array.from(base);
+
+    // Restore age
+    if(row.age && !YOUTH_AGES[name]) YOUTH_AGES[name] = row.age;
+    // Ensure hours placeholder
+    YOUTH_HOURS[name] = YOUTH_HOURS[name] || 0;
+  });
+  if(added > 0) {
+    ALL_YOUTH_NAMES.sort();
+    rebuildYouthLoginDropdown();
+    console.log('Loaded', added, 'admin-added youth from DB');
+  } else {
+    console.log('No new youth to load from DB');
+  }
+}
+
+// ── SAVE A SINGLE YOUTH TO SUPABASE ──
+async function saveYouthToDB(name, age, workshops) {
+  // Use a stable name-derived id, not a positional index
+  var id = 'yn_' + name.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+  try {
+    await fetch(
+      SUPA_URL + '/rest/v1/youth?on_conflict=id',
+      {
+        method: 'POST',
+        headers: {
+          'apikey': SUPA_KEY,
+          'Authorization': 'Bearer ' + SUPA_KEY,
+          'Content-Type': 'application/json',
+          'Prefer': 'resolution=merge-duplicates,return=minimal'
+        },
+        body: JSON.stringify({
+          id: id,
+          name: name,
+          age: age || null,
+          workshops: workshops || [],
+          volunteer_hours: YOUTH_HOURS[name] || 0
+        })
+      }
+    );
+    console.log('Youth saved to DB:', name, '(id:', id + ')');
+  } catch(e) {
+    console.warn('saveYouthToDB failed for', name, e);
+  }
+}
 
 async function saveWorkshopAttendance(youthName, workshopId, attended) {
   console.log('Saving workshop attendance:', youthName, workshopId, attended);
+  // youth_id uses a stable name-derived key (not an index) so it never drifts.
+  // We store both youth_name and youth_id so either schema works.
+  var youthId = 'yn_' + youthName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
   if (attended) {
-    const result = await dbPost('workshop_attendance',
-      { youth_name: youthName, workshop_id: workshopId });
-    console.log('Save result:', result);
+    // Use explicit on_conflict param so upsert works regardless of which unique constraint exists
+    const result = await fetch(
+      SUPA_URL + '/rest/v1/workshop_attendance?on_conflict=youth_name,workshop_id',
+      {
+        method: 'POST',
+        headers: {
+          'apikey': SUPA_KEY,
+          'Authorization': 'Bearer ' + SUPA_KEY,
+          'Content-Type': 'application/json',
+          'Prefer': 'resolution=merge-duplicates,return=minimal'
+        },
+        body: JSON.stringify({ youth_name: youthName, youth_id: youthId, workshop_id: workshopId })
+      }
+    );
+    if(!result.ok) {
+      const err = await result.text();
+      console.warn('Attendance save failed:', result.status, err);
+    } else {
+      console.log('Attendance saved for', youthName, 'ws', workshopId);
+    }
   } else {
+    // Delete by youth_name (new schema)
     await dbDel('workshop_attendance',
       'youth_name=eq.' + encodeURIComponent(youthName) + '&workshop_id=eq.' + workshopId);
+    // Also remove any legacy row stored under old y_N id
+    var idx = ALL_YOUTH_NAMES.indexOf(youthName);
+    if(idx >= 0) {
+      await dbDel('workshop_attendance',
+        'youth_id=eq.y_' + idx + '&workshop_id=eq.' + workshopId);
+    }
   }
 }
 
@@ -4241,6 +4343,7 @@ async function dbStartup() {
   try { await checkAndInitDB(); } catch(e) { console.warn('checkAndInitDB error (non-fatal):', e); }
   try {
     await Promise.all([
+      loadYouthData(),
       loadEventRegistrations(),
       loadProgramData(),
       loadComplianceData(),

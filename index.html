@@ -1394,8 +1394,7 @@ function toggleYouthWs(id,btn){
   var attended;
   if(youthState.workshops.has(id)){youthState.workshops.delete(id);attended=false;}
   else{youthState.workshops.add(id);attended=true;}
-  var yIdx=ALL_YOUTH_NAMES.indexOf(youthState.name);
-  if(yIdx>=0) saveWorkshopAttendance('y_'+yIdx, id, attended);
+  saveWorkshopAttendance(youthState.name, id, attended);
   renderYouth();
 }
 
@@ -1823,8 +1822,7 @@ function enterApp(role){
     var peEl=document.getElementById('youth-pending-entries-scrabble');
     if(peEl) peEl.innerHTML='';
     // Load any additional workshop attendance from Supabase (overrides static data)
-    var yIdx=ALL_YOUTH_NAMES.indexOf(selectedName);
-    if(yIdx>=0) loadWorkshopAttendance('y_'+yIdx, selectedName);
+    loadWorkshopAttendance(selectedName);
   }else if(role==='adult'){
     var sel2=document.getElementById('adult-select').value;
     if(!sel2){alert('Please select your name');return;}
@@ -3189,8 +3187,7 @@ function toggleYouthWsAdmin(name, wsId, cell){
   tds[2].innerHTML = st;
 
   // Persist to Supabase
-  var yIdx = ALL_YOUTH_NAMES.indexOf(name);
-  if(yIdx >= 0) saveWorkshopAttendance('y_'+yIdx, wsId, nowAttending);
+  saveWorkshopAttendance(name, wsId, nowAttending);
 }
 
 
@@ -3755,9 +3752,10 @@ async function initDB() {
       created_at timestamptz default now()
     );
     create table if not exists workshop_attendance (
-      id bigserial primary key, youth_id text, workshop_id integer,
+      id bigserial primary key, youth_id text, youth_name text,
+      workshop_id integer,
       marked_at timestamptz default now(),
-      unique(youth_id, workshop_id)
+      unique(youth_name, workshop_id)
     );
     create table if not exists event_registrations (
       id bigserial primary key, event_id text not null, youth_name text not null,
@@ -3975,20 +3973,48 @@ async function checkAndInitDB() {
       if(asRows.length) await dbPost('adult_scrabble_sessions', asRows);
       console.log('Scrabble tables seeded.');
     }
+    // Migrate any legacy youth_id-based workshop_attendance rows to youth_name-based
+    await migrateWorkshopAttendanceToNames();
   }
+}
+
+// ── MIGRATE LEGACY workshop_attendance ROWS TO NAME-BASED ──
+async function migrateWorkshopAttendanceToNames() {
+  // Find rows that have youth_id but no youth_name
+  const legacyRows = await dbGet('workshop_attendance',
+    'select=id,youth_id,workshop_id&youth_name=is.null&youth_id=not.is.null');
+  if(!legacyRows || legacyRows.length === 0) {
+    console.log('No legacy workshop_attendance rows to migrate.');
+    return;
+  }
+  console.log('Migrating', legacyRows.length, 'legacy workshop_attendance rows to name-based...');
+  for(var i = 0; i < legacyRows.length; i++) {
+    var row = legacyRows[i];
+    var idx = parseInt((row.youth_id || '').replace('y_', ''));
+    var name = ALL_YOUTH_NAMES[idx];
+    if(!name) {
+      console.warn('Could not resolve youth_id', row.youth_id, '— skipping');
+      continue;
+    }
+    // Update this row with the resolved name
+    await dbPatch('workshop_attendance',
+      { youth_name: name },
+      'id=eq.' + row.id);
+  }
+  console.log('Legacy workshop_attendance migration complete.');
 }
 
 // ── PERSISTENT SAVE FUNCTIONS ──
 
-async function saveWorkshopAttendance(youthId, workshopId, attended) {
-  console.log('Saving workshop attendance:', youthId, workshopId, attended);
+async function saveWorkshopAttendance(youthName, workshopId, attended) {
+  console.log('Saving workshop attendance:', youthName, workshopId, attended);
   if (attended) {
     const result = await dbPost('workshop_attendance',
-      { youth_id: youthId, workshop_id: workshopId });
+      { youth_name: youthName, workshop_id: workshopId });
     console.log('Save result:', result);
   } else {
     await dbDel('workshop_attendance',
-      'youth_id=eq.' + encodeURIComponent(youthId) + '&workshop_id=eq.' + workshopId);
+      'youth_name=eq.' + encodeURIComponent(youthName) + '&workshop_id=eq.' + workshopId);
   }
 }
 
@@ -4245,37 +4271,32 @@ window.addEventListener('load', function() {
 
 async function loadAllWorkshopAttendance() {
   // Load ALL workshop attendance records and merge into EL_YOUTH
-  // This ensures admin view shows correct attendance after page reload
-  const rows = await dbGet('workshop_attendance', 'select=youth_id,workshop_id');
+  // Records stored by youth_name (stable) — not youth_id (index-based, breaks on sort)
+  const rows = await dbGet('workshop_attendance', 'select=youth_name,youth_id,workshop_id');
   if(!rows || rows.length === 0){
     console.log('No workshop attendance records in DB');
     return;
   }
-  // Build a map of youth_id → [workshop_ids]
-  var byYouth = {};
   rows.forEach(function(row){
-    if(!byYouth[row.youth_id]) byYouth[row.youth_id] = [];
-    byYouth[row.youth_id].push(row.workshop_id);
-  });
-  // Merge into EL_YOUTH using ALL_YOUTH_NAMES index mapping
-  Object.keys(byYouth).forEach(function(youthId){
-    var idx = parseInt(youthId.replace('y_',''));
-    var name = ALL_YOUTH_NAMES[idx];
+    // Support both new youth_name-based rows and legacy youth_id-based rows
+    var name = row.youth_name;
+    if(!name && row.youth_id) {
+      var idx = parseInt((row.youth_id || '').replace('y_',''));
+      name = ALL_YOUTH_NAMES[idx];
+    }
     if(!name) return;
-    // Start from hardcoded base and add DB records
     var base = new Set(EL_YOUTH[name] || []);
-    byYouth[youthId].forEach(function(wsId){ base.add(wsId); });
+    base.add(row.workshop_id);
     EL_YOUTH[name] = Array.from(base);
   });
-  console.log('All workshop attendance loaded from DB:', rows.length, 'records across', Object.keys(byYouth).length, 'youth');
+  console.log('All workshop attendance loaded from DB:', rows.length, 'records');
 }
 
 
-async function loadWorkshopAttendance(youthId, youthName) {
+async function loadWorkshopAttendance(youthName) {
   const rows = await dbGet('workshop_attendance',
-    'select=workshop_id&youth_id=eq.' + encodeURIComponent(youthId));
+    'select=workshop_id&youth_name=eq.' + encodeURIComponent(youthName));
   // CRITICAL: check the current user hasn't changed while we were fetching
-  // This prevents Reed's async results from bleeding into Ameerah's session
   if (!youthState || youthState.name !== youthName) {
     console.log('Session changed - ignoring stale workshop data for', youthName);
     return;
@@ -4836,8 +4857,7 @@ function doLogin(id, role) {
     currentRole = 'youth';
     var peEl = document.getElementById('youth-pending-entries-scrabble');
     if(peEl) peEl.innerHTML = '';
-    var yIdx = ALL_YOUTH_NAMES.indexOf(selectedName);
-    if(yIdx >= 0) loadWorkshopAttendance('y_'+yIdx, selectedName);
+    loadWorkshopAttendance(selectedName);
   } else if(role === 'adult' || role === 'admin') {
     var p = FAC_PROFILES[id];
     if(!p) return;

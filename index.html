@@ -210,6 +210,18 @@ body{font-family:"DM Sans",sans-serif;background:var(--navy);color:var(--text-ma
   .verify-btn.edit{border-color:var(--text-muted);color:var(--text-muted)}
   .session-date-header{font-size:.75rem;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:.07em;margin:14px 0 8px;display:flex;align-items:center;justify-content:space-between}
 
+
+  .custom-dropdown{position:relative;width:100%;margin-bottom:10px;user-select:none}
+  .cdd-selected{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.15);border-radius:10px;padding:10px 14px;color:var(--text-muted);cursor:pointer;font-size:.85rem;transition:border-color .2s}
+  .cdd-selected:hover,.custom-dropdown.open .cdd-selected{border-color:var(--ya-orange);color:var(--text-main)}
+  .cdd-list{position:absolute;left:0;right:0;top:calc(100% + 4px);background:#1a2d47;border:1px solid rgba(255,255,255,.15);border-radius:10px;z-index:999;max-height:260px;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,.4)}
+  .cdd-group-label{padding:8px 14px 4px;font-size:.7rem;font-weight:800;color:var(--ya-orange);text-transform:uppercase;letter-spacing:.08em;background:rgba(0,0,0,.2);position:sticky;top:0}
+  .cdd-item{padding:9px 14px;font-size:.84rem;color:var(--text-main);cursor:pointer;transition:background .15s}
+  .cdd-item:hover{background:rgba(255,255,255,.08)}
+  .cdd-item.selected{background:rgba(0,181,160,.12);color:var(--ya-teal)}
+  .cdd-item.hidden{display:none}
+  .cdd-search-wrap{position:sticky;top:0;background:#1a2d47;z-index:2}
+
 </style>
 </head>
 <body>
@@ -235,90 +247,95 @@ body{font-family:"DM Sans",sans-serif;background:var(--navy);color:var(--text-ma
           <button class="login-btn" onclick="attemptLogin()">Enter Dashboard →</button>
           <div style="margin-top:16px;padding-top:14px;border-top:1px solid rgba(255,255,255,.07)">
             <div style="font-size:.75rem;color:var(--text-muted);text-align:center;margin-bottom:10px">First time? Set up your login:</div>
-            <select class="login-select" id="setup-name-select" onchange="showSetupField()">
-              <option value="">— Select your name —</option>
-              <optgroup label="Youth">
-              <option value="y_0">Aaliyah</option>
-              <option value="y_1">Abegail Jbbo-Rustrian</option>
-              <option value="y_2">Abigail Robinson</option>
-              <option value="y_3">Adam Choe</option>
-              <option value="y_4">Aiden Bruce</option>
-              <option value="y_5">Alleem Hammed</option>
-              <option value="y_6">Ameerah Hammed</option>
-              <option value="y_7">Anastasia Strokova</option>
-              <option value="y_8">Anisim Rashid</option>
-              <option value="y_9">Anna Choi</option>
-              <option value="y_10">Ariel Young</option>
-              <option value="y_11">Avery Sengsavang</option>
-              <option value="y_12">Azeem Hammed</option>
-              <option value="y_13">Caitlen</option>
-              <option value="y_14">Chaey Moon</option>
-              <option value="y_15">Cindy Hwang</option>
-              <option value="y_16">Claire Choe</option>
-              <option value="y_17">Connor Sengsavang</option>
-              <option value="y_18">David</option>
-              <option value="y_19">Denise</option>
-              <option value="y_20">Devira</option>
-              <option value="y_21">Eilleen Shin</option>
-              <option value="y_22">Elijah butler</option>
-              <option value="y_23">Elisa Choi</option>
-              <option value="y_24">Emma Memedovski</option>
-              <option value="y_25">Emma Tumak</option>
-              <option value="y_26">Eoin</option>
-              <option value="y_27">Everett Rempel</option>
-              <option value="y_28">Greyson Riley</option>
-              <option value="y_29">Haytham</option>
-              <option value="y_30">Ji Hoon</option>
-              <option value="y_31">Ji Woo</option>
-              <option value="y_32">Juanna Shin</option>
-              <option value="y_33">Jude Effah</option>
-              <option value="y_34">Khanishka Kaur</option>
-              <option value="y_35">Kinsey Ehigiator</option>
-              <option value="y_36">Koby Bolton</option>
-              <option value="y_37">Kristen Robinson</option>
-              <option value="y_38">Lee (Karlee)</option>
-              <option value="y_39">Mackensie</option>
-              <option value="y_40">Mason Guise</option>
-              <option value="y_41">Mason Seo</option>
-              <option value="y_42">Navkar Sing</option>
-              <option value="y_43">Oliver</option>
-              <option value="y_44">Polina Strokova</option>
-              <option value="y_45">Preston</option>
-              <option value="y_46">Reed Bieganski</option>
-              <option value="y_47">Roza</option>
-              <option value="y_48">Sasha Tumak</option>
-              <option value="y_49">Sebastian Baitson</option>
-              <option value="y_50">Serena Shin</option>
-              <option value="y_51">Sophia Tong</option>
-              <option value="y_52">Sophie Hwang</option>
-              <option value="y_53">Taya Allen</option>
-              <option value="y_54">Teni Olaniyan</option>
-              <option value="y_55">Theodore Bourdeau</option>
-              <option value="y_56">Tobi Olaniyan</option>
-              <option value="y_57">Zoya Rashid</option>
-              </optgroup>
-              <optgroup label="Adults &amp; Admins">
-              <option value="alex">Alex Strokova</option>
-              <option value="bj">BJ (Bolaji) Hammed ⚡</option>
-              <option value="bolaji_a">Bolaji Ajoke Hammed</option>
-              <option value="carol">Carol Brosoto</option>
-              <option value="chloe">Chloe Nayoung Kim</option>
-              <option value="connie">Connie Wu</option>
-              <option value="jollean">Jollean Chapiel</option>
-              <option value="julie">Julie Robertson ⚡</option>
-              <option value="kathy">Kathy March</option>
-              <option value="kim">Kim Sundset ⚡</option>
-              <option value="marybeth">Mary-Beth Finney (Ursa)</option>
-              <option value="mimi">Mimi Omoare</option>
-              <option value="olga">Olga Korcheva</option>
-              <option value="roberta">Roberta Ehigiator ⚡</option>
-              <option value="shameen">Shameen</option>
-              <option value="simi">Simisola Obasan (Simi)</option>
-              <option value="sudi">Sudi Hedley</option>
-              <option value="tamanna">Tamanna Kaur</option>
-              <option value="tina">Tina Petrow</option>
-              </optgroup>
-            </select>
+            <div class="custom-dropdown" id="setup-name-dropdown">
+              <div class="cdd-selected" id="cdd-display" onclick="toggleCDD()">— Select your name —</div>
+              <div class="cdd-list" id="cdd-list" style="display:none">
+                <div class="cdd-search-wrap">
+                  <input type="text" id="cdd-search" placeholder="Search..." oninput="filterCDD(this.value)"
+                    style="width:100%;background:rgba(255,255,255,.08);border:none;border-bottom:1px solid rgba(255,255,255,.1);padding:8px 12px;color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.83rem;outline:none;box-sizing:border-box">
+                </div>
+                <div class="cdd-group-label">🌱 Youth</div>
+                <div class="cdd-item" data-value="y_0" onclick="selectCustomName(this)">Aaliyah</div>
+<div class="cdd-item" data-value="y_1" onclick="selectCustomName(this)">Abegail Jbbo-Rustrian</div>
+<div class="cdd-item" data-value="y_2" onclick="selectCustomName(this)">Abigail Robinson</div>
+<div class="cdd-item" data-value="y_3" onclick="selectCustomName(this)">Adam Choe</div>
+<div class="cdd-item" data-value="y_4" onclick="selectCustomName(this)">Aiden Bruce</div>
+<div class="cdd-item" data-value="y_5" onclick="selectCustomName(this)">Alleem Hammed</div>
+<div class="cdd-item" data-value="y_6" onclick="selectCustomName(this)">Ameerah Hammed</div>
+<div class="cdd-item" data-value="y_7" onclick="selectCustomName(this)">Anastasia Strokova</div>
+<div class="cdd-item" data-value="y_8" onclick="selectCustomName(this)">Anisim Rashid</div>
+<div class="cdd-item" data-value="y_9" onclick="selectCustomName(this)">Anna Choi</div>
+<div class="cdd-item" data-value="y_10" onclick="selectCustomName(this)">Ariel Young</div>
+<div class="cdd-item" data-value="y_11" onclick="selectCustomName(this)">Avery Sengsavang</div>
+<div class="cdd-item" data-value="y_12" onclick="selectCustomName(this)">Azeem Hammed</div>
+<div class="cdd-item" data-value="y_13" onclick="selectCustomName(this)">Caitlen</div>
+<div class="cdd-item" data-value="y_14" onclick="selectCustomName(this)">Chaey Moon</div>
+<div class="cdd-item" data-value="y_15" onclick="selectCustomName(this)">Cindy Hwang</div>
+<div class="cdd-item" data-value="y_16" onclick="selectCustomName(this)">Claire Choe</div>
+<div class="cdd-item" data-value="y_17" onclick="selectCustomName(this)">Connor Sengsavang</div>
+<div class="cdd-item" data-value="y_18" onclick="selectCustomName(this)">David</div>
+<div class="cdd-item" data-value="y_19" onclick="selectCustomName(this)">Denise</div>
+<div class="cdd-item" data-value="y_20" onclick="selectCustomName(this)">Devira</div>
+<div class="cdd-item" data-value="y_21" onclick="selectCustomName(this)">Eilleen Shin</div>
+<div class="cdd-item" data-value="y_22" onclick="selectCustomName(this)">Elijah butler</div>
+<div class="cdd-item" data-value="y_23" onclick="selectCustomName(this)">Elisa Choi</div>
+<div class="cdd-item" data-value="y_24" onclick="selectCustomName(this)">Emma Memedovski</div>
+<div class="cdd-item" data-value="y_25" onclick="selectCustomName(this)">Emma Tumak</div>
+<div class="cdd-item" data-value="y_26" onclick="selectCustomName(this)">Eoin</div>
+<div class="cdd-item" data-value="y_27" onclick="selectCustomName(this)">Everett Rempel</div>
+<div class="cdd-item" data-value="y_28" onclick="selectCustomName(this)">Greyson Riley</div>
+<div class="cdd-item" data-value="y_29" onclick="selectCustomName(this)">Haytham</div>
+<div class="cdd-item" data-value="y_30" onclick="selectCustomName(this)">Ji Hoon</div>
+<div class="cdd-item" data-value="y_31" onclick="selectCustomName(this)">Ji Woo</div>
+<div class="cdd-item" data-value="y_32" onclick="selectCustomName(this)">Juanna Shin</div>
+<div class="cdd-item" data-value="y_33" onclick="selectCustomName(this)">Jude Effah</div>
+<div class="cdd-item" data-value="y_34" onclick="selectCustomName(this)">Khanishka Kaur</div>
+<div class="cdd-item" data-value="y_35" onclick="selectCustomName(this)">Kinsey Ehigiator</div>
+<div class="cdd-item" data-value="y_36" onclick="selectCustomName(this)">Koby Bolton</div>
+<div class="cdd-item" data-value="y_37" onclick="selectCustomName(this)">Kristen Robinson</div>
+<div class="cdd-item" data-value="y_38" onclick="selectCustomName(this)">Lee (Karlee)</div>
+<div class="cdd-item" data-value="y_39" onclick="selectCustomName(this)">Mackensie</div>
+<div class="cdd-item" data-value="y_40" onclick="selectCustomName(this)">Mason Guise</div>
+<div class="cdd-item" data-value="y_41" onclick="selectCustomName(this)">Mason Seo</div>
+<div class="cdd-item" data-value="y_42" onclick="selectCustomName(this)">Navkar Sing</div>
+<div class="cdd-item" data-value="y_43" onclick="selectCustomName(this)">Oliver</div>
+<div class="cdd-item" data-value="y_44" onclick="selectCustomName(this)">Polina Strokova</div>
+<div class="cdd-item" data-value="y_45" onclick="selectCustomName(this)">Preston</div>
+<div class="cdd-item" data-value="y_46" onclick="selectCustomName(this)">Reed Bieganski</div>
+<div class="cdd-item" data-value="y_47" onclick="selectCustomName(this)">Roza</div>
+<div class="cdd-item" data-value="y_48" onclick="selectCustomName(this)">Sasha Tumak</div>
+<div class="cdd-item" data-value="y_49" onclick="selectCustomName(this)">Sebastian Baitson</div>
+<div class="cdd-item" data-value="y_50" onclick="selectCustomName(this)">Serena Shin</div>
+<div class="cdd-item" data-value="y_51" onclick="selectCustomName(this)">Sophia Tong</div>
+<div class="cdd-item" data-value="y_52" onclick="selectCustomName(this)">Sophie Hwang</div>
+<div class="cdd-item" data-value="y_53" onclick="selectCustomName(this)">Taya Allen</div>
+<div class="cdd-item" data-value="y_54" onclick="selectCustomName(this)">Teni Olaniyan</div>
+<div class="cdd-item" data-value="y_55" onclick="selectCustomName(this)">Theodore Bourdeau</div>
+<div class="cdd-item" data-value="y_56" onclick="selectCustomName(this)">Tobi Olaniyan</div>
+<div class="cdd-item" data-value="y_57" onclick="selectCustomName(this)">Zoya Rashid</div>
+                <div class="cdd-group-label">🙌 Adults &amp; Admins</div>
+                <div class="cdd-item" data-value="alex" onclick="selectCustomName(this)">Alex Strokova</div>
+<div class="cdd-item" data-value="bj" onclick="selectCustomName(this)">BJ (Bolaji) Hammed  ⚡</div>
+<div class="cdd-item" data-value="bolaji_a" onclick="selectCustomName(this)">Bolaji Ajoke Hammed</div>
+<div class="cdd-item" data-value="carol" onclick="selectCustomName(this)">Carol Brosoto</div>
+<div class="cdd-item" data-value="chloe" onclick="selectCustomName(this)">Chloe Nayoung Kim</div>
+<div class="cdd-item" data-value="connie" onclick="selectCustomName(this)">Connie Wu</div>
+<div class="cdd-item" data-value="jollean" onclick="selectCustomName(this)">Jollean Chapiel</div>
+<div class="cdd-item" data-value="julie" onclick="selectCustomName(this)">Julie Robertson  ⚡</div>
+<div class="cdd-item" data-value="kathy" onclick="selectCustomName(this)">Kathy March</div>
+<div class="cdd-item" data-value="kim" onclick="selectCustomName(this)">Kim Sundset  ⚡</div>
+<div class="cdd-item" data-value="marybeth" onclick="selectCustomName(this)">Mary-Beth Finney (Ursa)</div>
+<div class="cdd-item" data-value="mimi" onclick="selectCustomName(this)">Mimi Omoare</div>
+<div class="cdd-item" data-value="olga" onclick="selectCustomName(this)">Olga Korcheva</div>
+<div class="cdd-item" data-value="roberta" onclick="selectCustomName(this)">Roberta Ehigiator  ⚡</div>
+<div class="cdd-item" data-value="shameen" onclick="selectCustomName(this)">Shameen</div>
+<div class="cdd-item" data-value="simi" onclick="selectCustomName(this)">Simisola Obasan (Simi)</div>
+<div class="cdd-item" data-value="sudi" onclick="selectCustomName(this)">Sudi Hedley</div>
+<div class="cdd-item" data-value="tamanna" onclick="selectCustomName(this)">Tamanna Kaur</div>
+<div class="cdd-item" data-value="tina" onclick="selectCustomName(this)">Tina Petrow</div>
+              </div>
+              <input type="hidden" id="setup-name-select" value="">
+            </div>
             <div id="setup-field-wrap" style="display:none">
               <input type="text" id="setup-credential-input" maxlength="10" placeholder="Enter F+mmddyy" autocomplete="off" spellcheck="false"
                 style="width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.15);border-radius:10px;padding:10px 16px;color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.9rem;text-align:center;letter-spacing:.08em;margin-bottom:8px;box-sizing:border-box"
@@ -365,7 +382,14 @@ body{font-family:"DM Sans",sans-serif;background:var(--navy);color:var(--text-ma
       <div class="user-avatar" id="user-avatar" style="color:#fff">YA</div>
       <div class="user-info"><div class="user-name" id="user-name">—</div><div class="user-role-badge" id="user-role-badge">—</div></div>
     </div>
-    <div id="nav-links"></div>
+    <div id="admin-volunteer-toggle" style="display:none;padding:8px 12px;border-bottom:1px solid rgba(255,255,255,.07)">
+        <button onclick="toggleAdminVolunteerView()" id="admin-toggle-btn"
+          style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid rgba(0,181,160,.3);background:rgba(0,181,160,.08);color:var(--ya-teal);font-family:DM Sans,sans-serif;font-size:.78rem;font-weight:700;cursor:pointer;transition:all .2s;text-align:left;display:flex;align-items:center;gap:8px">
+          <span id="admin-toggle-icon">🙌</span>
+          <span id="admin-toggle-label">Switch to My Volunteer View</span>
+        </button>
+      </div>
+      <div id="nav-links"></div>
     <button class="logout-btn" onclick="logout()">↩ Sign Out</button>
   </nav>
   <main class="main-content">
@@ -1672,6 +1696,9 @@ function logout(){
   youthState=null;
   adultState=null;
   currentRole=null;
+  adminViewMode='admin';
+  var toggleEl=document.getElementById('admin-volunteer-toggle');
+  if(toggleEl) toggleEl.style.display='none';
   document.getElementById('app').style.display='none';
   document.getElementById('login-screen').style.display='flex';
   document.querySelectorAll('.role-tab').forEach(function(b){b.classList.remove('active');});
@@ -3414,6 +3441,10 @@ function showSetupField() {
   var sel = document.getElementById('setup-name-select').value;
   var wrap = document.getElementById('setup-field-wrap');
   if(wrap) wrap.style.display = sel ? 'block' : 'none';
+  if(sel){
+    var credIn = document.getElementById('setup-credential-input');
+    if(credIn) credIn.focus();
+  }
 }
 
 // ── MEMBER LOGIN (Youth + Volunteers) ──
@@ -3589,6 +3620,10 @@ function doLogin(id, role) {
     document.getElementById('user-avatar').style.background = '#281608';
     document.getElementById('user-name').textContent = adminName;
     document.getElementById('user-role-badge').textContent = 'Administrator';
+    // Show volunteer toggle for admins
+    var toggleEl = document.getElementById('admin-volunteer-toggle');
+    if(toggleEl) toggleEl.style.display = 'block';
+    adminViewMode = 'admin';
   }
 
   // Build nav and render
@@ -3649,6 +3684,132 @@ function checkYouth18thBirthday(){
       '</div>';
   } else {
     banner.style.display = 'none';
+  }
+}
+
+
+// ── CUSTOM DROPDOWN ──
+function toggleCDD(){
+  var list = document.getElementById('cdd-list');
+  var dd   = document.querySelector('.custom-dropdown');
+  if(!list) return;
+  var isOpen = list.style.display !== 'none';
+  list.style.display = isOpen ? 'none' : 'block';
+  if(dd) dd.classList.toggle('open', !isOpen);
+  if(!isOpen){
+    var s = document.getElementById('cdd-search');
+    if(s){ s.value=''; filterCDD(''); s.focus(); }
+  }
+}
+
+function selectCustomName(el){
+  var val  = el.getAttribute('data-value');
+  var name = el.textContent.replace('  ⚡','').trim();
+  document.getElementById('setup-name-select').value = val;
+  document.getElementById('cdd-display').textContent = name;
+  document.getElementById('cdd-display').style.color = 'var(--text-main)';
+  document.getElementById('cdd-list').style.display = 'none';
+  document.querySelector('.custom-dropdown').classList.remove('open');
+  document.querySelectorAll('.cdd-item').forEach(function(i){i.classList.remove('selected');});
+  el.classList.add('selected');
+  showSetupField();
+}
+
+function filterCDD(query){
+  var q = query.toLowerCase().trim();
+  document.querySelectorAll('.cdd-item').forEach(function(item){
+    var text = item.textContent.toLowerCase();
+    item.classList.toggle('hidden', q.length > 0 && text.indexOf(q) < 0);
+  });
+  // Hide group label if all items in group are hidden
+  document.querySelectorAll('.cdd-group-label').forEach(function(label){
+    var next = label.nextElementSibling;
+    var allHidden = true;
+    while(next && !next.classList.contains('cdd-group-label')){
+      if(!next.classList.contains('hidden')){ allHidden = false; break; }
+      next = next.nextElementSibling;
+    }
+    label.style.display = (q.length > 0 && allHidden) ? 'none' : '';
+  });
+}
+
+// Close dropdown when clicking outside
+document.addEventListener('click', function(e){
+  var dd = document.querySelector('.custom-dropdown');
+  if(dd && !dd.contains(e.target)){
+    var list = document.getElementById('cdd-list');
+    if(list) list.style.display = 'none';
+    dd.classList.remove('open');
+  }
+});
+
+
+// ── ADMIN ↔ VOLUNTEER VIEW TOGGLE ──
+var adminViewMode = 'admin'; // 'admin' or 'volunteer'
+
+function toggleAdminVolunteerView(){
+  if(adminViewMode === 'admin'){
+    // Switch to volunteer view
+    adminViewMode = 'volunteer';
+    document.getElementById('admin-toggle-icon').textContent = '⚡';
+    document.getElementById('admin-toggle-label').textContent = 'Switch to Admin View';
+    document.getElementById('admin-toggle-btn').style.borderColor = 'rgba(245,166,35,.3)';
+    document.getElementById('admin-toggle-btn').style.background = 'rgba(245,166,35,.08)';
+    document.getElementById('admin-toggle-btn').style.color = 'var(--ya-gold)';
+    // Build volunteer nav
+    var navEl = document.getElementById('nav-links');
+    navEl.innerHTML = '';
+    var volunteerNavs = [
+      {id:'adult-dashboard',  icon:'🏠', label:'Dashboard'},
+      {id:'adult-workshops',  icon:'📚', label:'Workshops'},
+      {id:'adult-programs',   icon:'📅', label:'Programs'},
+    ];
+    volunteerNavs.forEach(function(n){
+      var d = document.createElement('div');
+      d.className = 'nav-item';
+      d.innerHTML = '<span class="nav-icon">'+n.icon+'</span>'+n.label;
+      (function(nid,nd){d.onclick=function(){showPage(nid,nd);};})(n.id,d);
+      navEl.appendChild(d);
+    });
+    // Set adultState from current admin's FAC_PROFILES entry
+    var adminKey = Object.keys(FAC_PROFILES).find(function(k){
+      return FAC_PROFILES[k].name === document.getElementById('user-name').textContent;
+    });
+    if(adminKey){
+      var p = FAC_PROFILES[adminKey];
+      adultState = {
+        name:p.name, avatar:p.avatar, bg:p.bg, role:p.role,
+        facilitated:p.facilitated.slice(), volunteered:p.volunteered.slice(),
+        hours:p.hours, grandfathered:p.grandfathered||false, isAdmin:true
+      };
+    }
+    showPage('adult-dashboard', navEl.children[0]);
+    renderAdult();
+    // Update role badge
+    document.getElementById('user-role-badge').textContent = adultState ? adultState.role : 'Adult Volunteer';
+  } else {
+    // Switch back to admin view
+    adminViewMode = 'admin';
+    document.getElementById('admin-toggle-icon').textContent = '🙌';
+    document.getElementById('admin-toggle-label').textContent = 'Switch to My Volunteer View';
+    document.getElementById('admin-toggle-btn').style.borderColor = 'rgba(0,181,160,.3)';
+    document.getElementById('admin-toggle-btn').style.background = 'rgba(0,181,160,.08)';
+    document.getElementById('admin-toggle-btn').style.color = 'var(--ya-teal)';
+    // Restore admin nav
+    var navEl = document.getElementById('nav-links');
+    navEl.innerHTML = '';
+    var adminNav = [{id:'admin-dashboard', icon:'⚡', label:'Overview'}];
+    adminNav.forEach(function(n){
+      var d = document.createElement('div');
+      d.className = 'nav-item';
+      d.innerHTML = '<span class="nav-icon">'+n.icon+'</span>'+n.label;
+      (function(nid,nd){d.onclick=function(){showPage(nid,nd);};})(n.id,d);
+      navEl.appendChild(d);
+    });
+    showPage('admin-dashboard', navEl.children[0]);
+    renderAdmin();
+    // Restore admin badge
+    document.getElementById('user-role-badge').textContent = 'Administrator';
   }
 }
 

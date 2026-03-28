@@ -4092,9 +4092,27 @@ async function saveYouthToDB(name, age, workshops) {
 
 async function saveWorkshopAttendance(youthName, workshopId, attended) {
   console.log('Saving workshop attendance:', youthName, workshopId, attended);
-  // Use a stable name-derived youth_id — NEVER an array index.
-  // This works with the existing unique(youth_id, workshop_id) constraint in the live DB.
+  // Stable name-derived youth_id — never an array index, never drifts
   var youthId = 'yn_' + youthName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+
+  // Show a visible debug banner so we can see what's happening
+  function showDbDebug(msg, isError) {
+    var el = document.getElementById('ws-att-debug');
+    if(!el) {
+      el = document.createElement('div');
+      el.id = 'ws-att-debug';
+      var bg = isError ? '#4a1010' : '#0e3a2a';
+      var bc = isError ? '#c94a00' : '#0d9488';
+      el.style.cssText = 'position:fixed;bottom:12px;left:12px;right:12px;z-index:9999;color:#fff;font-family:monospace;font-size:.75rem;padding:10px 14px;border-radius:8px;white-space:pre-wrap;max-height:120px;overflow-y:auto;border:1px solid ' + bc;
+      el.style.background = bg;
+      document.body.appendChild(el);
+    }
+    el.style.background = isError ? '#4a1010' : '#0e3a2a';
+    el.style.borderColor = isError ? '#c94a00' : '#0d9488';
+    el.textContent = msg;
+    clearTimeout(el._timer);
+    el._timer = setTimeout(function(){ if(el.parentNode) el.parentNode.removeChild(el); }, 8000);
+  }
 
   if (attended) {
     // Check if already recorded under the stable yn_ key
@@ -4102,7 +4120,7 @@ async function saveWorkshopAttendance(youthName, workshopId, attended) {
       'select=id&youth_id=eq.' + encodeURIComponent(youthId) +
       '&workshop_id=eq.' + workshopId + '&limit=1');
     if (existing && existing.length > 0) {
-      console.log('Attendance already recorded for', youthName, 'ws', workshopId);
+      showDbDebug('✔ Already saved: ' + youthName + ' ws#' + workshopId, false);
       return;
     }
     // Insert using only youth_id — works with original DB schema
@@ -4119,8 +4137,9 @@ async function saveWorkshopAttendance(youthName, workshopId, attended) {
     if (!r.ok) {
       const err = await r.text();
       console.warn('Attendance save failed:', r.status, err);
+      showDbDebug('❌ SAVE FAILED (HTTP ' + r.status + ')\nyouthId: ' + youthId + '\nws: ' + workshopId + '\nError: ' + err, true);
     } else {
-      console.log('Attendance saved:', youthName, '(', youthId, ') ws', workshopId);
+      showDbDebug('✔ Saved: ' + youthName + ' ws#' + workshopId + '\n(youth_id: ' + youthId + ')', false);
     }
   } else {
     // Delete by stable yn_ key
@@ -4132,7 +4151,7 @@ async function saveWorkshopAttendance(youthName, workshopId, attended) {
       await dbDel('workshop_attendance',
         'youth_id=eq.y_' + idx + '&workshop_id=eq.' + workshopId);
     }
-    console.log('Attendance removed:', youthName, 'ws', workshopId);
+    showDbDebug('🗑 Removed: ' + youthName + ' ws#' + workshopId, false);
   }
 }
 
@@ -4357,9 +4376,11 @@ async function dbStartup() {
   const banner = document.getElementById('db-banner');
   if(banner) banner.style.display = 'flex';
   try { await checkAndInitDB(); } catch(e) { console.warn('checkAndInitDB error (non-fatal):', e); }
+  // Load youth names FIRST so the ynToName map in loadAllWorkshopAttendance can resolve them
+  try { await loadYouthData(); } catch(e) { console.warn('loadYouthData error (non-fatal):', e); }
+  // Now load everything else in parallel
   try {
     await Promise.all([
-      loadYouthData(),
       loadEventRegistrations(),
       loadProgramData(),
       loadComplianceData(),
@@ -4391,7 +4412,25 @@ window.addEventListener('load', function() {
 async function loadAllWorkshopAttendance() {
   // Load ALL workshop attendance and merge into EL_YOUTH
   const rows = await dbGet('workshop_attendance', 'select=youth_name,youth_id,workshop_id');
+
+  // Show visible debug banner
+  function showLoadDebug(msg, isError) {
+    var el = document.getElementById('ws-load-debug');
+    if(!el) {
+      el = document.createElement('div');
+      el.id = 'ws-load-debug';
+      el.style.cssText = 'position:fixed;top:12px;left:12px;right:12px;z-index:9999;color:#fff;font-family:monospace;font-size:.72rem;padding:10px 14px;border-radius:8px;white-space:pre-wrap;max-height:160px;overflow-y:auto';
+      document.body.appendChild(el);
+    }
+    el.style.background = isError ? '#4a1010' : '#0e2a3a';
+    el.style.border = '1px solid ' + (isError ? '#c94a00' : '#0d9488');
+    el.textContent = msg;
+    clearTimeout(el._timer);
+    el._timer = setTimeout(function(){ if(el.parentNode) el.parentNode.removeChild(el); }, 12000);
+  }
+
   if(!rows || rows.length === 0){
+    showLoadDebug('⚠ No rows in workshop_attendance table', true);
     console.log('No workshop attendance records in DB');
     return;
   }
@@ -4403,32 +4442,38 @@ async function loadAllWorkshopAttendance() {
     ynToName[key] = n;
   });
 
+  var resolved = 0, unresolved = [];
   rows.forEach(function(row){
     var name = null;
 
     if(row.youth_name) {
-      // Best case: youth_name stored directly
       name = row.youth_name;
     } else if(row.youth_id) {
       if(row.youth_id.indexOf('yn_') === 0) {
-        // New stable key: look up in reverse map
         name = ynToName[row.youth_id] || null;
+        if(!name) unresolved.push(row.youth_id);
       } else if(row.youth_id.indexOf('y_') === 0) {
-        // Legacy index-based key
         var idx = parseInt(row.youth_id.replace('y_', ''));
         name = ALL_YOUTH_NAMES[idx] || null;
       }
     }
 
-    if(!name) {
-      console.warn('Could not resolve youth for row:', row);
-      return;
-    }
+    if(!name) return;
+    resolved++;
     var base = new Set(EL_YOUTH[name] || []);
     base.add(row.workshop_id);
     EL_YOUTH[name] = Array.from(base);
   });
-  console.log('All workshop attendance loaded from DB:', rows.length, 'records');
+
+  var msg = '📋 Attendance load: ' + rows.length + ' rows, ' + resolved + ' resolved';
+  if(unresolved.length > 0) {
+    msg += '\n⚠ Could not resolve: ' + unresolved.join(', ');
+    msg += '\nKnown yn_ keys: ' + Object.keys(ynToName).slice(0,5).join(', ') + '...';
+    showLoadDebug(msg, true);
+  } else {
+    showLoadDebug(msg, false);
+  }
+  console.log('All workshop attendance loaded from DB:', rows.length, 'records,', resolved, 'resolved');
 }
 
 

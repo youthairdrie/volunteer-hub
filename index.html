@@ -4212,16 +4212,18 @@ async function loadComplianceData() {
 async function dbStartup() {
   const banner = document.getElementById('db-banner');
   if(banner) banner.style.display = 'flex';
-  await checkAndInitDB();
-  await Promise.all([
-    loadEventRegistrations(),
-    loadProgramData(),
-    loadComplianceData(),
-    loadPendingEntries(),
-    loadCredentials(),
-    loadScrabbleData(),
-    loadAllWorkshopAttendance()
-  ]);
+  try { await checkAndInitDB(); } catch(e) { console.warn('checkAndInitDB error (non-fatal):', e); }
+  try {
+    await Promise.all([
+      loadEventRegistrations(),
+      loadProgramData(),
+      loadComplianceData(),
+      loadPendingEntries(),
+      loadCredentials(),
+      loadScrabbleData(),
+      loadAllWorkshopAttendance()
+    ]);
+  } catch(e) { console.warn('DB load error (non-fatal):', e); }
   if(banner) banner.style.display = 'none';
   console.log('DB startup complete');
   // Re-render current view now that all DB data is loaded

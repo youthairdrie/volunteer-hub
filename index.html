@@ -3760,9 +3760,10 @@ async function initDB() {
     create table if not exists workshop_attendance (
       id bigserial primary key, youth_id text, youth_name text,
       workshop_id integer,
-      marked_at timestamptz default now(),
-      unique(youth_name, workshop_id)
+      marked_at timestamptz default now()
     );
+    alter table workshop_attendance add column if not exists youth_name text;
+    create unique index if not exists wa_name_ws_idx on workshop_attendance(youth_name, workshop_id) where youth_name is not null;
     create table if not exists event_registrations (
       id bigserial primary key, event_id text not null, youth_name text not null,
       registered_at timestamptz default now(),
@@ -4053,70 +4054,105 @@ async function loadYouthData() {
 
 // ── SAVE A SINGLE YOUTH TO SUPABASE ──
 async function saveYouthToDB(name, age, workshops) {
-  // Use a stable name-derived id, not a positional index
   var id = 'yn_' + name.replace(/[^a-z0-9]/gi, '_').toLowerCase();
-  try {
-    await fetch(
-      SUPA_URL + '/rest/v1/youth?on_conflict=id',
-      {
-        method: 'POST',
-        headers: {
-          'apikey': SUPA_KEY,
-          'Authorization': 'Bearer ' + SUPA_KEY,
-          'Content-Type': 'application/json',
-          'Prefer': 'resolution=merge-duplicates,return=minimal'
-        },
-        body: JSON.stringify({
-          id: id,
-          name: name,
-          age: age || null,
-          workshops: workshops || [],
-          volunteer_hours: YOUTH_HOURS[name] || 0
-        })
-      }
-    );
+  // Check if already exists
+  const existing = await dbGet('youth', 'select=id&id=eq.' + encodeURIComponent(id) + '&limit=1');
+  if (existing && existing.length > 0) {
+    // Update age/workshops if changed
+    await dbPatch('youth',
+      { age: age || null, workshops: workshops || [] },
+      'id=eq.' + encodeURIComponent(id));
+    console.log('Youth updated in DB:', name);
+    return;
+  }
+  // Insert new
+  const r = await fetch(SUPA_URL + '/rest/v1/youth', {
+    method: 'POST',
+    headers: {
+      'apikey': SUPA_KEY,
+      'Authorization': 'Bearer ' + SUPA_KEY,
+      'Content-Type': 'application/json',
+      'Prefer': 'return=minimal'
+    },
+    body: JSON.stringify({
+      id: id,
+      name: name,
+      age: age || null,
+      workshops: workshops || [],
+      volunteer_hours: YOUTH_HOURS[name] || 0
+    })
+  });
+  if (!r.ok) {
+    const err = await r.text();
+    console.warn('saveYouthToDB failed for', name, r.status, err);
+  } else {
     console.log('Youth saved to DB:', name, '(id:', id + ')');
-  } catch(e) {
-    console.warn('saveYouthToDB failed for', name, e);
   }
 }
 
 async function saveWorkshopAttendance(youthName, workshopId, attended) {
   console.log('Saving workshop attendance:', youthName, workshopId, attended);
-  // youth_id uses a stable name-derived key (not an index) so it never drifts.
-  // We store both youth_name and youth_id so either schema works.
+  // Stable name-derived youth_id — never an array index, never drifts
   var youthId = 'yn_' + youthName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+
   if (attended) {
-    // Use explicit on_conflict param so upsert works regardless of which unique constraint exists
-    const result = await fetch(
-      SUPA_URL + '/rest/v1/workshop_attendance?on_conflict=youth_name,workshop_id',
+    // Check if a row already exists for this youth+workshop (by youth_name OR legacy youth_id)
+    const existing = await dbGet('workshop_attendance',
+      'select=id&youth_name=eq.' + encodeURIComponent(youthName) +
+      '&workshop_id=eq.' + workshopId + '&limit=1');
+    if (existing && existing.length > 0) {
+      console.log('Attendance already recorded for', youthName, 'ws', workshopId);
+      return; // already marked, nothing to do
+    }
+    // Also check legacy y_N id row
+    var idx = ALL_YOUTH_NAMES.indexOf(youthName);
+    if (idx >= 0) {
+      const legacyExisting = await dbGet('workshop_attendance',
+        'select=id&youth_id=eq.y_' + idx + '&workshop_id=eq.' + workshopId + '&limit=1');
+      if (legacyExisting && legacyExisting.length > 0) {
+        // Patch the legacy row to add youth_name
+        await dbPatch('workshop_attendance',
+          { youth_name: youthName },
+          'id=eq.' + legacyExisting[0].id);
+        console.log('Patched legacy row with youth_name for', youthName, 'ws', workshopId);
+        return;
+      }
+    }
+    // Insert fresh row with both youth_name and youth_id
+    const r = await fetch(
+      SUPA_URL + '/rest/v1/workshop_attendance',
       {
         method: 'POST',
         headers: {
           'apikey': SUPA_KEY,
           'Authorization': 'Bearer ' + SUPA_KEY,
           'Content-Type': 'application/json',
-          'Prefer': 'resolution=merge-duplicates,return=minimal'
+          'Prefer': 'return=minimal'
         },
         body: JSON.stringify({ youth_name: youthName, youth_id: youthId, workshop_id: workshopId })
       }
     );
-    if(!result.ok) {
-      const err = await result.text();
-      console.warn('Attendance save failed:', result.status, err);
+    if (!r.ok) {
+      const err = await r.text();
+      console.warn('Attendance save failed:', r.status, err);
     } else {
-      console.log('Attendance saved for', youthName, 'ws', workshopId);
+      console.log('Attendance saved:', youthName, 'ws', workshopId);
     }
   } else {
-    // Delete by youth_name (new schema)
+    // Delete by youth_name
     await dbDel('workshop_attendance',
       'youth_name=eq.' + encodeURIComponent(youthName) + '&workshop_id=eq.' + workshopId);
-    // Also remove any legacy row stored under old y_N id
-    var idx = ALL_YOUTH_NAMES.indexOf(youthName);
-    if(idx >= 0) {
+    // Also delete any legacy y_N row
+    var idx2 = ALL_YOUTH_NAMES.indexOf(youthName);
+    if (idx2 >= 0) {
       await dbDel('workshop_attendance',
-        'youth_id=eq.y_' + idx + '&workshop_id=eq.' + workshopId);
+        'youth_id=eq.y_' + idx2 + '&workshop_id=eq.' + workshopId);
     }
+    // And delete by stable yn_ id
+    var youthId2 = 'yn_' + youthName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+    await dbDel('workshop_attendance',
+      'youth_id=eq.' + encodeURIComponent(youthId2) + '&workshop_id=eq.' + workshopId);
+    console.log('Attendance removed:', youthName, 'ws', workshopId);
   }
 }
 

@@ -2959,6 +2959,21 @@ function saveLbEdits(){
   if(btn){ btn.textContent='✔ Saved!'; btn.style.color='var(--ya-teal)'; btn.style.borderColor='var(--ya-teal)';
     setTimeout(function(){ btn.textContent='✏️ Edit Totals'; btn.style.color='var(--ya-blue)'; btn.style.borderColor='var(--ya-blue)'; }, 1500); }
   renderAdminScrabble();
+  // Persist totals to Supabase by updating session data to match new totals
+  // Since we're directly editing totals (not per-session), store as a special '_total_override' key
+  var overrideRows = [];
+  Object.keys(SCRABBLE_TOTALS).forEach(function(name) {
+    // Recalc sessions to match override total: store a corrective adjustment row if needed
+    var sessionTotal = Object.values(SCRABBLE_SESSIONS[name] || {}).reduce(function(s,v){return s+v;},0);
+    var diff = SCRABBLE_TOTALS[name] - sessionTotal;
+    if(diff !== 0) {
+      if(!SCRABBLE_SESSIONS[name]) SCRABBLE_SESSIONS[name] = {};
+      SCRABBLE_SESSIONS[name]['_adjustment'] = diff;
+    } else if(SCRABBLE_SESSIONS[name]) {
+      delete SCRABBLE_SESSIONS[name]['_adjustment'];
+    }
+  });
+  saveScrabbleSessionsToDB();
 }
 
 // ══════════════════════════════════════════
@@ -3039,6 +3054,8 @@ function saveAdultVolEdits(){
   setTimeout(function(){ saveBtn.textContent = '💾 Save Changes'; }, 1500);
   renderAdultScrabbleTable();
   renderAdminScrabble();
+  // Persist to Supabase
+  saveAdultScrabbleToDB();
 }
 
 
@@ -3055,6 +3072,7 @@ function closeOutQuarter(){
     if(!confirm('Close out Q1 2026?\n\n🏆 Attendance Trophy Winner: '+winner+'\n🔤 Word Game Trophy Winner: '+wordWinner+'\n\nThis will declare them as winners. You can reopen if needed.')) return;
   }
   Q1_CLOSED = true;
+  saveQuarterState(true);
   renderAdminScrabble();
   // Also update youth-facing scrabble views
   if(youthState && youthState.name){
@@ -3066,6 +3084,7 @@ function closeOutQuarter(){
 function reopenQuarter(){
   if(!confirm('Reopen Q1 2026? This will change Trophy Winners back to Trophy Leaders.')) return;
   Q1_CLOSED = false;
+  saveQuarterState(false);
   renderAdminScrabble();
 }
 
@@ -3157,6 +3176,8 @@ function saveScrabbleEdits(){
   cancelBtn.style.display = 'none';
   hint.style.display = 'none';
   renderAdminScrabble();
+  // Persist to Supabase
+  saveScrabbleSessionsToDB();
 }
 
 // ══════════════════════════════════════════
@@ -3389,6 +3410,27 @@ async function initDB() {
       workshop_id integer primary key, cancelled_by text,
       cancelled_at timestamptz default now()
     );
+    create table if not exists scrabble_sessions (
+      id bigserial primary key,
+      player_name text not null,
+      session_date text not null,
+      points integer not null default 0,
+      updated_at timestamptz default now(),
+      unique(player_name, session_date)
+    );
+    create table if not exists adult_scrabble_sessions (
+      id bigserial primary key,
+      volunteer_name text not null,
+      session_date text not null,
+      hours numeric not null default 0,
+      updated_at timestamptz default now(),
+      unique(volunteer_name, session_date)
+    );
+    create table if not exists scrabble_state (
+      key text primary key,
+      value text not null,
+      updated_at timestamptz default now()
+    );
   `;
   const r = await fetch(SUPA_URL + '/rest/v1/rpc/exec_sql', {
     method: 'POST',
@@ -3490,6 +3532,26 @@ async function migrateData() {
   });
   if(pvRows.length) await dbPost('program_volunteers', pvRows);
 
+  // Scrabble youth sessions (attendance & wins)
+  const ssRows = [];
+  Object.keys(SCRABBLE_SESSIONS).forEach(function(name) {
+    Object.keys(SCRABBLE_SESSIONS[name]).forEach(function(date) {
+      ssRows.push({ player_name: name, session_date: date, points: SCRABBLE_SESSIONS[name][date] });
+    });
+  });
+  if(ssRows.length) await dbPost('scrabble_sessions', ssRows);
+  console.log('Scrabble sessions migrated:', ssRows.length);
+
+  // Adult scrabble volunteer hours
+  const asRows = [];
+  Object.keys(ADULT_SCRABBLE).forEach(function(name) {
+    Object.keys(ADULT_SCRABBLE[name]).forEach(function(date) {
+      asRows.push({ volunteer_name: name, session_date: date, hours: ADULT_SCRABBLE[name][date] });
+    });
+  });
+  if(asRows.length) await dbPost('adult_scrabble_sessions', asRows);
+  console.log('Adult scrabble sessions migrated:', asRows.length);
+
   console.log('Migration complete!');
   if(status) { status.textContent = '✔ Database ready!'; status.style.color = 'var(--ya-teal)'; }
   return true;
@@ -3503,6 +3565,27 @@ async function checkAndInitDB() {
     await migrateData();
   } else {
     console.log('DB already seeded (' + result.length + ' rows found)');
+    // Check if scrabble tables are seeded (may be new tables added after initial migration)
+    const scrCheck = await dbGet('scrabble_sessions', 'select=id&limit=1');
+    if(!scrCheck || scrCheck.length === 0) {
+      console.log('Scrabble tables empty — seeding...');
+      const ssRows = [];
+      Object.keys(SCRABBLE_SESSIONS).forEach(function(name) {
+        Object.keys(SCRABBLE_SESSIONS[name]).forEach(function(date) {
+          ssRows.push({ player_name: name, session_date: date, points: SCRABBLE_SESSIONS[name][date] });
+        });
+      });
+      if(ssRows.length) await dbPost('scrabble_sessions', ssRows);
+
+      const asRows = [];
+      Object.keys(ADULT_SCRABBLE).forEach(function(name) {
+        Object.keys(ADULT_SCRABBLE[name]).forEach(function(date) {
+          asRows.push({ volunteer_name: name, session_date: date, hours: ADULT_SCRABBLE[name][date] });
+        });
+      });
+      if(asRows.length) await dbPost('adult_scrabble_sessions', asRows);
+      console.log('Scrabble tables seeded.');
+    }
   }
 }
 
@@ -3557,6 +3640,91 @@ async function saveComplianceRecord(type, name, date, expiry) {
       'name=eq.' + encodeURIComponent(name));
   }
 }
+
+// ── LOAD SCRABBLE DATA FROM SUPABASE ──
+async function loadScrabbleData() {
+  // Youth session points
+  const sessions = await dbGet('scrabble_sessions', 'select=player_name,session_date,points');
+  if(sessions && sessions.length > 0) {
+    // Reset to empty so DB is the source of truth
+    Object.keys(SCRABBLE_SESSIONS).forEach(function(n){ SCRABBLE_SESSIONS[n] = {}; });
+    sessions.forEach(function(row) {
+      if(!SCRABBLE_SESSIONS[row.player_name]) SCRABBLE_SESSIONS[row.player_name] = {};
+      SCRABBLE_SESSIONS[row.player_name][row.session_date] = row.points;
+    });
+    // Recalculate all totals from DB data
+    Object.keys(SCRABBLE_SESSIONS).forEach(function(name) {
+      SCRABBLE_TOTALS[name] = Object.values(SCRABBLE_SESSIONS[name]).reduce(function(s,v){return s+v;},0);
+    });
+    console.log('Scrabble sessions loaded from DB:', sessions.length, 'rows');
+  } else {
+    console.log('No scrabble sessions in DB — using hardcoded data');
+  }
+
+  // Adult volunteer hours
+  const adultSessions = await dbGet('adult_scrabble_sessions', 'select=volunteer_name,session_date,hours');
+  if(adultSessions && adultSessions.length > 0) {
+    Object.keys(ADULT_SCRABBLE).forEach(function(n){ ADULT_SCRABBLE[n] = {}; });
+    adultSessions.forEach(function(row) {
+      if(!ADULT_SCRABBLE[row.volunteer_name]) ADULT_SCRABBLE[row.volunteer_name] = {};
+      ADULT_SCRABBLE[row.volunteer_name][row.session_date] = parseFloat(row.hours);
+    });
+    // Recalculate adult totals
+    Object.keys(ADULT_SCRABBLE).forEach(function(name) {
+      ADULT_SCRABBLE_TOTALS[name] = Object.values(ADULT_SCRABBLE[name]).reduce(function(s,v){return s+v;},0);
+    });
+    console.log('Adult scrabble sessions loaded from DB:', adultSessions.length, 'rows');
+  } else {
+    console.log('No adult scrabble sessions in DB — using hardcoded data');
+  }
+
+  // Quarter closed state
+  const state = await dbGet('scrabble_state', 'select=key,value&key=eq.q1_closed');
+  if(state && state.length > 0) {
+    Q1_CLOSED = (state[0].value === 'true');
+    console.log('Q1_CLOSED loaded from DB:', Q1_CLOSED);
+  }
+}
+
+// ── SAVE SCRABBLE SESSIONS TO SUPABASE ──
+async function saveScrabbleSessionsToDB() {
+  const rows = [];
+  Object.keys(SCRABBLE_SESSIONS).forEach(function(name) {
+    Object.keys(SCRABBLE_SESSIONS[name]).forEach(function(date) {
+      rows.push({ player_name: name, session_date: date, points: SCRABBLE_SESSIONS[name][date], updated_at: new Date().toISOString() });
+    });
+  });
+  if(rows.length) {
+    await dbPost('scrabble_sessions', rows);
+    console.log('Scrabble sessions saved to DB:', rows.length, 'rows');
+  }
+  // Also delete any sessions no longer in local data (handles zeroed cells)
+  // We use a full replace: delete all then reinsert
+  await dbDel('scrabble_sessions', 'id=gte.0');
+  if(rows.length) await dbPost('scrabble_sessions', rows);
+}
+
+// ── SAVE ADULT SCRABBLE HOURS TO SUPABASE ──
+async function saveAdultScrabbleToDB() {
+  const rows = [];
+  Object.keys(ADULT_SCRABBLE).forEach(function(name) {
+    Object.keys(ADULT_SCRABBLE[name]).forEach(function(date) {
+      rows.push({ volunteer_name: name, session_date: date, hours: ADULT_SCRABBLE[name][date], updated_at: new Date().toISOString() });
+    });
+  });
+  await dbDel('adult_scrabble_sessions', 'id=gte.0');
+  if(rows.length) {
+    await dbPost('adult_scrabble_sessions', rows);
+    console.log('Adult scrabble sessions saved to DB:', rows.length, 'rows');
+  }
+}
+
+// ── SAVE QUARTER STATE TO SUPABASE ──
+async function saveQuarterState(closed) {
+  await dbPost('scrabble_state', { key: 'q1_closed', value: closed ? 'true' : 'false', updated_at: new Date().toISOString() });
+  console.log('Quarter state saved:', closed);
+}
+
 
 async function loadEventRegistrations() {
   const rows = await dbGet('event_registrations', 'select=event_id,youth_name');
@@ -3644,7 +3812,8 @@ async function dbStartup() {
     loadProgramData(),
     loadComplianceData(),
     loadPendingEntries(),
-    loadCredentials()
+    loadCredentials(),
+    loadScrabbleData()
   ]);
   if(banner) banner.style.display = 'none';
   console.log('DB startup complete');

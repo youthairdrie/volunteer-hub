@@ -3121,13 +3121,6 @@ function renderYouthAttendanceTable(){
 
 function toggleYouthWsAdmin(name, wsId, cell){
   if(!wsAttEditMode) return;
-
-  // DEBUG — show immediately so we know this function ran
-  var dbgEl = document.getElementById('ws-att-debug');
-  if(!dbgEl){ dbgEl = document.createElement('div'); dbgEl.id='ws-att-debug'; dbgEl.style.cssText='position:fixed;bottom:12px;left:12px;right:12px;z-index:9999;color:#fff;font-family:monospace;font-size:.75rem;padding:10px 14px;border-radius:8px;background:#0e3a2a;border:1px solid #0d9488'; document.body.appendChild(dbgEl); }
-  dbgEl.textContent = '⏳ toggleYouthWsAdmin called: ' + name + ' ws#' + wsId;
-  clearTimeout(dbgEl._t); dbgEl._t = setTimeout(function(){ dbgEl.textContent=''; }, 15000);
-
   var attended = EL_YOUTH[name] || [];
   var idx = attended.indexOf(wsId);
   var nowAttending;
@@ -3820,6 +3813,20 @@ async function initDB() {
       value text not null,
       updated_at timestamptz default now()
     );
+    alter table workshop_attendance disable row level security;
+    alter table youth disable row level security;
+    alter table adults disable row level security;
+    alter table scrabble_sessions disable row level security;
+    alter table adult_scrabble_sessions disable row level security;
+    alter table scrabble_scores disable row level security;
+    alter table scrabble_state disable row level security;
+    alter table event_registrations disable row level security;
+    alter table program_volunteers disable row level security;
+    alter table program_cancellations disable row level security;
+    alter table adult_compliance disable row level security;
+    alter table youth_compliance disable row level security;
+    alter table credentials disable row level security;
+    alter table pending_entries disable row level security;
   `;
   const r = await fetch(SUPA_URL + '/rest/v1/rpc/exec_sql', {
     method: 'POST',
@@ -4086,39 +4093,17 @@ async function saveYouthToDB(name, age, workshops) {
 }
 
 async function saveWorkshopAttendance(youthName, workshopId, attended) {
-  console.log('Saving workshop attendance:', youthName, workshopId, attended);
-  // Stable name-derived youth_id — never an array index, never drifts
   var youthId = 'yn_' + youthName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
 
-  // Show a visible debug banner so we can see what's happening
-  function showDbDebug(msg, isError) {
-    var el = document.getElementById('ws-att-debug');
-    if(!el) {
-      el = document.createElement('div');
-      el.id = 'ws-att-debug';
-      var bg = isError ? '#4a1010' : '#0e3a2a';
-      var bc = isError ? '#c94a00' : '#0d9488';
-      el.style.cssText = 'position:fixed;bottom:12px;left:12px;right:12px;z-index:9999;color:#fff;font-family:monospace;font-size:.75rem;padding:10px 14px;border-radius:8px;white-space:pre-wrap;max-height:120px;overflow-y:auto;border:1px solid ' + bc;
-      el.style.background = bg;
-      document.body.appendChild(el);
-    }
-    el.style.background = isError ? '#4a1010' : '#0e3a2a';
-    el.style.borderColor = isError ? '#c94a00' : '#0d9488';
-    el.textContent = msg;
-    clearTimeout(el._timer);
-    el._timer = setTimeout(function(){ if(el.parentNode) el.parentNode.removeChild(el); }, 8000);
-  }
-
   if (attended) {
-    // Check if already recorded under the stable yn_ key
+    // Check if already recorded
     const existing = await dbGet('workshop_attendance',
       'select=id&youth_id=eq.' + encodeURIComponent(youthId) +
       '&workshop_id=eq.' + workshopId + '&limit=1');
     if (existing && existing.length > 0) {
-      showDbDebug('✔ Already saved: ' + youthName + ' ws#' + workshopId, false);
+      console.log('Already recorded:', youthName, 'ws', workshopId);
       return;
     }
-    // Insert using only youth_id — works with original DB schema
     const r = await fetch(SUPA_URL + '/rest/v1/workshop_attendance', {
       method: 'POST',
       headers: {
@@ -4132,21 +4117,19 @@ async function saveWorkshopAttendance(youthName, workshopId, attended) {
     if (!r.ok) {
       const err = await r.text();
       console.warn('Attendance save failed:', r.status, err);
-      showDbDebug('❌ SAVE FAILED (HTTP ' + r.status + ')\nyouthId: ' + youthId + '\nws: ' + workshopId + '\nError: ' + err, true);
     } else {
-      showDbDebug('✔ Saved: ' + youthName + ' ws#' + workshopId + '\n(youth_id: ' + youthId + ')', false);
+      console.log('Attendance saved:', youthName, 'ws', workshopId);
     }
   } else {
-    // Delete by stable yn_ key
     await dbDel('workshop_attendance',
       'youth_id=eq.' + encodeURIComponent(youthId) + '&workshop_id=eq.' + workshopId);
-    // Also delete any old index-based row (y_N format) for this person
+    // Also remove any legacy y_N row
     var idx = ALL_YOUTH_NAMES.indexOf(youthName);
     if (idx >= 0) {
       await dbDel('workshop_attendance',
         'youth_id=eq.y_' + idx + '&workshop_id=eq.' + workshopId);
     }
-    showDbDebug('🗑 Removed: ' + youthName + ' ws#' + workshopId, false);
+    console.log('Attendance removed:', youthName, 'ws', workshopId);
   }
 }
 
@@ -4405,71 +4388,32 @@ window.addEventListener('load', function() {
 
 
 async function loadAllWorkshopAttendance() {
-  // Raw direct fetch to bypass any abstraction issues — check exactly what the DB returns
-  let rawRows = null;
-  try {
-    const rawR = await fetch(
-      SUPA_URL + '/rest/v1/workshop_attendance?select=youth_id,workshop_id&limit=100',
-      { headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY } }
-    );
-    const rawText = await rawR.text();
-    rawRows = rawText ? JSON.parse(rawText) : [];
-    console.log('Raw workshop_attendance fetch:', rawR.status, rawText.substring(0, 200));
-  } catch(e) {
-    console.error('Raw fetch failed:', e);
-  }
+  const rows = await dbGet('workshop_attendance', 'select=youth_id,workshop_id');
 
-  // Load ALL workshop attendance and merge into EL_YOUTH
-  const rows = rawRows;
-
-  // Show visible debug banner — stays until dismissed
-  function showLoadDebug(msg, isError) {
-    var el = document.getElementById('ws-load-debug');
-    if(!el) {
-      el = document.createElement('div');
-      el.id = 'ws-load-debug';
-      el.style.cssText = 'position:fixed;top:8px;left:8px;right:8px;z-index:9999;color:#fff;font-family:monospace;font-size:.72rem;padding:10px 14px;border-radius:8px;white-space:pre-wrap;max-height:160px;overflow-y:auto;cursor:pointer';
-      el.title = 'Click to dismiss';
-      el.onclick = function(){ el.parentNode && el.parentNode.removeChild(el); };
-      document.body.appendChild(el);
-    }
-    el.style.background = isError ? '#4a1010' : '#0e2a3a';
-    el.style.border = '1px solid ' + (isError ? '#c94a00' : '#0d9488');
-    el.textContent = msg + ' (click to dismiss)';
-  }
-
-  if(rows === null || rows === undefined) {
-    showLoadDebug('❌ DB query FAILED (null response) — check network/auth\nURL: ' + SUPA_URL + '/rest/v1/workshop_attendance', true);
-    console.error('workshop_attendance query returned null — possible auth or network failure');
-    return;
-  }
-  if(rows.length === 0){
-    showLoadDebug('⚠ workshop_attendance table is empty (0 rows)', true);
-    console.log('No workshop attendance records in DB');
-    return;
-  }
-
-  // Build a reverse lookup: yn_khanishka_kaur → "Khanishka Kaur"
+  // Build a reverse lookup: yn_adam_choe → "Adam Choe"
   var ynToName = {};
   ALL_YOUTH_NAMES.forEach(function(n) {
     var key = 'yn_' + n.replace(/[^a-z0-9]/gi, '_').toLowerCase();
     ynToName[key] = n;
   });
 
-  var resolved = 0, unresolved = [];
+  if(!rows || rows.length === 0){
+    console.log('No workshop attendance records in DB');
+    return;
+  }
+
+  var resolved = 0;
   rows.forEach(function(row){
     var name = null;
+    if(!row.youth_id) return;
 
-    if(row.youth_name) {
-      name = row.youth_name;
-    } else if(row.youth_id) {
-      if(row.youth_id.indexOf('yn_') === 0) {
-        name = ynToName[row.youth_id] || null;
-        if(!name) unresolved.push(row.youth_id);
-      } else if(row.youth_id.indexOf('y_') === 0) {
-        var idx = parseInt(row.youth_id.replace('y_', ''));
-        name = ALL_YOUTH_NAMES[idx] || null;
-      }
+    if(row.youth_id.indexOf('yn_') === 0) {
+      // New stable key: yn_adam_choe → "Adam Choe"
+      name = ynToName[row.youth_id] || null;
+    } else if(row.youth_id.indexOf('y_') === 0) {
+      // Legacy index key: y_3 → ALL_YOUTH_NAMES[3]
+      var idx = parseInt(row.youth_id.replace('y_', ''));
+      name = isNaN(idx) ? null : (ALL_YOUTH_NAMES[idx] || null);
     }
 
     if(!name) return;
@@ -4478,15 +4422,7 @@ async function loadAllWorkshopAttendance() {
     base.add(row.workshop_id);
     EL_YOUTH[name] = Array.from(base);
   });
-
-  var msg = '📋 DB load: ' + rows.length + ' rows, ' + resolved + ' resolved';
-  if(unresolved.length > 0) {
-    msg += '\n⚠ Unresolved: ' + unresolved.join(', ');
-    showLoadDebug(msg, true);
-  } else {
-    showLoadDebug(msg, false);
-  }
-  console.log('All workshop attendance loaded from DB:', rows.length, 'records,', resolved, 'resolved');
+  console.log('Workshop attendance loaded:', rows.length, 'rows,', resolved, 'resolved');
 }
 
 

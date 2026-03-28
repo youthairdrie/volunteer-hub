@@ -3133,6 +3133,13 @@ function renderYouthAttendanceTable(){
 
 function toggleYouthWsAdmin(name, wsId, cell){
   if(!wsAttEditMode) return;
+
+  // DEBUG — show immediately so we know this function ran
+  var dbgEl = document.getElementById('ws-att-debug');
+  if(!dbgEl){ dbgEl = document.createElement('div'); dbgEl.id='ws-att-debug'; dbgEl.style.cssText='position:fixed;bottom:12px;left:12px;right:12px;z-index:9999;color:#fff;font-family:monospace;font-size:.75rem;padding:10px 14px;border-radius:8px;background:#0e3a2a;border:1px solid #0d9488'; document.body.appendChild(dbgEl); }
+  dbgEl.textContent = '⏳ toggleYouthWsAdmin called: ' + name + ' ws#' + wsId;
+  clearTimeout(dbgEl._t); dbgEl._t = setTimeout(function(){ dbgEl.textContent=''; }, 15000);
+
   var attended = EL_YOUTH[name] || [];
   var idx = attended.indexOf(wsId);
   var nowAttending;

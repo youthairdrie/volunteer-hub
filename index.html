@@ -4405,8 +4405,22 @@ window.addEventListener('load', function() {
 
 
 async function loadAllWorkshopAttendance() {
+  // Raw direct fetch to bypass any abstraction issues — check exactly what the DB returns
+  let rawRows = null;
+  try {
+    const rawR = await fetch(
+      SUPA_URL + '/rest/v1/workshop_attendance?select=youth_id,workshop_id&limit=100',
+      { headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY } }
+    );
+    const rawText = await rawR.text();
+    rawRows = rawText ? JSON.parse(rawText) : [];
+    console.log('Raw workshop_attendance fetch:', rawR.status, rawText.substring(0, 200));
+  } catch(e) {
+    console.error('Raw fetch failed:', e);
+  }
+
   // Load ALL workshop attendance and merge into EL_YOUTH
-  const rows = await dbGet('workshop_attendance', 'select=youth_name,youth_id,workshop_id');
+  const rows = rawRows;
 
   // Show visible debug banner — stays until dismissed
   function showLoadDebug(msg, isError) {
@@ -4425,11 +4439,12 @@ async function loadAllWorkshopAttendance() {
   }
 
   if(rows === null || rows === undefined) {
-    showLoadDebug('⚠ DB query failed (null) — network or auth issue', true);
+    showLoadDebug('❌ DB query FAILED (null response) — check network/auth\nURL: ' + SUPA_URL + '/rest/v1/workshop_attendance', true);
+    console.error('workshop_attendance query returned null — possible auth or network failure');
     return;
   }
   if(rows.length === 0){
-    showLoadDebug('⚠ workshop_attendance table is empty — no rows found', true);
+    showLoadDebug('⚠ workshop_attendance table is empty (0 rows)', true);
     console.log('No workshop attendance records in DB');
     return;
   }

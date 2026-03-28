@@ -1910,20 +1910,8 @@ function filterEvents(type,btn){
 }
 
 function logout(){
-  // Fully reset state so previous user's data never bleeds into next login
-  youthState=null;
-  adultState=null;
-  currentRole=null;
-  adminViewMode='admin';
-  var toggleEl=document.getElementById('admin-volunteer-toggle');
-  if(toggleEl) toggleEl.style.display='none';
-  document.getElementById('app').style.display='none';
-  document.getElementById('login-screen').style.display='flex';
-  document.querySelectorAll('.role-tab').forEach(function(b){b.classList.remove('active');});
-  document.querySelector('.role-tab').classList.add('active');
-  document.querySelectorAll('.login-panel').forEach(function(p){p.classList.remove('active');});
-  document.getElementById('panel-youth').classList.add('active');
-  loginRole='youth';
+  // Reload the page — this re-runs dbStartup and gets fresh data from Supabase
+  window.location.reload();
 }
 
 function saveYouthAge(){

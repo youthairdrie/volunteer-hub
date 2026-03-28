@@ -765,8 +765,20 @@ body{font-family:"DM Sans",sans-serif;background:var(--navy);color:var(--text-ma
         </div>
 
         <div class="section-box" style="border-color:rgba(124,131,253,.3)">
-          <div class="section-title" style="color:var(--lavender)">🔤 Word Game — Score Leaderboard &amp; History</div>
-          <div style="color:var(--text-muted);font-size:.8rem;margin-bottom:12px">Actual Scrabble game scores · Q1 trophy for highest cumulative score</div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:13px;flex-wrap:wrap;gap:8px">
+            <div>
+              <div class="section-title" style="color:var(--lavender);margin-bottom:2px">🔤 Word Game — Score Leaderboard &amp; History</div>
+              <div style="color:var(--text-muted);font-size:.8rem">Actual Scrabble game scores · Q1 trophy for highest cumulative score</div>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center">
+              <button id="word-score-edit-btn" onclick="toggleWordScoreEditMode()" class="ws-btn" style="border-color:var(--lavender);color:var(--lavender);font-size:.75rem">✏️ Edit Scores</button>
+              <button id="word-score-save-btn" onclick="saveWordScoreEdits()" style="display:none;padding:6px 16px;border-radius:8px;border:none;background:var(--lavender);color:#fff;font-family:Nunito,sans-serif;font-weight:800;font-size:.8rem;cursor:pointer">💾 Save Changes</button>
+              <button id="word-score-cancel-btn" onclick="cancelWordScoreEdits()" style="display:none" class="ws-btn">Cancel</button>
+            </div>
+          </div>
+          <div id="word-score-edit-hint" style="display:none;font-size:.78rem;color:var(--lavender);background:rgba(124,131,253,.07);border:1px solid rgba(124,131,253,.2);border-radius:8px;padding:8px 12px;margin-bottom:10px">
+            ✏️ <strong>Edit mode active</strong> — Edit scores in the Score History table. Use 0 or blank to clear. Press <strong>💾 Save Changes</strong> when done.
+          </div>
           <div id="admin-word-trophy-banner" style="margin-bottom:14px"></div>
           <div class="two-col">
             <div>
@@ -1705,18 +1717,22 @@ function renderAdminScrabble(){
   // Verification panel
   renderAdminVerificationPanel();
   renderAdultScrabbleTable();
+
+  // ── Attendance leaderboard ──
+  var slb = eid('admin-scrabble-lb');
   if(slb){
-    var lb=Object.entries(SCRABBLE_TOTALS).sort(function(a,b){return b[1]-a[1];});
+    var lbSorted=Object.entries(SCRABBLE_TOTALS).sort(function(a,b){return b[1]-a[1];});
     var medals=['🥇','🥈','🥉'];
-    slb.innerHTML=lb.map(function(entry,i){
+    slb.innerHTML=lbSorted.map(function(entry,i){
       return '<div class="lb-row '+(i<3?['top1','top2','top3'][i]:'')+'"><div class="lb-rank">'+(i<3?medals[i]:i+1)+'</div><div class="lb-name">'+entry[0]+'</div><div><span class="lb-pts">'+entry[1]+'</span><span class="lb-pts-label">pts</span></div></div>';
     }).join('');
   }
+
+  // ── Session history table (attendance & wins) ──
   var sthead=eid('scrabble-thead'),stbody=eid('scrabble-tbody');
   if(sthead&&stbody){
     var snames=Object.keys(SCRABBLE_SESSIONS);
     sthead.innerHTML='<th>Date</th>'+snames.map(function(n){return '<th style="font-size:.65rem">'+n.split(' ')[0]+'</th>';}).join('')+'<th>Total</th>';
-    // Use all dates including new sessions
     var allDates = SCRABBLE_DATES.slice();
     CONDUCTED_DATES.forEach(function(d){ if(allDates.indexOf(d)<0) allDates.push(d); });
     stbody.innerHTML=allDates.map(function(dt){
@@ -1731,9 +1747,40 @@ function renderAdminScrabble(){
       var dayTotal=snames.reduce(function(s,n){return s+(SCRABBLE_SESSIONS[n]?SCRABBLE_SESSIONS[n][dt]||0:0);},0);
       return '<tr><td style="font-weight:600;white-space:nowrap">'+dt+'</td>'+cols+'<td style="font-weight:700;color:var(--ya-gold)">'+dayTotal+'</td></tr>';
     }).join('');
-  // Totals row — recalculate dynamically
-  var grandTotal = snames.reduce(function(s,n){ return s+(SCRABBLE_TOTALS[n]||0); }, 0);
-  stbody.innerHTML += '<tr style="border-top:2px solid var(--card-border)"><td style="font-weight:800">Total</td>'+snames.map(function(n){return '<td style="text-align:center;font-weight:800;color:var(--ya-orange)">'+(SCRABBLE_TOTALS[n]||0)+'</td>';}).join('')+'<td style="font-weight:800;color:var(--ya-gold)">'+grandTotal+'</td></tr>';
+    var grandTotal = snames.reduce(function(s,n){ return s+(SCRABBLE_TOTALS[n]||0); }, 0);
+    stbody.innerHTML += '<tr style="border-top:2px solid var(--card-border)"><td style="font-weight:800">Total</td>'+snames.map(function(n){return '<td style="text-align:center;font-weight:800;color:var(--ya-orange)">'+(SCRABBLE_TOTALS[n]||0)+'</td>';}).join('')+'<td style="font-weight:800;color:var(--ya-gold)">'+grandTotal+'</td></tr>';
+  }
+
+  // ── Word game score leaderboard ──
+  var scoreLb = eid('admin-scrabble-score-lb');
+  if(scoreLb){
+    var wsLbSorted=Object.entries(SCRABBLE_SCORE_TOTALS).sort(function(a,b){return b[1]-a[1];});
+    var wMedals=['🥇','🥈','🥉'];
+    scoreLb.innerHTML=wsLbSorted.map(function(entry,i){
+      return '<div class="lb-row '+(i<3?['top1','top2','top3'][i]:'')+'"><div class="lb-rank">'+(i<3?wMedals[i]:i+1)+'</div><div class="lb-name">'+entry[0]+'</div><div><span class="lb-pts" style="color:var(--lavender)">'+entry[1]+'</span><span class="lb-pts-label">pts</span></div></div>';
+    }).join('');
+  }
+
+  // ── Word game score history table ──
+  var scthead=eid('score-thead'), sctbody=eid('score-tbody');
+  if(scthead&&sctbody){
+    var scoreNames=Object.keys(SCRABBLE_SCORES);
+    var scoreDates=SCRABBLE_SCORE_PLAYED.slice();
+    scthead.innerHTML='<th>Date</th>'+scoreNames.map(function(n){return '<th style="font-size:.65rem">'+n.split(' ')[0]+'</th>';}).join('')+'<th>Total</th>';
+    sctbody.innerHTML=scoreDates.map(function(dt){
+      var cols=scoreNames.map(function(n){
+        var sc=SCRABBLE_SCORES[n]?SCRABBLE_SCORES[n][dt]:undefined;
+        if(wordScoreEditMode){
+          var cid='wsedit_'+n.replace(/\s+/g,'_')+'_'+dt.replace(/\W/g,'_');
+          return '<td style="padding:3px"><input id="'+cid+'" type="number" min="0" max="9999" value="'+(sc||'')+'" placeholder="—" style="width:60px;background:rgba(124,131,253,.12);border:1px solid rgba(124,131,253,.4);border-radius:5px;padding:3px 5px;color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.78rem;text-align:center"></td>';
+        }
+        return '<td style="text-align:center;color:'+(sc?'var(--lavender)':'var(--text-muted)')+';font-weight:'+(sc?'700':'400')+'">'+(sc||'—')+'</td>';
+      }).join('');
+      var dayTotal=scoreNames.reduce(function(s,n){return s+(SCRABBLE_SCORES[n]?SCRABBLE_SCORES[n][dt]||0:0);},0);
+      return '<tr><td style="font-weight:600;white-space:nowrap">'+dt+'</td>'+cols+'<td style="font-weight:700;color:var(--lavender)">'+dayTotal+'</td></tr>';
+    }).join('');
+    var scoreGrandTotal=scoreNames.reduce(function(s,n){return s+(SCRABBLE_SCORE_TOTALS[n]||0);},0);
+    sctbody.innerHTML+='<tr style="border-top:2px solid var(--card-border)"><td style="font-weight:800">Total</td>'+scoreNames.map(function(n){return '<td style="text-align:center;font-weight:800;color:var(--lavender)">'+(SCRABBLE_SCORE_TOTALS[n]||0)+'</td>';}).join('')+'<td style="font-weight:800;color:var(--lavender)">'+scoreGrandTotal+'</td></tr>';
   }
 }
 
@@ -2907,8 +2954,112 @@ function closeELInfo(){
 
 
 // ══════════════════════════════════════════
-// EDITABLE LEADERBOARD TOTALS
+// EDITABLE WORD GAME SCORES
 // ══════════════════════════════════════════
+
+var wordScoreEditMode = false;
+
+function toggleWordScoreEditMode(){
+  wordScoreEditMode = !wordScoreEditMode;
+  var editBtn   = document.getElementById('word-score-edit-btn');
+  var saveBtn   = document.getElementById('word-score-save-btn');
+  var cancelBtn = document.getElementById('word-score-cancel-btn');
+  var hint      = document.getElementById('word-score-edit-hint');
+  if(wordScoreEditMode){
+    editBtn.textContent = '✏️ Editing…';
+    editBtn.style.borderColor = 'var(--ya-gold)';
+    editBtn.style.color = 'var(--ya-gold)';
+    saveBtn.style.display = 'inline-block';
+    cancelBtn.style.display = 'inline-block';
+    hint.style.display = 'block';
+  } else {
+    editBtn.textContent = '✏️ Edit Scores';
+    editBtn.style.borderColor = 'var(--lavender)';
+    editBtn.style.color = 'var(--lavender)';
+    saveBtn.style.display = 'none';
+    cancelBtn.style.display = 'none';
+    hint.style.display = 'none';
+  }
+  renderAdminScrabble();
+}
+
+function cancelWordScoreEdits(){
+  wordScoreEditMode = false;
+  var editBtn   = document.getElementById('word-score-edit-btn');
+  var saveBtn   = document.getElementById('word-score-save-btn');
+  var cancelBtn = document.getElementById('word-score-cancel-btn');
+  var hint      = document.getElementById('word-score-edit-hint');
+  editBtn.textContent = '✏️ Edit Scores';
+  editBtn.style.borderColor = 'var(--lavender)';
+  editBtn.style.color = 'var(--lavender)';
+  saveBtn.style.display = 'none';
+  cancelBtn.style.display = 'none';
+  hint.style.display = 'none';
+  renderAdminScrabble();
+}
+
+function saveWordScoreEdits(){
+  var scoreNames = Object.keys(SCRABBLE_SCORES);
+  // Also pick up any players in SCRABBLE_SCORE_TOTALS not yet in SCRABBLE_SCORES
+  Object.keys(SCRABBLE_SCORE_TOTALS).forEach(function(n){
+    if(scoreNames.indexOf(n)<0) scoreNames.push(n);
+  });
+
+  SCRABBLE_SCORE_PLAYED.forEach(function(dt){
+    scoreNames.forEach(function(name){
+      var cid='wsedit_'+name.replace(/\s+/g,'_')+'_'+dt.replace(/\W/g,'_');
+      var input=document.getElementById(cid);
+      if(!input) return;
+      var val=parseInt(input.value);
+      if(!isNaN(val) && val > 0){
+        if(!SCRABBLE_SCORES[name]) SCRABBLE_SCORES[name]={};
+        SCRABBLE_SCORES[name][dt]=val;
+      } else {
+        if(SCRABBLE_SCORES[name]) delete SCRABBLE_SCORES[name][dt];
+      }
+    });
+  });
+
+  // Recalculate word score totals
+  scoreNames.forEach(function(name){
+    var total=0;
+    Object.values(SCRABBLE_SCORES[name]||{}).forEach(function(v){total+=v;});
+    if(total>0) SCRABBLE_SCORE_TOTALS[name]=total;
+    else delete SCRABBLE_SCORE_TOTALS[name];
+  });
+
+  wordScoreEditMode = false;
+  var editBtn   = document.getElementById('word-score-edit-btn');
+  var saveBtn   = document.getElementById('word-score-save-btn');
+  var cancelBtn = document.getElementById('word-score-cancel-btn');
+  var hint      = document.getElementById('word-score-edit-hint');
+  editBtn.textContent = '✏️ Edit Scores';
+  editBtn.style.borderColor = 'var(--lavender)';
+  editBtn.style.color = 'var(--lavender)';
+  saveBtn.style.display = 'none';
+  cancelBtn.style.display = 'none';
+  hint.style.display = 'none';
+  // Flash confirmation
+  saveBtn.textContent = '✔ Saved!';
+  setTimeout(function(){ saveBtn.textContent='💾 Save Changes'; },1500);
+  renderAdminScrabble();
+  // Persist word scores to Supabase
+  saveWordScoresToDB();
+}
+
+async function saveWordScoresToDB(){
+  const rows = [];
+  Object.keys(SCRABBLE_SCORES).forEach(function(name){
+    Object.keys(SCRABBLE_SCORES[name]).forEach(function(date){
+      rows.push({ player_name: name, session_date: date, score: SCRABBLE_SCORES[name][date] });
+    });
+  });
+  await dbDel('scrabble_scores', 'id=gte.0');
+  if(rows.length) await dbPost('scrabble_scores', rows);
+  console.log('Word game scores saved to DB:', rows.length, 'rows');
+}
+
+
 
 var lbEditMode = false;
 
@@ -3676,6 +3827,23 @@ async function loadScrabbleData() {
     console.log('Adult scrabble sessions loaded from DB:', adultSessions.length, 'rows');
   } else {
     console.log('No adult scrabble sessions in DB — using hardcoded data');
+  }
+
+  // Word game scores
+  const wordScores = await dbGet('scrabble_scores', 'select=player_name,session_date,score');
+  if(wordScores && wordScores.length > 0){
+    Object.keys(SCRABBLE_SCORES).forEach(function(n){ SCRABBLE_SCORES[n]={}; });
+    SCRABBLE_SCORE_PLAYED.length = 0;
+    wordScores.forEach(function(row){
+      if(!SCRABBLE_SCORES[row.player_name]) SCRABBLE_SCORES[row.player_name]={};
+      SCRABBLE_SCORES[row.player_name][row.session_date]=row.score;
+      if(SCRABBLE_SCORE_PLAYED.indexOf(row.session_date)<0) SCRABBLE_SCORE_PLAYED.push(row.session_date);
+    });
+    // Recalculate word score totals
+    Object.keys(SCRABBLE_SCORES).forEach(function(name){
+      SCRABBLE_SCORE_TOTALS[name]=Object.values(SCRABBLE_SCORES[name]).reduce(function(s,v){return s+v;},0);
+    });
+    console.log('Word game scores loaded from DB:', wordScores.length, 'rows');
   }
 
   // Quarter closed state

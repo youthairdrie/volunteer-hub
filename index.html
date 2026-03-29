@@ -3280,9 +3280,14 @@ async function saveWordScoresToDB(){
       rows.push({ player_name: name, session_date: date, score: SCRABBLE_SCORES[name][date] });
     });
   });
-  await dbDel('scrabble_scores', 'id=gte.0');
-  if(rows.length) await dbPost('scrabble_scores', rows);
-  console.log('Word game scores saved to DB:', rows.length, 'rows');
+  if(!rows.length) return;
+  const r = await fetch(SUPA_URL + '/rest/v1/scrabble_scores?on_conflict=player_name,session_date', {
+    method: 'POST',
+    headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY, 'Content-Type': 'application/json', 'Prefer': 'resolution=merge-duplicates,return=minimal' },
+    body: JSON.stringify(rows)
+  });
+  if(!r.ok) { const e = await r.text(); console.warn('saveWordScoresToDB failed:', r.status, e); }
+  else console.log('Word game scores saved:', rows.length, 'rows');
 }
 
 
@@ -4241,14 +4246,15 @@ async function saveScrabbleSessionsToDB() {
       rows.push({ player_name: name, session_date: date, points: SCRABBLE_SESSIONS[name][date], updated_at: new Date().toISOString() });
     });
   });
-  if(rows.length) {
-    await dbPost('scrabble_sessions', rows);
-    console.log('Scrabble sessions saved to DB:', rows.length, 'rows');
-  }
-  // Also delete any sessions no longer in local data (handles zeroed cells)
-  // We use a full replace: delete all then reinsert
-  await dbDel('scrabble_sessions', 'id=gte.0');
-  if(rows.length) await dbPost('scrabble_sessions', rows);
+  if(!rows.length) return;
+  // Upsert: merge-duplicates on unique(player_name, session_date)
+  const r = await fetch(SUPA_URL + '/rest/v1/scrabble_sessions?on_conflict=player_name,session_date', {
+    method: 'POST',
+    headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY, 'Content-Type': 'application/json', 'Prefer': 'resolution=merge-duplicates,return=minimal' },
+    body: JSON.stringify(rows)
+  });
+  if(!r.ok) { const e = await r.text(); console.warn('saveScrabbleSessionsToDB failed:', r.status, e); }
+  else console.log('Scrabble sessions saved:', rows.length, 'rows');
 }
 
 // ── SAVE ADULT SCRABBLE HOURS TO SUPABASE ──
@@ -4259,17 +4265,25 @@ async function saveAdultScrabbleToDB() {
       rows.push({ volunteer_name: name, session_date: date, hours: ADULT_SCRABBLE[name][date], updated_at: new Date().toISOString() });
     });
   });
-  await dbDel('adult_scrabble_sessions', 'id=gte.0');
-  if(rows.length) {
-    await dbPost('adult_scrabble_sessions', rows);
-    console.log('Adult scrabble sessions saved to DB:', rows.length, 'rows');
-  }
+  if(!rows.length) return;
+  const r = await fetch(SUPA_URL + '/rest/v1/adult_scrabble_sessions?on_conflict=volunteer_name,session_date', {
+    method: 'POST',
+    headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY, 'Content-Type': 'application/json', 'Prefer': 'resolution=merge-duplicates,return=minimal' },
+    body: JSON.stringify(rows)
+  });
+  if(!r.ok) { const e = await r.text(); console.warn('saveAdultScrabbleToDB failed:', r.status, e); }
+  else console.log('Adult scrabble sessions saved:', rows.length, 'rows');
 }
 
 // ── SAVE QUARTER STATE TO SUPABASE ──
 async function saveQuarterState(closed) {
-  await dbPost('scrabble_state', { key: 'q1_closed', value: closed ? 'true' : 'false', updated_at: new Date().toISOString() });
-  console.log('Quarter state saved:', closed);
+  const r = await fetch(SUPA_URL + '/rest/v1/scrabble_state?on_conflict=key', {
+    method: 'POST',
+    headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY, 'Content-Type': 'application/json', 'Prefer': 'resolution=merge-duplicates,return=minimal' },
+    body: JSON.stringify({ key: 'q1_closed', value: closed ? 'true' : 'false', updated_at: new Date().toISOString() })
+  });
+  if(!r.ok) { const e = await r.text(); console.warn('saveQuarterState failed:', r.status, e); }
+  else console.log('Quarter state saved:', closed);
 }
 
 

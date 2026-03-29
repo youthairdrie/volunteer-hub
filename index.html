@@ -4178,8 +4178,24 @@ async function saveComplianceRecord(type, name, date, expiry) {
 
 // ── LOAD SCRABBLE DATA FROM SUPABASE ──
 async function loadScrabbleData() {
+  // ── debug banner ──
+  function showScrDebug(msg, isError) {
+    var el = document.getElementById('scr-load-debug');
+    if(!el){ el=document.createElement('div'); el.id='scr-load-debug';
+      el.style.cssText='position:fixed;top:8px;left:8px;right:8px;z-index:9999;color:#fff;font-family:monospace;font-size:.72rem;padding:10px 14px;border-radius:8px;white-space:pre-wrap;cursor:pointer';
+      el.onclick=function(){el.parentNode&&el.parentNode.removeChild(el);};
+      document.body.appendChild(el); }
+    el.style.background=isError?'#4a1010':'#0e2a3a';
+    el.style.border='1px solid '+(isError?'#c94a00':'#0d9488');
+    el.textContent=msg+' (click to dismiss)';
+  }
+
   // Youth session points
   const sessions = await dbGet('scrabble_sessions', 'select=player_name,session_date,points');
+  if(sessions === null) {
+    showScrDebug('❌ scrabble_sessions query FAILED (null) — RLS blocking reads?', true);
+    return;
+  }
   if(sessions && sessions.length > 0) {
     // Reset to empty so DB is the source of truth
     Object.keys(SCRABBLE_SESSIONS).forEach(function(n){ SCRABBLE_SESSIONS[n] = {}; });
@@ -4191,8 +4207,10 @@ async function loadScrabbleData() {
     Object.keys(SCRABBLE_SESSIONS).forEach(function(name) {
       SCRABBLE_TOTALS[name] = Object.values(SCRABBLE_SESSIONS[name]).reduce(function(s,v){return s+v;},0);
     });
+    showScrDebug('✔ Scrabble loaded: ' + sessions.length + ' session rows', false);
     console.log('Scrabble sessions loaded from DB:', sessions.length, 'rows');
   } else {
+    showScrDebug('⚠ scrabble_sessions is empty — falling back to hardcoded data', true);
     console.log('No scrabble sessions in DB — using hardcoded data');
   }
 
@@ -4247,14 +4265,31 @@ async function saveScrabbleSessionsToDB() {
     });
   });
   if(!rows.length) return;
-  // Upsert: merge-duplicates on unique(player_name, session_date)
   const r = await fetch(SUPA_URL + '/rest/v1/scrabble_sessions?on_conflict=player_name,session_date', {
     method: 'POST',
     headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY, 'Content-Type': 'application/json', 'Prefer': 'resolution=merge-duplicates,return=minimal' },
     body: JSON.stringify(rows)
   });
-  if(!r.ok) { const e = await r.text(); console.warn('saveScrabbleSessionsToDB failed:', r.status, e); }
-  else console.log('Scrabble sessions saved:', rows.length, 'rows');
+  // Visible debug banner
+  function showSaveDebug(msg, isError) {
+    var el = document.getElementById('scr-save-debug');
+    if(!el){ el=document.createElement('div'); el.id='scr-save-debug';
+      el.style.cssText='position:fixed;bottom:8px;left:8px;right:8px;z-index:9999;color:#fff;font-family:monospace;font-size:.72rem;padding:10px 14px;border-radius:8px;cursor:pointer';
+      el.onclick=function(){el.parentNode&&el.parentNode.removeChild(el);};
+      document.body.appendChild(el); }
+    el.style.background=isError?'#4a1010':'#0e2a3a';
+    el.style.border='1px solid '+(isError?'#c94a00':'#0d9488');
+    el.textContent=msg+' (click to dismiss)';
+    clearTimeout(el._t); el._t=setTimeout(function(){el.parentNode&&el.parentNode.removeChild(el);},10000);
+  }
+  if(!r.ok) {
+    const e = await r.text();
+    showSaveDebug('❌ Scrabble save FAILED HTTP ' + r.status + ': ' + e, true);
+    console.warn('saveScrabbleSessionsToDB failed:', r.status, e);
+  } else {
+    showSaveDebug('✔ Scrabble saved: ' + rows.length + ' rows to DB', false);
+    console.log('Scrabble sessions saved:', rows.length, 'rows');
+  }
 }
 
 // ── SAVE ADULT SCRABBLE HOURS TO SUPABASE ──

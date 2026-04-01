@@ -487,7 +487,7 @@ body{font-family:"DM Sans",sans-serif;background:var(--navy);color:var(--text-ma
       <div class="ya-stripe"></div>
       <div class="page-header">
         <div class="page-title">Scrabble &amp; Games Club <span class="hl">🎲</span></div>
-        <div class="page-sub">Weekly sessions · 1 pt attendance · 1 pt per win · Q1 Trophy at March 31</div>
+        <div class="page-sub">Weekly sessions · 1 pt attendance · 1 pt per win · Trophy awarded end of quarter</div>
         <button onclick="openEntryForm()" style="margin-top:12px;padding:10px 24px;border-radius:10px;border:1px solid var(--ya-orange);background:rgba(232,98,10,.12);color:var(--ya-orange);font-family:Nunito,sans-serif;font-weight:800;font-size:.9rem;cursor:pointer;transition:all .2s" onmouseover="this.style.background='rgba(232,98,10,.22)'" onmouseout="this.style.background='rgba(232,98,10,.12)'">🎲 Log Today&#39;s Activity</button>
       </div>
       <div id="youth-pending-entries-scrabble" style="margin-top:8px"></div>
@@ -1074,7 +1074,7 @@ body{font-family:"DM Sans",sans-serif;background:var(--navy);color:var(--text-ma
             <div class="status-row"><div class="status-label">Total participants</div><span class="pill pill-gold">17</span></div>
             <div class="status-row"><div class="status-label">Sessions held (2026)</div><span class="pill pill-teal">11</span></div>
             <div class="status-row"><div class="status-label">Total points awarded</div><span class="pill pill-orange">515</span></div>
-            <div class="status-row"><div class="status-label">Q1 Trophy leader</div><span class="pill pill-gold" id="impact-q1-leader">🏆 —</span></div>
+            <div class="status-row"><div class="status-label">Trophy leader</div><span class="pill pill-gold" id="impact-q1-leader">🏆 —</span></div>
           </div>
         </div>
       </div>
@@ -1117,8 +1117,12 @@ var ENTRY_TYPES = {
 
 var ADULT_SCRABBLE={"Julie Robertson":{"14-Jan":1,"21-Jan":1,"28-Jan":1,"4-Feb":1,"11-Feb":1,"18-Feb":1,"25-Feb":1,"4-Mar":1,"11-Mar":1,"18-Mar":1},"Olga Korcheva":{"28-Jan":2},"BJ (Bolaji) Hammed":{"7-Jan":1.5,"14-Jan":1.5,"21-Jan":1.5,"28-Jan":1.5,"4-Feb":1.5,"11-Feb":1.5,"25-Feb":1.5,"4-Mar":1.5,"18-Mar":1.5},"Chloe Nayoung Kim":{"4-Feb":2},"Kim Sundset":{"7-Jan":2,"14-Jan":2,"21-Jan":2,"28-Jan":2,"11-Feb":2,"18-Feb":2,"25-Feb":2,"4-Mar":2,"11-Mar":2,"18-Mar":2}};
 var ADULT_SCRABBLE_TOTALS={"Julie Robertson":10,"Olga Korcheva":2,"BJ (Bolaji) Hammed":13.5,"Chloe Nayoung Kim":2,"Kim Sundset":20};
-var SCRABBLE_DATES=["7-Jan","14-Jan","21-Jan","28-Jan","4-Feb","11-Feb","18-Feb","25-Feb","4-Mar","11-Mar","18-Mar","25-Mar"];
-var Q1_CLOSED = false; // set to true when admin closes out the quarter
+var SCRABBLE_DATES=["7-Jan","14-Jan","21-Jan","28-Jan","4-Feb","11-Feb","18-Feb","25-Feb","4-Mar","11-Mar","18-Mar","25-Mar","1-Apr","8-Apr","15-Apr","22-Apr","29-Apr"];
+// ── Quarter config — update these two lines to start a new quarter ──
+var CURRENT_QUARTER = "Q2 2026";          // label shown throughout the app
+var QUARTER_STATE_KEY = "q2_closed";      // must match key in scrabble_state table
+var QUARTER_END_DATE = "Apr 29";          // shown in trophy banners
+var Q1_CLOSED = false; // loaded from DB on startup — do not edit manually
 var KNOWN_CREDENTIALS={};
 
 var RECURRING_PROGRAMS=[{"id":"rec_scrabble","name":"Scrabble & Games Club","day":"Wednesday","location":"Youth Airdrie","season":"Sep-Apr","note":"Every Wednesday, September through end of April","active":true,"cancellations":[]},{"id":"rec_garden","name":"Summer Garden Program","day":"Wednesday","location":"Youth Airdrie","season":"May-Sep","note":"Every Wednesday, May through end of September","active":true,"cancellations":[]}];
@@ -1194,7 +1198,7 @@ function renderInviteCards(name,isEL,isScrOnly){
   }
 
   if(!isScrOnly&&!isScrabbleMember(name)){
-    cards+='<div class="invite-card sc"><div class="invite-icon">🎲</div><div><div class="invite-title">Join Scrabble & Games Club!</div><div class="invite-sub">Weekly sessions every Tuesday · Earn points for attendance and wins · Q1 Trophy up for grabs — ask Kim to register!</div></div></div>';
+    cards+='<div class="invite-card sc"><div class="invite-icon">🎲</div><div><div class="invite-title">Join Scrabble & Games Club!</div><div class="invite-sub">Weekly sessions every Wednesday · Earn points for attendance and wins · '+CURRENT_QUARTER+' Trophy up for grabs — ask Kim to register!</div></div></div>';
   }
   if(isScrOnly){
     cards+='<div class="invite-card el"><div class="invite-icon">🌱</div><div><div class="invite-title">Join Emerging Leaders Workshops!</div><div class="invite-sub">Ages 10–16 welcome · 18 workshops on leadership, communication, finance & more · Earn Level 1, 2 & 3 Certificates — ask Kim to register!</div></div></div>';
@@ -1213,7 +1217,7 @@ function renderScrabbleDash(name){
   var lb=Object.entries(SCRABBLE_TOTALS).sort(function(a,b){return b[1]-a[1];});
   var myRank=lb.findIndex(function(x){return x[0]===name;})+1;
   var leader=lb[0];
-  var trophy=myRank===1?'<div class="trophy-banner"><div class="trophy-emoji">🏆</div><div><div class="trophy-title">'+(Q1_CLOSED?'You are the Q1 Trophy Winner! 🎉':'You are the Q1 Trophy Leader!')+'</div><div class="trophy-sub">'+(Q1_CLOSED?'Congratulations — Q1 is closed!':'Keep it up — trophy awarded March 31')+'</div></div></div>':'';
+  var trophy=myRank===1?'<div class="trophy-banner"><div class="trophy-emoji">🏆</div><div><div class="trophy-title">'+(Q1_CLOSED?'You are the '+CURRENT_QUARTER+' Trophy Winner! 🎉':'You are the '+CURRENT_QUARTER+' Trophy Leader!')+'</div><div class="trophy-sub">'+(Q1_CLOSED?'Congratulations — '+CURRENT_QUARTER+' is closed!':'Keep it up — trophy awarded '+QUARTER_END_DATE)+'</div></div></div>':'';
   var gap=myPts<leader[1]?'You are '+(leader[1]-myPts)+' pts behind leader '+leader[0]:'Tied for the lead!';
   el.innerHTML='<div class="section-box" style="margin-top:15px"><div class="section-title">🎲 Scrabble & Games Club</div><div class="two-col" style="margin-bottom:12px"><div style="text-align:center;padding:12px;background:rgba(245,166,35,.08);border-radius:12px;border:1px solid rgba(245,166,35,.2)"><div style="font-size:.72rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">My Points</div><div style="font-family:Nunito,sans-serif;font-size:2.4rem;font-weight:900;color:var(--ya-gold)">'+myPts+'</div></div><div style="text-align:center;padding:12px;background:rgba(232,98,10,.08);border-radius:12px;border:1px solid rgba(232,98,10,.2)"><div style="font-size:.72rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">My Rank</div><div style="font-family:Nunito,sans-serif;font-size:2.4rem;font-weight:900;color:var(--ya-orange)">#'+myRank+'</div><div style="font-size:.72rem;color:var(--text-muted)">of '+lb.length+' players</div></div></div>'+trophy+'<div style="font-size:.8rem;color:var(--text-muted)">'+gap+'</div></div>';
 }
@@ -1251,7 +1255,7 @@ function renderScrabbleYouthPage(name){
         '<div class="session-pts" style="'+ptColor+'">'+ptsDisplay+'</div></div>';
     }).join('');
     var medal=myRank===1?'🏆':myRank===2?'🥈':myRank===3?'🥉':'🎲';
-    mySection='<div class="trophy-banner" style="margin-bottom:14px"><div class="trophy-emoji">'+medal+'</div><div><div class="trophy-title">Rank #'+myRank+' · '+myPts+' points</div><div class="trophy-sub">'+(Q1_CLOSED?'Q1 2026 — Quarter Closed':'Q1 2026 · Trophy awarded at end of March')+'</div></div></div><div class="section-box" style="margin-bottom:15px"><div class="section-title">📅 My Session History</div><div class="session-grid">'+chips+'</div></div>';
+    mySection='<div class="trophy-banner" style="margin-bottom:14px"><div class="trophy-emoji">'+medal+'</div><div><div class="trophy-title">Rank #'+myRank+' · '+myPts+' points</div><div class="trophy-sub">'+(Q1_CLOSED?CURRENT_QUARTER+' — Quarter Closed':CURRENT_QUARTER+' · Trophy awarded '+QUARTER_END_DATE)+'</div></div></div><div class="section-box" style="margin-bottom:15px"><div class="section-title">📅 My Session History</div><div class="session-grid">'+chips+'</div></div>';
   }else{
     mySection='<div class="in-progress-bar" style="margin-bottom:14px">You are not currently registered in Scrabble & Games Club. Ask Kim to add you!</div>';
   }
@@ -1339,10 +1343,10 @@ function renderYouth(){
       var lb=Object.entries(SCRABBLE_TOTALS).sort(function(a,b){return b[1]-a[1];});
       var myRank=lb.findIndex(function(x){return x[0]===name;})+1;
       sc.innerHTML=
-        '<div class="stat-card" style="--accent-color:var(--ya-gold)"><div class="stat-label">Scrabble Points</div><div class="stat-value">'+myPts+'</div><div class="stat-meta">Q1 2026</div><div class="stat-icon">🎲</div></div>'+
+        '<div class="stat-card" style="--accent-color:var(--ya-gold)"><div class="stat-label">Scrabble Points</div><div class="stat-value">'+myPts+'</div><div class="stat-meta">'+CURRENT_QUARTER+'</div><div class="stat-icon">🎲</div></div>'+
         '<div class="stat-card" style="--accent-color:var(--ya-orange)"><div class="stat-label">My Rank</div><div class="stat-value">#'+myRank+'</div><div class="stat-meta">of '+lb.length+' players</div><div class="stat-icon">🏅</div></div>'+
-        '<div class="stat-card" style="--accent-color:var(--ya-teal)"><div class="stat-label">Sessions Attended</div><div class="stat-value">'+Object.keys(SCRABBLE_SESSIONS[name]||{}).length+'</div><div class="stat-meta">out of 11 held</div><div class="stat-icon">📅</div></div>'+
-        '<div class="stat-card" style="--accent-color:var(--ya-green)"><div class="stat-label">Q1 Trophy</div><div class="stat-value" style="font-size:'+(myRank===1?'1.4rem':'1rem')+';padding-top:6px">'+(myRank===1?'You lead! 🏆':lb[0][0].split(' ')[0]+' leads')+'</div><div class="stat-meta">'+lb[0][1]+' pts · ends Mar 31</div><div class="stat-icon">🏆</div></div>';
+        '<div class="stat-card" style="--accent-color:var(--ya-teal)"><div class="stat-label">Sessions Attended</div><div class="stat-value">'+Object.keys(SCRABBLE_SESSIONS[name]||{}).length+'</div><div class="stat-meta">out of '+SCRABBLE_DATES.length+' held</div><div class="stat-icon">📅</div></div>'+
+        '<div class="stat-card" style="--accent-color:var(--ya-green)"><div class="stat-label">'+CURRENT_QUARTER+' Trophy</div><div class="stat-value" style="font-size:'+(myRank===1?'1.4rem':'1rem')+';padding-top:6px">'+(myRank===1?'You lead! 🏆':lb[0][0].split(' ')[0]+' leads')+'</div><div class="stat-meta">'+lb[0][1]+' pts · ends '+QUARTER_END_DATE+'</div><div class="stat-icon">🏆</div></div>';
     }else{
       var hasSc=isScrabbleMember(name);
       var lb2=Object.entries(SCRABBLE_TOTALS).sort(function(a,b){return b[1]-a[1];});
@@ -1672,8 +1676,8 @@ function renderAdminScrabble(){
       '<div class="stat-card" style="--accent-color:var(--ya-gold)"><div class="stat-label">Participants</div><div class="stat-value">'+participantCount+'</div><div class="stat-meta">Scrabble &amp; Games Club</div><div class="stat-icon">🎲</div></div>'+
       '<div class="stat-card" style="--accent-color:var(--ya-orange)"><div class="stat-label">Sessions Held</div><div class="stat-value">'+sessionsHeld+'</div><div class="stat-meta">'+CONDUCTED_DATES[0]+' — '+CONDUCTED_DATES[CONDUCTED_DATES.length-1]+'</div><div class="stat-icon">📅</div></div>'+
       '<div class="stat-card" style="--accent-color:var(--ya-teal)"><div class="stat-label">Total Points</div><div class="stat-value">'+totalPts+'</div><div class="stat-meta">All participants combined</div><div class="stat-icon">⭐</div></div>'+
-      '<div class="stat-card" style="--accent-color:var(--ya-blue)"><div class="stat-label">'+attendLabel+'</div><div class="stat-value" style="font-size:1rem;padding-top:6px">'+leader[0]+'</div><div class="stat-meta">'+leader[1]+' pts · Q1 Trophy</div><div class="stat-icon">🥇</div></div>'+
-      '<div class="stat-card" style="--accent-color:var(--lavender)"><div class="stat-label">'+wordLabel+'</div><div class="stat-value" style="font-size:1rem;padding-top:6px">'+wordLeader[0]+'</div><div class="stat-meta">'+wordLeader[1]+' pts · Q1 Trophy</div><div class="stat-icon">🔤</div></div>';
+      '<div class="stat-card" style="--accent-color:var(--ya-blue)"><div class="stat-label">'+attendLabel+'</div><div class="stat-value" style="font-size:1rem;padding-top:6px">'+leader[0]+'</div><div class="stat-meta">'+leader[1]+' pts · '+CURRENT_QUARTER+' Trophy</div><div class="stat-icon">🥇</div></div>'+
+      '<div class="stat-card" style="--accent-color:var(--lavender)"><div class="stat-label">'+wordLabel+'</div><div class="stat-value" style="font-size:1rem;padding-top:6px">'+wordLeader[0]+'</div><div class="stat-meta">'+wordLeader[1]+' pts · '+CURRENT_QUARTER+' Trophy</div><div class="stat-icon">🔤</div></div>';
   }
 
   // ── Dynamic attendance trophy banner ──
@@ -1683,14 +1687,14 @@ function renderAdminScrabble(){
       trophyBanner.innerHTML =
         '<div class="trophy-banner" style="background:linear-gradient(135deg,rgba(34,197,94,.18),rgba(0,181,160,.1));border-color:rgba(34,197,94,.4)">'+
         '<div class="trophy-emoji">🏆</div>'+
-        '<div><div class="trophy-title">Q1 2026 Trophy Winner — '+leader[0]+'</div>'+
-        '<div class="trophy-sub">'+leader[1]+' points · Q1 closed · Congratulations! 🎉</div></div></div>';
+        '<div><div class="trophy-title">'+CURRENT_QUARTER+' Trophy Winner — '+leader[0]+'</div>'+
+        '<div class="trophy-sub">'+leader[1]+' points · '+CURRENT_QUARTER+' closed · Congratulations! 🎉</div></div></div>';
     } else {
       trophyBanner.innerHTML =
         '<div class="trophy-banner">'+
         '<div class="trophy-emoji">🏆</div>'+
-        '<div><div class="trophy-title">Q1 2026 Trophy Leader — '+leader[0]+'</div>'+
-        '<div class="trophy-sub">'+leader[1]+' points · Award at end of Q1</div></div></div>';
+        '<div><div class="trophy-title">'+CURRENT_QUARTER+' Trophy Leader — '+leader[0]+'</div>'+
+        '<div class="trophy-sub">'+leader[1]+' points · Award at end of '+CURRENT_QUARTER+'</div></div></div>';
     }
   }
 
@@ -1701,14 +1705,14 @@ function renderAdminScrabble(){
       wordBanner.innerHTML =
         '<div class="trophy-banner" style="background:linear-gradient(135deg,rgba(124,131,253,.2),rgba(34,197,94,.08));border-color:rgba(124,131,253,.5)">'+
         '<div class="trophy-emoji">🔤</div>'+
-        '<div><div class="trophy-title">Q1 Word Game Winner — '+wordLeader[0]+'</div>'+
-        '<div class="trophy-sub">'+wordLeader[1]+' points · Q1 closed · Congratulations! 🎉</div></div></div>';
+        '<div><div class="trophy-title">'+CURRENT_QUARTER+' Word Game Winner — '+wordLeader[0]+'</div>'+
+        '<div class="trophy-sub">'+wordLeader[1]+' points · '+CURRENT_QUARTER+' closed · Congratulations! 🎉</div></div></div>';
     } else {
       wordBanner.innerHTML =
         '<div class="trophy-banner" style="background:linear-gradient(135deg,rgba(124,131,253,.15),rgba(124,131,253,.07));border-color:rgba(124,131,253,.3)">'+
         '<div class="trophy-emoji">🔤</div>'+
-        '<div><div class="trophy-title">Q1 Word Game Leader — '+wordLeader[0]+'</div>'+
-        '<div class="trophy-sub">'+wordLeader[1]+' points · Award end of Q1</div></div></div>';
+        '<div><div class="trophy-title">'+CURRENT_QUARTER+' Word Game Leader — '+wordLeader[0]+'</div>'+
+        '<div class="trophy-sub">'+wordLeader[1]+' points · Award end of '+CURRENT_QUARTER+'</div></div></div>';
     }
   }
 
@@ -1719,17 +1723,17 @@ function renderAdminScrabble(){
     if(isWinner){
       closePanel.innerHTML =
         '<div class="alert-row success" style="margin:0;border-radius:12px;padding:12px 18px">'+
-        '🏆 <div><strong>Q1 2026 is closed.</strong> Trophy winners have been declared. '+
+        '🏆 <div><strong>'+CURRENT_QUARTER+' is closed.</strong> Trophy winners have been declared. '+
         '<button onclick="reopenQuarter()" style="margin-left:10px;padding:4px 12px;border-radius:7px;border:1px solid rgba(255,255,255,.2);background:transparent;color:var(--text-muted);font-size:.75rem;cursor:pointer;font-family:DM Sans,sans-serif">↩ Reopen</button></div></div>';
     } else {
       var hint = pendingCount > 0
         ? '<div style="font-size:.75rem;color:var(--badge-amber);margin-top:6px">⚠ '+pendingCount+' pending entr'+(pendingCount===1?'y':'ies')+' still awaiting verification — approve or reject before closing.</div>'
-        : '<div style="font-size:.75rem;color:var(--ya-teal);margin-top:6px">✔ All entries verified — ready to close out Q1.</div>';
+        : '<div style="font-size:.75rem;color:var(--ya-teal);margin-top:6px">✔ All entries verified — ready to close out '+CURRENT_QUARTER+'.</div>';
       closePanel.innerHTML =
         '<div style="background:rgba(245,166,35,.07);border:1px solid rgba(245,166,35,.25);border-radius:12px;padding:14px 18px">'+
         '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">'+
         '<div>'+
-          '<div style="font-family:Nunito,sans-serif;font-size:.95rem;font-weight:800;color:var(--ya-gold)">🏁 Close Out Q1 2026</div>'+
+          '<div style="font-family:Nunito,sans-serif;font-size:.95rem;font-weight:800;color:var(--ya-gold)">🏁 Close Out '+CURRENT_QUARTER+'</div>'+
           '<div style="font-size:.78rem;color:var(--text-muted);margin-top:2px">Declare winners and lock the quarter. Leaders become Trophy Winners.</div>'+
           hint+
         '</div>'+
@@ -3341,20 +3345,21 @@ function saveWordScoreEdits(){
 }
 
 async function saveWordScoresToDB(){
+  var qKey = QUARTER_STATE_KEY.replace('_closed','');
   const rows = [];
   Object.keys(SCRABBLE_SCORES).forEach(function(name){
     Object.keys(SCRABBLE_SCORES[name]).forEach(function(date){
-      rows.push({ player_name: name, session_date: date, score: SCRABBLE_SCORES[name][date] });
+      rows.push({ player_name: name, session_date: date, score: SCRABBLE_SCORES[name][date], quarter: qKey });
     });
   });
   if(!rows.length) return;
-  const r = await fetch(SUPA_URL + '/rest/v1/scrabble_scores?on_conflict=player_name,session_date', {
+  const r = await fetch(SUPA_URL + '/rest/v1/scrabble_scores?on_conflict=player_name,session_date,quarter', {
     method: 'POST',
     headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY, 'Content-Type': 'application/json', 'Prefer': 'resolution=merge-duplicates,return=minimal' },
     body: JSON.stringify(rows)
   });
   if(!r.ok) { const e = await r.text(); console.warn('saveWordScoresToDB failed:', r.status, e); }
-  else console.log('Word game scores saved:', rows.length, 'rows');
+  else console.log('Word game scores saved:', rows.length, 'rows ('+qKey+')');
 }
 
 
@@ -3512,13 +3517,13 @@ function saveAdultVolEdits(){
 function closeOutQuarter(){
   var pendingCount = PENDING_ENTRIES.filter(function(e){return e.status==='pending';}).length;
   if(pendingCount > 0){
-    if(!confirm(pendingCount+' pending entr'+(pendingCount===1?'y':'ies')+' still need verification. Close Q1 anyway?')) return;
+    if(!confirm(pendingCount+' pending entr'+(pendingCount===1?'y':'ies')+' still need verification. Close '+CURRENT_QUARTER+' anyway?')) return;
   } else {
     var lb = Object.entries(SCRABBLE_TOTALS).sort(function(a,b){return b[1]-a[1];});
     var wsLb = Object.entries(SCRABBLE_SCORE_TOTALS).sort(function(a,b){return b[1]-a[1];});
     var winner = lb[0] ? lb[0][0] : '—';
     var wordWinner = wsLb[0] ? wsLb[0][0] : '—';
-    if(!confirm('Close out Q1 2026?\n\n🏆 Attendance Trophy Winner: '+winner+'\n🔤 Word Game Trophy Winner: '+wordWinner+'\n\nThis will declare them as winners. You can reopen if needed.')) return;
+    if(!confirm('Close out '+CURRENT_QUARTER+'?\n\n🏆 Attendance Trophy Winner: '+winner+'\n🔤 Word Game Trophy Winner: '+wordWinner+'\n\nThis will declare them as winners. You can reopen if needed.')) return;
   }
   Q1_CLOSED = true;
   saveQuarterState(true);
@@ -3531,7 +3536,7 @@ function closeOutQuarter(){
 }
 
 function reopenQuarter(){
-  if(!confirm('Reopen Q1 2026? This will change Trophy Winners back to Trophy Leaders.')) return;
+  if(!confirm('Reopen '+CURRENT_QUARTER+'? This will change Trophy Winners back to Trophy Leaders.')) return;
   Q1_CLOSED = false;
   saveQuarterState(false);
   renderAdminScrabble();
@@ -4245,8 +4250,10 @@ async function saveComplianceRecord(type, name, date, expiry) {
 
 // ── LOAD SCRABBLE DATA FROM SUPABASE ──
 async function loadScrabbleData() {
-  // Youth session points
-  const sessions = await dbGet('scrabble_sessions', 'select=player_name,session_date,points');
+  var qKey = QUARTER_STATE_KEY.replace('_closed',''); // e.g. "q2_2026"
+
+  // Youth session points — only load current quarter
+  const sessions = await dbGet('scrabble_sessions', 'select=player_name,session_date,points&quarter=eq.'+qKey);
   if(sessions && sessions.length > 0) {
     Object.keys(SCRABBLE_SESSIONS).forEach(function(n){ SCRABBLE_SESSIONS[n] = {}; });
     sessions.forEach(function(row) {
@@ -4256,30 +4263,34 @@ async function loadScrabbleData() {
     Object.keys(SCRABBLE_SESSIONS).forEach(function(name) {
       SCRABBLE_TOTALS[name] = Object.values(SCRABBLE_SESSIONS[name]).reduce(function(s,v){return s+v;},0);
     });
-    console.log('Scrabble sessions loaded from DB:', sessions.length, 'rows');
+    console.log('Scrabble sessions loaded from DB:', sessions.length, 'rows ('+qKey+')');
   } else {
-    console.log('No scrabble sessions in DB — using hardcoded data');
+    console.log('No scrabble sessions in DB for '+qKey+' — starting fresh');
+    // Clear in-memory data so Q1 hardcoded data doesn't bleed into Q2
+    Object.keys(SCRABBLE_SESSIONS).forEach(function(n){ SCRABBLE_SESSIONS[n] = {}; });
+    Object.keys(SCRABBLE_TOTALS).forEach(function(n){ SCRABBLE_TOTALS[n] = 0; });
   }
 
-  // Adult volunteer hours
-  const adultSessions = await dbGet('adult_scrabble_sessions', 'select=volunteer_name,session_date,hours');
+  // Adult volunteer hours — only load current quarter
+  const adultSessions = await dbGet('adult_scrabble_sessions', 'select=volunteer_name,session_date,hours&quarter=eq.'+qKey);
   if(adultSessions && adultSessions.length > 0) {
     Object.keys(ADULT_SCRABBLE).forEach(function(n){ ADULT_SCRABBLE[n] = {}; });
     adultSessions.forEach(function(row) {
       if(!ADULT_SCRABBLE[row.volunteer_name]) ADULT_SCRABBLE[row.volunteer_name] = {};
       ADULT_SCRABBLE[row.volunteer_name][row.session_date] = parseFloat(row.hours);
     });
-    // Recalculate adult totals
     Object.keys(ADULT_SCRABBLE).forEach(function(name) {
       ADULT_SCRABBLE_TOTALS[name] = Object.values(ADULT_SCRABBLE[name]).reduce(function(s,v){return s+v;},0);
     });
-    console.log('Adult scrabble sessions loaded from DB:', adultSessions.length, 'rows');
+    console.log('Adult scrabble sessions loaded from DB:', adultSessions.length, 'rows ('+qKey+')');
   } else {
-    console.log('No adult scrabble sessions in DB — using hardcoded data');
+    console.log('No adult scrabble sessions in DB for '+qKey);
+    Object.keys(ADULT_SCRABBLE).forEach(function(n){ ADULT_SCRABBLE[n] = {}; });
+    Object.keys(ADULT_SCRABBLE_TOTALS).forEach(function(n){ ADULT_SCRABBLE_TOTALS[n] = 0; });
   }
 
-  // Word game scores
-  const wordScores = await dbGet('scrabble_scores', 'select=player_name,session_date,score');
+  // Word game scores — only load current quarter
+  const wordScores = await dbGet('scrabble_scores', 'select=player_name,session_date,score&quarter=eq.'+qKey);
   if(wordScores && wordScores.length > 0){
     Object.keys(SCRABBLE_SCORES).forEach(function(n){ SCRABBLE_SCORES[n]={}; });
     SCRABBLE_SCORE_PLAYED.length = 0;
@@ -4288,55 +4299,61 @@ async function loadScrabbleData() {
       SCRABBLE_SCORES[row.player_name][row.session_date]=row.score;
       if(SCRABBLE_SCORE_PLAYED.indexOf(row.session_date)<0) SCRABBLE_SCORE_PLAYED.push(row.session_date);
     });
-    // Recalculate word score totals
     Object.keys(SCRABBLE_SCORES).forEach(function(name){
       SCRABBLE_SCORE_TOTALS[name]=Object.values(SCRABBLE_SCORES[name]).reduce(function(s,v){return s+v;},0);
     });
-    console.log('Word game scores loaded from DB:', wordScores.length, 'rows');
+    console.log('Word game scores loaded from DB:', wordScores.length, 'rows ('+qKey+')');
+  } else {
+    console.log('No word game scores in DB for '+qKey);
+    Object.keys(SCRABBLE_SCORES).forEach(function(n){ SCRABBLE_SCORES[n]={}; });
+    Object.keys(SCRABBLE_SCORE_TOTALS).forEach(function(n){ SCRABBLE_SCORE_TOTALS[n]=0; });
+    SCRABBLE_SCORE_PLAYED.length = 0;
   }
 
   // Quarter closed state
-  const state = await dbGet('scrabble_state', 'select=key,value&key=eq.q1_closed');
+  const state = await dbGet('scrabble_state', 'select=key,value&key=eq.'+QUARTER_STATE_KEY);
   if(state && state.length > 0) {
     Q1_CLOSED = (state[0].value === 'true');
-    console.log('Q1_CLOSED loaded from DB:', Q1_CLOSED);
+    console.log('Quarter state loaded from DB:', Q1_CLOSED);
   }
 }
 
 // ── SAVE SCRABBLE SESSIONS TO SUPABASE ──
 async function saveScrabbleSessionsToDB() {
+  var qKey = QUARTER_STATE_KEY.replace('_closed','');
   const rows = [];
   Object.keys(SCRABBLE_SESSIONS).forEach(function(name) {
     Object.keys(SCRABBLE_SESSIONS[name]).forEach(function(date) {
-      rows.push({ player_name: name, session_date: date, points: SCRABBLE_SESSIONS[name][date], updated_at: new Date().toISOString() });
+      rows.push({ player_name: name, session_date: date, points: SCRABBLE_SESSIONS[name][date], quarter: qKey, updated_at: new Date().toISOString() });
     });
   });
   if(!rows.length) return;
-  const r = await fetch(SUPA_URL + '/rest/v1/scrabble_sessions?on_conflict=player_name,session_date', {
+  const r = await fetch(SUPA_URL + '/rest/v1/scrabble_sessions?on_conflict=player_name,session_date,quarter', {
     method: 'POST',
     headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY, 'Content-Type': 'application/json', 'Prefer': 'resolution=merge-duplicates,return=minimal' },
     body: JSON.stringify(rows)
   });
   if(!r.ok) { const e = await r.text(); console.warn('saveScrabbleSessionsToDB failed:', r.status, e); }
-  else console.log('Scrabble sessions saved:', rows.length, 'rows');
+  else console.log('Scrabble sessions saved:', rows.length, 'rows ('+qKey+')');
 }
 
 // ── SAVE ADULT SCRABBLE HOURS TO SUPABASE ──
 async function saveAdultScrabbleToDB() {
+  var qKey = QUARTER_STATE_KEY.replace('_closed','');
   const rows = [];
   Object.keys(ADULT_SCRABBLE).forEach(function(name) {
     Object.keys(ADULT_SCRABBLE[name]).forEach(function(date) {
-      rows.push({ volunteer_name: name, session_date: date, hours: ADULT_SCRABBLE[name][date], updated_at: new Date().toISOString() });
+      rows.push({ volunteer_name: name, session_date: date, hours: ADULT_SCRABBLE[name][date], quarter: qKey, updated_at: new Date().toISOString() });
     });
   });
   if(!rows.length) return;
-  const r = await fetch(SUPA_URL + '/rest/v1/adult_scrabble_sessions?on_conflict=volunteer_name,session_date', {
+  const r = await fetch(SUPA_URL + '/rest/v1/adult_scrabble_sessions?on_conflict=volunteer_name,session_date,quarter', {
     method: 'POST',
     headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY, 'Content-Type': 'application/json', 'Prefer': 'resolution=merge-duplicates,return=minimal' },
     body: JSON.stringify(rows)
   });
   if(!r.ok) { const e = await r.text(); console.warn('saveAdultScrabbleToDB failed:', r.status, e); }
-  else console.log('Adult scrabble sessions saved:', rows.length, 'rows');
+  else console.log('Adult scrabble sessions saved:', rows.length, 'rows ('+qKey+')');
 }
 
 // ── SAVE QUARTER STATE TO SUPABASE ──
@@ -4344,7 +4361,7 @@ async function saveQuarterState(closed) {
   const r = await fetch(SUPA_URL + '/rest/v1/scrabble_state?on_conflict=key', {
     method: 'POST',
     headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY, 'Content-Type': 'application/json', 'Prefer': 'resolution=merge-duplicates,return=minimal' },
-    body: JSON.stringify({ key: 'q1_closed', value: closed ? 'true' : 'false', updated_at: new Date().toISOString() })
+    body: JSON.stringify({ key: QUARTER_STATE_KEY, value: closed ? 'true' : 'false', updated_at: new Date().toISOString() })
   });
   if(!r.ok) { const e = await r.text(); console.warn('saveQuarterState failed:', r.status, e); }
   else console.log('Quarter state saved:', closed);

@@ -711,6 +711,16 @@ body{font-family:"DM Sans",sans-serif;background:var(--navy);color:var(--text-ma
             <div id="pending-entries-list"></div>
           </div>
 
+          <!-- CREDENTIAL MANAGER -->
+          <div class="section-box" style="border-color:rgba(29,127,212,.3);margin-bottom:16px">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+              <div style="font-family:Nunito,sans-serif;font-size:1rem;font-weight:900;color:var(--ya-blue)">🔑 Credential Manager</div>
+              <button onclick="renderCredentialManager()" class="ws-btn" style="border-color:var(--ya-blue);color:var(--ya-blue);font-size:.75rem">🔄 Refresh</button>
+            </div>
+            <div style="font-size:.78rem;color:var(--text-muted);margin-bottom:10px">Reset a user's credential so they can set up a new one on next login.</div>
+            <div id="credential-manager-list"><div style="color:var(--text-muted);font-size:.82rem">Loading...</div></div>
+          </div>
+
           <span class="section-title" style="margin-bottom:0">🎲 Full Leaderboard</span>
             <div style="display:flex;gap:6px">
               <button id="lb-edit-btn" onclick="toggleLbEdit()" class="ws-btn" style="border-color:var(--ya-blue);color:var(--ya-blue);font-size:.75rem">✏️ Edit Totals</button>
@@ -1729,6 +1739,7 @@ function renderAdminScrabble(){
 
   // Verification panel
   renderAdminVerificationPanel();
+  renderCredentialManager();
   renderAdultScrabbleTable();
 
   // ── Attendance leaderboard ──
@@ -4630,6 +4641,56 @@ function renderYouthPendingEntries(name){
 
   html2 += '</div>';
   el.innerHTML = html2;
+}
+
+// ── CREDENTIAL MANAGER ──
+function renderCredentialManager() {
+  var el = document.getElementById('credential-manager-list');
+  if(!el) return;
+
+  var allCreds = Object.values(storedCredentials);
+  if(allCreds.length === 0) {
+    el.innerHTML = '<div style="color:var(--text-muted);font-size:.82rem">No credentials set up yet.</div>';
+    return;
+  }
+
+  // Sort by role then name
+  allCreds.sort(function(a,b){
+    if(a.role !== b.role) return a.role.localeCompare(b.role);
+    return a.name.localeCompare(b.name);
+  });
+
+  el.innerHTML = allCreds.map(function(c) {
+    var roleColor = c.role === 'admin' ? 'var(--ya-orange)' : c.role === 'adult' ? 'var(--ya-teal)' : 'var(--ya-blue)';
+    var roleLabel = c.role === 'admin' ? '⚡ Admin' : c.role === 'adult' ? '🙌 Adult' : '🌱 Youth';
+    return '<div style="display:flex;align-items:center;justify-content:space-between;padding:7px 10px;border-radius:8px;background:rgba(255,255,255,.03);margin-bottom:5px">' +
+      '<div>' +
+        '<span style="font-size:.83rem;font-weight:700;color:var(--text-main)">' + c.name + '</span>' +
+        '<span style="font-size:.72rem;color:' + roleColor + ';margin-left:8px;font-weight:600">' + roleLabel + '</span>' +
+        '<span style="font-size:.72rem;color:var(--text-muted);margin-left:8px">ID: ' + c.id + '</span>' +
+      '</div>' +
+      '<button onclick="resetCredential(\'' + c.id.replace(/'/g,"\\'") + '\',\'' + c.name.replace(/'/g,"\\'") + '\')" ' +
+        'style="padding:4px 12px;border-radius:7px;border:1px solid var(--badge-red);background:rgba(239,68,68,.1);color:var(--badge-red);font-size:.72rem;font-weight:700;cursor:pointer;font-family:DM Sans,sans-serif">Reset</button>' +
+    '</div>';
+  }).join('');
+}
+
+async function resetCredential(id, name) {
+  if(!confirm('Reset credential for ' + name + '?\n\nThey will need to set up a new login on their next visit.')) return;
+  // Delete from Supabase
+  await dbDel('credentials', 'id=eq.' + encodeURIComponent(id));
+  // Remove from local state
+  delete storedCredentials[id];
+  // Re-render
+  renderCredentialManager();
+  var el = document.getElementById('credential-manager-list');
+  if(el) {
+    var fb = document.createElement('div');
+    fb.style.cssText = 'font-size:.78rem;color:var(--ya-teal);margin-top:8px;font-weight:700';
+    fb.textContent = '✔ Credential reset for ' + name + '. They can set up a new login on next visit.';
+    el.appendChild(fb);
+    setTimeout(function(){ fb.parentNode && fb.parentNode.removeChild(fb); }, 4000);
+  }
 }
 
 // ── ADMIN VIEW: full verification queue ──

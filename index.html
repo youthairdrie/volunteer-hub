@@ -237,7 +237,8 @@ body{font-family:"DM Sans",sans-serif;background:var(--navy);color:var(--text-ma
       <div class="login-title">VOLUNTEER &amp; PROGRAM HUB</div>
       <div class="login-divider"></div>
       <div class="upcoming-alert" id="login-scrabble-alert" style="margin-bottom:8px"></div>
-      <div class="upcoming-alert" id="login-workshop-alert"></div>
+      <div class="upcoming-alert" id="login-workshop-alert" style="margin-bottom:8px"></div>
+      <div class="upcoming-alert" id="login-event-alert"></div>
       <div class="role-tabs" style="margin-top:16px">
         <button class="role-tab active" onclick="switchLoginMode('member',this)">🌱 Youth &amp; Adults</button>
         <button class="role-tab" onclick="switchLoginMode('admin',this)">⚡ Admin</button>
@@ -2104,8 +2105,7 @@ function getNextWednesday(){
   var months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   var now = new Date();
   var day = now.getDay(); // 0=Sun,1=Mon,2=Tue,3=Wed,4=Thu,5=Fri,6=Sat
-  var daysUntilWed = (3 - day + 7) % 7;
-  if(daysUntilWed === 0) daysUntilWed = 7; // if today IS Wednesday, show next week
+  var daysUntilWed = (3 - day + 7) % 7; // 0 if today IS Wednesday
   var next = new Date(now);
   next.setDate(now.getDate() + daysUntilWed);
   return months[next.getMonth()]+' '+next.getDate()+', '+next.getFullYear();
@@ -2143,37 +2143,89 @@ function getNextUpcomingWorkshop(){
   })[0] || null;
 }
 
+function parseAlertDate(dateStr) {
+  // Parses "April 2, 2026" or "Apr 2, 2026" style dates to Date object
+  var months={January:0,February:1,March:2,April:3,May:4,June:5,July:6,August:7,September:8,October:9,November:10,December:11,Jan:0,Feb:1,Mar:2,Apr:3,Jun:5,Jul:6,Aug:7,Sep:8,Oct:9,Nov:10,Dec:11};
+  var p = dateStr.replace(',','').split(' ');
+  if(p.length < 3) return null;
+  var d = new Date(parseInt(p[2]), months[p[0]], parseInt(p[1]));
+  return isNaN(d.getTime()) ? null : d;
+}
+
 function renderLoginAlerts(){
   var scrabbleEl = document.getElementById('login-scrabble-alert');
   var workshopEl = document.getElementById('login-workshop-alert');
+  var eventEl    = document.getElementById('login-event-alert');
 
-  // Scrabble alert
+  var now = new Date(); now.setHours(0,0,0,0);
+  var month = now.getMonth() + 1; // 1=Jan…12=Dec
+
+  // ── 1. RECURRING PROGRAM ALERT (Scrabble or Garden) ──
   if(scrabbleEl){
-    var nextWed = getNextWednesday();
-    var label = getDayLabel(nextWed);
-    var prog = getCurrentRecurring();
-    var isCancelled = (prog.cancellations||[]).indexOf(nextWed) >= 0;
-    if(isCancelled){
-      scrabbleEl.innerHTML = '🚫 <strong>'+label+' — '+nextWed+':</strong> Scrabble &amp; Games Club — CANCELLED';
+    var thisWed = getNextWednesday(); // returns TODAY if today is Wednesday
+    var label   = getDayLabel(thisWed);
+    var prog    = getCurrentRecurring();
+    var isCancelled = (prog.cancellations||[]).indexOf(thisWed) >= 0;
+
+    // Check if Scrabble season has ended and Garden is upcoming
+    var lastScrabbleDate = parseAlertDate('April 29, 2026');
+    var gardenStart      = parseAlertDate('May 6, 2026');
+    var isGardenGap      = now > lastScrabbleDate && now < gardenStart;
+    var isGardenSeason   = month >= 5 && month <= 9;
+
+    if(isGardenGap) {
+      // Between Scrabble ending and Garden starting
+      scrabbleEl.innerHTML = '🌱 <strong>Garden Club starts May 6, 2026</strong> · Every Wednesday 4:30–6:30 PM';
+      scrabbleEl.style.borderColor = 'rgba(34,197,94,.3)';
+      scrabbleEl.style.background  = 'rgba(34,197,94,.07)';
+      scrabbleEl.style.color = 'var(--ya-green)';
+    } else if(isCancelled){
+      scrabbleEl.innerHTML = '🚫 <strong>'+label+' — '+thisWed+':</strong> '+prog.name+' — CANCELLED';
       scrabbleEl.style.borderColor = 'rgba(239,68,68,.3)';
-      scrabbleEl.style.background = 'rgba(239,68,68,.07)';
+      scrabbleEl.style.background  = 'rgba(239,68,68,.07)';
       scrabbleEl.style.color = 'var(--badge-red)';
     } else {
-      scrabbleEl.innerHTML = '🎲 <strong>'+label+' — '+nextWed+':</strong> Scrabble &amp; Games Club · 4:30–6:30 PM';
+      var icon = isGardenSeason ? '🌱' : '🎲';
+      scrabbleEl.innerHTML = icon+' <strong>'+label+' — '+thisWed+':</strong> '+prog.name+' · 4:30–6:30 PM';
       scrabbleEl.style.borderColor = '';
-      scrabbleEl.style.background = '';
+      scrabbleEl.style.background  = '';
       scrabbleEl.style.color = '';
     }
   }
 
-  // Workshop alert
+  // ── 2. NEXT WORKSHOP ALERT ──
   if(workshopEl){
     var ws = getNextUpcomingWorkshop();
     if(ws){
       var wsLabel = getDayLabel(ws.date);
       workshopEl.innerHTML = '📚 <strong>Next Workshop — '+ws.date+':</strong> #'+ws.id+' '+ws.name+' with '+ws.facilitators.join(' &amp; ');
+      workshopEl.style.display = '';
     } else {
       workshopEl.style.display = 'none';
+    }
+  }
+
+  // ── 3. UPCOMING EVENTS ALERT ──
+  if(eventEl){
+    var upcoming = EVENTS_DATA.filter(function(e){
+      if(e.status !== 'upcoming') return false;
+      var d = parseAlertDate(e.date);
+      return d && d >= now;
+    }).sort(function(a,b){
+      return parseAlertDate(a.date) - parseAlertDate(b.date);
+    });
+
+    if(upcoming.length > 0){
+      var next = upcoming[0];
+      var evLabel = getDayLabel(next.date);
+      var hrs = next.hours_on_completion ? ' · '+next.hours_on_completion+' vol hrs' : '';
+      eventEl.innerHTML = '🙌 <strong>'+evLabel+' — '+next.date+':</strong> '+next.name+(next.time?' · '+next.time:'')+hrs;
+      eventEl.style.display = '';
+      eventEl.style.borderColor = 'rgba(139,92,246,.3)';
+      eventEl.style.background  = 'rgba(139,92,246,.07)';
+      eventEl.style.color = 'var(--lavender)';
+    } else {
+      eventEl.style.display = 'none';
     }
   }
 }

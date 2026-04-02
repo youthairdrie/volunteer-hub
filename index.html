@@ -1188,14 +1188,6 @@ function renderInviteCards(name,isEL,isScrOnly){
   if(!el)return;
   var cards='';
 
-  // Age prompt if birth year not saved
-  if(!youthState||!youthState.birthYear){
-    var months=['January','February','March','April','May','June','July','August','September','October','November','December'];
-    var yearOpts='<option value="">Year</option>';
-    for(var y=2026;y>=2006;y--) yearOpts+='<option value="'+y+'">'+y+'</option>';
-    var monthOpts='<option value="">Month</option>'+months.map(function(m,i){return '<option value="'+(i+1)+'">'+m+'</option>';}).join('');
-    cards+='<div class="age-prompt"><div class="age-prompt-title">🎂 Customize your dashboard (optional)</div><div style="color:var(--text-muted);font-size:.8rem">Share your birth month and year so we can show you the most relevant programs.</div><div class="age-inputs"><select id="birth-month">'+monthOpts+'</select><select id="birth-year">'+yearOpts+'</select><button class="age-save-btn" onclick="saveYouthAge()">Save</button></div></div>';
-  }
 
   if(!isScrOnly&&!isScrabbleMember(name)){
     cards+='<div class="invite-card sc"><div class="invite-icon">🎲</div><div><div class="invite-title">Join Scrabble & Games Club!</div><div class="invite-sub">Weekly sessions every Wednesday · Earn points for attendance and wins · '+CURRENT_QUARTER+' Trophy up for grabs — ask Kim to register!</div></div></div>';
@@ -5260,8 +5252,13 @@ function toggleCDD(){
 }
 
 function selectCustomName(el){
-  var val  = el.getAttribute('data-value');
   var name = el.textContent.replace('  ⚡','').trim();
+  // For youth, use the name directly as ID — no fragile index
+  var val = el.getAttribute('data-value');
+  if(val && (val.startsWith('y_') || val.startsWith('yn_'))) {
+    // Always use stable yn_ key derived from the displayed name
+    val = 'yn_' + name.toLowerCase().replace(/\s+/g,'_').replace(/[^a-z0-9_]/g,'');
+  }
   document.getElementById('setup-name-select').value = val;
   document.getElementById('cdd-display').textContent = name;
   document.getElementById('cdd-display').style.color = 'var(--text-main)';

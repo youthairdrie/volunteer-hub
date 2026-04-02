@@ -3772,9 +3772,9 @@ async function supa(method, table, data, params) {
   };
   if (data) opts.body = JSON.stringify(data);
   try {
-    // 10s timeout per request — prevents any single fetch from hanging forever
+    // 30s timeout per request — handles slow Supabase days
     const controller = new AbortController();
-    const timeoutId = setTimeout(function(){ controller.abort(); }, 10000);
+    const timeoutId = setTimeout(function(){ controller.abort(); }, 30000);
     opts.signal = controller.signal;
     const r = await fetch(url, opts);
     clearTimeout(timeoutId);
@@ -4445,11 +4445,19 @@ async function dbStartup() {
   const banner = document.getElementById('db-banner');
   if(banner) banner.style.display = 'flex';
 
-  // Safety timeout — hide banner after 12s no matter what
+  // Dim the Enter Dashboard button while loading
+  var loginBtn = document.querySelector('.login-btn');
+  if(loginBtn && loginBtn.textContent.indexOf('Enter Dashboard') >= 0) {
+    loginBtn.style.opacity = '0.5';
+    loginBtn.style.pointerEvents = 'none';
+    loginBtn.textContent = 'Loading…';
+  }
+
+  // Safety timeout — hide banner after 45s no matter what (handles slow Supabase days)
   var bannerTimeout = setTimeout(function(){
     if(banner) banner.style.display = 'none';
     console.warn('DB startup timed out — continuing with cached/hardcoded data');
-  }, 12000);
+  }, 45000);
 
   try { await checkAndInitDB(); } catch(e) { console.warn('checkAndInitDB error (non-fatal):', e); }
   // Load youth names FIRST so the ynToName map in loadAllWorkshopAttendance can resolve them
@@ -4471,6 +4479,13 @@ async function dbStartup() {
 
   clearTimeout(bannerTimeout);
   if(banner) banner.style.display = 'none';
+  // Restore Enter Dashboard button
+  var loginBtn = document.querySelector('.login-btn');
+  if(loginBtn && loginBtn.textContent === 'Loading…') {
+    loginBtn.style.opacity = '';
+    loginBtn.style.pointerEvents = '';
+    loginBtn.textContent = 'Enter Dashboard →';
+  }
   console.log('DB startup complete');
   // Re-render current view now that all DB data is loaded
   if(currentRole === 'youth' && youthState && youthState.name){
@@ -5015,6 +5030,16 @@ function attemptLogin() {
   errEl.textContent = '';
   if(!input) { errEl.textContent = 'Please enter your credential.'; return; }
 
+  // If DB is still loading (banner visible), wait and retry once
+  var banner = document.getElementById('db-banner');
+  if(banner && banner.style.display !== 'none') {
+    errEl.innerHTML = '⏳ Still connecting to database — will retry automatically…';
+    errEl.style.color = 'var(--ya-gold)';
+    // Auto-retry after 5s
+    setTimeout(function(){ errEl.textContent = ''; attemptLogin(); }, 5000);
+    return;
+  }
+
   // Search stored credentials first
   var match = null;
   Object.keys(storedCredentials).forEach(function(id) {
@@ -5029,6 +5054,9 @@ function attemptLogin() {
 
   if(match) {
     doLogin(match.id, match.role);
+  } else if(Object.keys(storedCredentials).length === 0) {
+    // Credentials didn't load — offer a retry
+    errEl.innerHTML = '⚠️ Credentials not loaded yet. <span style="color:var(--ya-gold);cursor:pointer;text-decoration:underline" onclick="attemptLogin()">Tap here to retry</span>';
   } else {
     errEl.innerHTML = 'Credential not found. <span style="color:var(--ya-gold)">Hint: use your first initial + birthdate (mmddyy)</span>';
   }

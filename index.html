@@ -3771,13 +3771,14 @@ async function supa(method, table, data, params) {
     }
   };
   if (data) opts.body = JSON.stringify(data);
+
+  // 30s timeout using Promise.race (no AbortController — avoids DataCloneError)
+  var timeoutPromise = new Promise(function(_, reject){
+    setTimeout(function(){ reject(new Error('timeout')); }, 30000);
+  });
+
   try {
-    // 30s timeout per request — handles slow Supabase days
-    const controller = new AbortController();
-    const timeoutId = setTimeout(function(){ controller.abort(); }, 30000);
-    opts.signal = controller.signal;
-    const r = await fetch(url, opts);
-    clearTimeout(timeoutId);
+    const r = await Promise.race([fetch(url, opts), timeoutPromise]);
     if (!r.ok) {
       const err = await r.text();
       console.warn('Supabase error:', r.status, err);
@@ -3786,7 +3787,7 @@ async function supa(method, table, data, params) {
     const text = await r.text();
     return text ? JSON.parse(text) : true;
   } catch(e) {
-    if(e.name === 'AbortError') {
+    if(e.message === 'timeout') {
       console.warn('Supabase request timed out:', method, table);
     } else {
       console.warn('Supabase fetch error:', e);

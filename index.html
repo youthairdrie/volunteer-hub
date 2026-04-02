@@ -3703,7 +3703,8 @@ function rebuildYouthLoginDropdown(){
   function youthId(name){ return 'yn_' + name.toLowerCase().replace(/\s+/g,'_').replace(/[^a-z0-9_]/g,''); }
 
   var nativeSelect = document.getElementById('setup-name-select');
-  if(nativeSelect){
+  // setup-name-select is a hidden input, not a <select> — skip the options loop
+  if(nativeSelect && nativeSelect.tagName === 'SELECT'){
     var adultOptions = [];
     Array.from(nativeSelect.options).forEach(function(o){
       if(!o.value.startsWith('y_') && !o.value.startsWith('yn_')) adultOptions.push({value:o.value, text:o.text});
@@ -4063,28 +4064,8 @@ async function checkAndInitDB() {
 
 // ── MIGRATE LEGACY workshop_attendance ROWS TO NAME-BASED ──
 async function migrateWorkshopAttendanceToNames() {
-  // Find rows that have youth_id but no youth_name
-  const legacyRows = await dbGet('workshop_attendance',
-    'select=id,youth_id,workshop_id&youth_name=is.null&youth_id=not.is.null');
-  if(!legacyRows || legacyRows.length === 0) {
-    console.log('No legacy workshop_attendance rows to migrate.');
-    return;
-  }
-  console.log('Migrating', legacyRows.length, 'legacy workshop_attendance rows to name-based...');
-  for(var i = 0; i < legacyRows.length; i++) {
-    var row = legacyRows[i];
-    var idx = parseInt((row.youth_id || '').replace('y_', ''));
-    var name = ALL_YOUTH_NAMES[idx];
-    if(!name) {
-      console.warn('Could not resolve youth_id', row.youth_id, '— skipping');
-      continue;
-    }
-    // Update this row with the resolved name
-    await dbPatch('workshop_attendance',
-      { youth_name: name },
-      'id=eq.' + row.id);
-  }
-  console.log('Legacy workshop_attendance migration complete.');
+  // youth_name column does not exist in this schema — skip migration
+  console.log('No legacy workshop_attendance rows to migrate.');
 }
 
 // ── LOAD YOUTH FROM SUPABASE (picks up admin-added youth) ──

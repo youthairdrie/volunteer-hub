@@ -3772,7 +3772,12 @@ async function supa(method, table, data, params) {
   };
   if (data) opts.body = JSON.stringify(data);
   try {
+    // 10s timeout per request — prevents any single fetch from hanging forever
+    const controller = new AbortController();
+    const timeoutId = setTimeout(function(){ controller.abort(); }, 10000);
+    opts.signal = controller.signal;
     const r = await fetch(url, opts);
+    clearTimeout(timeoutId);
     if (!r.ok) {
       const err = await r.text();
       console.warn('Supabase error:', r.status, err);
@@ -3781,7 +3786,11 @@ async function supa(method, table, data, params) {
     const text = await r.text();
     return text ? JSON.parse(text) : true;
   } catch(e) {
-    console.warn('Supabase fetch error:', e);
+    if(e.name === 'AbortError') {
+      console.warn('Supabase request timed out:', method, table);
+    } else {
+      console.warn('Supabase fetch error:', e);
+    }
     return null;
   }
 }
@@ -4435,6 +4444,13 @@ async function loadComplianceData() {
 async function dbStartup() {
   const banner = document.getElementById('db-banner');
   if(banner) banner.style.display = 'flex';
+
+  // Safety timeout — hide banner after 12s no matter what
+  var bannerTimeout = setTimeout(function(){
+    if(banner) banner.style.display = 'none';
+    console.warn('DB startup timed out — continuing with cached/hardcoded data');
+  }, 12000);
+
   try { await checkAndInitDB(); } catch(e) { console.warn('checkAndInitDB error (non-fatal):', e); }
   // Load youth names FIRST so the ynToName map in loadAllWorkshopAttendance can resolve them
   try { await loadYouthData(); } catch(e) { console.warn('loadYouthData error (non-fatal):', e); }
@@ -4452,6 +4468,8 @@ async function dbStartup() {
       loadAllWorkshopAttendance()
     ]);
   } catch(e) { console.warn('DB load error (non-fatal):', e); }
+
+  clearTimeout(bannerTimeout);
   if(banner) banner.style.display = 'none';
   console.log('DB startup complete');
   // Re-render current view now that all DB data is loaded

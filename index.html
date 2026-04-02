@@ -4446,32 +4446,47 @@ async function dbStartup() {
   if(banner) banner.style.display = 'flex';
 
   // Dim the Enter Dashboard button while loading
-  var loginBtn = document.querySelector('.login-btn');
-  if(loginBtn && loginBtn.textContent.indexOf('Enter Dashboard') >= 0) {
-    loginBtn.style.opacity = '0.5';
-    loginBtn.style.pointerEvents = 'none';
-    loginBtn.textContent = 'Loading…';
+  function setLoginBtn(text, enabled) {
+    var btn = document.querySelector('button.login-btn');
+    if(!btn || btn.textContent === 'Enter Admin →') return;
+    btn.style.opacity = enabled ? '' : '0.5';
+    btn.style.pointerEvents = enabled ? '' : 'none';
+    btn.textContent = text;
   }
+  setLoginBtn('Loading…', false);
 
-  // Safety timeout — hide banner after 45s no matter what (handles slow Supabase days)
+  // Safety timeout — always unlock button and hide banner after 60s
   var bannerTimeout = setTimeout(function(){
     if(banner) banner.style.display = 'none';
+    setLoginBtn('Enter Dashboard →', true);
     console.warn('DB startup timed out — continuing with cached/hardcoded data');
-  }, 45000);
+  }, 60000);
 
-  try { await checkAndInitDB(); } catch(e) { console.warn('checkAndInitDB error (non-fatal):', e); }
-  // Load youth names FIRST so the ynToName map in loadAllWorkshopAttendance can resolve them
-  try { await loadYouthData(); } catch(e) { console.warn('loadYouthData error (non-fatal):', e); }
-  // Always rebuild dropdown with stable yn_ keys (replaces hardcoded y_N indices in HTML)
-  rebuildYouthLoginDropdown();
-  // Now load everything else in parallel
+  // ── PRIORITY: load credentials first so login works ASAP ──
+  var statusEl = document.getElementById('db-status');
   try {
+    if(statusEl) statusEl.textContent = 'Loading credentials…';
+    await loadCredentials();
+    // Unlock the button as soon as credentials are ready
+    setLoginBtn('Enter Dashboard →', true);
+    if(statusEl) statusEl.textContent = 'Loading data…';
+  } catch(e) { console.warn('loadCredentials error:', e); }
+
+  // Run the rest in parallel — these don't block login
+  try { await checkAndInitDB(); } catch(e) { console.warn('checkAndInitDB error (non-fatal):', e); }
+  try {
+    if(statusEl) statusEl.textContent = 'Loading profiles…';
+    await loadYouthData();
+  } catch(e) { console.warn('loadYouthData error (non-fatal):', e); }
+  rebuildYouthLoginDropdown();
+
+  try {
+    if(statusEl) statusEl.textContent = 'Loading program data…';
     await Promise.all([
       loadEventRegistrations(),
       loadProgramData(),
       loadComplianceData(),
       loadPendingEntries(),
-      loadCredentials(),
       loadScrabbleData(),
       loadAllWorkshopAttendance()
     ]);
@@ -4479,13 +4494,7 @@ async function dbStartup() {
 
   clearTimeout(bannerTimeout);
   if(banner) banner.style.display = 'none';
-  // Restore Enter Dashboard button
-  var loginBtn = document.querySelector('.login-btn');
-  if(loginBtn && loginBtn.textContent === 'Loading…') {
-    loginBtn.style.opacity = '';
-    loginBtn.style.pointerEvents = '';
-    loginBtn.textContent = 'Enter Dashboard →';
-  }
+  setLoginBtn('Enter Dashboard →', true);
   console.log('DB startup complete');
   // Re-render current view now that all DB data is loaded
   if(currentRole === 'youth' && youthState && youthState.name){

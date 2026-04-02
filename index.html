@@ -3707,23 +3707,22 @@ function addNewPlayer(){
 }
 
 function rebuildYouthLoginDropdown(){
-  // Rebuild the hidden native select used by the credential system
+  // Stable ID for a youth name: yn_firstname_lastname (lowercase, no special chars)
+  function youthId(name){ return 'yn_' + name.toLowerCase().replace(/\s+/g,'_').replace(/[^a-z0-9_]/g,''); }
+
   var nativeSelect = document.getElementById('setup-name-select');
   if(nativeSelect){
-    // Collect current adult options
     var adultOptions = [];
     Array.from(nativeSelect.options).forEach(function(o){
-      if(!o.value.startsWith('y_')) adultOptions.push({value:o.value, text:o.text});
+      if(!o.value.startsWith('y_') && !o.value.startsWith('yn_')) adultOptions.push({value:o.value, text:o.text});
     });
     nativeSelect.innerHTML = '<option value="">— Select your name —</option>';
-    // Youth options (sorted, re-indexed)
-    ALL_YOUTH_NAMES.sort().forEach(function(name, i){
+    ALL_YOUTH_NAMES.slice().sort().forEach(function(name){
       var opt = document.createElement('option');
-      opt.value = 'y_' + i;
+      opt.value = youthId(name);
       opt.textContent = name;
       nativeSelect.appendChild(opt);
     });
-    // Re-add adult options
     adultOptions.forEach(function(o){
       var opt = document.createElement('option');
       opt.value = o.value;
@@ -3732,29 +3731,25 @@ function rebuildYouthLoginDropdown(){
     });
   }
 
-  // Rebuild the visible custom dropdown list (cdd-list)
   var cddList = document.getElementById('cdd-list');
   if(cddList){
-    // Remove existing youth items and group label
     var toRemove = [];
     cddList.querySelectorAll('.cdd-group-label, .cdd-item').forEach(function(el){
-      if(!el.getAttribute('data-value') || el.getAttribute('data-value').startsWith('y_')){
-        toRemove.push(el);
-      }
+      var v = el.getAttribute('data-value') || '';
+      if(!v || v.startsWith('y_') || v.startsWith('yn_')) toRemove.push(el);
     });
     toRemove.forEach(function(el){ el.remove(); });
 
-    // Re-insert youth group at top
     var firstItem = cddList.firstChild;
     var youthLabel = document.createElement('div');
     youthLabel.className = 'cdd-group-label';
     youthLabel.textContent = '🌱 Youth Members';
     cddList.insertBefore(youthLabel, firstItem);
 
-    ALL_YOUTH_NAMES.sort().forEach(function(name, i){
+    ALL_YOUTH_NAMES.slice().sort().forEach(function(name){
       var item = document.createElement('div');
       item.className = 'cdd-item';
-      item.setAttribute('data-value', 'y_' + i);
+      item.setAttribute('data-value', youthId(name));
       item.setAttribute('onclick', 'selectCustomName(this)');
       item.textContent = name;
       cddList.insertBefore(item, firstItem);
@@ -4451,6 +4446,8 @@ async function dbStartup() {
   try { await checkAndInitDB(); } catch(e) { console.warn('checkAndInitDB error (non-fatal):', e); }
   // Load youth names FIRST so the ynToName map in loadAllWorkshopAttendance can resolve them
   try { await loadYouthData(); } catch(e) { console.warn('loadYouthData error (non-fatal):', e); }
+  // Always rebuild dropdown with stable yn_ keys (replaces hardcoded y_N indices in HTML)
+  rebuildYouthLoginDropdown();
   // Now load everything else in parallel
   try {
     await Promise.all([
@@ -5046,11 +5043,18 @@ function initiateSetup() {
   if(taken) { errEl.textContent = 'That credential is already in use.'; return; }
 
   // Determine role and name from selection
-  var isYouth = nameSelect.startsWith('y_');
+  var isYouth = nameSelect.startsWith('yn_') || nameSelect.startsWith('y_');
   var name, role, id;
   if(isYouth) {
-    var idx = parseInt(nameSelect.replace('y_',''));
-    name = ALL_YOUTH_NAMES[idx];
+    // Find the exact name from ALL_YOUTH_NAMES whose stable id matches
+    function youthId(n){ return 'yn_' + n.toLowerCase().replace(/\s+/g,'_').replace(/[^a-z0-9_]/g,''); }
+    name = ALL_YOUTH_NAMES.find(function(n){ return youthId(n) === nameSelect; });
+    if(!name && nameSelect.startsWith('y_')) {
+      // Legacy index fallback — use sorted array to match old dropdown order
+      var idx = parseInt(nameSelect.replace('y_',''));
+      name = ALL_YOUTH_NAMES.slice().sort()[idx];
+    }
+    if(!name) { errEl.textContent = 'Could not identify selected name. Please try again.'; return; }
     role = 'youth';
     id   = nameSelect;
   } else {

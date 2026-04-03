@@ -923,7 +923,7 @@ body{font-family:"DM Sans",sans-serif;background:var(--navy);color:var(--text-ma
 
       <div id="tab-workshop-tracker" style="display:none">
         <div class="section-box"><div class="section-title">📋 Full 2026 Workshop Schedule</div>
-          <table class="data-table"><thead><tr><th>#</th><th>Workshop</th><th>Facilitator(s)</th><th>Volunteers</th><th>Date</th><th>Status</th><th>Attendance</th></tr></thead><tbody id="admin-ws-tbody"></tbody></table>
+          <table class="data-table"><thead><tr><th>#</th><th>Workshop</th><th>Facilitator(s)</th><th>Volunteers</th><th>Date</th><th>Status</th><th>Attendance</th><th>Staff</th></tr></thead><tbody id="admin-ws-tbody"></tbody></table>
         </div>
       </div>
       <div id="tab-facilitators" style="display:none">
@@ -1654,13 +1654,25 @@ function renderAdmin(){
   var wtb=eid('admin-ws-tbody');
   if(wtb)wtb.innerHTML=WORKSHOPS.map(function(w){
     var cnt=w.conducted?allNames.filter(function(n){return (EL_YOUTH[n]||[]).includes(w.id);}).length:'—';
-    var vols=(w.volunteers||[]).join(', ')||'—';
-    return '<tr><td>'+w.id+'</td><td>'+w.name+'</td>'+
-      '<td style="font-size:.75rem">'+w.facilitators.join(', ')+'</td>'+
-      '<td style="font-size:.75rem;color:var(--text-muted)">'+vols+'</td>'+
+    // Derive facilitators and volunteers dynamically from FAC_PROFILES
+    var facNames = w.facilitators.slice(); // start with hardcoded facilitators
+    var volNames = (w.volunteers||[]).slice(); // start with hardcoded volunteers
+    // Add any adults who marked themselves as facilitated/volunteered
+    Object.values(FAC_PROFILES).forEach(function(p){
+      if(p.facilitated && p.facilitated.indexOf(w.id) >= 0 && facNames.indexOf(p.name) < 0) facNames.push(p.name);
+      if(p.volunteered && p.volunteered.indexOf(w.id) >= 0 && volNames.indexOf(p.name) < 0) volNames.push(p.name);
+    });
+    var facStr = facNames.join(', ') || '—';
+    var volStr = volNames.join(', ') || '—';
+    return '<tr id="ws-row-'+w.id+'">'+
+      '<td>'+w.id+'</td><td>'+w.name+'</td>'+
+      '<td style="font-size:.75rem" id="ws-fac-'+w.id+'">'+facStr+'</td>'+
+      '<td style="font-size:.75rem;color:var(--text-muted)" id="ws-vol-'+w.id+'">'+volStr+'</td>'+
       '<td style="font-size:.75rem">'+w.date+'</td>'+
       '<td>'+(w.cancelled?'<span class="pill pill-red">Cancelled</span>':w.conducted?'<span class="pill pill-green">Done</span>':'<button onclick="markWorkshopDone('+w.id+')" style="padding:3px 10px;border-radius:6px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.06);color:var(--text-muted);font-size:.72rem;cursor:pointer;font-family:DM Sans,sans-serif">Mark Done</button>')+'</td>'+
-      '<td>'+(typeof cnt==='number'?cnt+' youth':'—')+'</td></tr>';
+      '<td>'+(typeof cnt==='number'?cnt+' youth':'—')+'</td>'+
+      '<td><button onclick="openWsStaffEdit('+w.id+')" style="padding:3px 10px;border-radius:6px;border:1px solid rgba(29,127,212,.4);background:rgba(29,127,212,.08);color:var(--ya-blue);font-size:.72rem;cursor:pointer;font-family:DM Sans,sans-serif">✏️ Edit</button></td>'+
+      '</tr>';
   }).join('');
   var ftb=eid('admin-fac-tbody');
   if(ftb){
@@ -3272,6 +3284,126 @@ function markWorkshopDone(wsId) {
   if(CONDUCTED_DATES.indexOf(normDate) < 0) CONDUCTED_DATES.push(normDate);
   renderAdmin();
   alert('Workshop #'+wsId+' marked as Done! You can now enter attendance in the Youth Metrics tab.');
+}
+
+function openWsStaffEdit(wsId) {
+  var ws = WORKSHOPS.find(function(w){ return w.id === wsId; });
+  if(!ws) return;
+
+  // Build current fac/vol lists from FAC_PROFILES
+  var facNames = ws.facilitators.slice();
+  var volNames = (ws.volunteers||[]).slice();
+  Object.values(FAC_PROFILES).forEach(function(p){
+    if(p.facilitated && p.facilitated.indexOf(wsId) >= 0 && facNames.indexOf(p.name) < 0) facNames.push(p.name);
+    if(p.volunteered && p.volunteered.indexOf(wsId) >= 0 && volNames.indexOf(p.name) < 0) volNames.push(p.name);
+  });
+
+  var allAdults = Object.values(FAC_PROFILES).map(function(p){return p.name;}).sort();
+
+  var modal = document.createElement('div');
+  modal.id = 'ws-staff-modal';
+  modal.style.cssText = 'position:fixed;inset:0;z-index:2000;background:rgba(0,0,0,.75);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;padding:20px';
+  modal.innerHTML =
+    '<div style="background:var(--card-bg);border:1px solid var(--card-border);border-radius:16px;padding:24px;width:100%;max-width:480px;max-height:90vh;overflow-y:auto">'+
+    '<div style="font-family:Nunito,sans-serif;font-size:1.05rem;font-weight:900;margin-bottom:4px">✏️ Edit Staff — #'+wsId+' '+ws.name+'</div>'+
+    '<div style="font-size:.78rem;color:var(--text-muted);margin-bottom:18px">'+ws.date+'</div>'+
+
+    '<div style="font-size:.75rem;font-weight:700;color:var(--ya-orange);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">🎤 Facilitators</div>'+
+    '<div id="ws-fac-list" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px">'+
+      facNames.map(function(n){ return '<span style="display:flex;align-items:center;gap:4px;background:rgba(232,98,10,.12);border:1px solid rgba(232,98,10,.3);border-radius:20px;padding:3px 10px;font-size:.78rem">'+n+' <button onclick="wsRemoveStaff(\'fac\',\''+n.replace(/'/g,"\\'")+'\')" style="border:none;background:none;color:var(--badge-red);cursor:pointer;font-size:.85rem;padding:0;line-height:1">×</button></span>'; }).join('')+
+    '</div>'+
+    '<div style="display:flex;gap:8px;margin-bottom:18px">'+
+      '<select id="ws-add-fac-sel" style="flex:1;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.15);border-radius:8px;padding:7px 10px;color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.82rem">'+
+        '<option value="">— Add facilitator —</option>'+
+        allAdults.map(function(n){ return '<option value="'+n+'">'+n+'</option>'; }).join('')+
+      '</select>'+
+      '<button onclick="wsAddStaff(\'fac\')" style="padding:7px 14px;border-radius:8px;border:none;background:var(--ya-orange);color:#fff;font-family:Nunito,sans-serif;font-weight:800;font-size:.8rem;cursor:pointer">Add</button>'+
+    '</div>'+
+
+    '<div style="font-size:.75rem;font-weight:700;color:var(--ya-blue);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">🤝 Volunteers</div>'+
+    '<div id="ws-vol-list" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px">'+
+      volNames.map(function(n){ return '<span style="display:flex;align-items:center;gap:4px;background:rgba(29,127,212,.12);border:1px solid rgba(29,127,212,.3);border-radius:20px;padding:3px 10px;font-size:.78rem">'+n+' <button onclick="wsRemoveStaff(\'vol\',\''+n.replace(/'/g,"\\'")+'\')" style="border:none;background:none;color:var(--badge-red);cursor:pointer;font-size:.85rem;padding:0;line-height:1">×</button></span>'; }).join('')+
+    '</div>'+
+    '<div style="display:flex;gap:8px;margin-bottom:20px">'+
+      '<select id="ws-add-vol-sel" style="flex:1;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.15);border-radius:8px;padding:7px 10px;color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.82rem">'+
+        '<option value="">— Add volunteer —</option>'+
+        allAdults.map(function(n){ return '<option value="'+n+'">'+n+'</option>'; }).join('')+
+      '</select>'+
+      '<button onclick="wsAddStaff(\'vol\')" style="padding:7px 14px;border-radius:8px;border:none;background:var(--ya-blue);color:#fff;font-family:Nunito,sans-serif;font-weight:800;font-size:.8rem;cursor:pointer">Add</button>'+
+    '</div>'+
+
+    '<div style="display:flex;gap:8px;justify-content:flex-end">'+
+      '<button onclick="wsStaffSave('+wsId+')" style="padding:9px 20px;border-radius:9px;border:none;background:var(--ya-teal);color:#fff;font-family:Nunito,sans-serif;font-weight:800;font-size:.88rem;cursor:pointer">💾 Save</button>'+
+      '<button onclick="document.getElementById(\'ws-staff-modal\').remove()" style="padding:9px 16px;border-radius:9px;border:1px solid rgba(255,255,255,.15);background:transparent;color:var(--text-muted);font-family:DM Sans,sans-serif;font-size:.85rem;cursor:pointer">Cancel</button>'+
+    '</div>'+
+    '</div>';
+  modal._wsId = wsId;
+  document.body.appendChild(modal);
+}
+
+function wsAddStaff(type) {
+  var sel = document.getElementById('ws-add-'+(type==='fac'?'fac':'vol')+'-sel');
+  var list = document.getElementById('ws-'+(type==='fac'?'fac':'vol')+'-list');
+  if(!sel || !sel.value || !list) return;
+  var name = sel.value;
+  // Check not already in list
+  var existing = Array.from(list.querySelectorAll('span')).map(function(s){ return s.textContent.replace('×','').trim(); });
+  if(existing.indexOf(name) >= 0) { sel.value = ''; return; }
+  var color = type==='fac' ? 'rgba(232,98,10' : 'rgba(29,127,212';
+  var span = document.createElement('span');
+  span.style.cssText = 'display:flex;align-items:center;gap:4px;background:'+color+',.12);border:1px solid '+color+',.3);border-radius:20px;padding:3px 10px;font-size:.78rem';
+  span.innerHTML = name+' <button onclick="wsRemoveStaff(\''+type+'\',\''+name.replace(/'/g,"\\'")+'\')" style="border:none;background:none;color:var(--badge-red);cursor:pointer;font-size:.85rem;padding:0;line-height:1">×</button>';
+  list.appendChild(span);
+  sel.value = '';
+}
+
+function wsRemoveStaff(type, name) {
+  var list = document.getElementById('ws-'+(type==='fac'?'fac':'vol')+'-list');
+  if(!list) return;
+  Array.from(list.querySelectorAll('span')).forEach(function(s){
+    if(s.textContent.replace('×','').trim() === name) s.remove();
+  });
+}
+
+function wsStaffSave(wsId) {
+  var ws = WORKSHOPS.find(function(w){ return w.id === wsId; });
+  if(!ws) return;
+
+  var facList = document.getElementById('ws-fac-list');
+  var volList = document.getElementById('ws-vol-list');
+  var newFac = facList ? Array.from(facList.querySelectorAll('span')).map(function(s){ return s.textContent.replace('×','').trim(); }) : [];
+  var newVol = volList ? Array.from(volList.querySelectorAll('span')).map(function(s){ return s.textContent.replace('×','').trim(); }) : [];
+
+  // Update WORKSHOPS hardcoded facilitators/volunteers
+  ws.facilitators = newFac;
+  ws.volunteers = newVol;
+
+  // Update FAC_PROFILES to reflect changes
+  Object.keys(FAC_PROFILES).forEach(function(key){
+    var p = FAC_PROFILES[key];
+    if(newFac.indexOf(p.name) >= 0){
+      if(p.facilitated.indexOf(wsId) < 0) p.facilitated.push(wsId);
+      p.volunteered = p.volunteered.filter(function(id){ return id !== wsId; });
+    } else if(newVol.indexOf(p.name) >= 0){
+      if(p.volunteered.indexOf(wsId) < 0) p.volunteered.push(wsId);
+      p.facilitated = p.facilitated.filter(function(id){ return id !== wsId; });
+    } else {
+      p.facilitated = p.facilitated.filter(function(id){ return id !== wsId; });
+      p.volunteered = p.volunteered.filter(function(id){ return id !== wsId; });
+    }
+  });
+
+  // Save each affected adult's profile
+  Object.values(FAC_PROFILES).forEach(function(p){
+    if(newFac.indexOf(p.name) >= 0 || newVol.indexOf(p.name) >= 0){
+      adultState = {name:p.name, facilitated:p.facilitated, volunteered:p.volunteered, hours:p.hours, grandfathered:p.grandfathered||false, isAdmin:p.isAdmin||false};
+      saveAdultProfile();
+    }
+  });
+  adultState = null; // reset
+
+  document.getElementById('ws-staff-modal').remove();
+  renderAdmin();
 }
 
 function renderYouthAttendanceTable(){

@@ -5620,7 +5620,18 @@ function doLogin(id, role) {
     // Default to volunteer view — admin can switch via the toggle button
     var toggleEl = document.getElementById('admin-volunteer-toggle');
     if(toggleEl) toggleEl.style.display = 'block';
-    adminViewMode = 'volunteer'; // start in volunteer view, not admin
+    adminViewMode = 'volunteer';
+    // Set toggle button to "Switch to Admin View" state
+    var toggleIcon = document.getElementById('admin-toggle-icon');
+    var toggleLabel = document.getElementById('admin-toggle-label');
+    var toggleBtn = document.getElementById('admin-toggle-btn');
+    if(toggleIcon) toggleIcon.textContent = '⚡';
+    if(toggleLabel) toggleLabel.textContent = 'Switch to Admin View';
+    if(toggleBtn){
+      toggleBtn.style.borderColor = 'rgba(245,166,35,.3)';
+      toggleBtn.style.background = 'rgba(245,166,35,.08)';
+      toggleBtn.style.color = 'var(--ya-gold)';
+    }
   }
 
   // Build nav and render
@@ -5640,7 +5651,8 @@ function doLogin(id, role) {
     ],
     admin:[{id:'admin-dashboard',icon:'⚡',label:'Overview'}]
   };
-  var navKey = currentRole === 'admin' ? 'admin' : currentRole;
+  // Admin defaults to volunteer view — use adult nav
+  var navKey = currentRole === 'admin' ? 'adult' : currentRole;
   var navEl = document.getElementById('nav-links');
   navEl.innerHTML = '';
   navs[navKey].forEach(function(n) {

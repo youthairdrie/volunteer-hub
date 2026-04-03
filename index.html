@@ -2613,10 +2613,20 @@ function renderProgramSessions(tabId){
         }
       }
     } else {
-      var pp=document.createElement('span');
-      pp.className=imVol?'pill pill-green':'pill pill-grey';
-      pp.textContent=imVol?'Volunteered':'—';
-      btns.appendChild(pp);
+      // Past session — show status pill + allow marking volunteered retroactively
+      if(imVol){
+        var pp=document.createElement('span');
+        pp.className='pill pill-green';
+        pp.textContent='Volunteered';
+        btns.appendChild(pp);
+      } else {
+        var retroBtn=document.createElement('button');
+        retroBtn.className='ws-btn';
+        retroBtn.style.cssText='border-color:var(--ya-teal);color:var(--ya-teal);font-size:.75rem';
+        retroBtn.textContent='+ Mark Volunteered';
+        retroBtn.onclick=function(){volunteerForProgram(tabId,d,retroBtn);};
+        btns.appendChild(retroBtn);
+      }
     }
     row.appendChild(btns);
     return row;
@@ -4213,7 +4223,13 @@ async function saveEventRegistration(eventId, youthName) {
 }
 
 async function saveProgramVolunteer(programId, sessionDate, adultName) {
-  await dbPost('program_volunteers', { program_id: programId, session_date: sessionDate, adult_name: adultName });
+  const r = await fetch(SUPA_URL + '/rest/v1/program_volunteers?on_conflict=program_id,session_date,adult_name', {
+    method: 'POST',
+    headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY, 'Content-Type': 'application/json', 'Prefer': 'resolution=merge-duplicates,return=minimal' },
+    body: JSON.stringify({ program_id: programId, session_date: sessionDate, adult_name: adultName })
+  });
+  if(!r.ok) { const e = await r.text(); console.warn('saveProgramVolunteer failed:', r.status, e); }
+  else console.log('Program volunteer saved:', adultName, sessionDate);
 }
 
 async function saveProgramCancellation(programId, sessionDate, reason) {

@@ -5064,12 +5064,16 @@ function initiateSetup() {
   if(!credInput)  { errEl.textContent = 'Please enter your credential.'; return; }
   if(credInput.length < 5) { errEl.textContent = 'Credential too short. Use F+mmddyy (e.g. )'; return; }
 
-  // Check not already taken
-  var taken = false;
+  // Check not already taken — if it is, just log them in directly
+  var existingMatch = null;
   Object.keys(storedCredentials).forEach(function(id) {
-    if(storedCredentials[id].credential.toUpperCase() === credInput) taken = true;
+    if(storedCredentials[id].credential.toUpperCase() === credInput) existingMatch = storedCredentials[id];
   });
-  if(taken) { errEl.textContent = 'That credential is already in use.'; return; }
+  if(existingMatch) {
+    // Credential already registered — log in directly instead of showing error
+    doLogin(existingMatch.id, existingMatch.role);
+    return;
+  }
 
   // Determine role and name from selection
   var isYouth = nameSelect.startsWith('yn_') || nameSelect.startsWith('y_');

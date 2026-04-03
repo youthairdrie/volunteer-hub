@@ -2682,12 +2682,15 @@ function volunteerForProgram(tabId, dateStr, btn){
   var prog=getProgramData(tabId);
   if(!prog||!adultState) return;
   var name=adultState.name;
+  // Use the PROGRAMS_DATA key (e.g. "scrabble_2026") not prog.id ("prog_scrabble_2026")
+  var map={'scrabble-2026':'scrabble_2026','garden-2026':'garden_2026','scrabble-2026-27':'scrabble_2026_27'};
+  var programKey = map[tabId] || prog.id;
   prog.adult_volunteers=prog.adult_volunteers||{};
   prog.adult_volunteers[dateStr]=prog.adult_volunteers[dateStr]||[];
   if(prog.adult_volunteers[dateStr].indexOf(name)<0){
     prog.adult_volunteers[dateStr].push(name);
   }
-  saveProgramVolunteer(prog.id, dateStr, name); // persist to Supabase
+  saveProgramVolunteer(programKey, dateStr, name); // persist to Supabase
   btn.textContent='✔ Volunteering!';
   btn.className='ws-btn active-att';
   btn.disabled=true;
@@ -2697,9 +2700,11 @@ function volunteerForProgram(tabId, dateStr, btn){
 function cancelProgramSession(tabId, dateStr, btn){
   var prog=getProgramData(tabId);
   if(!prog) return;
+  var map={'scrabble-2026':'scrabble_2026','garden-2026':'garden_2026','scrabble-2026-27':'scrabble_2026_27'};
+  var programKey = map[tabId] || prog.id;
   prog.cancellations=prog.cancellations||[];
   if(prog.cancellations.indexOf(dateStr)<0) prog.cancellations.push(dateStr);
-  saveProgramCancellation(prog.id, dateStr, ''); // persist to Supabase
+  saveProgramCancellation(programKey, dateStr, ''); // persist to Supabase
   renderProgramSessions(tabId);
 }
 

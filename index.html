@@ -5164,9 +5164,26 @@ function attemptAdminLogin() {
 // ── CORE LOGIN HANDLER ──
 function doLogin(id, role) {
   if(role === 'youth') {
-    var idx = parseInt(id.replace('y_',''));
-    var selectedName = ALL_YOUTH_NAMES[idx];
-    if(!selectedName) return;
+    var selectedName = null;
+    if(id.startsWith('yn_')) {
+      // Stable key — find name from ALL_YOUTH_NAMES
+      selectedName = ALL_YOUTH_NAMES.find(function(n){
+        return 'yn_' + n.toLowerCase().replace(/\s+/g,'_').replace(/[^a-z0-9_]/g,'') === id;
+      }) || null;
+    }
+    if(!selectedName && id.startsWith('y_')) {
+      // Legacy index key — try index lookup but also check storedCredentials for the name
+      var idx = parseInt(id.replace('y_',''));
+      selectedName = ALL_YOUTH_NAMES.slice().sort()[idx] || null;
+    }
+    // Last resort — look up name directly from storedCredentials
+    if(!selectedName && storedCredentials[id]) {
+      selectedName = storedCredentials[id].name || null;
+    }
+    if(!selectedName) {
+      console.warn('doLogin: could not resolve name for id', id);
+      return;
+    }
     var attendedWs = EL_YOUTH[selectedName] || [];
     var preloadedHrs = YOUTH_HOURS[selectedName] || 0;
     youthState = {name:selectedName, workshops:new Set(attendedWs),

@@ -1450,11 +1450,31 @@ function renderAdult(){
   var cb2=document.getElementById('adult-cert-banner-ws');
   if(cb1)cb1.innerHTML=facCertBannerHTML(cnt,prof.grandfathered);
   if(cb2)cb2.innerHTML=facCertBannerHTML(cnt,prof.grandfathered);
+
+  // ── Calculate total volunteer hours dynamically ──
+  var wsHrs = (fac.length + vol.length) * 2; // 2 hrs per workshop facilitated or volunteered
+  var scrHrs = ADULT_SCRABBLE_TOTALS[prof.name] || 0; // scrabble volunteer hours
+  // Program volunteer sessions (scrabble club dates volunteered for)
+  var progHrs = 0;
+  Object.values(PROGRAMS_DATA).forEach(function(prog){
+    var myDates = Object.keys(prog.adult_volunteers||{}).filter(function(d){
+      return (prog.adult_volunteers[d]||[]).indexOf(prof.name) >= 0;
+    });
+    progHrs += myDates.length * 2; // 2 hrs per session
+  });
+  var totalHrs = Math.round((wsHrs + scrHrs + progHrs) * 10) / 10;
+  // Show base (pre-2026) hours separately if set
+  var baseHrs = prof.hours || 0;
+  var hrsDisplay = baseHrs > 0 ? baseHrs + totalHrs : totalHrs;
+  var hrsMeta = baseHrs > 0
+    ? baseHrs+' prior · '+wsHrs+' workshops · '+scrHrs.toFixed(1)+' scrabble'
+    : wsHrs+' workshops · '+scrHrs.toFixed(1)+' scrabble · '+progHrs+' program';
+
   var sc=document.getElementById('adult-stat-cards');
   if(sc)sc.innerHTML=
     '<div class="stat-card" style="--accent-color:var(--ya-orange)"><div class="stat-label">Workshops Facilitated</div><div class="stat-value">'+cnt+'</div><div class="stat-meta">2026 series</div><div class="stat-icon">🎤</div></div>'+
     '<div class="stat-card" style="--accent-color:var(--ya-blue)"><div class="stat-label">Workshops Volunteered</div><div class="stat-value">'+vol.length+'</div><div class="stat-meta">Support roles</div><div class="stat-icon">🤝</div></div>'+
-    '<div class="stat-card" style="--accent-color:var(--ya-teal)"><div class="stat-label">Volunteer Hours</div><div class="stat-value">'+prof.hours+'</div><div class="stat-meta">This year</div><div class="stat-icon">⏱</div></div>'+
+    '<div class="stat-card" style="--accent-color:var(--ya-teal)"><div class="stat-label">Volunteer Hours</div><div class="stat-value">'+hrsDisplay+'</div><div class="stat-meta">'+hrsMeta+'</div><div class="stat-icon">⏱</div></div>'+
     '<div class="stat-card" style="--accent-color:#22c55e"><div class="stat-label">Facilitator Level</div><div class="stat-value" style="font-size:'+(lvl>0?'1.8rem':'1.1rem')+';padding-top:'+(lvl>0?'3px':'6px')+'">'+(prof.grandfathered?'Level 3 ⭐':lvl>0?'Level '+lvl:'In Progress')+'</div><div class="stat-meta">EL Certified</div><div class="stat-icon">🏅</div></div>';
   var ul=document.getElementById('adult-upcoming-list');
   if(ul)ul.innerHTML=WORKSHOPS.filter(function(w){return !w.cancelled&&!w.conducted;}).slice(0,8).map(function(w){

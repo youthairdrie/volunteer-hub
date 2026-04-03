@@ -3821,11 +3821,7 @@ function addNewPlayer(){
 
   // Check for duplicates (case-insensitive)
   var existing = ALL_YOUTH_NAMES.find(function(n){ return n.toLowerCase() === name.toLowerCase(); });
-  if(existing){ fb.innerHTML = '<span style="color:var(--badge-amber)">⚠ "'+existing+'" is already in the list.</span>'; return; }
-
-  // Add to master youth names list
-  ALL_YOUTH_NAMES.push(name);
-  ALL_YOUTH_NAMES.sort();
+  if(existing || SCRABBLE_SESSIONS[name]){ fb.innerHTML = '<span style="color:var(--badge-amber)">⚠ "'+name+'" is already in the list.</span>'; return; }
 
   // Add to scrabble tracking (empty session history)
   SCRABBLE_SESSIONS[name] = {};
@@ -3834,28 +3830,34 @@ function addNewPlayer(){
   // Add age if provided
   if(age) YOUTH_AGES[name] = age;
 
-  // Add compliance placeholder
-  YOUTH_COMPLIANCE[name] = { waiver_date:'', waiver_on_file:false, photo_date:'', photo_on_file:false };
-
-  // If Emerging Leaders, add to EL_YOUTH with empty workshop array
   if(type === 'el'){
+    // Full youth member — add to ALL_YOUTH_NAMES, EL_YOUTH, compliance, login dropdown
+    ALL_YOUTH_NAMES.push(name);
+    ALL_YOUTH_NAMES.sort();
     EL_YOUTH[name] = [];
+    YOUTH_COMPLIANCE[name] = { waiver_date:'', waiver_on_file:false, photo_date:'', photo_on_file:false };
+    YOUTH_HOURS[name] = YOUTH_HOURS[name] || 0;
+    rebuildYouthLoginDropdown();
+    saveYouthToDB(name, age, []);
   }
 
-  // Add volunteer hours placeholder
-  YOUTH_HOURS[name] = YOUTH_HOURS[name] || 0;
+  // Save a placeholder row to scrabble_sessions DB so player persists across reload
+  // Use a special '_registered' date with 0 points as a presence marker
+  var qKey = QUARTER_STATE_KEY.replace('_closed','');
+  fetch(SUPA_URL + '/rest/v1/scrabble_sessions?on_conflict=player_name,session_date,quarter', {
+    method: 'POST',
+    headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY, 'Content-Type': 'application/json', 'Prefer': 'resolution=merge-duplicates,return=minimal' },
+    body: JSON.stringify({ player_name: name, session_date: '_registered', points: 0, quarter: qKey })
+  }).then(function(r){
+    if(r.ok) console.log('Player registered in DB:', name);
+    else r.text().then(function(e){ console.warn('Failed to register player:', e); });
+  });
 
-  // Rebuild the login dropdown (custom dropdown list)
-  rebuildYouthLoginDropdown();
-
-  fb.innerHTML = '<span style="color:var(--ya-teal)">✔ <strong>'+name+'</strong> added! They will appear in the login dropdown immediately.</span>';
+  fb.innerHTML = '<span style="color:var(--ya-teal)">✔ <strong>'+name+'</strong> added to Scrabble & Games Club!</span>';
   nameEl.value = '';
   ageEl.value  = '';
 
-  // Save to Supabase so name persists across reloads
-  saveYouthToDB(name, age, type === 'el' ? [] : null);
-
-  // Re-render table
+  // Re-render
   renderAdminScrabble();
 }
 
@@ -4454,7 +4456,10 @@ async function loadScrabbleData() {
     Object.keys(SCRABBLE_SESSIONS).forEach(function(n){ SCRABBLE_SESSIONS[n] = {}; });
     sessions.forEach(function(row) {
       if(!SCRABBLE_SESSIONS[row.player_name]) SCRABBLE_SESSIONS[row.player_name] = {};
-      SCRABBLE_SESSIONS[row.player_name][row.session_date] = row.points;
+      // Skip _registered placeholder rows (used to persist player registration)
+      if(row.session_date !== '_registered') {
+        SCRABBLE_SESSIONS[row.player_name][row.session_date] = row.points;
+      }
     });
     Object.keys(SCRABBLE_SESSIONS).forEach(function(name) {
       SCRABBLE_TOTALS[name] = Object.values(SCRABBLE_SESSIONS[name]).reduce(function(s,v){return s+v;},0);

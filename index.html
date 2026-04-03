@@ -779,6 +779,7 @@ body{font-family:"DM Sans",sans-serif;background:var(--navy);color:var(--text-ma
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:13px;flex-wrap:wrap;gap:8px">
             <div class="section-title" style="margin-bottom:0">📅 Session History — Attendance &amp; Wins</div>
             <div style="display:flex;gap:8px;align-items:center">
+              <button id="q1-sessions-toggle" onclick="toggleQ1Rows('sessions')" class="ws-btn" style="border-color:rgba(245,166,35,.5);color:var(--ya-gold);font-size:.75rem">📁 Hide Q1</button>
               <button id="scrabble-edit-btn" onclick="toggleScrabbleEditMode()" class="ws-btn" style="border-color:var(--ya-blue);color:var(--ya-blue);font-size:.75rem">✏️ Edit Mode</button>
               <button id="scrabble-save-btn" onclick="saveScrabbleEdits()" style="display:none;padding:6px 16px;border-radius:8px;border:none;background:var(--ya-teal);color:#fff;font-family:Nunito,sans-serif;font-weight:800;font-size:.8rem;cursor:pointer">💾 Save Changes</button>
               <button id="scrabble-cancel-btn" onclick="cancelScrabbleEdits()" style="display:none" class="ws-btn">Cancel</button>
@@ -793,6 +794,7 @@ body{font-family:"DM Sans",sans-serif;background:var(--navy);color:var(--text-ma
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:13px;flex-wrap:wrap;gap:8px">
             <div class="section-title" style="margin-bottom:0">🙌 Adult Volunteer Hours — Scrabble &amp; Games Club</div>
             <div style="display:flex;gap:8px;align-items:center">
+              <button id="q1-hours-toggle" onclick="toggleQ1Rows('hours')" class="ws-btn" style="border-color:rgba(245,166,35,.5);color:var(--ya-gold);font-size:.75rem">📁 Hide Q1</button>
               <button id="adult-vol-edit-btn" onclick="toggleAdultVolEditMode()" class="ws-btn" style="border-color:var(--ya-orange);color:var(--ya-orange);font-size:.75rem">✏️ Edit Hours</button>
               <button id="adult-vol-save-btn" onclick="saveAdultVolEdits()" style="display:none;padding:6px 16px;border-radius:8px;border:none;background:var(--ya-orange);color:#fff;font-family:Nunito,sans-serif;font-weight:800;font-size:.8rem;cursor:pointer">💾 Save Changes</button>
               <button id="adult-vol-cancel-btn" onclick="cancelAdultVolEdits()" style="display:none" class="ws-btn">Cancel</button>
@@ -1820,7 +1822,7 @@ function renderAdminScrabble(){
     sthead.innerHTML='<th>Date</th>'+snames.map(function(n){return '<th style="font-size:.65rem">'+n.split(' ')[0]+'</th>';}).join('')+'<th>Total</th>';
 
     // Q1 rows — dimmed, read-only, shows Q1 archived points
-    var q1Rows = Q1_DATES.map(function(dt){
+    var q1Rows = q1SessionsCollapsed ? '' : Q1_DATES.map(function(dt){
       var cols=snames.map(function(n){
         var pts = Q1_SESSIONS[n] ? Q1_SESSIONS[n][dt] : undefined;
         return '<td style="text-align:center;color:'+(pts?'rgba(0,181,160,.5)':'rgba(255,255,255,.15)')+';font-weight:'+(pts?'600':'400')+'">'+(pts?pts:'—')+'</td>';
@@ -1844,7 +1846,14 @@ function renderAdminScrabble(){
     }).join('');
 
     // Divider row between Q1 and Q2
-    var divider = '<tr><td colspan="'+(snames.length+2)+'" style="padding:4px 8px;background:rgba(245,166,35,.06);font-size:.68rem;color:var(--ya-gold);font-weight:700;letter-spacing:.06em;text-transform:uppercase;border-top:1px solid rgba(245,166,35,.2);border-bottom:1px solid rgba(245,166,35,.2)">↑ Q1 2026 (archived) &nbsp;·&nbsp; Q2 2026 (active) ↓</td></tr>';
+    var q1Summary = '';
+    if(q1SessionsCollapsed) {
+      var q1TopPlayer = Object.entries(Object.keys(Q1_SESSIONS).reduce(function(acc,n){
+        acc[n]=Object.values(Q1_SESSIONS[n]).reduce(function(s,v){return s+v;},0); return acc;
+      },{})).sort(function(a,b){return b[1]-a[1];})[0];
+      q1Summary = q1TopPlayer ? ' · Q1 Winner: '+q1TopPlayer[0]+' ('+q1TopPlayer[1]+' pts)' : '';
+    }
+    var divider = '<tr><td colspan="'+(snames.length+2)+'" style="padding:4px 8px;background:rgba(245,166,35,.06);font-size:.68rem;color:var(--ya-gold);font-weight:700;letter-spacing:.06em;text-transform:uppercase;border-top:1px solid rgba(245,166,35,.2);border-bottom:1px solid rgba(245,166,35,.2)">'+(q1SessionsCollapsed?'📂 Q1 2026 hidden'+q1Summary:'↑ Q1 2026 (archived)')+'&nbsp;·&nbsp;Q2 2026 (active) ↓</td></tr>';
 
     stbody.innerHTML = q1Rows + divider + q2Rows;
 
@@ -2539,7 +2548,7 @@ function renderAdultScrabbleTable(){
   thead.innerHTML='<th>Date</th>'+names.map(function(n){return '<th style="font-size:.65rem">'+n.split(' ')[0]+'</th>';}).join('')+'<th>Total</th>';
 
   // Q1 rows — dimmed, read-only
-  var q1Rows = Q1_DATES.map(function(d){
+  var q1Rows = q1HoursCollapsed ? '' : Q1_DATES.map(function(d){
     var cols=names.map(function(n){
       var hrs=Q1_ADULT_SCRABBLE[n] ? Q1_ADULT_SCRABBLE[n][d] : undefined;
       return '<td style="text-align:center;color:'+(hrs?'rgba(232,98,10,.5)':'rgba(255,255,255,.15)')+';font-weight:'+(hrs?'600':'400')+'">'+(hrs||'—')+'</td>';
@@ -2549,7 +2558,12 @@ function renderAdultScrabbleTable(){
   }).join('');
 
   // Divider
-  var divider='<tr><td colspan="'+(names.length+2)+'" style="padding:4px 8px;background:rgba(245,166,35,.06);font-size:.68rem;color:var(--ya-gold);font-weight:700;letter-spacing:.06em;text-transform:uppercase;border-top:1px solid rgba(245,166,35,.2);border-bottom:1px solid rgba(245,166,35,.2)">↑ Q1 2026 (archived) &nbsp;·&nbsp; Q2 2026 (active) ↓</td></tr>';
+  var q1HrsSummary = '';
+  if(q1HoursCollapsed) {
+    var totalQ1Hrs = Object.values(Q1_ADULT_SCRABBLE).reduce(function(s,v){return s+Object.values(v).reduce(function(a,b){return a+b;},0);},0);
+    q1HrsSummary = totalQ1Hrs ? ' · '+totalQ1Hrs.toFixed(1)+' total hrs' : '';
+  }
+  var divider='<tr><td colspan="'+(names.length+2)+'" style="padding:4px 8px;background:rgba(245,166,35,.06);font-size:.68rem;color:var(--ya-gold);font-weight:700;letter-spacing:.06em;text-transform:uppercase;border-top:1px solid rgba(245,166,35,.2);border-bottom:1px solid rgba(245,166,35,.2)">'+(q1HoursCollapsed?'📂 Q1 2026 hidden'+q1HrsSummary:'↑ Q1 2026 (archived)')+'&nbsp;·&nbsp;Q2 2026 (active) ↓</td></tr>';
 
   // Q2 rows — editable
   var q2Rows = Q2_DATES.map(function(d){
@@ -3488,6 +3502,22 @@ async function saveWordScoresToDB(){
 
 
 var lbEditMode = false;
+var q1SessionsCollapsed = false; // Q1 rows hidden in session history
+var q1HoursCollapsed = false;    // Q1 rows hidden in adult hours
+
+function toggleQ1Rows(table) {
+  if(table === 'sessions') {
+    q1SessionsCollapsed = !q1SessionsCollapsed;
+    var btn = document.getElementById('q1-sessions-toggle');
+    if(btn) { btn.textContent = q1SessionsCollapsed ? '📂 Show Q1' : '📁 Hide Q1'; }
+    renderAdminScrabble();
+  } else {
+    q1HoursCollapsed = !q1HoursCollapsed;
+    var btn = document.getElementById('q1-hours-toggle');
+    if(btn) { btn.textContent = q1HoursCollapsed ? '📂 Show Q1' : '📁 Hide Q1'; }
+    renderAdultScrabbleTable();
+  }
+}
 
 function toggleLbEdit(){
   lbEditMode = !lbEditMode;

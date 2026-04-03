@@ -697,6 +697,7 @@ body{font-family:"DM Sans",sans-serif;background:var(--navy);color:var(--text-ma
       </div>
       <div id="tab-scrabble-admin" style="display:none">
         <div class="cards-grid" id="admin-scrabble-stat-cards"></div>
+        <div id="admin-q1-history-banner" style="margin-bottom:10px"></div>
         <div id="admin-scrabble-trophy-banner"></div>
         <!-- CLOSE OUT QUARTER BUTTON -->
         <div id="admin-closeout-panel" style="margin-bottom:14px"></div>
@@ -1679,6 +1680,30 @@ function renderAdmin(){
 
 function renderAdminScrabble(){
   var eid=function(id){return document.getElementById(id);};
+
+  // ── Q1 Historical banner (load from DB if not cached) ──
+  var q1Banner = eid('admin-q1-history-banner');
+  if(q1Banner && !q1Banner.dataset.loaded) {
+    q1Banner.dataset.loaded = '1';
+    q1Banner.innerHTML = '<div style="font-size:.75rem;color:var(--text-muted);padding:4px 0">Loading Q1 history…</div>';
+    loadQ1History().then(function(data){
+      if(!data || (!data.attend && !data.word)) {
+        q1Banner.innerHTML = '';
+        return;
+      }
+      q1Banner.innerHTML =
+        '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:4px">'+
+        '<div class="trophy-banner" style="flex:1;min-width:220px;background:linear-gradient(135deg,rgba(245,166,35,.12),rgba(232,98,10,.08));border-color:rgba(245,166,35,.3)">'+
+          '<div class="trophy-emoji">🏆</div>'+
+          '<div><div class="trophy-title">Q1 2026 Trophy Winner — '+(data.attend||'—')+'</div>'+
+          '<div class="trophy-sub">'+(data.attendPts||0)+' pts · Q1 closed 🎉</div></div></div>'+
+        '<div class="trophy-banner" style="flex:1;min-width:220px;background:linear-gradient(135deg,rgba(124,131,253,.15),rgba(124,131,253,.07));border-color:rgba(124,131,253,.3)">'+
+          '<div class="trophy-emoji">🔤</div>'+
+          '<div><div class="trophy-title">Q1 2026 Word Game Winner — '+(data.word||'—')+'</div>'+
+          '<div class="trophy-sub">'+(data.wordPts||0)+' pts · Q1 closed 🎉</div></div></div>'+
+        '</div>';
+    });
+  }
 
   // ── Dynamic stat cards ──
   var lb = Object.entries(SCRABBLE_TOTALS).sort(function(a,b){return b[1]-a[1];});
@@ -4291,6 +4316,35 @@ async function saveComplianceRecord(type, name, date, expiry) {
 }
 
 // ── LOAD SCRABBLE DATA FROM SUPABASE ──
+// ── LOAD Q1 HISTORICAL RESULTS ──
+async function loadQ1History() {
+  try {
+    const sessions = await dbGet('scrabble_sessions', 'select=player_name,points&quarter=eq.q1_2026');
+    const scores   = await dbGet('scrabble_scores',   'select=player_name,score&quarter=eq.q1_2026');
+    // Tally attendance points by player
+    var attendTotals = {};
+    (sessions||[]).forEach(function(r){
+      attendTotals[r.player_name] = (attendTotals[r.player_name]||0) + r.points;
+    });
+    // Tally word game scores by player
+    var wordTotals = {};
+    (scores||[]).forEach(function(r){
+      wordTotals[r.player_name] = (wordTotals[r.player_name]||0) + r.score;
+    });
+    var attendSorted = Object.entries(attendTotals).sort(function(a,b){return b[1]-a[1];});
+    var wordSorted   = Object.entries(wordTotals).sort(function(a,b){return b[1]-a[1];});
+    return {
+      attend:    attendSorted[0] ? attendSorted[0][0] : null,
+      attendPts: attendSorted[0] ? attendSorted[0][1] : 0,
+      word:      wordSorted[0]   ? wordSorted[0][0]   : null,
+      wordPts:   wordSorted[0]   ? wordSorted[0][1]   : 0
+    };
+  } catch(e) {
+    console.warn('loadQ1History error:', e);
+    return null;
+  }
+}
+
 async function loadScrabbleData() {
   var qKey = QUARTER_STATE_KEY.replace('_closed',''); // e.g. "q2_2026"
 

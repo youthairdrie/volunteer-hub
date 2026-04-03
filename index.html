@@ -2220,6 +2220,7 @@ window.addEventListener('resize', function(){
 
 function showAdminMobileWarning() {
   var modal = document.createElement('div');
+  modal.id = 'admin-mobile-warning';
   modal.style.cssText = 'position:fixed;inset:0;z-index:3000;background:rgba(0,0,0,.8);display:flex;align-items:center;justify-content:center;padding:20px';
   modal.innerHTML =
     '<div style="background:var(--card-bg);border:1px solid rgba(245,166,35,.4);border-radius:16px;padding:24px;max-width:320px;width:100%;text-align:center">'+
@@ -2227,14 +2228,15 @@ function showAdminMobileWarning() {
     '<div style="font-family:Nunito,sans-serif;font-weight:900;font-size:1.05rem;margin-bottom:8px">Admin View</div>'+
     '<div style="font-size:.83rem;color:var(--text-muted);margin-bottom:20px;line-height:1.5">The Admin view is designed for desktop. Some features like data tables may not display correctly on mobile.</div>'+
     '<div style="display:flex;flex-direction:column;gap:10px">'+
-    '<button onclick="confirmAdminMobile(this.closest(\'div[style]\'))" style="padding:12px;border-radius:10px;border:none;background:linear-gradient(135deg,var(--ya-orange),#c94a00);color:#fff;font-family:Nunito,sans-serif;font-weight:800;font-size:.9rem;cursor:pointer">Continue to Admin ⚡</button>'+
-    '<button onclick="this.closest(\'div[style]\').remove()" style="padding:12px;border-radius:10px;border:1px solid rgba(255,255,255,.15);background:transparent;color:var(--text-muted);font-family:DM Sans,sans-serif;font-size:.85rem;cursor:pointer">Stay in Volunteer View</button>'+
+    '<button onclick="confirmAdminMobile()" style="padding:12px;border-radius:10px;border:none;background:linear-gradient(135deg,var(--ya-orange),#c94a00);color:#fff;font-family:Nunito,sans-serif;font-weight:800;font-size:.9rem;cursor:pointer">Continue to Admin ⚡</button>'+
+    '<button onclick="document.getElementById(\'admin-mobile-warning\').remove()" style="padding:12px;border-radius:10px;border:1px solid rgba(255,255,255,.15);background:transparent;color:var(--text-muted);font-family:DM Sans,sans-serif;font-size:.85rem;cursor:pointer">Stay in Volunteer View</button>'+
     '</div></div>';
   document.body.appendChild(modal);
 }
 
-function confirmAdminMobile(modal) {
-  modal.remove();
+function confirmAdminMobile() {
+  var modal = document.getElementById('admin-mobile-warning');
+  if (modal) modal.remove();
   toggleAdminVolunteerView();
 }
 

@@ -1487,6 +1487,7 @@ function toggleAdultFac(id,btn){
   var cb2=document.getElementById('adult-cert-banner-ws');
   if(cb1)cb1.innerHTML=facCertBannerHTML(adultState.facilitated.length,adultState.grandfathered);
   if(cb2)cb2.innerHTML=facCertBannerHTML(adultState.facilitated.length,adultState.grandfathered);
+  saveAdultProfile();
   renderAdult();
 }
 
@@ -1502,6 +1503,7 @@ function toggleAdultVol(id,btn){
     card.classList.remove('facilitated');card.classList.add('volunteered');
     var fb=card.querySelectorAll('.ws-btn')[0];if(fb){fb.classList.remove('active-fac');fb.textContent='Facilitated';}
   }
+  saveAdultProfile();
   renderAdult();
 }
 
@@ -1510,7 +1512,34 @@ function addAdultHours(){
   var v=parseFloat(inp.value);
   if(!v||v<=0)return;
   adultState.hours=Math.round((adultState.hours+v)*10)/10;
-  inp.value='';renderAdult();
+  inp.value='';
+  saveAdultProfile();
+  renderAdult();
+}
+
+async function saveAdultProfile(){
+  if(!adultState) return;
+  // Find the adult's key in FAC_PROFILES
+  var facKey = Object.keys(FAC_PROFILES).find(function(k){ return FAC_PROFILES[k].name === adultState.name; });
+  if(!facKey) return;
+  // Keep FAC_PROFILES in sync
+  FAC_PROFILES[facKey].facilitated = adultState.facilitated.slice();
+  FAC_PROFILES[facKey].volunteered = adultState.volunteered.slice();
+  FAC_PROFILES[facKey].hours = adultState.hours;
+  // Save to Supabase adults table
+  const r = await fetch(SUPA_URL + '/rest/v1/adults?on_conflict=id', {
+    method: 'POST',
+    headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY, 'Content-Type': 'application/json', 'Prefer': 'resolution=merge-duplicates,return=minimal' },
+    body: JSON.stringify({
+      id: facKey,
+      name: adultState.name,
+      facilitated: adultState.facilitated,
+      volunteered: adultState.volunteered,
+      hours: adultState.hours
+    })
+  });
+  if(!r.ok){ const e=await r.text(); console.warn('saveAdultProfile failed:',r.status,e); }
+  else console.log('Adult profile saved:', adultState.name, 'fac:', adultState.facilitated.length, 'vol:', adultState.volunteered.length, 'hrs:', adultState.hours);
 }
 
 function renderAdmin(){
@@ -4392,6 +4421,20 @@ async function loadEventRegistrations() {
   console.log('Event registrations loaded:', rows.length);
 }
 
+async function loadAdultProfiles() {
+  const rows = await dbGet('adults', 'select=id,name,facilitated,volunteered,hours');
+  if(!rows || rows.length === 0) return;
+  rows.forEach(function(row) {
+    var key = row.id;
+    if(!FAC_PROFILES[key]) return;
+    // Only update if DB has data (don't overwrite hardcoded with empty)
+    if(row.facilitated && row.facilitated.length > 0) FAC_PROFILES[key].facilitated = row.facilitated;
+    if(row.volunteered && row.volunteered.length > 0) FAC_PROFILES[key].volunteered = row.volunteered;
+    if(row.hours && row.hours > 0) FAC_PROFILES[key].hours = row.hours;
+  });
+  console.log('Adult profiles loaded from DB:', rows.length, 'rows');
+}
+
 async function loadProgramData() {
   // Load volunteer signups
   const vols = await dbGet('program_volunteers', 'select=program_id,session_date,adult_name');
@@ -4500,7 +4543,8 @@ async function dbStartup() {
       loadComplianceData(),
       loadPendingEntries(),
       loadScrabbleData(),
-      loadAllWorkshopAttendance()
+      loadAllWorkshopAttendance(),
+      loadAdultProfiles()
     ]);
   } catch(e) { console.warn('DB load error (non-fatal):', e); }
 

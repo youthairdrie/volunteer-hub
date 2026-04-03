@@ -5613,14 +5613,14 @@ function doLogin(id, role) {
     document.getElementById('user-role-badge').textContent = adultState.role;
   } else {
     var adminName = adultState ? adultState.name : 'Administrator';
-    document.getElementById('user-avatar').textContent = '⚡';
-    document.getElementById('user-avatar').style.background = '#281608';
+    document.getElementById('user-avatar').textContent = adultState ? adultState.avatar : '⚡';
+    document.getElementById('user-avatar').style.background = adultState ? adultState.bg : '#281608';
     document.getElementById('user-name').textContent = adminName;
-    document.getElementById('user-role-badge').textContent = 'Administrator';
-    // Show volunteer toggle for admins
+    document.getElementById('user-role-badge').textContent = adultState ? adultState.role : 'Administrator';
+    // Default to volunteer view — admin can switch via the toggle button
     var toggleEl = document.getElementById('admin-volunteer-toggle');
     if(toggleEl) toggleEl.style.display = 'block';
-    adminViewMode = 'admin';
+    adminViewMode = 'volunteer'; // start in volunteer view, not admin
   }
 
   // Build nav and render
@@ -5653,6 +5653,7 @@ function doLogin(id, role) {
   showPage(navs[navKey][0].id, navEl.children[0]);
   if(currentRole==='youth') renderYouth();
   else if(currentRole==='adult') { renderAdult(); }
+  else if(adminViewMode === 'volunteer') { renderAdult(); }
   else renderAdmin();
 }
 

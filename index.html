@@ -1319,21 +1319,6 @@ function renderScrabbleDash(name){
   el.innerHTML='<div class="section-box" style="margin-top:15px"><div class="section-title">🎲 Scrabble & Games Club</div><div class="two-col" style="margin-bottom:12px"><div style="text-align:center;padding:12px;background:rgba(245,166,35,.08);border-radius:12px;border:1px solid rgba(245,166,35,.2)"><div style="font-size:.72rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">My Points</div><div style="font-family:Nunito,sans-serif;font-size:2.4rem;font-weight:900;color:var(--ya-gold)">'+myPts+'</div></div><div style="text-align:center;padding:12px;background:rgba(232,98,10,.08);border-radius:12px;border:1px solid rgba(232,98,10,.2)"><div style="font-size:.72rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">My Rank</div><div style="font-family:Nunito,sans-serif;font-size:2.4rem;font-weight:900;color:var(--ya-orange)">#'+myRank+'</div><div style="font-size:.72rem;color:var(--text-muted)">of '+lb.length+' players</div></div></div>'+trophy+'<div style="font-size:.8rem;color:var(--text-muted)">'+gap+'</div></div>';
 }
 
-var _youthScrabbleQ1Open = false;
-function toggleYouthQ1History(){
-  _youthScrabbleQ1Open = !_youthScrabbleQ1Open;
-  var btn = document.getElementById('youth-q1-toggle-btn');
-  var panel = document.getElementById('youth-q1-history-panel');
-  if(!btn||!panel) return;
-  if(_youthScrabbleQ1Open){
-    panel.style.display='block';
-    btn.textContent='📁 Hide Q1 History';
-  } else {
-    panel.style.display='none';
-    btn.textContent='📂 View Q1 History';
-  }
-}
-
 function renderScrabbleYouthPage(name){
   var el=document.getElementById('scrabble-youth-content');
   if(!el)return;
@@ -1344,17 +1329,19 @@ function renderScrabbleYouthPage(name){
     var myPts=getScrabbleTotal(name);
     var myRank=lb.findIndex(function(x){return x[0]===name;})+1;
     var sessions=SCRABBLE_SESSIONS[name];
-
-    // ── Q2 session chips (current quarter only) ──
-    var q2Chips=Q2_DATES.map(function(dt){
+    var chips=CONDUCTED_DATES.map(function(dt){
       var pts=sessions[dt];
+      // Check for pending entries for this date
+      // Normalize date comparison: dt is "25-Mar", entry.session_date is "Mar 25, 2026"
       var pendingForDate=PENDING_ENTRIES.filter(function(e){
         if(e.youth_name!==name) return false;
         if(e.type!=='games_attended'&&e.type!=='games_won') return false;
         if(e.status!=='pending') return false;
-        var sd=e.session_date;
-        var parts=dt.split('-');
-        return sd.indexOf(parts[1])>=0&&sd.indexOf(parts[0])>=0;
+        // Match "25-Mar" against "Mar 25, 2026"
+        var sd=e.session_date; // "Mar 25, 2026"
+        var parts=dt.split('-'); // ["25","Mar"]
+        var matches=sd.indexOf(parts[1])>=0&&sd.indexOf(parts[0])>=0;
+        return matches;
       });
       var pendingPts=pendingForDate.reduce(function(s,e){return s+e.pts;},0);
       var chipClass=pts?'has-pts':pendingPts?'has-pts pending-chip':'';
@@ -1364,48 +1351,18 @@ function renderScrabbleYouthPage(name){
         '<div class="session-date">'+dt+'</div>'+
         '<div class="session-pts" style="'+ptColor+'">'+ptsDisplay+'</div></div>';
     }).join('');
-
-    // ── Q1 session chips (historical, inside collapsible) ──
-    var q1Sessions = Q1_SESSIONS[name] || {};
-    var q1Chips = Q1_DATES.filter(function(dt){ return CONDUCTED_DATES.indexOf(dt)>=0; }).map(function(dt){
-      var pts = q1Sessions[dt];
-      return '<div class="session-chip '+(pts?'has-pts':'')+'" style="opacity:.65">'+
-        '<div class="session-date">'+dt+'</div>'+
-        '<div class="session-pts" style="color:'+(pts?'var(--ya-teal)':'var(--text-muted)')+'">'+( pts||'—')+'</div></div>';
-    }).join('');
-    var q1Pts = Object.values(q1Sessions).reduce(function(s,v){return s+v;},0);
-
     var medal=myRank===1?'🏆':myRank===2?'🥈':myRank===3?'🥉':'🎲';
-    // Q1 history collapsible block
-    var q1Block = q1Chips
-      ? '<div style="margin-top:10px">'+
-          '<button id="youth-q1-toggle-btn" onclick="toggleYouthQ1History()" style="padding:5px 13px;border-radius:8px;border:1px solid rgba(245,166,35,.4);background:transparent;color:var(--ya-gold);font-size:.75rem;cursor:pointer;font-family:DM Sans,sans-serif;font-weight:600">'+
-            (_youthScrabbleQ1Open?'📁 Hide Q1 History':'📂 View Q1 History')+'</button>'+
-          '<div id="youth-q1-history-panel" style="display:'+(_youthScrabbleQ1Open?'block':'none')+'">'+
-            '<div style="margin-top:10px;padding:12px;background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.07);border-radius:10px">'+
-              '<div style="font-size:.7rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.07em;font-weight:700;margin-bottom:8px">Q1 2026 — Archived · '+q1Pts+' pts</div>'+
-              '<div class="session-grid">'+q1Chips+'</div>'+
-            '</div>'+
-          '</div>'+
-        '</div>'
-      : '';
-    mySection='<div class="trophy-banner" style="margin-bottom:14px"><div class="trophy-emoji">'+medal+'</div><div><div class="trophy-title">Rank #'+myRank+' · '+myPts+' points</div><div class="trophy-sub">'+(Q1_CLOSED?CURRENT_QUARTER+' — Quarter Closed':CURRENT_QUARTER+' · Trophy awarded '+QUARTER_END_DATE)+'</div></div></div>'+
-      '<div class="section-box" style="margin-bottom:15px">'+
-        '<div class="section-title">📅 My Session History <span style="font-size:.72rem;color:var(--text-muted);font-weight:400;margin-left:4px">'+CURRENT_QUARTER+'</span></div>'+
-        '<div class="session-grid">'+(q2Chips||'<div style="color:var(--text-muted);font-size:.82rem">No sessions attended yet this quarter.</div>')+'</div>'+
-        q1Block+
-      '</div>';
+    mySection='<div class="trophy-banner" style="margin-bottom:14px"><div class="trophy-emoji">'+medal+'</div><div><div class="trophy-title">Rank #'+myRank+' · '+myPts+' points</div><div class="trophy-sub">'+(Q1_CLOSED?CURRENT_QUARTER+' — Quarter Closed':CURRENT_QUARTER+' · Trophy awarded '+QUARTER_END_DATE)+'</div></div></div><div class="section-box" style="margin-bottom:15px"><div class="section-title">📅 My Session History</div><div class="session-grid">'+chips+'</div></div>';
   }else{
     mySection='<div class="in-progress-bar" style="margin-bottom:14px">You are not currently registered in Scrabble & Games Club. Ask Kim to add you!</div>';
   }
-  // ── Current quarter leaderboard (Q2 only) ──
   var lbHTML=lb.map(function(entry,i){
     var n=entry[0],pts=entry[1],isMe=n===name;
     return '<div class="lb-row '+(i<3?['top1','top2','top3'][i]:'')+' '+(isMe?'me':'')+'"><div class="lb-rank">'+(i<3?medals[i]:i+1)+'</div><div class="lb-name">'+n+(isMe?' <span style="color:var(--ya-teal)">(you)</span>':'')+'</div><div><span class="lb-pts">'+pts+'</span><span class="lb-pts-label">pts</span></div></div>';
   }).join('');
   el.innerHTML=mySection+
-    // Attendance & wins leaderboard — current quarter only
-    '<div class="section-box"><div class="section-title">🏅 Attendance &amp; Wins Leaderboard <span style="font-size:.72rem;color:var(--text-muted);font-weight:400;margin-left:4px">'+CURRENT_QUARTER+'</span></div><div class="scrabble-leaderboard">'+lbHTML+'</div></div>'+
+    // Attendance & wins leaderboard
+    '<div class="section-box"><div class="section-title">🏅 Attendance &amp; Wins Leaderboard</div><div class="scrabble-leaderboard">'+lbHTML+'</div></div>'+
     // Word game score leaderboard
     (function(){
       var wsLb=Object.entries(SCRABBLE_SCORE_TOTALS).sort(function(a,b){return b[1]-a[1];});
@@ -2329,7 +2286,9 @@ function renderVolunteerHistory(containerId, personName){
     if(ev.status!=='upcoming') return;
     if(ev.eligible!=='all_youth') return;
     var isReg=(ev.youth_registered||[]).indexOf(personName)>=0;
-    upcomingEvents.push({name:ev.name,date:ev.date,time:ev.time,location:ev.location,hrs:ev.hours_on_completion,id:ev.id,isReg:isReg});
+    var evDate = new Date(ev.date);
+    var isPast = !isNaN(evDate.getTime()) && evDate < new Date();
+    upcomingEvents.push({name:ev.name,date:ev.date,time:ev.time,location:ev.location,hrs:ev.hours_on_completion,id:ev.id,isReg:isReg,isPast:isPast});
   });
 
   // Render
@@ -2361,19 +2320,38 @@ function renderVolunteerHistory(containerId, personName){
   if(upcomingEvents.length>0){
     html2+='<div style="font-size:.75rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin:16px 0 8px">Upcoming — Register Now</div>';
     html2+=upcomingEvents.map(function(uev){
-      var regBtn='';
-      if(uev.isReg){
-        regBtn='<span class="pill pill-green">&#10004; Going!</span>';
+      var dot='var(--ya-gold)';
+      var actions='';
+      if(uev.isPast && uev.isReg){
+        // Event has passed and youth is registered — offer Log Hours or Not Going
+        dot='var(--ya-orange)';
+        actions=
+          '<div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:8px">'+
+            '<button class="ws-btn active-vol" data-eid="'+uev.id+'" data-pname="'+personName+'" data-hrs="'+uev.hrs+'" data-evname="'+uev.name+'" onclick="logEventHours(this)" style="border-color:var(--ya-teal);color:var(--ya-teal);background:rgba(0,181,160,.1)">&#128338; Log '+uev.hrs+' hrs for verification</button>'+
+            '<button class="ws-btn" data-eid="'+uev.id+'" data-pname="'+personName+'" onclick="unregisterYouthFromEvent(this)" style="border-color:var(--badge-red);color:var(--badge-red)">&#10005; Not Going</button>'+
+          '</div>';
+      } else if(uev.isPast && !uev.isReg){
+        // Passed, not registered — nothing actionable
+        dot='var(--text-muted)';
+        actions='<span class="pill pill-grey" style="opacity:.5">Event passed</span>';
+      } else if(!uev.isPast && uev.isReg){
+        dot='var(--ya-green)';
+        actions=
+          '<div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:8px">'+
+            '<span class="pill pill-green">&#10004; Going!</span>'+
+            '<button class="ws-btn" data-eid="'+uev.id+'" data-pname="'+personName+'" onclick="unregisterYouthFromEvent(this)" style="border-color:var(--badge-red);color:var(--badge-red)">&#10005; Not Going</button>'+
+          '</div>';
       } else {
-        regBtn='<button class="ws-btn" data-eid="'+uev.id+'" data-pname="'+personName+'" onclick="registerYouthForEvent(this)">Volunteer</button>';
+        actions='<button class="ws-btn" data-eid="'+uev.id+'" data-pname="'+personName+'" onclick="registerYouthForEvent(this)" style="margin-top:8px">Volunteer</button>';
       }
-      return '<div class="activity-item">'+
-        '<div class="activity-dot" style="background:'+(uev.isReg?'var(--ya-green)':'var(--ya-gold)')+'"></div>'+
-        '<div style="flex:1">'+
+      return '<div class="activity-item" style="flex-wrap:wrap">'+
+        '<div class="activity-dot" style="background:'+dot+'"></div>'+
+        '<div style="flex:1;min-width:0">'+
           '<div class="activity-name">'+uev.name+'</div>'+
           '<div class="activity-meta">'+uev.date+' · '+uev.time+'</div>'+
           '<div class="activity-meta">&#128205; '+uev.location+' · ~'+uev.hrs+' volunteer hrs</div>'+
-        '</div>'+regBtn+
+          actions+
+        '</div>'+
         '</div>';
     }).join('');
   }
@@ -2401,6 +2379,47 @@ function regEvent(btn){
   ev.youth_registered=ev.youth_registered||[];
   if(ev.youth_registered.indexOf(personName)<0) ev.youth_registered.push(personName);
   renderVolunteerHistory('youth-vol-history', personName);
+}
+
+function unregisterYouthFromEvent(btn){
+  var eventId=btn.getAttribute('data-eid');
+  var personName=btn.getAttribute('data-pname');
+  var ev=EVENTS_DATA.find(function(e){return e.id===eventId;});
+  if(!ev) return;
+  ev.youth_registered=(ev.youth_registered||[]).filter(function(n){return n!==personName;});
+  // Remove from DB
+  dbDel('event_registrations','event_id=eq.'+eventId+'&youth_name=eq.'+encodeURIComponent(personName));
+  renderVolunteerHistory('youth-vol-history', personName);
+  renderAdmin && renderAdmin();
+}
+
+function logEventHours(btn){
+  var eventId=btn.getAttribute('data-eid');
+  var personName=btn.getAttribute('data-pname');
+  var hrs=parseFloat(btn.getAttribute('data-hrs'))||0;
+  var evName=btn.getAttribute('data-evname')||'Event';
+  var ev=EVENTS_DATA.find(function(e){return e.id===eventId;});
+  if(!ev) return;
+  // Disable the button to prevent double submission
+  btn.disabled=true;
+  btn.textContent='⏳ Submitted — pending verification';
+  btn.style.opacity='0.6';
+  // Submit as a pending entry for admin verification
+  var now=new Date().toISOString();
+  var entry={
+    id:'pe_'+Date.now()+'_evt',
+    youth_name:personName,
+    session_date:ev.date,
+    type:'event_hours',
+    value:hrs,
+    pts:hrs,
+    status:'pending',
+    submitted_at:now,
+    note:evName
+  };
+  PENDING_ENTRIES.push(entry);
+  savePendingEntry(entry);
+  renderYouthPendingEntries && renderYouthPendingEntries(personName);
 }
 
 

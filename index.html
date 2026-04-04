@@ -1347,8 +1347,6 @@ function renderScrabbleYouthPage(name){
 
     // ── Q2 session chips (current quarter only) ──
     var q2Chips=Q2_DATES.map(function(dt){
-      // Only show dates that have been conducted (are in CONDUCTED_DATES)
-      if(CONDUCTED_DATES.indexOf(dt)<0) return '';
       var pts=sessions[dt];
       var pendingForDate=PENDING_ENTRIES.filter(function(e){
         if(e.youth_name!==name) return false;

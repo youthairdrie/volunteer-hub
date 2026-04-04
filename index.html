@@ -1033,39 +1033,13 @@ body{font-family:"DM Sans",sans-serif;background:var(--navy);color:var(--text-ma
       </div>
       
       <div id="tab-events-log" style="display:none">
-        <div class="cards-grid">
-          <div class="stat-card" style="--accent-color:var(--ya-orange)"><div class="stat-label">Events Recorded</div><div class="stat-value">2</div><div class="stat-meta">Jan–Mar 2026</div><div class="stat-icon">📅</div></div>
-          <div class="stat-card" style="--accent-color:var(--ya-teal)"><div class="stat-label">Youth Volunteers</div><div class="stat-value">20</div><div class="stat-meta">Taste of Nations</div><div class="stat-icon">🌱</div></div>
-          <div class="stat-card" style="--accent-color:var(--ya-blue)"><div class="stat-label">Adult Volunteers</div><div class="stat-value">9</div><div class="stat-meta">Across both events</div><div class="stat-icon">🙌</div></div>
+        <div class="cards-grid" id="events-log-stat-cards">
+          <div class="stat-card" style="--accent-color:var(--ya-orange)"><div class="stat-label">Events Recorded</div><div class="stat-value" id="el-stat-count">—</div><div class="stat-meta">All time</div><div class="stat-icon">📅</div></div>
+          <div class="stat-card" style="--accent-color:var(--ya-teal)"><div class="stat-label">Youth Volunteers</div><div class="stat-value" id="el-stat-youth">—</div><div class="stat-meta">Across all events</div><div class="stat-icon">🌱</div></div>
+          <div class="stat-card" style="--accent-color:var(--ya-blue)"><div class="stat-label">Adult Volunteers</div><div class="stat-value" id="el-stat-adult">—</div><div class="stat-meta">Across all events</div><div class="stat-icon">🙌</div></div>
           <div class="stat-card" style="--accent-color:var(--ya-gold)"><div class="stat-label">Total Hours</div><div class="stat-value" id="admin-total-vol-hrs">—</div><div class="stat-meta">All volunteers combined</div><div class="stat-icon">⏱</div></div>
         </div>
-        <div class="section-box">
-          <div class="section-title">🌍 Taste of Nations — January 24, 2026</div>
-          <div style="color:var(--text-muted);font-size:.8rem;margin-bottom:14px">Welcoming Airdrie · 12:00 PM – 5:00 PM · 46 adult volunteer hours – 5:00 PM</div>
-          <div class="two-col">
-            <div>
-              <div style="font-size:.8rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Youth (5 hrs each)</div>
-              <div id="ton-youth-5hrs"></div>
-              <div style="font-size:.8rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin:12px 0 10px">Youth (4 hrs each)</div>
-              <div id="ton-youth-4hrs"></div>
-              <div style="font-size:.8rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin:12px 0 10px">Youth (2 hrs each)</div>
-              <div id="ton-youth-2hrs"></div>
-            </div>
-            <div>
-              <div style="font-size:.8rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Adults (5 hrs each)</div>
-              <div id="ton-adult-5hrs"></div>
-              <div style="font-size:.8rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin:12px 0 10px">Adults (4 hrs each)</div>
-              <div id="ton-adult-4hrs"></div>
-              <div style="font-size:.8rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin:12px 0 10px">Adults (2 hrs each)</div>
-              <div id="ton-adult-2hrs"></div>
-            </div>
-          </div>
-        </div>
-        <div class="section-box">
-          <div class="section-title">📋 Board Meeting — 2026</div>
-          <div style="color:var(--text-muted);font-size:.8rem;margin-bottom:14px">Youth Airdrie · 2 hours each</div>
-          <div id="board-attendees"></div>
-        </div>
+        <div id="events-log-list"></div>
         <div class="section-box">
           <div class="section-title">🎓 Youth Newly Eligible — Level 1 Certificate</div>
           <div style="color:var(--text-muted);font-size:.8rem;margin-bottom:12px">6+ workshops + 2+ volunteer hours from Taste of Nations</div>
@@ -1801,7 +1775,13 @@ function renderAdmin(){
           (!isPast&&!reg.length?'<div class="status-date" style="color:var(--text-muted);margin-top:3px">No registrations yet</div>':'')+
         '</div>'+
         '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px">'+
-          (isPast?'<span class="pill pill-teal">'+yAll.length+' youth</span>':'<span class="pill pill-amber">Upcoming</span><span class="pill pill-teal">'+reg.length+' registered</span>')+
+          (isPast?
+            '<span class="pill pill-teal">'+yAll.length+' youth</span>'+
+            (ev.status==='completed'?
+              '<span class="pill pill-green" style="font-size:.68rem">✔ Closed</span>':
+              '<button onclick="closeOutEvent(\''+ev.id+'\')" class="ws-btn" style="font-size:.73rem;border-color:var(--ya-green);color:var(--ya-green)">✔ Close Out</button>'
+            ):
+            '<span class="pill pill-amber">Upcoming</span><span class="pill pill-teal">'+reg.length+' registered</span>')+
           '<button class="ws-btn" onclick="openEventEditor(\''+ev.id+'\')" style="border-color:var(--ya-blue);color:var(--ya-blue);font-size:.75rem">✏️ Edit Volunteers</button>'+
         '</div>'+
       '</div>';
@@ -1820,32 +1800,77 @@ function renderAdmin(){
     aue2.innerHTML=html;
   }
 
-  // Events log tab
+  // ── Events Log Tab — fully dynamic ──
   function nameChip(n){return '<span class="pill pill-teal" style="margin:2px">'+n+'</span>';}
-  var ton=EVENTS_DATA[0];
-  var el5y=document.getElementById('ton-youth-5hrs');
-  if(el5y) el5y.innerHTML=(ton.youth_5hrs||[]).map(nameChip).join('');
-  var el4y=document.getElementById('ton-youth-4hrs');
-  if(el4y) el4y.innerHTML=(ton.youth_4hrs||[]).map(nameChip).join('');
-  var el2y=document.getElementById('ton-youth-2hrs');
-  if(el2y) el2y.innerHTML=(ton.youth_2hrs||[]).map(nameChip).join('');
-  var el5a=document.getElementById('ton-adult-5hrs');
-  if(el5a) el5a.innerHTML=(ton.adult_5hrs||[]).map(nameChip).join('');
-  var el4a=document.getElementById('ton-adult-4hrs');
-  if(el4a) el4a.innerHTML=(ton.adult_4hrs||[]).map(nameChip).join('');
-  var el2a=document.getElementById('ton-adult-2hrs');
-  if(el2a) el2a.innerHTML=(ton.adult_2hrs||[]).map(nameChip).join('');
-  var board=EVENTS_DATA[1];
-  var elb=document.getElementById('board-attendees');
-  if(elb) elb.innerHTML=(board.adult_2hrs||[]).map(nameChip).join('');
 
-  // Total volunteer hours
-  var totalVolHrs=
-    (ton.youth_5hrs||[]).length*5+(ton.youth_4hrs||[]).length*4+(ton.youth_2hrs||[]).length*2+
-    (ton.adult_5hrs||[]).length*5+(ton.adult_4hrs||[]).length*4+(ton.adult_2hrs||[]).length*2+
-    (board.adult_2hrs||[]).length*2;
-  var tvh=document.getElementById('admin-total-vol-hrs');
-  if(tvh) tvh.textContent=totalVolHrs;
+  var completedEvs = EVENTS_DATA.filter(function(e){ return e.status==='completed'; });
+
+  // Stat cards
+  var totalYouth=0, totalAdult=0, totalHrs=0;
+  completedEvs.forEach(function(ev){
+    var y=(ev.youth_5hrs||[]).length+(ev.youth_4hrs||[]).length+(ev.youth_2hrs||[]).length;
+    var a=(ev.adult_5hrs||[]).length+(ev.adult_4hrs||[]).length+(ev.adult_2hrs||[]).length;
+    totalYouth+=y; totalAdult+=a;
+    totalHrs+=(ev.youth_5hrs||[]).length*5+(ev.youth_4hrs||[]).length*4+(ev.youth_2hrs||[]).length*2+
+              (ev.adult_5hrs||[]).length*5+(ev.adult_4hrs||[]).length*4+(ev.adult_2hrs||[]).length*2;
+    if(ev.adult_2hrs && ev.type==='Meeting') totalHrs+=(ev.adult_2hrs||[]).length*2;
+  });
+  var elCount=eid('el-stat-count'), elYouth=eid('el-stat-youth'), elAdult=eid('el-stat-adult'), tvh=eid('admin-total-vol-hrs');
+  if(elCount) elCount.textContent=completedEvs.length;
+  if(elYouth) elYouth.textContent=totalYouth;
+  if(elAdult) elAdult.textContent=totalAdult;
+  if(tvh) tvh.textContent=totalHrs;
+
+  // Event cards — collapsed by default
+  var evLogEl = eid('events-log-list');
+  if(evLogEl){
+    evLogEl.innerHTML = completedEvs.map(function(ev){
+      var yAll=(ev.youth_5hrs||[]).concat(ev.youth_4hrs||[]).concat(ev.youth_2hrs||[]);
+      var aAll=(ev.adult_5hrs||[]).concat(ev.adult_4hrs||[]).concat(ev.adult_2hrs||[]);
+      var evHrs=(ev.youth_5hrs||[]).length*5+(ev.youth_4hrs||[]).length*4+(ev.youth_2hrs||[]).length*2+
+                (ev.adult_5hrs||[]).length*5+(ev.adult_4hrs||[]).length*4+(ev.adult_2hrs||[]).length*2;
+      var safeId = ev.id.replace(/[^a-z0-9_]/g,'_');
+      var typeIcon = ev.type==='Meeting'?'📋':ev.host&&ev.host.indexOf('Welcoming')>=0?'🌍':'📅';
+
+      // Build detail section
+      var detail='';
+      if(ev.type==='Meeting'){
+        detail='<div style="margin-top:12px"><div style="font-size:.78rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Attendees</div>'+
+          aAll.map(nameChip).join('')+'</div>';
+      } else {
+        var youthCols='', adultCols='';
+        [['youth_5hrs','5 hrs'],['youth_4hrs','4 hrs'],['youth_2hrs','2 hrs']].forEach(function(b){
+          if((ev[b[0]]||[]).length) youthCols+='<div style="margin-bottom:10px"><div style="font-size:.75rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Youth ('+b[1]+' each)</div>'+(ev[b[0]]||[]).map(nameChip).join('')+'</div>';
+        });
+        [['adult_5hrs','5 hrs'],['adult_4hrs','4 hrs'],['adult_2hrs','2 hrs']].forEach(function(b){
+          if((ev[b[0]]||[]).length) adultCols+='<div style="margin-bottom:10px"><div style="font-size:.75rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Adults ('+b[1]+' each)</div>'+(ev[b[0]]||[]).map(nameChip).join('')+'</div>';
+        });
+        detail='<div class="two-col" style="margin-top:12px">'+(youthCols||'<div style="color:var(--text-muted);font-size:.82rem">No youth volunteers.</div>')+(adultCols||'<div style="color:var(--text-muted);font-size:.82rem">No adult volunteers.</div>')+'</div>';
+      }
+
+      return '<div class="section-box" style="margin-bottom:12px">'+
+        // Summary row (always visible)
+        '<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">'+
+          '<div style="flex:1;min-width:0">'+
+            '<div style="font-family:Nunito,sans-serif;font-size:.98rem;font-weight:800">'+typeIcon+' '+ev.name+'</div>'+
+            '<div style="font-size:.78rem;color:var(--text-muted);margin-top:2px">'+ev.date+(ev.host?' · '+ev.host:'')+(ev.time&&ev.time!=='—'?' · '+ev.time:'')+'</div>'+
+          '</div>'+
+          '<div style="display:flex;gap:6px;align-items:center;flex-shrink:0;flex-wrap:wrap">'+
+            (yAll.length?'<span class="pill pill-teal">'+yAll.length+' youth</span>':'')+
+            (aAll.length?'<span class="pill pill-blue">'+aAll.length+' adults</span>':'')+
+            (evHrs?'<span class="pill pill-gold">'+evHrs+' hrs</span>':'')+
+            '<button onclick="toggleEventDetail(\''+safeId+'\')" id="evbtn_'+safeId+'" class="ws-btn" style="font-size:.73rem;border-color:var(--ya-teal);color:var(--ya-teal)">▶ Details</button>'+
+            '<button onclick="openEventEditor(\''+ev.id+'\')" class="ws-btn" style="font-size:.73rem;border-color:var(--ya-blue);color:var(--ya-blue)">✏️ Edit</button>'+
+          '</div>'+
+        '</div>'+
+        // Collapsible detail (hidden by default)
+        '<div id="evdetail_'+safeId+'" style="display:none;border-top:1px solid var(--card-border);margin-top:12px;padding-top:12px">'+
+          (ev.location||ev.time?'<div style="font-size:.8rem;color:var(--text-muted);margin-bottom:10px">'+(ev.location?'📍 '+ev.location:'')+(ev.time&&ev.time!=='—'?' · '+ev.time:'')+'</div>':'')+
+          detail+
+        '</div>'+
+      '</div>';
+    }).join('') || '<div style="color:var(--text-muted);font-size:.83rem;padding:8px 0">No completed events yet.</div>';
+  }
 
   // Newly Level 1 eligible
   var nel=document.getElementById('newly-eligible-list');
@@ -4577,6 +4602,10 @@ async function initDB() {
       updated_at timestamptz default now(),
       unique(event_id, name)
     );
+    create table if not exists event_status (
+      event_id text primary key, status text not null default 'upcoming',
+      closed_at timestamptz
+    );
     create table if not exists program_volunteers (
       id bigserial primary key, program_id text not null,
       session_date text not null, adult_name text not null,
@@ -5357,6 +5386,7 @@ async function dbStartup() {
     await Promise.all([
       loadEventRegistrations(),
       loadEventVolunteers(),
+      loadEventStatus(),
       loadProgramData(),
       loadComplianceData(),
       loadPendingEntries(),
@@ -5854,6 +5884,36 @@ function deactivateAdult(key){
   dbPatch('adults', {active: false}, 'id=eq.'+encodeURIComponent(key));
   renderAdultRoster();
   renderAdmin();
+}
+
+function toggleEventDetail(safeId){
+  var panel = document.getElementById('evdetail_'+safeId);
+  var btn   = document.getElementById('evbtn_'+safeId);
+  if(!panel) return;
+  var open = panel.style.display !== 'none';
+  panel.style.display = open ? 'none' : 'block';
+  if(btn) btn.textContent = open ? '▶ Details' : '▼ Hide';
+}
+
+async function closeOutEvent(eventId){
+  var ev = EVENTS_DATA.find(function(e){ return e.id===eventId; });
+  if(!ev) return;
+  if(!confirm('Close out "'+ev.name+'"? It will be marked completed and appear in the Events Log.')) return;
+  ev.status = 'completed';
+  // Persist to Supabase event_volunteers table already has the hours;
+  // we just need to record the status change. Use a simple upsert on event_status table.
+  await dbPost('event_status', { event_id: eventId, status: 'completed', closed_at: new Date().toISOString() });
+  renderAdmin();
+}
+
+async function loadEventStatus(){
+  var rows = await dbGet('event_status', 'select=event_id,status');
+  if(!rows || !rows.length) return;
+  rows.forEach(function(row){
+    var ev = EVENTS_DATA.find(function(e){ return e.id===row.event_id; });
+    if(ev) ev.status = row.status;
+  });
+  console.log('Event statuses loaded:', rows.length);
 }
 
 function renderCredentialManager() {

@@ -4732,6 +4732,14 @@ async function checkAndInitDB() {
       if(asRows.length) await dbPost('adult_scrabble_sessions', asRows);
       console.log('Scrabble tables seeded.');
     }
+    // ── Ensure event_volunteers table exists (added after initial migration) ──
+    const evVolCheck = await dbGet('event_volunteers', 'select=id&limit=1');
+    if(evVolCheck === null) {
+      // Table doesn't exist — create it via initDB SQL
+      console.log('event_volunteers table missing — creating...');
+      await initDB();
+      console.log('event_volunteers table created.');
+    }
     // Migrate any legacy youth_id-based workshop_attendance rows to youth_name-based
     await migrateWorkshopAttendanceToNames();
   }
@@ -6438,6 +6446,13 @@ async function saveEventEditor(){
     var hrs = parseInt(key.replace('youth_','').replace('hrs',''));
     (ev[key]||[]).forEach(function(name){ YOUTH_HOURS[name] = hrs; });
   });
+
+  // Ensure table exists before writing (handles first-time use on existing DBs)
+  var testGet = await dbGet('event_volunteers', 'select=id&limit=1');
+  if(testGet === null){
+    console.log('event_volunteers missing — running initDB to create it...');
+    await initDB();
+  }
 
   // Delete all existing rows for this event then re-insert
   await dbDel('event_volunteers', 'event_id=eq.'+encodeURIComponent(ev.id));

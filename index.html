@@ -4543,6 +4543,7 @@ async function initDB() {
       id text primary key, name text not null, age integer,
       birth_month integer, birth_year integer,
       workshops integer[] default '{}', volunteer_hours numeric default 0,
+      active boolean default true,
       created_at timestamptz default now()
     );
     create table if not exists adults (
@@ -4551,8 +4552,11 @@ async function initDB() {
       volunteered integer[] default '{}', hours numeric default 0,
       fac_level integer default 0, grandfathered boolean default false,
       is_admin boolean default false, login_credential text,
+      active boolean default true,
       created_at timestamptz default now()
     );
+    alter table youth add column if not exists active boolean default true;
+    alter table adults add column if not exists active boolean default true;
     create table if not exists workshop_attendance (
       id bigserial primary key, youth_id text, youth_name text,
       workshop_id integer,
@@ -4796,6 +4800,13 @@ async function checkAndInitDB() {
       if(asRows.length) await dbPost('adult_scrabble_sessions', asRows);
       console.log('Scrabble tables seeded.');
     }
+    // ── Ensure active column exists on youth and adults (added after initial migration) ──
+    const activeColCheck = await dbGet('youth', 'select=active&limit=1');
+    if(activeColCheck === null){
+      console.log('active column missing — running initDB to add it...');
+      await initDB();
+    }
+
     // ── Ensure event_volunteers table exists (added after initial migration) ──
     const evVolCheck = await dbGet('event_volunteers', 'select=id&limit=1');
     if(evVolCheck === null) {
@@ -4817,7 +4828,7 @@ async function migrateWorkshopAttendanceToNames() {
 
 // ── LOAD YOUTH FROM SUPABASE (picks up admin-added youth) ──
 async function loadYouthData() {
-  const rows = await dbGet('youth', 'select=id,name,age,workshops');
+  const rows = await dbGet('youth', 'select=id,name,age,workshops,active');
   if(!rows || rows.length === 0) {
     console.log('No youth rows in DB');
     return;
@@ -4827,9 +4838,14 @@ async function loadYouthData() {
     var name = row.name;
     if(!name) return;
     // Only process youth whose DB id starts with 'yn_' (admin-added via the app)
-    // Skip the original 'y_N' migration rows — those are already in the hardcoded JS arrays
     var isAdminAdded = row.id && row.id.indexOf('yn_') === 0;
     if(!isAdminAdded) return;
+
+    // If deactivated, ensure removed from active list
+    if(row.active === false){
+      ALL_YOUTH_NAMES = ALL_YOUTH_NAMES.filter(function(n){ return n !== name; });
+      return;
+    }
 
     // Add to ALL_YOUTH_NAMES if not already present
     if(ALL_YOUTH_NAMES.indexOf(name) < 0) {
@@ -5194,15 +5210,42 @@ async function loadEventVolunteers() {
 }
 
 async function loadAdultProfiles() {
-  const rows = await dbGet('adults', 'select=id,name,facilitated,volunteered,hours');
+  const rows = await dbGet('adults', 'select=id,name,role,avatar,bg,facilitated,volunteered,hours,fac_level,grandfathered,is_admin,active');
   if(!rows || rows.length === 0) return;
   rows.forEach(function(row) {
     var key = row.id;
-    if(!FAC_PROFILES[key]) return;
-    // Only update if DB has data (don't overwrite hardcoded with empty)
-    if(row.facilitated && row.facilitated.length > 0) FAC_PROFILES[key].facilitated = row.facilitated;
-    if(row.volunteered && row.volunteered.length > 0) FAC_PROFILES[key].volunteered = row.volunteered;
-    if(row.hours && row.hours > 0) FAC_PROFILES[key].hours = row.hours;
+    if(!key || !row.name) return;
+
+    // If deactivated, remove from FAC_PROFILES
+    if(row.active === false){
+      delete FAC_PROFILES[key];
+      return;
+    }
+
+    if(FAC_PROFILES[key]){
+      // Update existing hardcoded profile with DB values
+      if(row.facilitated && row.facilitated.length > 0) FAC_PROFILES[key].facilitated = row.facilitated;
+      if(row.volunteered && row.volunteered.length > 0) FAC_PROFILES[key].volunteered = row.volunteered;
+      if(row.hours && row.hours > 0) FAC_PROFILES[key].hours = row.hours;
+    } else {
+      // New adult added via Users tab — load into FAC_PROFILES
+      var parts = row.name.split(' ');
+      var avatar = row.avatar || (parts[0][0]+(parts[1]?parts[1][0]:'')).toUpperCase();
+      var bgs = ['#0c1f38','#12243a','#0f1f30','#1a1605','#12200f','#1f1230','#1a0d18','#0d1a1a'];
+      FAC_PROFILES[key] = {
+        name: row.name,
+        avatar: avatar,
+        bg: row.bg || bgs[Object.keys(FAC_PROFILES).length % bgs.length],
+        role: row.role || 'Adult Volunteer',
+        facilitated: row.facilitated || [],
+        volunteered: row.volunteered || [],
+        hours: row.hours || 0,
+        fac_level: row.fac_level || 0,
+        grandfathered: row.grandfathered || false,
+        isAdmin: row.is_admin || false
+      };
+      console.log('Loaded new adult from DB:', row.name);
+    }
   });
   console.log('Adult profiles loaded from DB:', rows.length, 'rows');
 }
@@ -5794,8 +5837,8 @@ function openEditAdult(key){
 function deactivateYouth(name){
   if(!confirm('Deactivate "'+name+'"? They will be removed from the active roster but their historical data is preserved in the database.')) return;
   ALL_YOUTH_NAMES = ALL_YOUTH_NAMES.filter(function(n){return n!==name;});
-  // Mark inactive in DB (don't delete — preserve history)
-  dbPatch('youth',{active:false},'name=eq.'+encodeURIComponent(name));
+  var id = 'yn_'+name.toLowerCase().replace(/\s+/g,'_').replace(/[^a-z0-9_]/g,'');
+  dbPatch('youth', {active: false}, 'id=eq.'+encodeURIComponent(id));
   rebuildYouthLoginDropdown();
   renderYouthRoster();
   renderAdmin();
@@ -5806,7 +5849,7 @@ function deactivateAdult(key){
   if(!p) return;
   if(!confirm('Deactivate "'+p.name+'"? They will be hidden from the roster but their historical data is preserved.')) return;
   delete FAC_PROFILES[key];
-  dbPatch('adults',{active:false},'id=eq.'+encodeURIComponent(key));
+  dbPatch('adults', {active: false}, 'id=eq.'+encodeURIComponent(key));
   renderAdultRoster();
   renderAdmin();
 }

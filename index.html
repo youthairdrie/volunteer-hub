@@ -2309,74 +2309,96 @@ function renderVolunteerHistory(containerId, personName){
   var el=document.getElementById(containerId);
   if(!el) return;
 
-  var pastEvents=[];
+  var pastEvents=[];   // completed events with hours verified, OR past-dated upcoming events
   var upcomingEvents=[];
 
-  // Build past event log
+  // Build past event log from status:'completed' events (admin-verified hours)
   EVENTS_DATA.forEach(function(ev){
     if(ev.status!=='completed') return;
     var hrs=0;
     if((ev.youth_5hrs||[]).indexOf(personName)>=0) hrs=5;
     else if((ev.youth_4hrs||[]).indexOf(personName)>=0) hrs=4;
     else if((ev.youth_2hrs||[]).indexOf(personName)>=0) hrs=2;
-    if(hrs>0) pastEvents.push({name:ev.name,date:ev.date,host:ev.host||'Youth Airdrie',hrs:hrs,id:ev.id});
+    // Always show completed events in past section (with edit option if no hours)
+    var hasPending = PENDING_ENTRIES.some(function(e){
+      return e.youth_name===personName && e.type==='event_hours' && e.session_date===ev.date && e.status==='pending';
+    });
+    pastEvents.push({name:ev.name,date:ev.date,host:ev.host||'Youth Airdrie',hrs:hrs,id:ev.id,verified:hrs>0,hasPending:hasPending,editable:true,eligibleHrs:ev.hours_on_completion||hrs||2});
   });
 
-  // Build upcoming events (all_youth eligible)
+  // Build upcoming events — split into truly upcoming vs past-dated
   EVENTS_DATA.forEach(function(ev){
     if(ev.status!=='upcoming') return;
     if(ev.eligible!=='all_youth') return;
     var isReg=(ev.youth_registered||[]).indexOf(personName)>=0;
     var evDate = new Date(ev.date);
     var isPast = !isNaN(evDate.getTime()) && evDate < new Date();
-    upcomingEvents.push({name:ev.name,date:ev.date,time:ev.time,location:ev.location,hrs:ev.hours_on_completion,id:ev.id,isReg:isReg,isPast:isPast});
+    var hasPending = PENDING_ENTRIES.some(function(e){
+      return e.youth_name===personName && e.type==='event_hours' && e.session_date===ev.date && e.status==='pending';
+    });
+    if(isPast){
+      // Move into past section regardless of registration
+      pastEvents.push({name:ev.name,date:ev.date,host:ev.host||'Youth Airdrie',hrs:0,id:ev.id,verified:false,hasPending:hasPending,editable:true,eligibleHrs:ev.hours_on_completion||2,wasRegistered:isReg});
+    } else {
+      upcomingEvents.push({name:ev.name,date:ev.date,time:ev.time,location:ev.location,hrs:ev.hours_on_completion,id:ev.id,isReg:isReg});
+    }
   });
+
+  // Sort past events chronologically
+  pastEvents.sort(function(a,b){ return new Date(a.date)-new Date(b.date); });
 
   // Render
   var html2='';
 
-  // Stat summary line
-  var totalHrs=pastEvents.reduce(function(s,e){return s+e.hrs;},0);
+  // Stat summary line — only count verified hours
+  var totalHrs=pastEvents.reduce(function(s,e){return s+(e.verified?e.hrs:0);},0);
+  var verifiedCount=pastEvents.filter(function(e){return e.verified;}).length;
   if(totalHrs>0){
     html2+='<div style="font-size:.78rem;color:var(--ya-teal);font-weight:700;margin-bottom:12px">'+
-      totalHrs+' volunteer hours on record across '+pastEvents.length+' event'+(pastEvents.length!==1?'s':'')+'</div>';
+      totalHrs+' volunteer hours on record across '+verifiedCount+' event'+(verifiedCount!==1?'s':'')+'</div>';
   }
 
-  // Past events
+  // Past events section
   html2+='<div style="font-size:.75rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Past Events</div>';
   if(pastEvents.length===0){
     html2+='<div style="color:var(--text-muted);font-size:.83rem;padding:8px 0 14px">No past volunteer events on record.</div>';
   } else {
     html2+=pastEvents.map(function(e){
-      return '<div class="activity-item">'+
-        '<div class="activity-dot" style="background:var(--ya-teal)"></div>'+
-        '<div style="flex:1"><div class="activity-name">'+e.name+'</div>'+
-        '<div class="activity-meta">'+e.host+' · '+e.date+'</div></div>'+
-        '<span class="pill pill-green">+'+e.hrs+' hrs</span>'+
+      var rightSide='';
+      if(e.verified){
+        // Hours already verified — show pill + edit button
+        rightSide=
+          '<div style="display:flex;align-items:center;gap:8px;flex-shrink:0">'+
+            '<span class="pill pill-green">+'+e.hrs+' hrs ✔</span>'+
+            '<button class="ws-btn" data-eid="'+e.id+'" data-pname="'+personName+'" data-hrs="'+e.eligibleHrs+'" data-evname="'+e.name+'" onclick="logEventHours(this)" style="font-size:.7rem;padding:3px 9px">✏️ Edit</button>'+
+          '</div>';
+      } else if(e.hasPending){
+        // Hours submitted, awaiting verification
+        rightSide='<span class="pill pill-amber" style="flex-shrink:0">⏳ Pending verification</span>';
+      } else {
+        // No hours yet — show log button
+        rightSide=
+          '<button class="ws-btn" data-eid="'+e.id+'" data-pname="'+personName+'" data-hrs="'+e.eligibleHrs+'" data-evname="'+e.name+'" onclick="logEventHours(this)" style="flex-shrink:0;border-color:var(--ya-teal);color:var(--ya-teal)">'+
+            '&#128338; Log hours</button>';
+      }
+      return '<div class="activity-item" style="flex-wrap:wrap;align-items:center">'+
+        '<div class="activity-dot" style="background:'+(e.verified?'var(--ya-teal)':e.hasPending?'var(--ya-gold)':'var(--ya-orange)')+'"></div>'+
+        '<div style="flex:1;min-width:0">'+
+          '<div class="activity-name">'+e.name+'</div>'+
+          '<div class="activity-meta">'+e.host+' · '+e.date+'</div>'+
+        '</div>'+
+        rightSide+
         '</div>';
     }).join('');
   }
 
-  // Upcoming events
+  // Truly upcoming events
   if(upcomingEvents.length>0){
     html2+='<div style="font-size:.75rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin:16px 0 8px">Upcoming — Register Now</div>';
     html2+=upcomingEvents.map(function(uev){
-      var dot='var(--ya-gold)';
+      var dot=uev.isReg?'var(--ya-green)':'var(--ya-gold)';
       var actions='';
-      if(uev.isPast && uev.isReg){
-        // Event has passed and youth is registered — offer Log Hours or Not Going
-        dot='var(--ya-orange)';
-        actions=
-          '<div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:8px">'+
-            '<button class="ws-btn active-vol" data-eid="'+uev.id+'" data-pname="'+personName+'" data-hrs="'+uev.hrs+'" data-evname="'+uev.name+'" onclick="logEventHours(this)" style="border-color:var(--ya-teal);color:var(--ya-teal);background:rgba(0,181,160,.1)">&#128338; Log '+uev.hrs+' hrs for verification</button>'+
-            '<button class="ws-btn" data-eid="'+uev.id+'" data-pname="'+personName+'" onclick="unregisterYouthFromEvent(this)" style="border-color:var(--badge-red);color:var(--badge-red)">&#10005; Not Going</button>'+
-          '</div>';
-      } else if(uev.isPast && !uev.isReg){
-        // Passed, not registered — nothing actionable
-        dot='var(--text-muted)';
-        actions='<span class="pill pill-grey" style="opacity:.5">Event passed</span>';
-      } else if(!uev.isPast && uev.isReg){
-        dot='var(--ya-green)';
+      if(uev.isReg){
         actions=
           '<div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:8px">'+
             '<span class="pill pill-green">&#10004; Going!</span>'+
@@ -2441,10 +2463,20 @@ function logEventHours(btn){
   var evName=btn.getAttribute('data-evname')||'Event';
   var ev=EVENTS_DATA.find(function(e){return e.id===eventId;});
   if(!ev) return;
-  // Disable the button to prevent double submission
+
+  // If there's already a pending entry for this event, withdraw it first
+  PENDING_ENTRIES.forEach(function(e){
+    if(e.youth_name===personName && e.type==='event_hours' && e.session_date===ev.date && e.status==='pending'){
+      e.status='withdrawn';
+      dbDel('pending_entries','id=eq.'+encodeURIComponent(e.id));
+    }
+  });
+
+  // Disable button to prevent double submission
   btn.disabled=true;
   btn.textContent='⏳ Submitted — pending verification';
   btn.style.opacity='0.6';
+
   // Submit as a pending entry for admin verification
   var now=new Date().toISOString();
   var entry={
@@ -2460,6 +2492,8 @@ function logEventHours(btn){
   };
   PENDING_ENTRIES.push(entry);
   savePendingEntry(entry);
+  // Re-render so the "Pending verification" pill appears immediately
+  setTimeout(function(){ renderVolunteerHistory('youth-vol-history', personName); }, 400);
   renderYouthPendingEntries && renderYouthPendingEntries(personName);
 }
 

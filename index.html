@@ -1802,10 +1802,6 @@ function renderAdmin(){
 
   // ── Stat cards + events log are now rendered by renderEventsLog() ──
   // Called on tab open via switchTab, and also after closeOutEvent
-  var tvh=eid('admin-total-vol-hrs'); // keep this for backward compat if still referenced
-  if(tvh && document.getElementById('tab-events-log') && document.getElementById('tab-events-log').style.display!=='none'){
-    renderEventsLog();
-  }
 
   // Newly Level 1 eligible
   var nel=document.getElementById('newly-eligible-list');

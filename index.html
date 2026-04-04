@@ -1319,6 +1319,21 @@ function renderScrabbleDash(name){
   el.innerHTML='<div class="section-box" style="margin-top:15px"><div class="section-title">🎲 Scrabble & Games Club</div><div class="two-col" style="margin-bottom:12px"><div style="text-align:center;padding:12px;background:rgba(245,166,35,.08);border-radius:12px;border:1px solid rgba(245,166,35,.2)"><div style="font-size:.72rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">My Points</div><div style="font-family:Nunito,sans-serif;font-size:2.4rem;font-weight:900;color:var(--ya-gold)">'+myPts+'</div></div><div style="text-align:center;padding:12px;background:rgba(232,98,10,.08);border-radius:12px;border:1px solid rgba(232,98,10,.2)"><div style="font-size:.72rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">My Rank</div><div style="font-family:Nunito,sans-serif;font-size:2.4rem;font-weight:900;color:var(--ya-orange)">#'+myRank+'</div><div style="font-size:.72rem;color:var(--text-muted)">of '+lb.length+' players</div></div></div>'+trophy+'<div style="font-size:.8rem;color:var(--text-muted)">'+gap+'</div></div>';
 }
 
+var _youthScrabbleQ1Open = false;
+function toggleYouthQ1History(){
+  _youthScrabbleQ1Open = !_youthScrabbleQ1Open;
+  var btn = document.getElementById('youth-q1-toggle-btn');
+  var panel = document.getElementById('youth-q1-history-panel');
+  if(!btn||!panel) return;
+  if(_youthScrabbleQ1Open){
+    panel.style.display='block';
+    btn.textContent='📁 Hide Q1 History';
+  } else {
+    panel.style.display='none';
+    btn.textContent='📂 View Q1 History';
+  }
+}
+
 function renderScrabbleYouthPage(name){
   var el=document.getElementById('scrabble-youth-content');
   if(!el)return;
@@ -1329,19 +1344,17 @@ function renderScrabbleYouthPage(name){
     var myPts=getScrabbleTotal(name);
     var myRank=lb.findIndex(function(x){return x[0]===name;})+1;
     var sessions=SCRABBLE_SESSIONS[name];
-    var chips=CONDUCTED_DATES.map(function(dt){
+
+    // ── Q2 session chips (current quarter only, no CONDUCTED_DATES filter) ──
+    var q2Chips=Q2_DATES.map(function(dt){
       var pts=sessions[dt];
-      // Check for pending entries for this date
-      // Normalize date comparison: dt is "25-Mar", entry.session_date is "Mar 25, 2026"
       var pendingForDate=PENDING_ENTRIES.filter(function(e){
         if(e.youth_name!==name) return false;
         if(e.type!=='games_attended'&&e.type!=='games_won') return false;
         if(e.status!=='pending') return false;
-        // Match "25-Mar" against "Mar 25, 2026"
-        var sd=e.session_date; // "Mar 25, 2026"
-        var parts=dt.split('-'); // ["25","Mar"]
-        var matches=sd.indexOf(parts[1])>=0&&sd.indexOf(parts[0])>=0;
-        return matches;
+        var sd=e.session_date;
+        var parts=dt.split('-');
+        return sd.indexOf(parts[1])>=0&&sd.indexOf(parts[0])>=0;
       });
       var pendingPts=pendingForDate.reduce(function(s,e){return s+e.pts;},0);
       var chipClass=pts?'has-pts':pendingPts?'has-pts pending-chip':'';
@@ -1351,8 +1364,36 @@ function renderScrabbleYouthPage(name){
         '<div class="session-date">'+dt+'</div>'+
         '<div class="session-pts" style="'+ptColor+'">'+ptsDisplay+'</div></div>';
     }).join('');
+
+    // ── Q1 session chips (historical, collapsible) ──
+    var q1Sessions = Q1_SESSIONS[name] || {};
+    var q1Chips = Q1_DATES.filter(function(dt){ return CONDUCTED_DATES.indexOf(dt)>=0; }).map(function(dt){
+      var pts = q1Sessions[dt];
+      return '<div class="session-chip '+(pts?'has-pts':'')+'" style="opacity:.65">'+
+        '<div class="session-date">'+dt+'</div>'+
+        '<div class="session-pts" style="color:'+(pts?'var(--ya-teal)':'var(--text-muted)')+'">'+( pts||'—')+'</div></div>';
+    }).join('');
+    var q1Pts = Object.values(q1Sessions).reduce(function(s,v){return s+v;},0);
+
     var medal=myRank===1?'🏆':myRank===2?'🥈':myRank===3?'🥉':'🎲';
-    mySection='<div class="trophy-banner" style="margin-bottom:14px"><div class="trophy-emoji">'+medal+'</div><div><div class="trophy-title">Rank #'+myRank+' · '+myPts+' points</div><div class="trophy-sub">'+(Q1_CLOSED?CURRENT_QUARTER+' — Quarter Closed':CURRENT_QUARTER+' · Trophy awarded '+QUARTER_END_DATE)+'</div></div></div><div class="section-box" style="margin-bottom:15px"><div class="section-title">📅 My Session History</div><div class="session-grid">'+chips+'</div></div>';
+    var q1Block = q1Chips
+      ? '<div style="margin-top:10px">'+
+          '<button id="youth-q1-toggle-btn" onclick="toggleYouthQ1History()" style="padding:5px 13px;border-radius:8px;border:1px solid rgba(245,166,35,.4);background:transparent;color:var(--ya-gold);font-size:.75rem;cursor:pointer;font-family:DM Sans,sans-serif;font-weight:600">'+
+            (_youthScrabbleQ1Open?'📁 Hide Q1 History':'📂 View Q1 History')+'</button>'+
+          '<div id="youth-q1-history-panel" style="display:'+(_youthScrabbleQ1Open?'block':'none')+'">'+
+            '<div style="margin-top:10px;padding:12px;background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.07);border-radius:10px">'+
+              '<div style="font-size:.7rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.07em;font-weight:700;margin-bottom:8px">Q1 2026 — Archived · '+q1Pts+' pts</div>'+
+              '<div class="session-grid">'+q1Chips+'</div>'+
+            '</div>'+
+          '</div>'+
+        '</div>'
+      : '';
+    mySection='<div class="trophy-banner" style="margin-bottom:14px"><div class="trophy-emoji">'+medal+'</div><div><div class="trophy-title">Rank #'+myRank+' · '+myPts+' points</div><div class="trophy-sub">'+(Q1_CLOSED?CURRENT_QUARTER+' — Quarter Closed':CURRENT_QUARTER+' · Trophy awarded '+QUARTER_END_DATE)+'</div></div></div>'+
+      '<div class="section-box" style="margin-bottom:15px">'+
+        '<div class="section-title">📅 My Session History <span style="font-size:.72rem;color:var(--text-muted);font-weight:400;margin-left:4px">'+CURRENT_QUARTER+'</span></div>'+
+        '<div class="session-grid">'+q2Chips+'</div>'+
+        q1Block+
+      '</div>';
   }else{
     mySection='<div class="in-progress-bar" style="margin-bottom:14px">You are not currently registered in Scrabble & Games Club. Ask Kim to add you!</div>';
   }
@@ -1361,8 +1402,8 @@ function renderScrabbleYouthPage(name){
     return '<div class="lb-row '+(i<3?['top1','top2','top3'][i]:'')+' '+(isMe?'me':'')+'"><div class="lb-rank">'+(i<3?medals[i]:i+1)+'</div><div class="lb-name">'+n+(isMe?' <span style="color:var(--ya-teal)">(you)</span>':'')+'</div><div><span class="lb-pts">'+pts+'</span><span class="lb-pts-label">pts</span></div></div>';
   }).join('');
   el.innerHTML=mySection+
-    // Attendance & wins leaderboard
-    '<div class="section-box"><div class="section-title">🏅 Attendance &amp; Wins Leaderboard</div><div class="scrabble-leaderboard">'+lbHTML+'</div></div>'+
+    // Attendance & wins leaderboard — current quarter only
+    '<div class="section-box"><div class="section-title">🏅 Attendance &amp; Wins Leaderboard <span style="font-size:.72rem;color:var(--text-muted);font-weight:400;margin-left:4px">'+CURRENT_QUARTER+'</span></div><div class="scrabble-leaderboard">'+lbHTML+'</div></div>'+
     // Word game score leaderboard
     (function(){
       var wsLb=Object.entries(SCRABBLE_SCORE_TOTALS).sort(function(a,b){return b[1]-a[1];});

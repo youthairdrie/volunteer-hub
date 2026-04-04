@@ -4501,6 +4501,12 @@ async function initDB() {
       registered_at timestamptz default now(),
       unique(event_id, youth_name)
     );
+    create table if not exists event_volunteers (
+      id bigserial primary key, event_id text not null, name text not null,
+      role text not null, hours integer not null,
+      updated_at timestamptz default now(),
+      unique(event_id, name)
+    );
     create table if not exists program_volunteers (
       id bigserial primary key, program_id text not null,
       session_date text not null, adult_name text not null,
@@ -5091,6 +5097,30 @@ async function loadEventRegistrations() {
   console.log('Event registrations loaded:', rows.length);
 }
 
+async function loadEventVolunteers() {
+  const rows = await dbGet('event_volunteers', 'select=event_id,name,role,hours');
+  if (!rows || rows.length === 0) return;
+  // Clear existing hardcoded volunteer lists for events that have DB data
+  var eventIds = [...new Set(rows.map(function(r){ return r.event_id; }))];
+  eventIds.forEach(function(eid){
+    var ev = EVENTS_DATA.find(function(e){ return e.id === eid; });
+    if(!ev) return;
+    ev.youth_5hrs = []; ev.youth_4hrs = []; ev.youth_2hrs = [];
+    ev.adult_5hrs = []; ev.adult_4hrs = []; ev.adult_2hrs = [];
+  });
+  // Populate from DB rows
+  rows.forEach(function(row){
+    var ev = EVENTS_DATA.find(function(e){ return e.id === row.event_id; });
+    if(!ev) return;
+    var key = row.role + '_' + row.hours + 'hrs';
+    ev[key] = ev[key] || [];
+    if(ev[key].indexOf(row.name) < 0) ev[key].push(row.name);
+    // Keep YOUTH_HOURS in sync
+    if(row.role === 'youth') YOUTH_HOURS[row.name] = row.hours;
+  });
+  console.log('Event volunteers loaded:', rows.length, 'rows');
+}
+
 async function loadAdultProfiles() {
   const rows = await dbGet('adults', 'select=id,name,facilitated,volunteered,hours');
   if(!rows || rows.length === 0) return;
@@ -5209,6 +5239,7 @@ async function dbStartup() {
     if(statusEl) statusEl.textContent = 'Loading program data…';
     await Promise.all([
       loadEventRegistrations(),
+      loadEventVolunteers(),
       loadProgramData(),
       loadComplianceData(),
       loadPendingEntries(),
@@ -6402,24 +6433,24 @@ async function saveEventEditor(){
   var ev = EVENTS_DATA.find(function(e){ return e.id===_evEditorId; });
   if(!ev) return;
 
-  // Also update YOUTH_HOURS so the rest of the app reflects the changes
+  // Keep YOUTH_HOURS in sync
   ['youth_5hrs','youth_4hrs','youth_2hrs'].forEach(function(key){
     var hrs = parseInt(key.replace('youth_','').replace('hrs',''));
-    (ev[key]||[]).forEach(function(name){
-      YOUTH_HOURS[name] = hrs;
-    });
+    (ev[key]||[]).forEach(function(name){ YOUTH_HOURS[name] = hrs; });
   });
 
-  // Persist to Supabase — upsert each volunteer row
+  // Delete all existing rows for this event then re-insert
+  await dbDel('event_volunteers', 'event_id=eq.'+encodeURIComponent(ev.id));
+
   var rows = [];
   ['5','4','2'].forEach(function(h){
     (ev['youth_'+h+'hrs']||[]).forEach(function(n){ rows.push({event_id:ev.id,name:n,role:'youth',hours:parseInt(h)}); });
     (ev['adult_'+h+'hrs']||[]).forEach(function(n){ rows.push({event_id:ev.id,name:n,role:'adult',hours:parseInt(h)}); });
   });
   if(rows.length){
-    var r = await fetch(SUPA_URL+'/rest/v1/event_volunteers?on_conflict=event_id,name', {
+    var r = await fetch(SUPA_URL+'/rest/v1/event_volunteers', {
       method:'POST',
-      headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates,return=minimal'},
+      headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,'Content-Type':'application/json','Prefer':'return=minimal'},
       body: JSON.stringify(rows)
     });
     if(!r.ok) console.warn('saveEventEditor failed:', r.status, await r.text());

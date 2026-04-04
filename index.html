@@ -1800,76 +1800,11 @@ function renderAdmin(){
     aue2.innerHTML=html;
   }
 
-  // ── Events Log Tab — fully dynamic ──
-  function nameChip(n){return '<span class="pill pill-teal" style="margin:2px">'+n+'</span>';}
-
-  var completedEvs = EVENTS_DATA.filter(function(e){ return e.status==='completed'; });
-
-  // Stat cards
-  var totalYouth=0, totalAdult=0, totalHrs=0;
-  completedEvs.forEach(function(ev){
-    var y=(ev.youth_5hrs||[]).length+(ev.youth_4hrs||[]).length+(ev.youth_2hrs||[]).length;
-    var a=(ev.adult_5hrs||[]).length+(ev.adult_4hrs||[]).length+(ev.adult_2hrs||[]).length;
-    totalYouth+=y; totalAdult+=a;
-    totalHrs+=(ev.youth_5hrs||[]).length*5+(ev.youth_4hrs||[]).length*4+(ev.youth_2hrs||[]).length*2+
-              (ev.adult_5hrs||[]).length*5+(ev.adult_4hrs||[]).length*4+(ev.adult_2hrs||[]).length*2;
-    if(ev.adult_2hrs && ev.type==='Meeting') totalHrs+=(ev.adult_2hrs||[]).length*2;
-  });
-  var elCount=eid('el-stat-count'), elYouth=eid('el-stat-youth'), elAdult=eid('el-stat-adult'), tvh=eid('admin-total-vol-hrs');
-  if(elCount) elCount.textContent=completedEvs.length;
-  if(elYouth) elYouth.textContent=totalYouth;
-  if(elAdult) elAdult.textContent=totalAdult;
-  if(tvh) tvh.textContent=totalHrs;
-
-  // Event cards — collapsed by default
-  var evLogEl = eid('events-log-list');
-  if(evLogEl){
-    evLogEl.innerHTML = completedEvs.map(function(ev){
-      var yAll=(ev.youth_5hrs||[]).concat(ev.youth_4hrs||[]).concat(ev.youth_2hrs||[]);
-      var aAll=(ev.adult_5hrs||[]).concat(ev.adult_4hrs||[]).concat(ev.adult_2hrs||[]);
-      var evHrs=(ev.youth_5hrs||[]).length*5+(ev.youth_4hrs||[]).length*4+(ev.youth_2hrs||[]).length*2+
-                (ev.adult_5hrs||[]).length*5+(ev.adult_4hrs||[]).length*4+(ev.adult_2hrs||[]).length*2;
-      var safeId = ev.id.replace(/[^a-z0-9_]/g,'_');
-      var typeIcon = ev.type==='Meeting'?'📋':ev.host&&ev.host.indexOf('Welcoming')>=0?'🌍':'📅';
-
-      // Build detail section
-      var detail='';
-      if(ev.type==='Meeting'){
-        detail='<div style="margin-top:12px"><div style="font-size:.78rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Attendees</div>'+
-          aAll.map(nameChip).join('')+'</div>';
-      } else {
-        var youthCols='', adultCols='';
-        [['youth_5hrs','5 hrs'],['youth_4hrs','4 hrs'],['youth_2hrs','2 hrs']].forEach(function(b){
-          if((ev[b[0]]||[]).length) youthCols+='<div style="margin-bottom:10px"><div style="font-size:.75rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Youth ('+b[1]+' each)</div>'+(ev[b[0]]||[]).map(nameChip).join('')+'</div>';
-        });
-        [['adult_5hrs','5 hrs'],['adult_4hrs','4 hrs'],['adult_2hrs','2 hrs']].forEach(function(b){
-          if((ev[b[0]]||[]).length) adultCols+='<div style="margin-bottom:10px"><div style="font-size:.75rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Adults ('+b[1]+' each)</div>'+(ev[b[0]]||[]).map(nameChip).join('')+'</div>';
-        });
-        detail='<div class="two-col" style="margin-top:12px">'+(youthCols||'<div style="color:var(--text-muted);font-size:.82rem">No youth volunteers.</div>')+(adultCols||'<div style="color:var(--text-muted);font-size:.82rem">No adult volunteers.</div>')+'</div>';
-      }
-
-      return '<div class="section-box" style="margin-bottom:12px">'+
-        // Summary row (always visible)
-        '<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">'+
-          '<div style="flex:1;min-width:0">'+
-            '<div style="font-family:Nunito,sans-serif;font-size:.98rem;font-weight:800">'+typeIcon+' '+ev.name+'</div>'+
-            '<div style="font-size:.78rem;color:var(--text-muted);margin-top:2px">'+ev.date+(ev.host?' · '+ev.host:'')+(ev.time&&ev.time!=='—'?' · '+ev.time:'')+'</div>'+
-          '</div>'+
-          '<div style="display:flex;gap:6px;align-items:center;flex-shrink:0;flex-wrap:wrap">'+
-            (yAll.length?'<span class="pill pill-teal">'+yAll.length+' youth</span>':'')+
-            (aAll.length?'<span class="pill pill-blue">'+aAll.length+' adults</span>':'')+
-            (evHrs?'<span class="pill pill-gold">'+evHrs+' hrs</span>':'')+
-            '<button onclick="toggleEventDetail(\''+safeId+'\')" id="evbtn_'+safeId+'" class="ws-btn" style="font-size:.73rem;border-color:var(--ya-teal);color:var(--ya-teal)">▶ Details</button>'+
-            '<button onclick="openEventEditor(\''+ev.id+'\')" class="ws-btn" style="font-size:.73rem;border-color:var(--ya-blue);color:var(--ya-blue)">✏️ Edit</button>'+
-          '</div>'+
-        '</div>'+
-        // Collapsible detail (hidden by default)
-        '<div id="evdetail_'+safeId+'" style="display:none;border-top:1px solid var(--card-border);margin-top:12px;padding-top:12px">'+
-          (ev.location||ev.time?'<div style="font-size:.8rem;color:var(--text-muted);margin-bottom:10px">'+(ev.location?'📍 '+ev.location:'')+(ev.time&&ev.time!=='—'?' · '+ev.time:'')+'</div>':'')+
-          detail+
-        '</div>'+
-      '</div>';
-    }).join('') || '<div style="color:var(--text-muted);font-size:.83rem;padding:8px 0">No completed events yet.</div>';
+  // ── Stat cards + events log are now rendered by renderEventsLog() ──
+  // Called on tab open via switchTab, and also after closeOutEvent
+  var tvh=eid('admin-total-vol-hrs'); // keep this for backward compat if still referenced
+  if(tvh && document.getElementById('tab-events-log') && document.getElementById('tab-events-log').style.display!=='none'){
+    renderEventsLog();
   }
 
   // Newly Level 1 eligible
@@ -2282,6 +2217,7 @@ function switchTab(tabId,btn){
   btn.classList.add('active');
   if(tabId==='credentials-admin') renderCredentialManager();
   if(tabId==='users-admin') renderUsersTab();
+  if(tabId==='events-log') renderEventsLog();
 }
 
 function filterEvents(type,btn){
@@ -5886,6 +5822,132 @@ function deactivateAdult(key){
   renderAdmin();
 }
 
+function renderEventsLog(){
+  var eid2 = function(id){ return document.getElementById(id); };
+  function nameChip(n){return '<span class="pill pill-teal" style="margin:2px">'+n+'</span>';}
+
+  var completedEvs = EVENTS_DATA.filter(function(e){ return e.status==='completed'; });
+
+  // ── Stat cards ──
+  var totalHrs=0, uniqueYouth=new Set(), uniqueAdult=new Set();
+  var byYear={};
+  completedEvs.forEach(function(ev){
+    (ev.youth_5hrs||[]).forEach(function(n){ uniqueYouth.add(n); totalHrs+=5; });
+    (ev.youth_4hrs||[]).forEach(function(n){ uniqueYouth.add(n); totalHrs+=4; });
+    (ev.youth_2hrs||[]).forEach(function(n){ uniqueYouth.add(n); totalHrs+=2; });
+    (ev.adult_5hrs||[]).forEach(function(n){ uniqueAdult.add(n); totalHrs+=5; });
+    (ev.adult_4hrs||[]).forEach(function(n){ uniqueAdult.add(n); totalHrs+=4; });
+    (ev.adult_2hrs||[]).forEach(function(n){ uniqueAdult.add(n); totalHrs+=2; });
+    // Group by year
+    var yr = (ev.date||'').match(/\b(20\d\d)\b/);
+    var y = yr ? yr[1] : 'Other';
+    byYear[y] = (byYear[y]||0)+1;
+  });
+
+  // Events recorded card — show count + breakdown by year
+  var yearBreakdown = Object.keys(byYear).sort().map(function(y){
+    return byYear[y]+' in '+y;
+  }).join(' · ');
+  var elCount=eid2('el-stat-count');
+  if(elCount){
+    elCount.textContent = completedEvs.length;
+    var meta = elCount.closest('.stat-card');
+    if(meta){
+      var metaEl = meta.querySelector('.stat-meta');
+      if(metaEl) metaEl.textContent = yearBreakdown || 'All time';
+    }
+  }
+
+  // Youth volunteers card — unique count + total hours
+  var elYouth=eid2('el-stat-youth');
+  if(elYouth){
+    elYouth.textContent = uniqueYouth.size;
+    var yCard = elYouth.closest('.stat-card');
+    if(yCard){
+      var yMeta = yCard.querySelector('.stat-meta');
+      var yHrs = 0;
+      completedEvs.forEach(function(ev){
+        yHrs += (ev.youth_5hrs||[]).length*5 + (ev.youth_4hrs||[]).length*4 + (ev.youth_2hrs||[]).length*2;
+      });
+      if(yMeta) yMeta.textContent = 'Unique volunteers · '+yHrs+' hrs total';
+    }
+  }
+
+  // Adult volunteers card — unique count + total hours
+  var elAdult=eid2('el-stat-adult');
+  if(elAdult){
+    elAdult.textContent = uniqueAdult.size;
+    var aCard = elAdult.closest('.stat-card');
+    if(aCard){
+      var aMeta = aCard.querySelector('.stat-meta');
+      var aHrs = 0;
+      completedEvs.forEach(function(ev){
+        aHrs += (ev.adult_5hrs||[]).length*5 + (ev.adult_4hrs||[]).length*4 + (ev.adult_2hrs||[]).length*2;
+      });
+      if(aMeta) aMeta.textContent = 'Unique volunteers · '+aHrs+' hrs total';
+    }
+  }
+
+  // Total hours card
+  var tvh=eid2('admin-total-vol-hrs');
+  if(tvh) tvh.textContent = totalHrs;
+
+  // ── Event cards (collapsed by default) ──
+  var evLogEl = eid2('events-log-list');
+  if(!evLogEl) return;
+
+  if(completedEvs.length === 0){
+    evLogEl.innerHTML = '<div style="color:var(--text-muted);font-size:.83rem;padding:8px 0">No completed events yet.</div>';
+    return;
+  }
+
+  evLogEl.innerHTML = completedEvs.map(function(ev){
+    var yAll=(ev.youth_5hrs||[]).concat(ev.youth_4hrs||[]).concat(ev.youth_2hrs||[]);
+    var aAll=(ev.adult_5hrs||[]).concat(ev.adult_4hrs||[]).concat(ev.adult_2hrs||[]);
+    var evHrs=(ev.youth_5hrs||[]).length*5+(ev.youth_4hrs||[]).length*4+(ev.youth_2hrs||[]).length*2+
+              (ev.adult_5hrs||[]).length*5+(ev.adult_4hrs||[]).length*4+(ev.adult_2hrs||[]).length*2;
+    var safeId = ev.id.replace(/[^a-z0-9_]/g,'_');
+    var typeIcon = ev.type==='Meeting'?'📋':ev.host&&ev.host.indexOf('Welcoming')>=0?'🌍':'📅';
+
+    var detail='';
+    if(ev.type==='Meeting'){
+      detail='<div style="margin-top:4px"><div style="font-size:.75rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Attendees</div>'+aAll.map(nameChip).join('')+'</div>';
+    } else {
+      var youthCols='', adultCols='';
+      [['youth_5hrs','5 hrs each'],['youth_4hrs','4 hrs each'],['youth_2hrs','2 hrs each']].forEach(function(b){
+        if((ev[b[0]]||[]).length) youthCols+='<div style="margin-bottom:10px"><div style="font-size:.73rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px">Youth — '+b[1]+'</div>'+(ev[b[0]]||[]).map(nameChip).join('')+'</div>';
+      });
+      [['adult_5hrs','5 hrs each'],['adult_4hrs','4 hrs each'],['adult_2hrs','2 hrs each']].forEach(function(b){
+        if((ev[b[0]]||[]).length) adultCols+='<div style="margin-bottom:10px"><div style="font-size:.73rem;font-weight:700;color:var(--ya-blue);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px">Adults — '+b[1]+'</div>'+(ev[b[0]]||[]).map(function(n){return '<span class="pill pill-blue" style="margin:2px">'+n+'</span>';}).join('')+'</div>';
+      });
+      detail='<div class="two-col" style="margin-top:8px">'+
+        (youthCols||'<div style="color:var(--text-muted);font-size:.82rem">No youth volunteers recorded.</div>')+
+        (adultCols||'<div style="color:var(--text-muted);font-size:.82rem">No adult volunteers recorded.</div>')+
+      '</div>';
+    }
+
+    return '<div class="section-box" style="margin-bottom:12px">'+
+      '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">'+
+        '<div style="flex:1;min-width:0">'+
+          '<div style="font-family:Nunito,sans-serif;font-size:.98rem;font-weight:800">'+typeIcon+' '+ev.name+'</div>'+
+          '<div style="font-size:.78rem;color:var(--text-muted);margin-top:2px">'+ev.date+(ev.host?' · '+ev.host:'')+'</div>'+
+        '</div>'+
+        '<div style="display:flex;gap:5px;align-items:center;flex-shrink:0;flex-wrap:wrap">'+
+          (yAll.length?'<span class="pill pill-teal">'+yAll.length+' youth</span>':'')+
+          (aAll.length?'<span class="pill pill-blue">'+aAll.length+' adults</span>':'')+
+          (evHrs?'<span class="pill pill-gold">'+evHrs+' hrs</span>':'')+
+          '<button onclick="toggleEventDetail(\''+safeId+'\')" id="evbtn_'+safeId+'" class="ws-btn" style="font-size:.73rem;border-color:var(--ya-teal);color:var(--ya-teal)">▶ Details</button>'+
+          '<button onclick="openEventEditor(\''+ev.id+'\')" class="ws-btn" style="font-size:.73rem;border-color:var(--ya-blue);color:var(--ya-blue)">✏️ Edit</button>'+
+        '</div>'+
+      '</div>'+
+      '<div id="evdetail_'+safeId+'" style="display:none;border-top:1px solid var(--card-border);margin-top:12px;padding-top:10px">'+
+        (ev.location||ev.time?'<div style="font-size:.8rem;color:var(--text-muted);margin-bottom:10px">'+(ev.location?'📍 '+ev.location+' ':'')+( ev.time&&ev.time!=='—'?'· '+ev.time:'')+'</div>':'')+
+        detail+
+      '</div>'+
+    '</div>';
+  }).join('');
+}
+
 function toggleEventDetail(safeId){
   var panel = document.getElementById('evdetail_'+safeId);
   var btn   = document.getElementById('evbtn_'+safeId);
@@ -5900,10 +5962,16 @@ async function closeOutEvent(eventId){
   if(!ev) return;
   if(!confirm('Close out "'+ev.name+'"? It will be marked completed and appear in the Events Log.')) return;
   ev.status = 'completed';
-  // Persist to Supabase event_volunteers table already has the hours;
-  // we just need to record the status change. Use a simple upsert on event_status table.
-  await dbPost('event_status', { event_id: eventId, status: 'completed', closed_at: new Date().toISOString() });
+  // Upsert into event_status
+  var r = await fetch(SUPA_URL+'/rest/v1/event_status?on_conflict=event_id', {
+    method:'POST',
+    headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates,return=minimal'},
+    body: JSON.stringify({event_id: eventId, status: 'completed', closed_at: new Date().toISOString()})
+  });
+  if(!r.ok) console.warn('closeOutEvent save failed:', r.status, await r.text());
+  else console.log('Event closed out:', eventId);
   renderAdmin();
+  renderEventsLog();
 }
 
 async function loadEventStatus(){

@@ -4785,8 +4785,45 @@ async function checkAndInitDB() {
 
 // ── MIGRATE LEGACY workshop_attendance ROWS TO NAME-BASED ──
 async function migrateWorkshopAttendanceToNames() {
-  // youth_name column does not exist in this schema — skip migration
-  console.log('No legacy workshop_attendance rows to migrate.');
+  // Fix any workshop_attendance rows saved under old Method B IDs
+  // (name.replace(/[^a-z0-9]/gi,'_').toLowerCase()) vs correct Method A
+  // Affected names: those with hyphens, parens, or special chars
+  var repairs = [];
+  ALL_YOUTH_NAMES.forEach(function(name){
+    // Method A (canonical, correct)
+    var correctId = 'yn_' + name.toLowerCase().replace(/\s+/g,'_').replace(/[^a-z0-9_]/g,'');
+    // Method B (old, wrong) — single pass replacing all non-alphanum with _
+    var oldId = 'yn_' + name.replace(/[^a-z0-9]/gi,'_').toLowerCase();
+    if(correctId !== oldId){
+      repairs.push({name: name, correctId: correctId, oldId: oldId});
+    }
+  });
+  if(repairs.length === 0) return;
+
+  for(var i=0; i<repairs.length; i++){
+    var r = repairs[i];
+    // Fetch rows under old ID
+    var rows = await dbGet('workshop_attendance',
+      'select=id,workshop_id&youth_id=eq.'+encodeURIComponent(r.oldId));
+    if(!rows || rows.length === 0){
+      console.log('ID repair: no old rows for', r.name, '('+r.oldId+')');
+      continue;
+    }
+    console.log('ID repair: migrating', rows.length, 'rows for', r.name,
+      'from', r.oldId, '→', r.correctId);
+    // Re-insert under correct ID (ignore conflicts if already there)
+    for(var j=0; j<rows.length; j++){
+      await fetch(SUPA_URL+'/rest/v1/workshop_attendance', {
+        method:'POST',
+        headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,
+          'Content-Type':'application/json','Prefer':'return=minimal'},
+        body: JSON.stringify({youth_id: r.correctId, workshop_id: rows[j].workshop_id})
+      });
+    }
+    // Delete old rows
+    await dbDel('workshop_attendance','youth_id=eq.'+encodeURIComponent(r.oldId));
+    console.log('ID repair complete for', r.name);
+  }
 }
 
 // ── LOAD YOUTH FROM SUPABASE (picks up admin-added youth) ──
@@ -4837,7 +4874,7 @@ async function loadYouthData() {
 
 // ── SAVE A SINGLE YOUTH TO SUPABASE ──
 async function saveYouthToDB(name, age, workshops) {
-  var id = 'yn_' + name.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+  var id = 'yn_' + name.toLowerCase().replace(/\s+/g,'_').replace(/[^a-z0-9_]/g,'');
   // Check if already exists
   const existing = await dbGet('youth', 'select=id&id=eq.' + encodeURIComponent(id) + '&limit=1');
   if (existing && existing.length > 0) {
@@ -4874,7 +4911,7 @@ async function saveYouthToDB(name, age, workshops) {
 }
 
 async function saveWorkshopAttendance(youthName, workshopId, attended) {
-  var youthId = 'yn_' + youthName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+  var youthId = 'yn_' + youthName.toLowerCase().replace(/\s+/g,'_').replace(/[^a-z0-9_]/g,'');
 
   if (attended) {
     // Check if already recorded
@@ -4904,11 +4941,17 @@ async function saveWorkshopAttendance(youthName, workshopId, attended) {
   } else {
     await dbDel('workshop_attendance',
       'youth_id=eq.' + encodeURIComponent(youthId) + '&workshop_id=eq.' + workshopId);
-    // Also remove any legacy y_N row
-    var idx = ALL_YOUTH_NAMES.indexOf(youthName);
+    // Also remove any legacy y_N row (y_N was based on sorted index)
+    var idx = ALL_YOUTH_NAMES.slice().sort().indexOf(youthName);
     if (idx >= 0) {
       await dbDel('workshop_attendance',
         'youth_id=eq.y_' + idx + '&workshop_id=eq.' + workshopId);
+    }
+    // Also remove any rows stored under old Method B ID (for names with special chars)
+    var oldId = 'yn_' + youthName.replace(/[^a-z0-9]/gi,'_').toLowerCase();
+    if(oldId !== youthId){
+      await dbDel('workshop_attendance',
+        'youth_id=eq.' + encodeURIComponent(oldId) + '&workshop_id=eq.' + workshopId);
     }
     console.log('Attendance removed:', youthName, 'ws', workshopId);
   }
@@ -5355,7 +5398,7 @@ async function loadAllWorkshopAttendance() {
   // Build a reverse lookup: yn_adam_choe → "Adam Choe"
   var ynToName = {};
   ALL_YOUTH_NAMES.forEach(function(n) {
-    var key = 'yn_' + n.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+    var key = 'yn_' + n.toLowerCase().replace(/\s+/g,'_').replace(/[^a-z0-9_]/g,'');
     ynToName[key] = n;
   });
 
@@ -5390,7 +5433,7 @@ async function loadAllWorkshopAttendance() {
 
 async function loadWorkshopAttendance(youthName) {
   // Query by stable yn_ youth_id — works with existing DB schema (no youth_name column needed)
-  var youthId = 'yn_' + youthName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+  var youthId = 'yn_' + youthName.toLowerCase().replace(/\s+/g,'_').replace(/[^a-z0-9_]/g,'');
   const rows = await dbGet('workshop_attendance',
     'select=workshop_id&youth_id=eq.' + encodeURIComponent(youthId));
   // CRITICAL: check the current user hasn't changed while we were fetching

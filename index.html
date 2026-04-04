@@ -741,6 +741,7 @@ body{font-family:"DM Sans",sans-serif;background:var(--navy);color:var(--text-ma
         <button class="tab-btn" onclick="switchTab('events-log',this)">📋 Events Log</button>
         <button class="tab-btn" onclick="switchTab('compliance',this)">Compliance</button>
         <button class="tab-btn" onclick="switchTab('impact',this)">Impact</button>
+        <button class="tab-btn" onclick="switchTab('users-admin',this)" >👥 Users</button>
         <button class="tab-btn" onclick="switchTab('credentials-admin',this)">🔑 Credentials</button>
       </div>
       <div id="tab-youth-metrics">
@@ -1181,6 +1182,68 @@ body{font-family:"DM Sans",sans-serif;background:var(--navy);color:var(--text-ma
       </div>
 
       <!-- CREDENTIALS TAB -->
+      <div id="tab-users-admin" style="display:none">
+        <div class="two-col" style="gap:18px;align-items:start">
+
+          <!-- ── YOUTH PANEL ── -->
+          <div class="section-box">
+            <div style="font-family:Nunito,sans-serif;font-size:1rem;font-weight:900;color:var(--ya-teal);margin-bottom:14px">🌱 Youth Members</div>
+
+            <!-- Add form -->
+            <div style="background:rgba(0,181,160,.05);border:1px solid rgba(0,181,160,.2);border-radius:12px;padding:14px;margin-bottom:16px">
+              <div style="font-size:.78rem;font-weight:700;color:var(--ya-teal);margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em">＋ Add New Youth</div>
+              <div style="display:grid;gap:8px">
+                <input id="new-youth-name" placeholder="Full name (can edit later)" style="padding:8px 12px;border-radius:8px;border:1px solid var(--card-border);background:rgba(255,255,255,.05);color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem;width:100%">
+                <input id="new-youth-age" type="number" placeholder="Age (optional)" min="8" max="29" style="padding:8px 12px;border-radius:8px;border:1px solid var(--card-border);background:rgba(255,255,255,.05);color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem;width:100%">
+                <div style="font-size:.75rem;color:var(--text-muted);font-weight:600;margin-top:2px">Enrol in:</div>
+                <div style="display:flex;flex-wrap:wrap;gap:10px;font-size:.82rem">
+                  <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="ny-enrol-el" checked> Emerging Leaders (workshops)</label>
+                  <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="ny-enrol-scrabble"> Scrabble & Games Club</label>
+                  <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="ny-enrol-garden"> Summer Garden Program</label>
+                  <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="ny-enrol-events"> Volunteer Events</label>
+                </div>
+                <button onclick="addNewYouthUser()" style="padding:8px;border-radius:8px;border:none;background:var(--ya-teal);color:#fff;font-family:Nunito,sans-serif;font-weight:800;font-size:.85rem;cursor:pointer;margin-top:2px">＋ Add Youth</button>
+                <div id="new-youth-feedback" style="font-size:.78rem;min-height:18px"></div>
+              </div>
+            </div>
+
+            <!-- Youth roster -->
+            <div id="users-youth-list"></div>
+          </div>
+
+          <!-- ── ADULT PANEL ── -->
+          <div class="section-box">
+            <div style="font-family:Nunito,sans-serif;font-size:1rem;font-weight:900;color:var(--ya-blue);margin-bottom:14px">👩‍💼 Adult Volunteers</div>
+
+            <!-- Add form -->
+            <div style="background:rgba(29,127,212,.05);border:1px solid rgba(29,127,212,.2);border-radius:12px;padding:14px;margin-bottom:16px">
+              <div style="font-size:.78rem;font-weight:700;color:var(--ya-blue);margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em">＋ Add New Adult</div>
+              <div style="display:grid;gap:8px">
+                <input id="new-adult-name" placeholder="Full name" style="padding:8px 12px;border-radius:8px;border:1px solid var(--card-border);background:rgba(255,255,255,.05);color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem;width:100%">
+                <select id="new-adult-role" style="padding:8px 12px;border-radius:8px;border:1px solid var(--card-border);background:rgba(29,127,212,.08);color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem">
+                  <option value="Adult Volunteer">Adult Volunteer</option>
+                  <option value="JYSEP Animator">JYSEP Animator</option>
+                  <option value="Level 1 Certified Facilitator">Level 1 Facilitator</option>
+                  <option value="Level 2 Certified Facilitator">Level 2 Facilitator</option>
+                  <option value="Level 3 Certified Facilitator">Level 3 Facilitator</option>
+                </select>
+                <div style="font-size:.75rem;color:var(--text-muted);font-weight:600;margin-top:2px">Enrol in:</div>
+                <div style="display:flex;flex-wrap:wrap;gap:10px;font-size:.82rem">
+                  <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="na-enrol-scrabble"> Scrabble & Games Club</label>
+                  <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="na-enrol-events"> Volunteer Events</label>
+                </div>
+                <button onclick="addNewAdultUser()" style="padding:8px;border-radius:8px;border:none;background:var(--ya-blue);color:#fff;font-family:Nunito,sans-serif;font-weight:800;font-size:.85rem;cursor:pointer;margin-top:2px">＋ Add Adult</button>
+                <div id="new-adult-feedback" style="font-size:.78rem;min-height:18px"></div>
+              </div>
+            </div>
+
+            <!-- Adult roster -->
+            <div id="users-adult-list"></div>
+          </div>
+
+        </div>
+      </div>
+
       <div id="tab-credentials-admin" style="display:none">
         <div class="section-box">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
@@ -2186,13 +2249,14 @@ function showPage(id,navItem){
 }
 
 function switchTab(tabId,btn){
-  ['tab-youth-metrics','tab-scrabble-admin','tab-future-schedule','tab-workshop-tracker','tab-facilitators','tab-events-log','tab-compliance','tab-impact','tab-credentials-admin'].forEach(function(t){
+  ['tab-youth-metrics','tab-scrabble-admin','tab-future-schedule','tab-workshop-tracker','tab-facilitators','tab-events-log','tab-compliance','tab-impact','tab-credentials-admin','tab-users-admin'].forEach(function(t){
     var el=document.getElementById(t);if(el)el.style.display='none';
   });
   document.querySelectorAll('.tab-btn').forEach(function(b){b.classList.remove('active');});
   var tab=document.getElementById('tab-'+tabId);if(tab)tab.style.display='block';
   btn.classList.add('active');
   if(tabId==='credentials-admin') renderCredentialManager();
+  if(tabId==='users-admin') renderUsersTab();
 }
 
 function filterEvents(type,btn){
@@ -5513,6 +5577,240 @@ function renderYouthPendingEntries(name){
 }
 
 // ── CREDENTIAL MANAGER ──
+// ══════════════════════════════════════════
+// USERS TAB — add/edit/deactivate youth & adults
+// ══════════════════════════════════════════
+
+function renderUsersTab(){
+  renderYouthRoster();
+  renderAdultRoster();
+}
+
+function renderYouthRoster(){
+  var el = document.getElementById('users-youth-list');
+  if(!el) return;
+  var sorted = ALL_YOUTH_NAMES.slice().sort();
+  el.innerHTML = sorted.map(function(name){
+    var age = YOUTH_AGES[name] ? YOUTH_AGES[name]+' yrs' : '—';
+    var inScrabble = name in SCRABBLE_SESSIONS;
+    var inGarden = PROGRAMS_DATA['garden_2026'] && PROGRAMS_DATA['garden_2026'].youth_participants && (name in PROGRAMS_DATA['garden_2026'].youth_participants);
+    var tags = '<span class="pill pill-teal" style="font-size:.65rem">EL</span>';
+    if(inScrabble) tags += ' <span class="pill pill-gold" style="font-size:.65rem">🎲</span>';
+    if(inGarden) tags += ' <span class="pill pill-green" style="font-size:.65rem">🌱</span>';
+    return '<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border-bottom:1px solid rgba(255,255,255,.05);flex-wrap:wrap">'+
+      '<div style="flex:1;min-width:120px">'+
+        '<div style="font-size:.85rem;font-weight:600">'+name+'</div>'+
+        '<div style="font-size:.72rem;color:var(--text-muted)">'+age+'</div>'+
+      '</div>'+
+      '<div style="display:flex;gap:4px;flex-wrap:wrap;align-items:center">'+tags+'</div>'+
+      '<div style="display:flex;gap:5px">'+
+        '<button onclick="openEditYouth(\''+name.replace(/'/g,"\\'")+'\')" style="padding:3px 9px;border-radius:6px;border:1px solid var(--card-border);background:transparent;color:var(--text-muted);font-size:.72rem;cursor:pointer">✏️ Edit</button>'+
+        '<button onclick="deactivateYouth(\''+name.replace(/'/g,"\\'")+'\')" style="padding:3px 9px;border-radius:6px;border:1px solid rgba(239,68,68,.3);background:transparent;color:var(--badge-red);font-size:.72rem;cursor:pointer">Deactivate</button>'+
+      '</div>'+
+    '</div>';
+  }).join('') || '<div style="color:var(--text-muted);font-size:.82rem;padding:8px">No youth members yet.</div>';
+}
+
+function renderAdultRoster(){
+  var el = document.getElementById('users-adult-list');
+  if(!el) return;
+  var sorted = Object.values(FAC_PROFILES).sort(function(a,b){return a.name.localeCompare(b.name);});
+  el.innerHTML = sorted.map(function(p){
+    var inScrabble = p.name in ADULT_SCRABBLE;
+    var tags = '<span class="pill pill-blue" style="font-size:.65rem">'+p.role.replace(' Certified Facilitator',' Fac.')+'</span>';
+    if(inScrabble) tags += ' <span class="pill pill-gold" style="font-size:.65rem">🎲</span>';
+    var key = Object.keys(FAC_PROFILES).find(function(k){return FAC_PROFILES[k]===p;});
+    return '<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border-bottom:1px solid rgba(255,255,255,.05);flex-wrap:wrap">'+
+      '<div style="flex:1;min-width:120px">'+
+        '<div style="font-size:.85rem;font-weight:600">'+p.name+'</div>'+
+        '<div style="font-size:.72rem;color:var(--text-muted)">ID: '+key+'</div>'+
+      '</div>'+
+      '<div style="display:flex;gap:4px;flex-wrap:wrap;align-items:center">'+tags+'</div>'+
+      '<div style="display:flex;gap:5px">'+
+        '<button onclick="openEditAdult(\''+key+'\')" style="padding:3px 9px;border-radius:6px;border:1px solid var(--card-border);background:transparent;color:var(--text-muted);font-size:.72rem;cursor:pointer">✏️ Edit</button>'+
+        '<button onclick="deactivateAdult(\''+key+'\')" style="padding:3px 9px;border-radius:6px;border:1px solid rgba(239,68,68,.3);background:transparent;color:var(--badge-red);font-size:.72rem;cursor:pointer">Deactivate</button>'+
+      '</div>'+
+    '</div>';
+  }).join('') || '<div style="color:var(--text-muted);font-size:.82rem;padding:8px">No adults yet.</div>';
+}
+
+function addNewYouthUser(){
+  var name = document.getElementById('new-youth-name').value.trim();
+  var age  = parseInt(document.getElementById('new-youth-age').value) || null;
+  var enrolEl      = document.getElementById('ny-enrol-el').checked;
+  var enrolScrabble= document.getElementById('ny-enrol-scrabble').checked;
+  var enrolGarden  = document.getElementById('ny-enrol-garden').checked;
+  var enrolEvents  = document.getElementById('ny-enrol-events').checked;
+  var fb = document.getElementById('new-youth-feedback');
+
+  if(!name){ fb.innerHTML='<span style="color:var(--badge-red)">⚠ Please enter a name.</span>'; return; }
+  if(ALL_YOUTH_NAMES.find(function(n){return n.toLowerCase()===name.toLowerCase();})){
+    fb.innerHTML='<span style="color:var(--badge-amber)">⚠ "'+name+'" already exists.</span>'; return;
+  }
+
+  // Add to core lists
+  ALL_YOUTH_NAMES.push(name);
+  ALL_YOUTH_NAMES.sort();
+  if(age) YOUTH_AGES[name] = age;
+  YOUTH_HOURS[name] = YOUTH_HOURS[name] || 0;
+  YOUTH_COMPLIANCE[name] = {waiver_date:'',waiver_on_file:false,photo_date:'',photo_on_file:false};
+
+  // Enrol in selected programs
+  if(enrolEl){
+    EL_YOUTH[name] = EL_YOUTH[name] || [];
+  }
+  if(enrolScrabble && !(name in SCRABBLE_SESSIONS)){
+    SCRABBLE_SESSIONS[name] = {};
+    SCRABBLE_TOTALS[name] = 0;
+    var qKey = QUARTER_STATE_KEY.replace('_closed','');
+    fetch(SUPA_URL+'/rest/v1/scrabble_sessions?on_conflict=player_name,session_date,quarter',{
+      method:'POST',
+      headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates,return=minimal'},
+      body:JSON.stringify({player_name:name,session_date:'_registered',points:0,quarter:qKey})
+    });
+  }
+  if(enrolGarden && PROGRAMS_DATA['garden_2026']){
+    PROGRAMS_DATA['garden_2026'].youth_participants = PROGRAMS_DATA['garden_2026'].youth_participants || {};
+    PROGRAMS_DATA['garden_2026'].youth_participants[name] = [];
+  }
+  if(enrolEvents){
+    // Make eligible for all_youth events by default — no extra data needed
+    // (they'll appear in event editor dropdowns via ALL_YOUTH_NAMES)
+  }
+
+  // Persist to DB
+  saveYouthToDB(name, age, []);
+  rebuildYouthLoginDropdown();
+
+  fb.innerHTML='<span style="color:var(--ya-teal)">✔ <strong>'+name+'</strong> added!</span>';
+  document.getElementById('new-youth-name').value='';
+  document.getElementById('new-youth-age').value='';
+  renderYouthRoster();
+  renderAdminScrabble && renderAdminScrabble();
+}
+
+function addNewAdultUser(){
+  var name = document.getElementById('new-adult-name').value.trim();
+  var role = document.getElementById('new-adult-role').value;
+  var enrolScrabble = document.getElementById('na-enrol-scrabble').checked;
+  var fb = document.getElementById('new-adult-feedback');
+
+  if(!name){ fb.innerHTML='<span style="color:var(--badge-red)">⚠ Please enter a name.</span>'; return; }
+  var existingKey = Object.keys(FAC_PROFILES).find(function(k){return FAC_PROFILES[k].name.toLowerCase()===name.toLowerCase();});
+  if(existingKey){ fb.innerHTML='<span style="color:var(--badge-amber)">⚠ "'+name+'" already exists.</span>'; return; }
+
+  // Generate a stable key
+  var key = name.toLowerCase().replace(/\s+/g,'_').replace(/[^a-z0-9_]/g,'').substring(0,20);
+  // Ensure uniqueness
+  if(FAC_PROFILES[key]){ key = key + '_2'; }
+
+  // Generate avatar initials
+  var parts = name.split(' ');
+  var avatar = (parts[0][0]+(parts[1]?parts[1][0]:'')).toUpperCase();
+
+  // Pick a background colour from a small palette
+  var bgs = ['#0c1f38','#12243a','#0f1f30','#1a1605','#12200f','#1f1230','#1a0d18','#0d1a1a'];
+  var bg = bgs[Object.keys(FAC_PROFILES).length % bgs.length];
+
+  FAC_PROFILES[key] = {
+    name:name, avatar:avatar, bg:bg, role:role,
+    facilitated:[], volunteered:[], hours:0, fac_level:0, grandfathered:false, isAdmin:false
+  };
+
+  if(enrolScrabble){
+    ADULT_SCRABBLE[name] = ADULT_SCRABBLE[name] || {};
+    ADULT_SCRABBLE_TOTALS[name] = ADULT_SCRABBLE_TOTALS[name] || 0;
+  }
+
+  // Persist to DB
+  var lvl = role.match(/Level (\d)/);
+  dbPost('adults',{
+    id:key, name:name, role:role, avatar:avatar, bg:bg,
+    facilitated:[], volunteered:[], hours:0,
+    fac_level: lvl ? parseInt(lvl[1]) : 0,
+    grandfathered:false, is_admin:false
+  });
+
+  fb.innerHTML='<span style="color:var(--ya-teal)">✔ <strong>'+name+'</strong> added!</span>';
+  document.getElementById('new-adult-name').value='';
+  renderAdultRoster();
+}
+
+function openEditYouth(name){
+  var age = YOUTH_AGES[name] || '';
+  var newName = prompt('Edit name (current: "'+name+'"):', name);
+  if(newName===null) return;
+  newName = newName.trim();
+  if(!newName){ alert('Name cannot be empty.'); return; }
+  var newAge = prompt('Edit age (current: '+(age||'unknown')+'):', age);
+  newAge = parseInt(newAge) || null;
+
+  // Rename in all data structures if name changed
+  if(newName !== name){
+    var idx = ALL_YOUTH_NAMES.indexOf(name);
+    if(idx>=0) ALL_YOUTH_NAMES[idx] = newName;
+    ALL_YOUTH_NAMES.sort();
+    if(YOUTH_AGES[name]!==undefined){ YOUTH_AGES[newName]=YOUTH_AGES[name]; delete YOUTH_AGES[name]; }
+    if(YOUTH_HOURS[name]!==undefined){ YOUTH_HOURS[newName]=YOUTH_HOURS[name]; delete YOUTH_HOURS[name]; }
+    if(YOUTH_COMPLIANCE[name]){ YOUTH_COMPLIANCE[newName]=YOUTH_COMPLIANCE[name]; delete YOUTH_COMPLIANCE[name]; }
+    if(EL_YOUTH[name]!==undefined){ EL_YOUTH[newName]=EL_YOUTH[name]; delete EL_YOUTH[name]; }
+    if(SCRABBLE_SESSIONS[name]){ SCRABBLE_SESSIONS[newName]=SCRABBLE_SESSIONS[name]; delete SCRABBLE_SESSIONS[name]; }
+    if(SCRABBLE_TOTALS[name]!==undefined){ SCRABBLE_TOTALS[newName]=SCRABBLE_TOTALS[name]; delete SCRABBLE_TOTALS[name]; }
+    // Update DB name in youth table
+    dbPatch('youth', {name:newName}, 'id=eq.'+encodeURIComponent('yn_'+name.toLowerCase().replace(/\s+/g,'_').replace(/[^a-z0-9_]/g,'')));
+    rebuildYouthLoginDropdown();
+  }
+  if(newAge) YOUTH_AGES[newName||name] = newAge;
+  saveYouthToDB(newName||name, newAge, EL_YOUTH[newName||name]||[]);
+  renderYouthRoster();
+  renderAdmin();
+}
+
+function openEditAdult(key){
+  var p = FAC_PROFILES[key];
+  if(!p) return;
+  var newName = prompt('Edit name (current: "'+p.name+'"):', p.name);
+  if(newName===null) return;
+  newName = newName.trim();
+  if(!newName){ alert('Name cannot be empty.'); return; }
+  var roles = ['Adult Volunteer','JYSEP Animator','Level 1 Certified Facilitator','Level 2 Certified Facilitator','Level 3 Certified Facilitator'];
+  var newRole = prompt('Edit role:\n'+roles.map(function(r,i){return (i+1)+'. '+r;}).join('\n')+'\n\nEnter number or leave blank to keep current:', '');
+  if(newRole!==null && newRole.trim()!==''){
+    var idx = parseInt(newRole.trim())-1;
+    if(idx>=0 && idx<roles.length) p.role = roles[idx];
+  }
+  if(newName !== p.name){
+    if(ADULT_SCRABBLE[p.name]){ ADULT_SCRABBLE[newName]=ADULT_SCRABBLE[p.name]; delete ADULT_SCRABBLE[p.name]; }
+    if(ADULT_SCRABBLE_TOTALS[p.name]!==undefined){ ADULT_SCRABBLE_TOTALS[newName]=ADULT_SCRABBLE_TOTALS[p.name]; delete ADULT_SCRABBLE_TOTALS[p.name]; }
+    p.name = newName;
+    var parts = newName.split(' ');
+    p.avatar = (parts[0][0]+(parts[1]?parts[1][0]:'')).toUpperCase();
+  }
+  dbPatch('adults',{name:p.name,role:p.role,avatar:p.avatar},'id=eq.'+encodeURIComponent(key));
+  renderAdultRoster();
+  renderAdmin();
+}
+
+function deactivateYouth(name){
+  if(!confirm('Deactivate "'+name+'"? They will be removed from the active roster but their historical data is preserved in the database.')) return;
+  ALL_YOUTH_NAMES = ALL_YOUTH_NAMES.filter(function(n){return n!==name;});
+  // Mark inactive in DB (don't delete — preserve history)
+  dbPatch('youth',{active:false},'name=eq.'+encodeURIComponent(name));
+  rebuildYouthLoginDropdown();
+  renderYouthRoster();
+  renderAdmin();
+}
+
+function deactivateAdult(key){
+  var p = FAC_PROFILES[key];
+  if(!p) return;
+  if(!confirm('Deactivate "'+p.name+'"? They will be hidden from the roster but their historical data is preserved.')) return;
+  delete FAC_PROFILES[key];
+  dbPatch('adults',{active:false},'id=eq.'+encodeURIComponent(key));
+  renderAdultRoster();
+  renderAdmin();
+}
+
 function renderCredentialManager() {
   var el = document.getElementById('credential-manager-list');
   if(!el) return;

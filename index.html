@@ -1597,7 +1597,10 @@ function addYouthHours(){
   var v=parseFloat(inp.value);
   if(!v||v<=0)return;
   youthState.hours=Math.round((youthState.hours+v)*10)/10;
+  YOUTH_HOURS[youthState.name] = youthState.hours;
   inp.value='';renderYouth();
+  // Persist updated hours to DB
+  saveYouthToDB(youthState.name, YOUTH_AGES[youthState.name]||null, EL_YOUTH[youthState.name]||[]);
 }
 
 function renderYouthAchievements(){
@@ -3659,6 +3662,9 @@ function markWorkshopDone(wsId) {
   var parts = ws.date.replace(',','').split(' ');
   var normDate = parts[1]+'-'+parts[0]; // e.g. "30-Mar"
   if(CONDUCTED_DATES.indexOf(normDate) < 0) CONDUCTED_DATES.push(normDate);
+  // Persist to Supabase
+  dbPost('workshop_conducted', { workshop_id: wsId, conducted: true, marked_at: new Date().toISOString() })
+    .then(function(){ console.log('Workshop marked done in DB:', wsId); });
   renderAdmin();
   alert('Workshop #'+wsId+' marked as Done! You can now enter attendance in the Youth Metrics tab.');
 }
@@ -3770,14 +3776,26 @@ function wsStaffSave(wsId) {
     }
   });
 
-  // Save each affected adult's profile
-  Object.values(FAC_PROFILES).forEach(function(p){
-    if(newFac.indexOf(p.name) >= 0 || newVol.indexOf(p.name) >= 0){
-      adultState = {name:p.name, facilitated:p.facilitated, volunteered:p.volunteered, hours:p.hours, grandfathered:p.grandfathered||false, isAdmin:p.isAdmin||false};
-      saveAdultProfile();
+  // Save each affected adult's profile directly (avoid async adultState race condition)
+  var savePromises = [];
+  Object.keys(FAC_PROFILES).forEach(function(facKey){
+    var p = FAC_PROFILES[facKey];
+    if(newFac.indexOf(p.name) >= 0 || newVol.indexOf(p.name) >= 0 ||
+       p.facilitated.indexOf(wsId) >= 0 || p.volunteered.indexOf(wsId) >= 0) {
+      savePromises.push(
+        fetch(SUPA_URL + '/rest/v1/adults?on_conflict=id', {
+          method: 'POST',
+          headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY,
+            'Content-Type': 'application/json', 'Prefer': 'resolution=merge-duplicates,return=minimal' },
+          body: JSON.stringify({ id: facKey, name: p.name,
+            facilitated: p.facilitated, volunteered: p.volunteered, hours: p.hours })
+        }).then(function(r){ if(!r.ok) console.warn('wsStaffSave adult save failed:', p.name); })
+      );
     }
   });
-  adultState = null; // reset
+  Promise.all(savePromises).then(function(){
+    console.log('Workshop staff saved for ws', wsId);
+  });
 
   document.getElementById('ws-staff-modal').remove();
   renderAdmin();
@@ -4095,21 +4113,35 @@ function saveLbEdits(){
   if(btn){ btn.textContent='✔ Saved!'; btn.style.color='var(--ya-teal)'; btn.style.borderColor='var(--ya-teal)';
     setTimeout(function(){ btn.textContent='✏️ Edit Totals'; btn.style.color='var(--ya-blue)'; btn.style.borderColor='var(--ya-blue)'; }, 1500); }
   renderAdminScrabble();
-  // Persist totals to Supabase by updating session data to match new totals
-  // Since we're directly editing totals (not per-session), store as a special '_total_override' key
+  // Persist adjusted totals to Supabase
+  // Store as '_total_override' session row so it survives reload without polluting session dates
+  var qKey = QUARTER_STATE_KEY.replace('_closed','');
   var overrideRows = [];
   Object.keys(SCRABBLE_TOTALS).forEach(function(name) {
-    // Recalc sessions to match override total: store a corrective adjustment row if needed
-    var sessionTotal = Object.values(SCRABBLE_SESSIONS[name] || {}).reduce(function(s,v){return s+v;},0);
+    var sessionTotal = Object.values(SCRABBLE_SESSIONS[name] || {})
+      .filter(function(v,_,a){ return true; }) // all real sessions already filtered by saveScrabbleSessionsToDB
+      .reduce(function(s,v){return s+v;},0);
     var diff = SCRABBLE_TOTALS[name] - sessionTotal;
     if(diff !== 0) {
+      // Store adjustment in memory only (not as a session date)
       if(!SCRABBLE_SESSIONS[name]) SCRABBLE_SESSIONS[name] = {};
       SCRABBLE_SESSIONS[name]['_adjustment'] = diff;
-    } else if(SCRABBLE_SESSIONS[name]) {
-      delete SCRABBLE_SESSIONS[name]['_adjustment'];
+      // Write a real DB row with the total as a special override
+      overrideRows.push({ player_name: name, session_date: '_total_override',
+        points: SCRABBLE_TOTALS[name], quarter: qKey, updated_at: new Date().toISOString() });
+    } else {
+      if(SCRABBLE_SESSIONS[name]) delete SCRABBLE_SESSIONS[name]['_adjustment'];
     }
   });
+  // Save regular sessions first, then override rows
   saveScrabbleSessionsToDB();
+  if(overrideRows.length){
+    fetch(SUPA_URL+'/rest/v1/scrabble_sessions?on_conflict=player_name,session_date,quarter',{
+      method:'POST',
+      headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates,return=minimal'},
+      body: JSON.stringify(overrideRows)
+    });
+  }
 }
 
 // ══════════════════════════════════════════
@@ -4519,10 +4551,12 @@ async function initDB() {
     create table if not exists workshop_attendance (
       id bigserial primary key, youth_id text, youth_name text,
       workshop_id integer,
-      marked_at timestamptz default now()
+      marked_at timestamptz default now(),
+      unique(youth_id, workshop_id)
     );
     alter table workshop_attendance add column if not exists youth_name text;
     create unique index if not exists wa_name_ws_idx on workshop_attendance(youth_name, workshop_id) where youth_name is not null;
+    create unique index if not exists wa_id_ws_idx on workshop_attendance(youth_id, workshop_id) where youth_id is not null;
     create table if not exists event_registrations (
       id bigserial primary key, event_id text not null, youth_name text not null,
       registered_at timestamptz default now(),
@@ -4572,6 +4606,10 @@ async function initDB() {
     create table if not exists workshop_cancellations (
       workshop_id integer primary key, cancelled_by text,
       cancelled_at timestamptz default now()
+    );
+    create table if not exists workshop_conducted (
+      workshop_id integer primary key, conducted boolean default true,
+      marked_at timestamptz default now()
     );
     create table if not exists scrabble_sessions (
       id bigserial primary key,
@@ -4770,6 +4808,13 @@ async function checkAndInitDB() {
       await initDB();
     }
 
+    // ── Ensure workshop_conducted table exists (added after initial migration) ──
+    const wsCondCheck = await dbGet('workshop_conducted', 'select=workshop_id&limit=1');
+    if(wsCondCheck === null){
+      console.log('workshop_conducted table missing — running initDB...');
+      await initDB();
+    }
+
     // ── Ensure event_volunteers table exists (added after initial migration) ──
     const evVolCheck = await dbGet('event_volunteers', 'select=id&limit=1');
     if(evVolCheck === null) {
@@ -4828,7 +4873,7 @@ async function migrateWorkshopAttendanceToNames() {
 
 // ── LOAD YOUTH FROM SUPABASE (picks up admin-added youth) ──
 async function loadYouthData() {
-  const rows = await dbGet('youth', 'select=id,name,age,workshops,active');
+  const rows = await dbGet('youth', 'select=id,name,age,workshops,active,volunteer_hours');
   if(!rows || rows.length === 0) {
     console.log('No youth rows in DB');
     return;
@@ -4860,8 +4905,9 @@ async function loadYouthData() {
 
     // Restore age
     if(row.age && !YOUTH_AGES[name]) YOUTH_AGES[name] = row.age;
-    // Ensure hours placeholder
-    YOUTH_HOURS[name] = YOUTH_HOURS[name] || 0;
+    // Restore volunteer hours from DB (overrides hardcoded if DB has a value)
+    if(row.volunteer_hours && row.volunteer_hours > 0) YOUTH_HOURS[name] = row.volunteer_hours;
+    else YOUTH_HOURS[name] = YOUTH_HOURS[name] || 0;
   });
   if(added > 0) {
     ALL_YOUTH_NAMES.sort();
@@ -4914,21 +4960,13 @@ async function saveWorkshopAttendance(youthName, workshopId, attended) {
   var youthId = 'yn_' + youthName.toLowerCase().replace(/\s+/g,'_').replace(/[^a-z0-9_]/g,'');
 
   if (attended) {
-    // Check if already recorded
-    const existing = await dbGet('workshop_attendance',
-      'select=id&youth_id=eq.' + encodeURIComponent(youthId) +
-      '&workshop_id=eq.' + workshopId + '&limit=1');
-    if (existing && existing.length > 0) {
-      console.log('Already recorded:', youthName, 'ws', workshopId);
-      return;
-    }
-    const r = await fetch(SUPA_URL + '/rest/v1/workshop_attendance', {
+    const r = await fetch(SUPA_URL + '/rest/v1/workshop_attendance?on_conflict=youth_id,workshop_id', {
       method: 'POST',
       headers: {
         'apikey': SUPA_KEY,
         'Authorization': 'Bearer ' + SUPA_KEY,
         'Content-Type': 'application/json',
-        'Prefer': 'return=minimal'
+        'Prefer': 'resolution=merge-duplicates,return=minimal'
       },
       body: JSON.stringify({ youth_id: youthId, workshop_id: workshopId })
     });
@@ -5060,15 +5098,26 @@ async function loadScrabbleData() {
   const sessions = await dbGet('scrabble_sessions', 'select=player_name,session_date,points&quarter=eq.'+qKey);
   if(sessions && sessions.length > 0) {
     Object.keys(SCRABBLE_SESSIONS).forEach(function(n){ SCRABBLE_SESSIONS[n] = {}; });
+    // Separate real session rows from override rows
+    var overrides = {};
     sessions.forEach(function(row) {
       if(!SCRABBLE_SESSIONS[row.player_name]) SCRABBLE_SESSIONS[row.player_name] = {};
-      // Skip _registered placeholder rows (used to persist player registration)
-      if(row.session_date !== '_registered') {
-        SCRABBLE_SESSIONS[row.player_name][row.session_date] = row.points;
+      if(row.session_date === '_registered') return; // skip placeholder
+      if(row.session_date === '_total_override'){
+        overrides[row.player_name] = row.points; // will apply after sessions loaded
+        return;
       }
+      SCRABBLE_SESSIONS[row.player_name][row.session_date] = row.points;
     });
     Object.keys(SCRABBLE_SESSIONS).forEach(function(name) {
-      SCRABBLE_TOTALS[name] = Object.values(SCRABBLE_SESSIONS[name]).reduce(function(s,v){return s+v;},0);
+      var sessionSum = Object.values(SCRABBLE_SESSIONS[name]).reduce(function(s,v){return s+v;},0);
+      // If an override total exists and is larger, apply the difference as _adjustment
+      if(overrides[name] !== undefined && overrides[name] !== sessionSum){
+        SCRABBLE_SESSIONS[name]['_adjustment'] = overrides[name] - sessionSum;
+        SCRABBLE_TOTALS[name] = overrides[name];
+      } else {
+        SCRABBLE_TOTALS[name] = sessionSum;
+      }
     });
     console.log('Scrabble sessions loaded from DB:', sessions.length, 'rows ('+qKey+')');
   } else {
@@ -5131,6 +5180,8 @@ async function saveScrabbleSessionsToDB() {
   const rows = [];
   Object.keys(SCRABBLE_SESSIONS).forEach(function(name) {
     Object.keys(SCRABBLE_SESSIONS[name]).forEach(function(date) {
+      // Skip synthetic keys — only save real session dates
+      if(date === '_registered' || date === '_adjustment' || date.indexOf('_lw') >= 0) return;
       rows.push({ player_name: name, session_date: date, points: SCRABBLE_SESSIONS[name][date], quarter: qKey, updated_at: new Date().toISOString() });
     });
   });
@@ -5174,6 +5225,24 @@ async function saveQuarterState(closed) {
   else console.log('Quarter state saved:', closed);
 }
 
+
+async function loadWorkshopConducted() {
+  var rows = await dbGet('workshop_conducted', 'select=workshop_id,conducted');
+  if(!rows || !rows.length) return;
+  rows.forEach(function(row){
+    var ws = WORKSHOPS.find(function(w){ return w.id === row.workshop_id; });
+    if(ws && row.conducted) {
+      ws.conducted = true;
+      // Add to CONDUCTED_DATES if not already there
+      var parts = ws.date.replace(',','').split(' ');
+      if(parts.length >= 2){
+        var normDate = parts[1]+'-'+parts[0];
+        if(CONDUCTED_DATES.indexOf(normDate) < 0) CONDUCTED_DATES.push(normDate);
+      }
+    }
+  });
+  console.log('Workshop conducted status loaded:', rows.length, 'rows');
+}
 
 async function loadEventRegistrations() {
   const rows = await dbGet('event_registrations', 'select=event_id,youth_name');
@@ -5362,6 +5431,7 @@ async function dbStartup() {
       loadEventRegistrations(),
       loadEventVolunteers(),
       loadEventStatus(),
+      loadWorkshopConducted(),
       loadProgramData(),
       loadComplianceData(),
       loadPendingEntries(),
@@ -6231,31 +6301,45 @@ function rejectAllPending(){
 
 function applyApprovedEntry(entry){
   if(entry.type === 'games_attended' || entry.type === 'games_won'){
-    // Add to SCRABBLE_TOTALS (attendance/wins leaderboard)
-    SCRABBLE_TOTALS[entry.youth_name] = (SCRABBLE_TOTALS[entry.youth_name] || 0) + entry.pts;
-    // Also write into SCRABBLE_SESSIONS so session history table shows it
+    // Write into SCRABBLE_SESSIONS so session history shows it
     if(!SCRABBLE_SESSIONS[entry.youth_name]) SCRABBLE_SESSIONS[entry.youth_name] = {};
     var existing = SCRABBLE_SESSIONS[entry.youth_name][entry.session_date] || 0;
     SCRABBLE_SESSIONS[entry.youth_name][entry.session_date] = existing + entry.pts;
-    // Add to CONDUCTED_DATES only if not already present (normalize format)
-    var normDate = entry.session_date; // already "25-Mar" format now
+    // Recalculate total from sessions (not additive) to avoid double-count
+    SCRABBLE_TOTALS[entry.youth_name] = Object.values(SCRABBLE_SESSIONS[entry.youth_name])
+      .reduce(function(s,v){ return s+v; }, 0);
+    // Add to CONDUCTED_DATES if not already present
+    var normDate = entry.session_date;
     if(CONDUCTED_DATES.indexOf(normDate) < 0 && SCRABBLE_DATES.indexOf(normDate) < 0){
       CONDUCTED_DATES.push(normDate);
     }
+    // Persist sessions to DB
+    saveScrabbleSessionsToDB();
   } else if(entry.type === 'scrabble_score'){
-    // Add to SCRABBLE_SCORE_TOTALS (word game leaderboard)
+    // Add to word game leaderboard
     if(!SCRABBLE_SCORES[entry.youth_name]) SCRABBLE_SCORES[entry.youth_name] = {};
     SCRABBLE_SCORES[entry.youth_name][entry.session_date] = entry.value;
+    // Recalculate from all scores
     SCRABBLE_SCORE_TOTALS[entry.youth_name] =
-      (SCRABBLE_SCORE_TOTALS[entry.youth_name] || 0) + entry.value;
-    // Add to SCRABBLE_SCORE_PLAYED if not already there
+      Object.values(SCRABBLE_SCORES[entry.youth_name]).reduce(function(s,v){return s+v;}, 0);
     if(SCRABBLE_SCORE_PLAYED.indexOf(entry.session_date) < 0){
       SCRABBLE_SCORE_PLAYED.push(entry.session_date);
     }
+    // Persist word scores to DB
+    saveWordScoresToDB();
   } else if(entry.type === 'longest_word'){
-    // Add 10 pts to word game leaderboard
+    // 10 pts bonus to word game total — stored as an adjustment row
+    if(!SCRABBLE_SCORES[entry.youth_name]) SCRABBLE_SCORES[entry.youth_name] = {};
+    var lwKey = entry.session_date + '_lw';
+    SCRABBLE_SCORES[entry.youth_name][lwKey] = entry.pts;
     SCRABBLE_SCORE_TOTALS[entry.youth_name] =
-      (SCRABBLE_SCORE_TOTALS[entry.youth_name] || 0) + entry.pts;
+      Object.values(SCRABBLE_SCORES[entry.youth_name]).reduce(function(s,v){return s+v;}, 0);
+    saveWordScoresToDB();
+  } else if(entry.type === 'event_hours'){
+    // Update YOUTH_HOURS so level eligibility and volunteer hours reflect the approval
+    YOUTH_HOURS[entry.youth_name] = (YOUTH_HOURS[entry.youth_name] || 0) + (entry.pts || entry.value || 0);
+    // Persist to youth table
+    saveYouthToDB(entry.youth_name, YOUTH_AGES[entry.youth_name] || null, EL_YOUTH[entry.youth_name] || []);
   }
 }
 

@@ -1739,9 +1739,15 @@ async function saveAdultProfile(){
     body: JSON.stringify({
       id: facKey,
       name: adultState.name,
+      role: adultState.role || FAC_PROFILES[facKey].role || 'Adult Volunteer',
+      avatar: FAC_PROFILES[facKey].avatar || '',
+      bg: FAC_PROFILES[facKey].bg || '',
       facilitated: adultState.facilitated,
       volunteered: adultState.volunteered,
-      hours: adultState.hours
+      hours: adultState.hours,
+      fac_level: FAC_PROFILES[facKey].fac_level || 0,
+      grandfathered: FAC_PROFILES[facKey].grandfathered || false,
+      is_admin: FAC_PROFILES[facKey].isAdmin || false
     })
   });
   if(!r.ok){ const e=await r.text(); console.warn('saveAdultProfile failed:',r.status,e); }
@@ -3007,6 +3013,13 @@ function toggleWsCancel(id){
   var ws=WORKSHOPS.find(function(w){return w.id===id;});
   if(!ws) return;
   ws.adminCancelled=!ws.adminCancelled;
+  if(ws.adminCancelled){
+    dbPost('workshop_cancellations',{workshop_id:id,cancelled_by:adultState?adultState.name:'admin',cancelled_at:new Date().toISOString()})
+      .then(function(){ console.log('Workshop cancellation saved:', id); });
+  } else {
+    dbDel('workshop_cancellations','workshop_id=eq.'+id)
+      .then(function(){ console.log('Workshop cancellation removed:', id); });
+  }
   renderAdult();
 }
 
@@ -3211,6 +3224,11 @@ function resumeProgramSession(tabId, dateStr, btn){
   var prog=getProgramData(tabId);
   if(!prog) return;
   prog.cancellations=(prog.cancellations||[]).filter(function(d){return d!==dateStr;});
+  // Remove from DB
+  var map={'scrabble-2026':'scrabble_2026','garden-2026':'garden_2026','scrabble-2026-27':'scrabble_2026_27'};
+  var programKey = map[tabId] || prog.id;
+  dbDel('program_cancellations','program_id=eq.'+encodeURIComponent(programKey)+'&session_date=eq.'+encodeURIComponent(dateStr))
+    .then(function(){ console.log('Program cancellation removed from DB:', programKey, dateStr); });
   renderProgramSessions(tabId);
 }
 
@@ -3362,9 +3380,15 @@ function populateCompPersonDropdown(){
   expRow.style.display=(type==='adult_vsc')?'block':'none';
   var names=[];
   if(type==='adult_vsc'||type==='adult_waiver'){
-    names=Object.keys(ADULT_COMPLIANCE).sort();
+    // Use FAC_PROFILES as source of truth — includes all adults even if no compliance record yet
+    var fromFac = Object.values(FAC_PROFILES).map(function(p){return p.name;});
+    var fromComp = Object.keys(ADULT_COMPLIANCE);
+    names = fromFac.concat(fromComp.filter(function(n){return fromFac.indexOf(n)<0;})).sort();
   } else {
-    names=Object.keys(YOUTH_COMPLIANCE).sort();
+    // Use ALL_YOUTH_NAMES as source of truth — includes all youth even if no compliance record yet
+    var fromYouth = ALL_YOUTH_NAMES.slice();
+    var fromYComp = Object.keys(YOUTH_COMPLIANCE);
+    names = fromYouth.concat(fromYComp.filter(function(n){return fromYouth.indexOf(n)<0;})).sort();
   }
   sel.innerHTML='<option value="">— Select person —</option>'+
     names.map(function(n){return '<option value="'+n+'">'+n+'</option>';}).join('');
@@ -3608,7 +3632,7 @@ function addELYouth(){
   // Age, hours, compliance placeholders
   if(age) YOUTH_AGES[name] = age;
   YOUTH_HOURS[name] = YOUTH_HOURS[name] || 0;
-  YOUTH_COMPLIANCE[name] = YOUTH_COMPLIANCE[name] || { waiver_date:'', waiver_on_file:false, photo_date:'', photo_on_file:false };
+  if(!YOUTH_COMPLIANCE[name]) YOUTH_COMPLIANCE[name] = { waiver_date:'', waiver_on_file:false, photo_date:'', photo_on_file:false };
 
   fb.innerHTML = '<span style="color:var(--ya-teal)">✔ <strong>'+name+'</strong> added to Emerging Leaders! They now appear in the attendance table.</span>';
   nameEl.value = '';
@@ -4396,7 +4420,7 @@ function addNewPlayer(){
     ALL_YOUTH_NAMES.push(name);
     ALL_YOUTH_NAMES.sort();
     EL_YOUTH[name] = [];
-    YOUTH_COMPLIANCE[name] = { waiver_date:'', waiver_on_file:false, photo_date:'', photo_on_file:false };
+    if(!YOUTH_COMPLIANCE[name]) YOUTH_COMPLIANCE[name] = { waiver_date:'', waiver_on_file:false, photo_date:'', photo_on_file:false };
     YOUTH_HOURS[name] = YOUTH_HOURS[name] || 0;
     rebuildYouthLoginDropdown();
     saveYouthToDB(name, age, []);
@@ -5226,6 +5250,16 @@ async function saveQuarterState(closed) {
 }
 
 
+async function loadWorkshopCancellations() {
+  var rows = await dbGet('workshop_cancellations', 'select=workshop_id');
+  if(!rows || !rows.length) return;
+  rows.forEach(function(row){
+    var ws = WORKSHOPS.find(function(w){ return w.id === row.workshop_id; });
+    if(ws) ws.adminCancelled = true;
+  });
+  console.log('Workshop cancellations loaded:', rows.length, 'rows');
+}
+
 async function loadWorkshopConducted() {
   var rows = await dbGet('workshop_conducted', 'select=workshop_id,conducted');
   if(!rows || !rows.length) return;
@@ -5432,6 +5466,7 @@ async function dbStartup() {
       loadEventVolunteers(),
       loadEventStatus(),
       loadWorkshopConducted(),
+      loadWorkshopCancellations(),
       loadProgramData(),
       loadComplianceData(),
       loadPendingEntries(),
@@ -5773,7 +5808,7 @@ function addNewYouthUser(){
   ALL_YOUTH_NAMES.sort();
   if(age) YOUTH_AGES[name] = age;
   YOUTH_HOURS[name] = YOUTH_HOURS[name] || 0;
-  YOUTH_COMPLIANCE[name] = {waiver_date:'',waiver_on_file:false,photo_date:'',photo_on_file:false};
+  if(!YOUTH_COMPLIANCE[name]) YOUTH_COMPLIANCE[name] = {waiver_date:'',waiver_on_file:false,photo_date:'',photo_on_file:false};
 
   // Enrol in selected programs
   if(enrolEl){
@@ -5842,6 +5877,9 @@ function addNewAdultUser(){
     ADULT_SCRABBLE_TOTALS[name] = ADULT_SCRABBLE_TOTALS[name] || 0;
   }
 
+  // Initialise compliance entry so new adult appears in compliance dropdown
+  if(!ADULT_COMPLIANCE[name]) ADULT_COMPLIANCE[name] = {vsc_issued:'',vsc_expiry:'',vsc_on_file:false,waiver_date:'',waiver_on_file:false,photo_release_date:'',photo_release_on_file:false};
+
   // Persist to DB
   var lvl = role.match(/Level (\d)/);
   dbPost('adults',{
@@ -5877,7 +5915,19 @@ function openEditYouth(name){
     if(SCRABBLE_SESSIONS[name]){ SCRABBLE_SESSIONS[newName]=SCRABBLE_SESSIONS[name]; delete SCRABBLE_SESSIONS[name]; }
     if(SCRABBLE_TOTALS[name]!==undefined){ SCRABBLE_TOTALS[newName]=SCRABBLE_TOTALS[name]; delete SCRABBLE_TOTALS[name]; }
     // Update DB name in youth table
-    dbPatch('youth', {name:newName}, 'id=eq.'+encodeURIComponent('yn_'+name.toLowerCase().replace(/\s+/g,'_').replace(/[^a-z0-9_]/g,'')));
+    var oldId = 'yn_'+name.toLowerCase().replace(/\s+/g,'_').replace(/[^a-z0-9_]/g,'');
+    var newId = 'yn_'+newName.toLowerCase().replace(/\s+/g,'_').replace(/[^a-z0-9_]/g,'');
+    dbPatch('youth', {name:newName}, 'id=eq.'+encodeURIComponent(oldId));
+    // Rename in workshop_attendance (update youth_id) if ID changed
+    if(oldId !== newId){
+      dbPatch('workshop_attendance', {youth_id: newId}, 'youth_id=eq.'+encodeURIComponent(oldId));
+    }
+    // Rename in scrabble_sessions
+    dbPatch('scrabble_sessions', {player_name: newName}, 'player_name=eq.'+encodeURIComponent(name));
+    // Rename in pending_entries
+    dbPatch('pending_entries', {youth_name: newName}, 'youth_name=eq.'+encodeURIComponent(name));
+    // Rename in event_registrations
+    dbPatch('event_registrations', {youth_name: newName}, 'youth_name=eq.'+encodeURIComponent(name));
     rebuildYouthLoginDropdown();
   }
   if(newAge) YOUTH_AGES[newName||name] = newAge;
@@ -5900,13 +5950,27 @@ function openEditAdult(key){
     if(idx>=0 && idx<roles.length) p.role = roles[idx];
   }
   if(newName !== p.name){
+    p._prevName = p.name; // track for DB rename
     if(ADULT_SCRABBLE[p.name]){ ADULT_SCRABBLE[newName]=ADULT_SCRABBLE[p.name]; delete ADULT_SCRABBLE[p.name]; }
     if(ADULT_SCRABBLE_TOTALS[p.name]!==undefined){ ADULT_SCRABBLE_TOTALS[newName]=ADULT_SCRABBLE_TOTALS[p.name]; delete ADULT_SCRABBLE_TOTALS[p.name]; }
     p.name = newName;
     var parts = newName.split(' ');
     p.avatar = (parts[0][0]+(parts[1]?parts[1][0]:'')).toUpperCase();
   }
-  dbPatch('adults',{name:p.name,role:p.role,avatar:p.avatar},'id=eq.'+encodeURIComponent(key));
+  // Get full profile for save
+  var lvlM = p.role ? p.role.match(/Level (\d)/) : null;
+  dbPatch('adults',{
+    name:p.name, role:p.role, avatar:p.avatar,
+    fac_level: lvlM ? parseInt(lvlM[1]) : (p.fac_level||0)
+  },'id=eq.'+encodeURIComponent(key));
+  // If name changed, rename in related tables
+  if(p.name !== p._prevName && p._prevName){
+    dbPatch('adult_scrabble_sessions',{volunteer_name:p.name},'volunteer_name=eq.'+encodeURIComponent(p._prevName));
+    dbPatch('program_volunteers',{adult_name:p.name},'adult_name=eq.'+encodeURIComponent(p._prevName));
+    // Rename in ADULT_COMPLIANCE
+    if(ADULT_COMPLIANCE[p._prevName]){ ADULT_COMPLIANCE[p.name]=ADULT_COMPLIANCE[p._prevName]; delete ADULT_COMPLIANCE[p._prevName]; }
+  }
+  delete p._prevName;
   renderAdultRoster();
   renderAdmin();
 }
@@ -5914,6 +5978,8 @@ function openEditAdult(key){
 function deactivateYouth(name){
   if(!confirm('Deactivate "'+name+'"? They will be removed from the active roster but their historical data is preserved in the database.')) return;
   ALL_YOUTH_NAMES = ALL_YOUTH_NAMES.filter(function(n){return n!==name;});
+  // Remove from in-memory active structures (keep data in DB with active=false)
+  delete EL_YOUTH[name];
   var id = 'yn_'+name.toLowerCase().replace(/\s+/g,'_').replace(/[^a-z0-9_]/g,'');
   dbPatch('youth', {active: false}, 'id=eq.'+encodeURIComponent(id));
   rebuildYouthLoginDropdown();

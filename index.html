@@ -1070,6 +1070,13 @@ body{font-family:"DM Sans",sans-serif;background:var(--navy);color:var(--text-ma
               <tbody id="adult-scrabble-vol-tbody"></tbody>
             </table>
           </div>
+          <div style="display:flex;align-items:center;gap:8px;margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,.06);flex-wrap:wrap">
+            <div style="font-size:.75rem;font-weight:700;color:var(--text-muted);white-space:nowrap">＋ Add volunteer:</div>
+            <select id="new-scrabble-vol-select" style="flex:1;min-width:160px;padding:6px 10px;border-radius:8px;border:1px solid var(--card-border);background:rgba(255,255,255,.05);color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.82rem">
+              <option value="">— Select adult —</option>
+            </select>
+            <button onclick="addAdultScrabbleVolunteer()" style="padding:6px 16px;border-radius:8px;border:none;background:var(--ya-orange);color:#fff;font-family:Nunito,sans-serif;font-weight:800;font-size:.8rem;cursor:pointer">Add</button>
+          </div>
         </div>
 
         <div class="section-box" style="border-color:rgba(124,131,253,.3)">
@@ -1195,6 +1202,10 @@ body{font-family:"DM Sans",sans-serif;background:var(--navy);color:var(--text-ma
       </div>
       
       <div id="tab-events-log" style="display:none">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+          <div style="font-family:Nunito,sans-serif;font-size:1rem;font-weight:900;color:var(--ya-orange)">📋 Events Log</div>
+          <button onclick="openNewEventModal()" style="padding:8px 18px;border-radius:10px;border:none;background:linear-gradient(135deg,var(--ya-orange),#c94a00);color:#fff;font-family:Nunito,sans-serif;font-weight:800;font-size:.85rem;cursor:pointer;transition:all .2s" onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">＋ New Event</button>
+        </div>
         <div class="cards-grid" id="events-log-stat-cards">
           <div class="stat-card" style="--accent-color:var(--ya-orange)"><div class="stat-label">Events Recorded</div><div class="stat-value" id="el-stat-count">—</div><div class="stat-meta">All time</div><div class="stat-icon">📅</div></div>
           <div class="stat-card" style="--accent-color:var(--ya-teal)"><div class="stat-label">Youth Volunteers</div><div class="stat-value" id="el-stat-youth">—</div><div class="stat-meta">Across all events</div><div class="stat-icon">🌱</div></div>
@@ -3250,6 +3261,18 @@ function renderAdultScrabbleTable(){
   var thead=document.getElementById('adult-scrabble-vol-thead');
   var tbody=document.getElementById('adult-scrabble-vol-tbody');
   if(!thead||!tbody) return;
+
+  // Populate the "Add volunteer" dropdown with adults NOT already in the table
+  var addSel = document.getElementById('new-scrabble-vol-select');
+  if(addSel){
+    var existing = Object.keys(ADULT_SCRABBLE);
+    addSel.innerHTML = '<option value="">— Select adult —</option>';
+    Object.values(FAC_PROFILES).sort(function(a,b){return a.name.localeCompare(b.name);}).forEach(function(p){
+      if(existing.indexOf(p.name) < 0){
+        addSel.innerHTML += '<option value="'+p.name+'">'+p.name+'</option>';
+      }
+    });
+  }
 
   // Combine Q1 and Q2 volunteer names
   var names=Object.keys(ADULT_SCRABBLE).slice();
@@ -6489,6 +6512,14 @@ async function closeOutEvent(eventId){
   if(!ev) return;
   if(!confirm('Close out "'+ev.name+'"? It will be marked completed and appear in the Events Log.')) return;
   ev.status = 'completed';
+
+  // Ensure event_status table exists before writing
+  var tableCheck = await dbGet('event_status', 'select=event_id&limit=1');
+  if(tableCheck === null){
+    console.log('event_status table missing — running initDB...');
+    await initDB();
+  }
+
   // Upsert into event_status
   var r = await fetch(SUPA_URL+'/rest/v1/event_status?on_conflict=event_id', {
     method:'POST',
@@ -6497,16 +6528,45 @@ async function closeOutEvent(eventId){
   });
   if(!r.ok) console.warn('closeOutEvent save failed:', r.status, await r.text());
   else console.log('Event closed out:', eventId);
+
+  // Re-render admin view, force Events Log tab open so stats refresh immediately
   renderAdmin();
-  renderEventsLog();
+  var evLogTab = Array.from(document.querySelectorAll('.tab-btn')).find(function(b){
+    return b.textContent.indexOf('Events Log') >= 0;
+  });
+  if(evLogTab) switchTab('events-log', evLogTab);
+  else renderEventsLog();
+  // Refresh landing calendar — closed event should no longer show as upcoming
+  renderLandingCalendar();
 }
 
 async function loadEventStatus(){
-  var rows = await dbGet('event_status', 'select=event_id,status');
+  // Load all columns so we can reconstruct user-created events
+  var rows = await dbGet('event_status', 'select=event_id,status,name,date,time,location,host,type,hours_on_completion,is_public,created_at');
   if(!rows || !rows.length) return;
   rows.forEach(function(row){
     var ev = EVENTS_DATA.find(function(e){ return e.id===row.event_id; });
-    if(ev) ev.status = row.status;
+    if(ev){
+      // Update status of existing hardcoded event
+      ev.status = row.status;
+    } else if(row.name && row.date){
+      // Reconstruct a user-created event that isn't in the hardcoded EVENTS_DATA
+      EVENTS_DATA.push({
+        id: row.event_id,
+        name: row.name,
+        host: row.host || 'Youth Airdrie',
+        date: row.date,
+        time: row.time || '—',
+        location: row.location || undefined,
+        type: row.type || 'Event',
+        status: row.status || 'upcoming',
+        eligible: 'all_youth',
+        hours_on_completion: row.hours_on_completion || 4,
+        public: row.is_public !== false,
+        youth_registered: [], youth_5hrs: [], youth_4hrs: [], youth_2hrs: [],
+        adult_5hrs: [], adult_4hrs: [], adult_2hrs: []
+      });
+    }
   });
   console.log('Event statuses loaded:', rows.length);
 }
@@ -7272,6 +7332,67 @@ function toggleAdminVolunteerView(){
 </div>
 
 <!-- ── EVENT VOLUNTEER EDITOR MODAL ── -->
+<!-- ── NEW EVENT MODAL ── -->
+<div id="new-event-modal" style="display:none;position:fixed;inset:0;z-index:2100;background:rgba(0,0,0,.78);backdrop-filter:blur(4px);overflow-y:auto;padding:20px">
+  <div style="max-width:560px;margin:0 auto;background:var(--card-bg);border-radius:20px;border:1px solid var(--card-border);padding:28px;position:relative">
+    <button onclick="closeNewEventModal()" style="position:absolute;top:14px;right:14px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);border-radius:8px;padding:5px 13px;color:var(--text-muted);cursor:pointer;font-family:DM Sans,sans-serif;font-size:.85rem">✕ Close</button>
+    <div style="font-family:Nunito,sans-serif;font-size:1.15rem;font-weight:900;color:var(--ya-orange);margin-bottom:4px">＋ Create New Event</div>
+    <div style="font-size:.8rem;color:var(--text-muted);margin-bottom:16px">New events appear on the public calendar until closed out.</div>
+    <div class="ya-stripe" style="margin-bottom:18px"></div>
+    <div style="display:grid;gap:12px;margin-bottom:18px">
+      <div>
+        <div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px">Event Name *</div>
+        <input id="ne-name" placeholder="e.g. Taste of Nations 2027" style="width:100%;padding:9px 12px;border-radius:9px;border:1px solid var(--card-border);background:rgba(255,255,255,.06);color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.88rem">
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div>
+          <div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px">Date *</div>
+          <input id="ne-date" type="date" style="width:100%;padding:9px 12px;border-radius:9px;border:1px solid var(--card-border);background:rgba(255,255,255,.06);color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.88rem">
+        </div>
+        <div>
+          <div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px">Type</div>
+          <select id="ne-type" style="width:100%;padding:9px 12px;border-radius:9px;border:1px solid var(--card-border);background:rgba(29,127,212,.08);color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.88rem">
+            <option value="Event">Event</option>
+            <option value="Meeting">Meeting</option>
+            <option value="Workshop">Workshop</option>
+          </select>
+        </div>
+      </div>
+      <div>
+        <div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px">Time</div>
+        <input id="ne-time" placeholder="e.g. 10:00 AM – 2:00 PM" style="width:100%;padding:9px 12px;border-radius:9px;border:1px solid var(--card-border);background:rgba(255,255,255,.06);color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.88rem">
+      </div>
+      <div>
+        <div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px">Location</div>
+        <input id="ne-location" placeholder="e.g. Airdrie Public Library – Fortis Room" style="width:100%;padding:9px 12px;border-radius:9px;border:1px solid var(--card-border);background:rgba(255,255,255,.06);color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.88rem">
+      </div>
+      <div>
+        <div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px">Host / Organiser</div>
+        <input id="ne-host" placeholder="e.g. Youth Airdrie" value="Youth Airdrie" style="width:100%;padding:9px 12px;border-radius:9px;border:1px solid var(--card-border);background:rgba(255,255,255,.06);color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.88rem">
+      </div>
+      <div>
+        <div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px">Volunteer Hours on Completion</div>
+        <select id="ne-hours" style="width:100%;padding:9px 12px;border-radius:9px;border:1px solid var(--card-border);background:rgba(29,127,212,.08);color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.88rem">
+          <option value="2">2 hours</option>
+          <option value="4" selected>4 hours</option>
+          <option value="5">5 hours</option>
+        </select>
+      </div>
+      <div>
+        <label style="display:flex;align-items:center;gap:9px;cursor:pointer;font-size:.85rem;color:var(--text-main)">
+          <input type="checkbox" id="ne-public" checked style="width:16px;height:16px;accent-color:var(--ya-orange)">
+          Show on public landing page calendar
+        </label>
+      </div>
+    </div>
+    <div id="ne-error" style="font-size:.78rem;color:var(--badge-red);min-height:18px;margin-bottom:8px"></div>
+    <div style="display:flex;gap:10px;justify-content:flex-end">
+      <button onclick="closeNewEventModal()" style="padding:10px 20px;border-radius:10px;border:1px solid var(--card-border);background:transparent;color:var(--text-muted);font-family:DM Sans,sans-serif;cursor:pointer">Cancel</button>
+      <button onclick="saveNewEvent()" style="padding:10px 26px;border-radius:10px;border:none;background:linear-gradient(135deg,var(--ya-orange),#c94a00);color:#fff;font-family:Nunito,sans-serif;font-weight:800;cursor:pointer">Create Event →</button>
+    </div>
+  </div>
+</div>
+
 <div id="event-editor-modal" style="display:none;position:fixed;inset:0;z-index:2000;background:rgba(0,0,0,.75);backdrop-filter:blur(4px);overflow-y:auto;padding:20px">
   <div style="max-width:680px;margin:0 auto;background:var(--card-bg);border-radius:20px;border:1px solid var(--card-border);padding:28px;position:relative">
     <button onclick="closeEventEditor()" style="position:absolute;top:14px;right:14px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);border-radius:8px;padding:5px 13px;color:var(--text-muted);cursor:pointer;font-family:DM Sans,sans-serif;font-size:.85rem">✕ Close</button>
@@ -7492,6 +7613,107 @@ async function saveEventEditor(){
 function closeEventEditor(){
   document.getElementById('event-editor-modal').style.display = 'none';
   _evEditorId = null;
+}
+
+// ── NEW EVENT MODAL ──
+function openNewEventModal(){
+  document.getElementById('ne-name').value = '';
+  document.getElementById('ne-date').value = '';
+  document.getElementById('ne-time').value = '';
+  document.getElementById('ne-location').value = '';
+  document.getElementById('ne-host').value = 'Youth Airdrie';
+  document.getElementById('ne-type').value = 'Event';
+  document.getElementById('ne-hours').value = '4';
+  document.getElementById('ne-public').checked = true;
+  document.getElementById('ne-error').textContent = '';
+  document.getElementById('new-event-modal').style.display = 'block';
+}
+
+function closeNewEventModal(){
+  document.getElementById('new-event-modal').style.display = 'none';
+}
+
+async function saveNewEvent(){
+  var name     = document.getElementById('ne-name').value.trim();
+  var dateVal  = document.getElementById('ne-date').value;         // yyyy-mm-dd
+  var time     = document.getElementById('ne-time').value.trim();
+  var location = document.getElementById('ne-location').value.trim();
+  var host     = document.getElementById('ne-host').value.trim() || 'Youth Airdrie';
+  var type     = document.getElementById('ne-type').value;
+  var hours    = parseInt(document.getElementById('ne-hours').value);
+  var isPublic = document.getElementById('ne-public').checked;
+  var errEl    = document.getElementById('ne-error');
+  errEl.textContent = '';
+
+  if(!name)    { errEl.textContent = 'Please enter an event name.'; return; }
+  if(!dateVal) { errEl.textContent = 'Please select a date.'; return; }
+
+  // Format date as "Month D, YYYY" to match existing EVENTS_DATA format
+  var d = new Date(dateVal + 'T12:00:00');
+  var months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  var dateFormatted = months[d.getMonth()] + ' ' + d.getDate() + ', ' + d.getFullYear();
+
+  // Generate a stable ID
+  var id = 'evt_' + name.toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/_+$/,'') + '_' + d.getFullYear();
+  // If ID already exists, append a counter
+  var counter = 2;
+  while(EVENTS_DATA.find(function(e){ return e.id === id; })){
+    id = 'evt_' + name.toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/_+$/,'') + '_' + d.getFullYear() + '_' + counter;
+    counter++;
+  }
+
+  var newEv = {
+    id: id, name: name, host: host, date: dateFormatted,
+    time: time || '—', location: location || undefined,
+    type: type, status: 'upcoming',
+    eligible: 'all_youth', hours_on_completion: hours, public: isPublic,
+    youth_registered: [], youth_5hrs: [], youth_4hrs: [], youth_2hrs: [],
+    adult_5hrs: [], adult_4hrs: [], adult_2hrs: []
+  };
+
+  EVENTS_DATA.push(newEv);
+
+  // Persist to Supabase — save to event_status as 'upcoming' + event_volunteers (empty)
+  var tableCheck = await dbGet('event_status', 'select=event_id&limit=1');
+  if(tableCheck === null) await initDB();
+
+  var r = await fetch(SUPA_URL+'/rest/v1/event_status?on_conflict=event_id', {
+    method:'POST',
+    headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates,return=minimal'},
+    body: JSON.stringify({event_id: id, status: 'upcoming', name: name, date: dateFormatted,
+      time: time||'—', location: location||null, host: host, type: type,
+      hours_on_completion: hours, is_public: isPublic,
+      created_at: new Date().toISOString()})
+  });
+  if(!r.ok) console.warn('saveNewEvent status failed:', r.status, await r.text());
+  else console.log('New event saved:', id);
+
+  closeNewEventModal();
+
+  // Refresh the admin events-log tab and landing calendar
+  renderAdmin();
+  var evLogTab = Array.from(document.querySelectorAll('.tab-btn')).find(function(b){
+    return b.textContent.indexOf('Events Log') >= 0;
+  });
+  if(evLogTab) switchTab('events-log', evLogTab);
+  renderLandingCalendar();
+}
+
+// ── ADD NEW VOLUNTEER TO SCRABBLE ──
+function addAdultScrabbleVolunteer(){
+  var sel = document.getElementById('new-scrabble-vol-select');
+  if(!sel) return;
+  var name = sel.value;
+  if(!name){ alert('Please select a volunteer to add.'); return; }
+  if(ADULT_SCRABBLE[name]){ alert(name + ' is already in the volunteer list.'); return; }
+  // Add them with an empty session map
+  ADULT_SCRABBLE[name] = {};
+  ADULT_SCRABBLE_TOTALS[name] = 0;
+  sel.value = '';
+  renderAdultScrabbleTable();
+  renderAdminScrabble();
+  // Persist — saving empty record so they show up; hours are added via Edit mode
+  saveAdultScrabbleToDB();
 }
 </script>
 

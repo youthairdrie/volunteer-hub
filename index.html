@@ -246,7 +246,6 @@ body{font-family:"DM Sans",sans-serif;background:var(--navy);color:var(--text-ma
   /* ── LANDING SCREEN MOBILE ── */
   .landing-nav{padding:12px 16px!important}
   .landing-nav img{height:30px!important}
-  .landing-nav .btn-primary{padding:8px 16px!important;font-size:.8rem!important}
   .landing-hero{padding:28px 16px 24px!important}
   .landing-tagline{font-size:.75rem!important;letter-spacing:.08em!important;margin-bottom:12px!important}
   .landing-stripe{margin-bottom:16px!important}
@@ -423,7 +422,6 @@ body{font-family:"DM Sans",sans-serif;background:var(--navy);color:var(--text-ma
   <!-- Nav -->
   <div class="landing-nav">
     <img src="https://www.youthairdrie.org/images/YA_Logo_RGB.png" alt="Youth Airdrie" style="height:38px;filter:brightness(1.2) drop-shadow(0 0 8px rgba(232,98,10,.2));mix-blend-mode:lighten" onerror="this.style.display='none'">
-    <button class="btn-primary" style="padding:10px 22px;font-size:.88rem" onclick="showLogin()">🔑 Login to App →</button>
   </div>
 
   <!-- Hero -->
@@ -510,14 +508,14 @@ body{font-family:"DM Sans",sans-serif;background:var(--navy);color:var(--text-ma
       </div>
       <div id="panel-member" class="login-panel active">
         <div id="member-login-view">
-          <div style="font-size:.82rem;color:var(--text-muted);margin-bottom:12px;text-align:center">Enter your credential</div>
-          <input type="text" id="member-credential-input" maxlength="10" placeholder="Enter credential" autocomplete="off" spellcheck="false"
+          <div style="font-size:.82rem;color:var(--text-muted);margin-bottom:12px;text-align:center">Enter your password</div>
+          <input type="text" id="member-credential-input" maxlength="15" placeholder="Enter password" autocomplete="off" spellcheck="false"
             style="width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.15);border-radius:10px;padding:12px 16px;color:var(--text-main);font-family:DM Sans,sans-serif;font-size:1.1rem;text-align:center;letter-spacing:.12em;margin-bottom:8px;box-sizing:border-box"
             onkeydown="if(event.key==='Enter')attemptLogin()">
           <div id="member-login-error" style="font-size:.78rem;color:var(--badge-red);text-align:center;margin-bottom:8px;min-height:18px"></div>
           <button class="login-btn" onclick="attemptLogin()">Enter Dashboard →</button>
           <div style="margin-top:16px;padding-top:14px;border-top:1px solid rgba(255,255,255,.07)">
-            <div style="font-size:.75rem;color:var(--text-muted);text-align:center;margin-bottom:10px">First time? Set up your login:</div>
+            <div style="font-size:.75rem;color:var(--text-muted);text-align:center;margin-bottom:10px">First time? Set up your password:</div>
             <div class="custom-dropdown" id="setup-name-dropdown">
               <div class="cdd-selected" id="cdd-display" onclick="toggleCDD()">— Select your name —</div>
               <div class="cdd-list" id="cdd-list" style="display:none">
@@ -608,7 +606,7 @@ body{font-family:"DM Sans",sans-serif;background:var(--navy);color:var(--text-ma
               <input type="hidden" id="setup-name-select" value="">
             </div>
             <div id="setup-field-wrap" style="display:none">
-              <input type="text" id="setup-credential-input" maxlength="10" placeholder="Choose a credential" autocomplete="off" spellcheck="false"
+              <input type="text" id="setup-credential-input" maxlength="15" placeholder="Choose a password" autocomplete="off" spellcheck="false"
                 style="width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.15);border-radius:10px;padding:10px 16px;color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.9rem;text-align:center;letter-spacing:.08em;margin-bottom:8px;box-sizing:border-box"
                 onkeydown="if(event.key==='Enter')initiateSetup()">
               <button class="login-btn" style="padding:10px" onclick="initiateSetup()">Set Up My Login →</button>
@@ -618,9 +616,9 @@ body{font-family:"DM Sans",sans-serif;background:var(--navy);color:var(--text-ma
         <div id="member-confirm-view" style="display:none">
           <div style="text-align:center;margin-bottom:16px">
             <div style="font-size:1.1rem;font-weight:800;color:var(--text-main);margin-bottom:6px">Welcome, <span id="confirm-name-display"></span>! 👋</div>
-            <div style="font-size:.82rem;color:var(--text-muted)">Re-enter your credential to confirm</div>
+            <div style="font-size:.82rem;color:var(--text-muted)">Re-enter your password to confirm</div>
           </div>
-          <input type="text" id="confirm-credential-input" maxlength="10" placeholder="Re-enter credential" autocomplete="off" spellcheck="false"
+          <input type="text" id="confirm-credential-input" maxlength="15" placeholder="Re-enter password" autocomplete="off" spellcheck="false"
             style="width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.15);border-radius:10px;padding:12px 16px;color:var(--text-main);font-family:DM Sans,sans-serif;font-size:1.1rem;text-align:center;letter-spacing:.12em;margin-bottom:8px;box-sizing:border-box"
             onkeydown="if(event.key==='Enter')confirmSetup()">
           <div id="confirm-error" style="font-size:.78rem;color:var(--badge-red);text-align:center;margin-bottom:8px;min-height:18px"></div>
@@ -629,8 +627,8 @@ body{font-family:"DM Sans",sans-serif;background:var(--navy);color:var(--text-ma
         </div>
       </div>
       <div id="panel-admin" class="login-panel" style="display:none">
-        <div style="font-size:.82rem;color:var(--text-muted);margin-bottom:12px;text-align:center">Enter your admin credential</div>
-        <input type="text" id="admin-credential-input" maxlength="10" placeholder="Enter credential" autocomplete="off" spellcheck="false"
+        <div style="font-size:.82rem;color:var(--text-muted);margin-bottom:12px;text-align:center">Enter your admin password</div>
+        <input type="text" id="admin-credential-input" maxlength="15" placeholder="Enter password" autocomplete="off" spellcheck="false"
           style="width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.15);border-radius:10px;padding:12px 16px;color:var(--text-main);font-family:DM Sans,sans-serif;font-size:1.1rem;text-align:center;letter-spacing:.12em;margin-bottom:8px;box-sizing:border-box"
           onkeydown="if(event.key==='Enter')attemptAdminLogin()">
         <div id="admin-login-error" style="font-size:.78rem;color:var(--badge-red);text-align:center;margin-bottom:8px;min-height:18px"></div>
@@ -1406,7 +1404,7 @@ body{font-family:"DM Sans",sans-serif;background:var(--navy);color:var(--text-ma
             <div style="font-family:Nunito,sans-serif;font-size:1rem;font-weight:900;color:var(--ya-blue)">🔑 Credential Manager</div>
             <button onclick="renderCredentialManager()" class="ws-btn" style="border-color:var(--ya-blue);color:var(--ya-blue);font-size:.75rem">🔄 Refresh</button>
           </div>
-          <div style="font-size:.78rem;color:var(--text-muted);margin-bottom:12px">Reset a user's credential so they can set up a new one on their next login.</div>
+          <div style="font-size:.78rem;color:var(--text-muted);margin-bottom:12px">Reset a user's password so they can set up a new one on their next login.</div>
           <div id="credential-manager-list"><div style="color:var(--text-muted);font-size:.82rem">Loading...</div></div>
         </div>
       </div>
@@ -6219,13 +6217,25 @@ function addNewAdultUser(){
   // Initialise compliance entry so new adult appears in compliance dropdown
   if(!ADULT_COMPLIANCE[name]) ADULT_COMPLIANCE[name] = {vsc_issued:'',vsc_expiry:'',vsc_on_file:false,waiver_date:'',waiver_on_file:false,photo_release_date:'',photo_release_on_file:false};
 
-  // Persist to DB
+  // Persist to DB — must use on_conflict=id so Supabase treats this as an upsert
   var lvl = role.match(/Level (\d)/);
-  dbPost('adults',{
-    id:key, name:name, role:role, avatar:avatar, bg:bg,
-    facilitated:[], volunteered:[], hours:0,
-    fac_level: lvl ? parseInt(lvl[1]) : 0,
-    grandfathered:false, is_admin:false
+  fetch(SUPA_URL + '/rest/v1/adults?on_conflict=id', {
+    method: 'POST',
+    headers: {
+      'apikey': SUPA_KEY,
+      'Authorization': 'Bearer ' + SUPA_KEY,
+      'Content-Type': 'application/json',
+      'Prefer': 'resolution=merge-duplicates,return=minimal'
+    },
+    body: JSON.stringify({
+      id:key, name:name, role:role, avatar:avatar, bg:bg,
+      facilitated:[], volunteered:[], hours:0,
+      fac_level: lvl ? parseInt(lvl[1]) : 0,
+      grandfathered:false, is_admin:false, active:true
+    })
+  }).then(function(r){
+    if(!r.ok){ r.text().then(function(e){ console.warn('addNewAdultUser DB failed:', r.status, e); }); }
+    else { console.log('New adult saved to DB:', name, '(key:', key + ')'); }
   });
 
   fb.innerHTML='<span style="color:var(--ya-teal)">✔ <strong>'+name+'</strong> added!</span>';
@@ -6656,7 +6666,7 @@ function renderCredentialManager() {
 }
 
 async function resetCredential(id, name) {
-  if(!confirm('Reset credential for ' + name + '?\n\nThey will need to set up a new login on their next visit.')) return;
+  if(!confirm('Reset password for ' + name + '?\n\nThey will need to set up a new login on their next visit.')) return;
   // Delete from Supabase
   await dbDel('credentials', 'id=eq.' + encodeURIComponent(id));
   // Remove from local state
@@ -6667,7 +6677,7 @@ async function resetCredential(id, name) {
   if(el) {
     var fb = document.createElement('div');
     fb.style.cssText = 'font-size:.78rem;color:var(--ya-teal);margin-top:8px;font-weight:700';
-    fb.textContent = '✔ Credential reset for ' + name + '. They can set up a new login on next visit.';
+    fb.textContent = '✔ Password reset for ' + name + '. They can set up a new password on next visit.';
     el.appendChild(fb);
     setTimeout(function(){ fb.parentNode && fb.parentNode.removeChild(fb); }, 4000);
   }
@@ -6927,7 +6937,7 @@ function attemptLogin() {
   var input = document.getElementById('member-credential-input').value.trim().toUpperCase();
   var errEl = document.getElementById('member-login-error');
   errEl.textContent = '';
-  if(!input) { errEl.textContent = 'Please enter your credential.'; return; }
+  if(!input) { errEl.textContent = 'Please enter your password.'; return; }
 
   // If DB is still loading (banner visible), wait and retry once
   var banner = document.getElementById('db-banner');
@@ -6955,9 +6965,9 @@ function attemptLogin() {
     doLogin(match.id, match.role);
   } else if(Object.keys(storedCredentials).length === 0) {
     // Credentials didn't load — offer a retry
-    errEl.innerHTML = '⚠️ Credentials not loaded yet. <span style="color:var(--ya-gold);cursor:pointer;text-decoration:underline" onclick="attemptLogin()">Tap here to retry</span>';
+    errEl.innerHTML = '⚠️ Passwords not loaded yet. <span style="color:var(--ya-gold);cursor:pointer;text-decoration:underline" onclick="attemptLogin()">Tap here to retry</span>';
   } else {
-    errEl.innerHTML = 'Credential not found — please try again or set up a new login below.';
+    errEl.innerHTML = 'Password not found — please try again or set up a new password below.';
   }
 }
 
@@ -6969,8 +6979,9 @@ function initiateSetup() {
   errEl.textContent = '';
 
   if(!nameSelect) { errEl.textContent = 'Please select your name.'; return; }
-  if(!credInput)  { errEl.textContent = 'Please enter your credential.'; return; }
-  if(credInput.length < 4) { errEl.textContent = 'Credential too short — please use at least 4 characters.'; return; }
+  if(!credInput)  { errEl.textContent = 'Please enter your password.'; return; }
+  if(credInput.length < 4) { errEl.textContent = 'Password too short — please use at least 4 characters.'; return; }
+  if(credInput.length > 15) { errEl.textContent = 'Password too long — maximum 15 characters.'; return; }
 
   // Check not already taken — if it is, just log them in directly
   var existingMatch = null;
@@ -7023,7 +7034,7 @@ function confirmSetup() {
 
   if(!pendingSetup) { cancelSetup(); return; }
   if(input !== pendingSetup.credential) {
-    errEl.textContent = 'Credentials do not match. Please try again.';
+    errEl.textContent = 'Passwords do not match. Please try again.';
     document.getElementById('confirm-credential-input').value = '';
     return;
   }
@@ -7065,7 +7076,7 @@ function attemptAdminLogin() {
   if(match) {
     doLogin(match.id, 'admin');
   } else {
-    errEl.textContent = 'Admin credential not found.';
+    errEl.textContent = 'Admin password not found.';
   }
 }
 

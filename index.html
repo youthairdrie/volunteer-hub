@@ -427,10 +427,10 @@ body{font-family:"DM Sans",sans-serif;background:var(--navy);color:var(--text-ma
 
   <!-- Hero -->
   <div class="landing-hero">
-    <div class="landing-tagline">Youth Airdrie · Volunteer &amp; Program Hub</div>
+    <div class="landing-tagline" id="hs-tagline">Youth Airdrie · Volunteer &amp; Program Hub</div>
     <div class="landing-stripe"></div>
-    <div class="landing-headline">Building <span class="hl">Leaders</span><br>in Airdrie</div>
-    <div class="landing-sub">Youth programs, workshops, and volunteering opportunities for youth ages 4–29 and the adults who support them.</div>
+    <div class="landing-headline" id="hs-headline">Building <span class="hl">Leaders</span><br>in Airdrie</div>
+    <div class="landing-sub" id="hs-sub">Youth programs, workshops, and volunteering opportunities for youth ages 4–29 and the adults who support them.</div>
     <div class="landing-cta-row">
       <button class="btn-primary" onclick="showLogin()">🔑 Login to App →</button>
       <button class="btn-secondary" onclick="document.getElementById('landing-calendar').scrollIntoView({behavior:'smooth'})">📅 View Calendar</button>
@@ -459,25 +459,29 @@ body{font-family:"DM Sans",sans-serif;background:var(--navy);color:var(--text-ma
     <!-- Programs overview -->
     <div class="landing-section-title">🌟 <span>Our <span class="hl">Programs</span></span></div>
     <div class="prog-showcase">
-      <div class="prog-card">
-        <div class="prog-card-icon">📚</div>
-        <div class="prog-card-title">Emerging Leaders Workshop Series</div>
-        <div class="prog-card-sub">Every Sunday · Ages 10–29 · Develop leadership skills across 18 workshops covering communication, conflict management, resilience, and more.</div>
+      <div class="prog-card" id="prog-card-0">
+        <div class="prog-card-icon" id="prog-icon-0">📚</div>
+        <div class="prog-card-title" id="prog-title-0">Emerging Leaders Workshop Series</div>
+        <div class="prog-card-sub" id="prog-sched-0">Every Sunday · Ages 10–29</div>
+        <div class="prog-card-sub" id="prog-desc-0">Develop leadership skills across 18 workshops covering communication, conflict management, resilience, and more.</div>
       </div>
-      <div class="prog-card">
-        <div class="prog-card-icon">🎲</div>
-        <div class="prog-card-title">Scrabble &amp; Games Club</div>
-        <div class="prog-card-sub">Every Wednesday 4:30–6:30 PM · Sep–Apr · A fun, competitive program building vocabulary and community. Youth earn points each session.</div>
+      <div class="prog-card" id="prog-card-1">
+        <div class="prog-card-icon" id="prog-icon-1">🎲</div>
+        <div class="prog-card-title" id="prog-title-1">Scrabble &amp; Games Club</div>
+        <div class="prog-card-sub" id="prog-sched-1">Every Wednesday 4:30–6:30 PM · Sep–Apr</div>
+        <div class="prog-card-sub" id="prog-desc-1">A fun, competitive program building vocabulary and community. Youth earn points each session.</div>
       </div>
-      <div class="prog-card">
-        <div class="prog-card-icon">🌱</div>
-        <div class="prog-card-title">Summer Garden Program</div>
-        <div class="prog-card-sub">Every Wednesday 4:30–6:30 PM · May–Sep · Hands-on gardening, environmental stewardship, and community service for youth of all ages.</div>
+      <div class="prog-card" id="prog-card-2">
+        <div class="prog-card-icon" id="prog-icon-2">🌱</div>
+        <div class="prog-card-title" id="prog-title-2">Summer Garden Program</div>
+        <div class="prog-card-sub" id="prog-sched-2">Every Wednesday 4:30–6:30 PM · May–Sep</div>
+        <div class="prog-card-sub" id="prog-desc-2">Hands-on gardening, environmental stewardship, and community service for youth of all ages.</div>
       </div>
-      <div class="prog-card">
-        <div class="prog-card-icon">✨</div>
-        <div class="prog-card-title">JYSEP &amp; Animator Training</div>
-        <div class="prog-card-sub">Junior Youth Spiritual Empowerment Program (ages 10–14) and Animator Training (ages 15–29). Focuses on service and moral development.</div>
+      <div class="prog-card" id="prog-card-3">
+        <div class="prog-card-icon" id="prog-icon-3">✨</div>
+        <div class="prog-card-title" id="prog-title-3">JYSEP &amp; Animator Training</div>
+        <div class="prog-card-sub" id="prog-sched-3">Junior Youth Spiritual Empowerment Program (ages 10–14) and Animator Training (ages 15–29)</div>
+        <div class="prog-card-sub" id="prog-desc-3">Focuses on service and moral development.</div>
       </div>
     </div>
 
@@ -913,6 +917,7 @@ body{font-family:"DM Sans",sans-serif;background:var(--navy);color:var(--text-ma
         <button class="tab-btn" onclick="switchTab('impact',this)">Impact</button>
         <button class="tab-btn" onclick="switchTab('users-admin',this)" >👥 Users</button>
         <button class="tab-btn" onclick="switchTab('credentials-admin',this)">🔑 Credentials</button>
+        <button class="tab-btn" onclick="switchTab('home-content-editor',this);loadHomeContentEditor()">🏠 Home Content</button>
       </div>
       <div id="tab-youth-metrics">
         <div class="cards-grid">
@@ -1407,6 +1412,59 @@ body{font-family:"DM Sans",sans-serif;background:var(--navy);color:var(--text-ma
           </div>
           <div style="font-size:.78rem;color:var(--text-muted);margin-bottom:12px">Reset a user's password so they can set up a new one on their next login.</div>
           <div id="credential-manager-list"><div style="color:var(--text-muted);font-size:.82rem">Loading...</div></div>
+        </div>
+      </div>
+
+      <!-- ── HOME SCREEN CONTENT EDITOR ── -->
+      <div id="tab-home-content-editor" style="display:none">
+        <div class="section-box" style="margin-bottom:16px">
+          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:4px">
+            <div style="font-family:Nunito,sans-serif;font-size:1rem;font-weight:900;color:var(--ya-orange)">🏠 Home Screen Content Editor</div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <button onclick="saveHomeContent()" style="padding:8px 18px;border-radius:9px;border:none;background:linear-gradient(135deg,var(--ya-orange),var(--ya-gold));color:#fff;font-family:Nunito,sans-serif;font-weight:800;font-size:.82rem;cursor:pointer">💾 Save Changes</button>
+              <button onclick="resetHomeContent()" style="padding:8px 14px;border-radius:9px;border:1px solid rgba(255,255,255,.15);background:transparent;color:var(--text-muted);font-family:DM Sans,sans-serif;font-size:.82rem;cursor:pointer">↩ Reset to Defaults</button>
+            </div>
+          </div>
+          <div style="font-size:.76rem;color:var(--text-muted)">Changes update the live home screen immediately and are saved to this browser. Share this device or use the same browser to keep changes.</div>
+        </div>
+
+        <!-- Preview banner -->
+        <div id="hce-saved-banner" style="display:none;background:rgba(45,184,75,.12);border:1px solid rgba(45,184,75,.3);border-radius:10px;padding:9px 14px;font-size:.78rem;color:var(--badge-green);margin-bottom:14px">✅ Changes saved and applied to the home screen.</div>
+        <div id="hce-reset-banner" style="display:none;background:rgba(245,166,35,.1);border:1px solid rgba(245,166,35,.25);border-radius:10px;padding:9px 14px;font-size:.78rem;color:var(--ya-gold);margin-bottom:14px">↩ Home screen reset to default content.</div>
+
+        <!-- Section 1: Header / Hero -->
+        <div class="section-box" style="margin-bottom:14px">
+          <div style="font-family:Nunito,sans-serif;font-size:.88rem;font-weight:900;color:var(--ya-blue);margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid var(--card-border)">📋 Header &amp; Hero Section</div>
+          <div style="display:grid;gap:12px">
+            <div>
+              <label style="display:block;font-size:.74rem;font-weight:700;color:var(--text-muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.05em">App Tagline / Title</label>
+              <input type="text" id="hce-tagline" placeholder="Youth Airdrie · Volunteer &amp; Program Hub"
+                style="width:100%;background:rgba(255,255,255,.05);border:1px solid var(--card-border);border-radius:9px;padding:9px 12px;color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem;box-sizing:border-box">
+              <div style="font-size:.7rem;color:var(--text-muted);margin-top:3px">Shown above the headline on the home screen. Also used as the login screen subtitle.</div>
+            </div>
+            <div>
+              <label style="display:block;font-size:.74rem;font-weight:700;color:var(--text-muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.05em">Main Headline — Line 1</label>
+              <input type="text" id="hce-headline1" placeholder="Building Leaders"
+                style="width:100%;background:rgba(255,255,255,.05);border:1px solid var(--card-border);border-radius:9px;padding:9px 12px;color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem;box-sizing:border-box">
+              <div style="font-size:.7rem;color:var(--text-muted);margin-top:3px">The first line of the large headline. The last word is highlighted in orange.</div>
+            </div>
+            <div>
+              <label style="display:block;font-size:.74rem;font-weight:700;color:var(--text-muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.05em">Main Headline — Line 2</label>
+              <input type="text" id="hce-headline2" placeholder="in Airdrie"
+                style="width:100%;background:rgba(255,255,255,.05);border:1px solid var(--card-border);border-radius:9px;padding:9px 12px;color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem;box-sizing:border-box">
+            </div>
+            <div>
+              <label style="display:block;font-size:.74rem;font-weight:700;color:var(--text-muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.05em">Intro / Tagline Paragraph</label>
+              <textarea id="hce-sub" rows="3" placeholder="Youth programs, workshops, and volunteering opportunities..."
+                style="width:100%;background:rgba(255,255,255,.05);border:1px solid var(--card-border);border-radius:9px;padding:9px 12px;color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem;resize:vertical;box-sizing:border-box;line-height:1.5"></textarea>
+            </div>
+          </div>
+        </div>
+
+        <!-- Section 2: Program Cards -->
+        <div class="section-box">
+          <div style="font-family:Nunito,sans-serif;font-size:.88rem;font-weight:900;color:var(--ya-blue);margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid var(--card-border)">🌟 Program Cards</div>
+          <div id="hce-prog-cards" style="display:grid;gap:16px"></div>
         </div>
       </div>
 
@@ -2399,7 +2457,7 @@ function showPage(id,navItem){
 }
 
 function switchTab(tabId,btn){
-  ['tab-youth-metrics','tab-scrabble-admin','tab-future-schedule','tab-workshop-tracker','tab-facilitators','tab-events-log','tab-compliance','tab-impact','tab-credentials-admin','tab-users-admin'].forEach(function(t){
+  ['tab-youth-metrics','tab-scrabble-admin','tab-future-schedule','tab-workshop-tracker','tab-facilitators','tab-events-log','tab-compliance','tab-impact','tab-credentials-admin','tab-users-admin','tab-home-content-editor'].forEach(function(t){
     var el=document.getElementById(t);if(el)el.style.display='none';
   });
   document.querySelectorAll('.tab-btn').forEach(function(b){b.classList.remove('active');});
@@ -7229,6 +7287,212 @@ function checkYouth18thBirthday(){
   }
 }
 
+
+// ── HOME SCREEN CONTENT EDITOR ──
+var HS_STORAGE_KEY = 'ya_home_content_v1';
+
+var HS_DEFAULTS = {
+  tagline: 'Youth Airdrie · Volunteer & Program Hub',
+  headline1: 'Building Leaders',
+  headline2: 'in Airdrie',
+  sub: 'Youth programs, workshops, and volunteering opportunities for youth ages 4–29 and the adults who support them.',
+  cards: [
+    {
+      icon: '📚',
+      title: 'Emerging Leaders Workshop Series',
+      schedule: 'Every Sunday · Ages 10–29',
+      desc: 'Develop leadership skills across 18 workshops covering communication, conflict management, resilience, and more.'
+    },
+    {
+      icon: '🎲',
+      title: 'Scrabble & Games Club',
+      schedule: 'Every Wednesday 4:30–6:30 PM · Sep–Apr',
+      desc: 'A fun, competitive program building vocabulary and community. Youth earn points each session.'
+    },
+    {
+      icon: '🌱',
+      title: 'Summer Garden Program',
+      schedule: 'Every Wednesday 4:30–6:30 PM · May–Sep',
+      desc: 'Hands-on gardening, environmental stewardship, and community service for youth of all ages.'
+    },
+    {
+      icon: '✨',
+      title: 'JYSEP & Animator Training',
+      schedule: 'Junior Youth Spiritual Empowerment Program (ages 10–14) and Animator Training (ages 15–29)',
+      desc: 'Focuses on service and moral development.'
+    }
+  ]
+};
+
+function loadHomeContentData() {
+  try {
+    var raw = localStorage.getItem(HS_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch(e) { return null; }
+}
+
+function applyHomeContent() {
+  var data = loadHomeContentData() || HS_DEFAULTS;
+
+  // Tagline
+  var tagEl = document.getElementById('hs-tagline');
+  if (tagEl) tagEl.textContent = data.tagline || HS_DEFAULTS.tagline;
+
+  // Headline: split into last word (highlighted) + preceding words
+  var h1 = data.headline1 || HS_DEFAULTS.headline1;
+  var h2 = data.headline2 || HS_DEFAULTS.headline2;
+  var parts = h1.trim().split(' ');
+  var lastWord = parts.pop();
+  var rest = parts.join(' ');
+  var headlineEl = document.getElementById('hs-headline');
+  if (headlineEl) {
+    headlineEl.innerHTML = (rest ? rest + ' ' : '') +
+      '<span class="hl">' + lastWord + '</span><br>' + h2;
+  }
+
+  // Sub text
+  var subEl = document.getElementById('hs-sub');
+  if (subEl) subEl.textContent = data.sub || HS_DEFAULTS.sub;
+
+  // Program cards
+  var cards = (data.cards && data.cards.length) ? data.cards : HS_DEFAULTS.cards;
+  cards.forEach(function(card, i) {
+    var iconEl = document.getElementById('prog-icon-' + i);
+    var titleEl = document.getElementById('prog-title-' + i);
+    var schedEl = document.getElementById('prog-sched-' + i);
+    var descEl = document.getElementById('prog-desc-' + i);
+    if (iconEl) iconEl.textContent = card.icon || '';
+    if (titleEl) titleEl.textContent = card.title || '';
+    if (schedEl) schedEl.textContent = card.schedule || '';
+    if (descEl) descEl.textContent = card.desc || '';
+  });
+}
+
+// Call on page load — applies any saved content immediately
+applyHomeContent();
+
+function loadHomeContentEditor() {
+  var data = loadHomeContentData() || HS_DEFAULTS;
+
+  var tf = function(id, val) {
+    var el = document.getElementById(id);
+    if (el) el.value = val || '';
+  };
+
+  tf('hce-tagline', data.tagline);
+  tf('hce-headline1', data.headline1);
+  tf('hce-headline2', data.headline2);
+  tf('hce-sub', data.sub);
+
+  // Render program card editor blocks
+  var container = document.getElementById('hce-prog-cards');
+  if (!container) return;
+  var cards = (data.cards && data.cards.length) ? data.cards : HS_DEFAULTS.cards;
+  var labels = ['Emerging Leaders Workshop Series', 'Scrabble & Games Club', 'Summer Garden Program', 'JYSEP & Animator Training'];
+  container.innerHTML = '';
+  cards.forEach(function(card, i) {
+    var block = document.createElement('div');
+    block.style.cssText = 'background:rgba(255,255,255,.03);border:1px solid var(--card-border);border-radius:12px;padding:14px 16px';
+    block.innerHTML =
+      '<div style="font-family:Nunito,sans-serif;font-size:.82rem;font-weight:900;color:var(--ya-gold);margin-bottom:12px">' +
+        'Card ' + (i + 1) + ' — ' + (card.title || labels[i] || '') +
+      '</div>' +
+      '<div style="display:grid;gap:10px">' +
+        '<div>' +
+          '<label style="display:block;font-size:.72rem;font-weight:700;color:var(--text-muted);margin-bottom:3px;text-transform:uppercase;letter-spacing:.05em">Icon (emoji)</label>' +
+          '<input type="text" id="hce-card-icon-' + i + '" value="' + _esc(card.icon || '') + '" ' +
+            'style="width:80px;background:rgba(255,255,255,.05);border:1px solid var(--card-border);border-radius:8px;padding:7px 10px;color:var(--text-main);font-size:1.1rem;box-sizing:border-box">' +
+        '</div>' +
+        '<div>' +
+          '<label style="display:block;font-size:.72rem;font-weight:700;color:var(--text-muted);margin-bottom:3px;text-transform:uppercase;letter-spacing:.05em">Program Title</label>' +
+          '<input type="text" id="hce-card-title-' + i + '" value="' + _esc(card.title || '') + '" ' +
+            'style="width:100%;background:rgba(255,255,255,.05);border:1px solid var(--card-border);border-radius:8px;padding:7px 10px;color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.84rem;box-sizing:border-box">' +
+        '</div>' +
+        '<div>' +
+          '<label style="display:block;font-size:.72rem;font-weight:700;color:var(--text-muted);margin-bottom:3px;text-transform:uppercase;letter-spacing:.05em">Schedule Line</label>' +
+          '<input type="text" id="hce-card-sched-' + i + '" value="' + _esc(card.schedule || '') + '" ' +
+            'style="width:100%;background:rgba(255,255,255,.05);border:1px solid var(--card-border);border-radius:8px;padding:7px 10px;color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.84rem;box-sizing:border-box">' +
+        '</div>' +
+        '<div>' +
+          '<label style="display:block;font-size:.72rem;font-weight:700;color:var(--text-muted);margin-bottom:3px;text-transform:uppercase;letter-spacing:.05em">Description</label>' +
+          '<textarea id="hce-card-desc-' + i + '" rows="2" ' +
+            'style="width:100%;background:rgba(255,255,255,.05);border:1px solid var(--card-border);border-radius:8px;padding:7px 10px;color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.84rem;resize:vertical;box-sizing:border-box;line-height:1.5">' +
+            _esc(card.desc || '') +
+          '</textarea>' +
+        '</div>' +
+      '</div>';
+    container.appendChild(block);
+  });
+}
+
+function _esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function saveHomeContent() {
+  var gv = function(id) {
+    var el = document.getElementById(id);
+    return el ? el.value.trim() : '';
+  };
+
+  var cards = [];
+  for (var i = 0; i < HS_DEFAULTS.cards.length; i++) {
+    cards.push({
+      icon: gv('hce-card-icon-' + i) || HS_DEFAULTS.cards[i].icon,
+      title: gv('hce-card-title-' + i) || HS_DEFAULTS.cards[i].title,
+      schedule: gv('hce-card-sched-' + i),
+      desc: gv('hce-card-desc-' + i)
+    });
+  }
+
+  var data = {
+    tagline: gv('hce-tagline') || HS_DEFAULTS.tagline,
+    headline1: gv('hce-headline1') || HS_DEFAULTS.headline1,
+    headline2: gv('hce-headline2') || HS_DEFAULTS.headline2,
+    sub: gv('hce-sub') || HS_DEFAULTS.sub,
+    cards: cards
+  };
+
+  try {
+    localStorage.setItem(HS_STORAGE_KEY, JSON.stringify(data));
+  } catch(e) {
+    console.warn('Could not save home content to localStorage:', e);
+  }
+
+  // Apply to live home screen immediately
+  applyHomeContent();
+
+  // Re-render card editor titles to reflect new names
+  loadHomeContentEditor();
+
+  // Show success banner, hide after 3s
+  var saved = document.getElementById('hce-saved-banner');
+  var reset = document.getElementById('hce-reset-banner');
+  if (reset) reset.style.display = 'none';
+  if (saved) {
+    saved.style.display = 'block';
+    setTimeout(function(){ if(saved) saved.style.display = 'none'; }, 3000);
+  }
+}
+
+function resetHomeContent() {
+  try { localStorage.removeItem(HS_STORAGE_KEY); } catch(e) {}
+
+  // Apply defaults to live home screen
+  applyHomeContent();
+
+  // Reload editor with default values
+  loadHomeContentEditor();
+
+  // Show reset banner
+  var saved = document.getElementById('hce-saved-banner');
+  var reset = document.getElementById('hce-reset-banner');
+  if (saved) saved.style.display = 'none';
+  if (reset) {
+    reset.style.display = 'block';
+    setTimeout(function(){ if(reset) reset.style.display = 'none'; }, 3000);
+  }
+}
 
 // ── CUSTOM DROPDOWN ──
 var _cddJustOpened = false;

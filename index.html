@@ -456,33 +456,10 @@ body{font-family:"DM Sans",sans-serif;background:var(--navy);color:var(--text-ma
       </div>
     </div>
 
-    <!-- Programs overview -->
+    <!-- Programs overview — built dynamically from saved card data -->
     <div class="landing-section-title">🌟 <span>Our <span class="hl">Programs</span></span></div>
-    <div class="prog-showcase">
-      <div class="prog-card" id="prog-card-0">
-        <div class="prog-card-icon" id="prog-icon-0">📚</div>
-        <div class="prog-card-title" id="prog-title-0">Emerging Leaders Workshop Series</div>
-        <div class="prog-card-sub" id="prog-sched-0">Every Sunday · Ages 10–29</div>
-        <div class="prog-card-sub" id="prog-desc-0">Develop leadership skills across 18 workshops covering communication, conflict management, resilience, and more.</div>
-      </div>
-      <div class="prog-card" id="prog-card-1">
-        <div class="prog-card-icon" id="prog-icon-1">🎲</div>
-        <div class="prog-card-title" id="prog-title-1">Scrabble &amp; Games Club</div>
-        <div class="prog-card-sub" id="prog-sched-1">Every Wednesday 4:30–6:30 PM · Sep–Apr</div>
-        <div class="prog-card-sub" id="prog-desc-1">A fun, competitive program building vocabulary and community. Youth earn points each session.</div>
-      </div>
-      <div class="prog-card" id="prog-card-2">
-        <div class="prog-card-icon" id="prog-icon-2">🌱</div>
-        <div class="prog-card-title" id="prog-title-2">Summer Garden Program</div>
-        <div class="prog-card-sub" id="prog-sched-2">Every Wednesday 4:30–6:30 PM · May–Sep</div>
-        <div class="prog-card-sub" id="prog-desc-2">Hands-on gardening, environmental stewardship, and community service for youth of all ages.</div>
-      </div>
-      <div class="prog-card" id="prog-card-3">
-        <div class="prog-card-icon" id="prog-icon-3">✨</div>
-        <div class="prog-card-title" id="prog-title-3">JYSEP &amp; Animator Training</div>
-        <div class="prog-card-sub" id="prog-sched-3">Junior Youth Spiritual Empowerment Program (ages 10–14) and Animator Training (ages 15–29)</div>
-        <div class="prog-card-sub" id="prog-desc-3">Focuses on service and moral development.</div>
-      </div>
+    <div class="prog-showcase" id="hs-prog-showcase">
+      <!-- populated by renderHomeProgramCards() on page load -->
     </div>
 
     <!-- Get involved CTA -->
@@ -1461,10 +1438,23 @@ body{font-family:"DM Sans",sans-serif;background:var(--navy);color:var(--text-ma
           </div>
         </div>
 
-        <!-- Section 2: Program Cards -->
+        <!-- Section 2: Program Cards Manager -->
         <div class="section-box">
-          <div style="font-family:Nunito,sans-serif;font-size:.88rem;font-weight:900;color:var(--ya-blue);margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid var(--card-border)">🌟 Program Cards</div>
-          <div id="hce-prog-cards" style="display:grid;gap:16px"></div>
+          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid var(--card-border)">
+            <div style="font-family:Nunito,sans-serif;font-size:.88rem;font-weight:900;color:var(--ya-blue)">🌟 Program Cards Manager</div>
+            <button onclick="hceAddCard()" style="padding:7px 14px;border-radius:9px;border:1px solid var(--ya-teal);background:rgba(0,181,160,.08);color:var(--ya-teal);font-family:DM Sans,sans-serif;font-size:.8rem;font-weight:700;cursor:pointer">＋ Add Card</button>
+          </div>
+          <div style="font-size:.74rem;color:var(--text-muted);margin-bottom:14px">Use ▲ / ▼ to reorder. Changes apply when you click 💾 Save Changes above.</div>
+          <div id="hce-prog-cards" style="display:grid;gap:14px"></div>
+          <!-- Inline delete confirmation -->
+          <div id="hce-delete-confirm" style="display:none;margin-top:14px;background:rgba(239,68,68,.09);border:1px solid rgba(239,68,68,.3);border-radius:11px;padding:14px 16px">
+            <div style="font-size:.83rem;color:#f87171;font-weight:700;margin-bottom:6px">⚠️ Delete this card?</div>
+            <div id="hce-delete-name" style="font-size:.8rem;color:var(--text-muted);margin-bottom:12px"></div>
+            <div style="display:flex;gap:8px">
+              <button onclick="hceConfirmDelete()" style="padding:7px 16px;border-radius:8px;border:none;background:#ef4444;color:#fff;font-family:DM Sans,sans-serif;font-size:.8rem;font-weight:700;cursor:pointer">🗑 Yes, Delete</button>
+              <button onclick="hceCancelDelete()" style="padding:7px 14px;border-radius:8px;border:1px solid rgba(255,255,255,.15);background:transparent;color:var(--text-muted);font-family:DM Sans,sans-serif;font-size:.8rem;cursor:pointer">Cancel</button>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -7292,206 +7282,322 @@ function checkYouth18thBirthday(){
 var HS_STORAGE_KEY = 'ya_home_content_v1';
 
 var HS_DEFAULTS = {
-  tagline: 'Youth Airdrie · Volunteer & Program Hub',
+  tagline:   'Youth Airdrie · Volunteer & Program Hub',
   headline1: 'Building Leaders',
   headline2: 'in Airdrie',
   sub: 'Youth programs, workshops, and volunteering opportunities for youth ages 4–29 and the adults who support them.',
   cards: [
-    {
-      icon: '📚',
-      title: 'Emerging Leaders Workshop Series',
-      schedule: 'Every Sunday · Ages 10–29',
-      desc: 'Develop leadership skills across 18 workshops covering communication, conflict management, resilience, and more.'
-    },
-    {
-      icon: '🎲',
-      title: 'Scrabble & Games Club',
-      schedule: 'Every Wednesday 4:30–6:30 PM · Sep–Apr',
-      desc: 'A fun, competitive program building vocabulary and community. Youth earn points each session.'
-    },
-    {
-      icon: '🌱',
-      title: 'Summer Garden Program',
-      schedule: 'Every Wednesday 4:30–6:30 PM · May–Sep',
-      desc: 'Hands-on gardening, environmental stewardship, and community service for youth of all ages.'
-    },
-    {
-      icon: '✨',
-      title: 'JYSEP & Animator Training',
-      schedule: 'Junior Youth Spiritual Empowerment Program (ages 10–14) and Animator Training (ages 15–29)',
-      desc: 'Focuses on service and moral development.'
-    }
+    { icon:'📚', title:'Emerging Leaders Workshop Series',
+      schedule:'Every Sunday · Ages 10–29', age:'Ages 10–29', location:'',
+      desc:'Develop leadership skills across 18 workshops covering communication, conflict management, resilience, and more.' },
+    { icon:'🎲', title:'Scrabble & Games Club',
+      schedule:'Every Wednesday 4:30–6:30 PM · Sep–Apr', age:'', location:'',
+      desc:'A fun, competitive program building vocabulary and community. Youth earn points each session.' },
+    { icon:'🌱', title:'Summer Garden Program',
+      schedule:'Every Wednesday 4:30–6:30 PM · May–Sep', age:'', location:'',
+      desc:'Hands-on gardening, environmental stewardship, and community service for youth of all ages.' },
+    { icon:'✨', title:'JYSEP & Animator Training',
+      schedule:'Junior Youth Spiritual Empowerment Program (ages 10–14) and Animator Training (ages 15–29)',
+      age:'Ages 10–29', location:'',
+      desc:'Focuses on service and moral development.' }
   ]
 };
 
+// In-memory working copy used by the editor — not persisted until Save is clicked
+var _hceCards = null;
+var _hceDeleteIdx = null;
+
+// ── HTML-escape helper ──
+function _hscEsc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ── Load saved data from localStorage ──
 function loadHomeContentData() {
   try {
     var raw = localStorage.getItem(HS_STORAGE_KEY);
-    return raw ? JSON.parse(raw) : null;
+    if (!raw) return null;
+    var d = JSON.parse(raw);
+    // migrate cards that may lack age/location fields added in this version
+    if (d.cards) {
+      d.cards = d.cards.map(function(c) {
+        return { icon:c.icon||'📌', title:c.title||'', schedule:c.schedule||'',
+                 age:c.age||'', location:c.location||'', desc:c.desc||'' };
+      });
+    }
+    return d;
   } catch(e) { return null; }
 }
 
+// ── Render program cards on the live home screen ──
+function renderHomeProgramCards() {
+  var showcase = document.getElementById('hs-prog-showcase');
+  if (!showcase) return;
+  var data  = loadHomeContentData() || HS_DEFAULTS;
+  var cards = (data.cards && data.cards.length) ? data.cards : HS_DEFAULTS.cards;
+  showcase.innerHTML = '';
+  cards.forEach(function(c) {
+    var div = document.createElement('div');
+    div.className = 'prog-card';
+    var inner = '<div class="prog-card-icon">' + (c.icon||'📌') + '</div>' +
+                '<div class="prog-card-title">' + _hscEsc(c.title) + '</div>';
+    if (c.schedule) inner += '<div class="prog-card-sub">' + _hscEsc(c.schedule) + '</div>';
+    if (c.age)      inner += '<div class="prog-card-sub" style="color:var(--ya-teal);font-size:.74rem;font-weight:700">👥 ' + _hscEsc(c.age) + '</div>';
+    if (c.location) inner += '<div class="prog-card-sub" style="color:var(--text-muted);font-size:.74rem">📍 ' + _hscEsc(c.location) + '</div>';
+    if (c.desc)     inner += '<div class="prog-card-sub">' + _hscEsc(c.desc) + '</div>';
+    div.innerHTML = inner;
+    showcase.appendChild(div);
+  });
+}
+
+// ── Apply all home content (hero text + program cards) to the live page ──
 function applyHomeContent() {
   var data = loadHomeContentData() || HS_DEFAULTS;
 
-  // Tagline
   var tagEl = document.getElementById('hs-tagline');
   if (tagEl) tagEl.textContent = data.tagline || HS_DEFAULTS.tagline;
 
-  // Headline: split into last word (highlighted) + preceding words
-  var h1 = data.headline1 || HS_DEFAULTS.headline1;
-  var h2 = data.headline2 || HS_DEFAULTS.headline2;
+  var h1    = data.headline1 || HS_DEFAULTS.headline1;
+  var h2    = data.headline2 || HS_DEFAULTS.headline2;
   var parts = h1.trim().split(' ');
-  var lastWord = parts.pop();
-  var rest = parts.join(' ');
-  var headlineEl = document.getElementById('hs-headline');
-  if (headlineEl) {
-    headlineEl.innerHTML = (rest ? rest + ' ' : '') +
-      '<span class="hl">' + lastWord + '</span><br>' + h2;
-  }
+  var last  = parts.pop();
+  var rest  = parts.join(' ');
+  var hEl   = document.getElementById('hs-headline');
+  if (hEl) hEl.innerHTML = (rest ? rest + ' ' : '') + '<span class="hl">' + _hscEsc(last) + '</span><br>' + _hscEsc(h2);
 
-  // Sub text
   var subEl = document.getElementById('hs-sub');
   if (subEl) subEl.textContent = data.sub || HS_DEFAULTS.sub;
 
-  // Program cards
-  var cards = (data.cards && data.cards.length) ? data.cards : HS_DEFAULTS.cards;
-  cards.forEach(function(card, i) {
-    var iconEl = document.getElementById('prog-icon-' + i);
-    var titleEl = document.getElementById('prog-title-' + i);
-    var schedEl = document.getElementById('prog-sched-' + i);
-    var descEl = document.getElementById('prog-desc-' + i);
-    if (iconEl) iconEl.textContent = card.icon || '';
-    if (titleEl) titleEl.textContent = card.title || '';
-    if (schedEl) schedEl.textContent = card.schedule || '';
-    if (descEl) descEl.textContent = card.desc || '';
-  });
+  renderHomeProgramCards();
 }
 
-// Call on page load — applies any saved content immediately
+// Run immediately on page load
 applyHomeContent();
 
+// ── Open the editor tab: populate hero fields + card blocks ──
 function loadHomeContentEditor() {
   var data = loadHomeContentData() || HS_DEFAULTS;
 
-  var tf = function(id, val) {
-    var el = document.getElementById(id);
-    if (el) el.value = val || '';
-  };
+  var set = function(id, v) { var el=document.getElementById(id); if(el) el.value = v||''; };
+  set('hce-tagline',   data.tagline);
+  set('hce-headline1', data.headline1);
+  set('hce-headline2', data.headline2);
+  set('hce-sub',       data.sub);
 
-  tf('hce-tagline', data.tagline);
-  tf('hce-headline1', data.headline1);
-  tf('hce-headline2', data.headline2);
-  tf('hce-sub', data.sub);
+  // Deep-clone into working copy so edits don't touch saved data
+  _hceCards = (data.cards && data.cards.length ? data.cards : HS_DEFAULTS.cards)
+    .map(function(c){ return { icon:c.icon||'📌', title:c.title||'', schedule:c.schedule||'',
+                               age:c.age||'', location:c.location||'', desc:c.desc||'' }; });
+  _hceDeleteIdx = null;
+  _hceRenderBlocks();
+}
 
-  // Render program card editor blocks
-  var container = document.getElementById('hce-prog-cards');
-  if (!container) return;
-  var cards = (data.cards && data.cards.length) ? data.cards : HS_DEFAULTS.cards;
-  var labels = ['Emerging Leaders Workshop Series', 'Scrabble & Games Club', 'Summer Garden Program', 'JYSEP & Animator Training'];
-  container.innerHTML = '';
-  cards.forEach(function(card, i) {
+// ── Render card editor blocks from _hceCards ──
+function _hceRenderBlocks() {
+  var wrap = document.getElementById('hce-prog-cards');
+  if (!wrap) return;
+
+  // Always hide delete confirm when re-rendering
+  var delBox = document.getElementById('hce-delete-confirm');
+  if (delBox) delBox.style.display = 'none';
+  _hceDeleteIdx = null;
+
+  wrap.innerHTML = '';
+  var total = (_hceCards || []).length;
+
+  if (!total) {
+    wrap.innerHTML = '<div style="text-align:center;padding:22px;color:var(--text-muted);font-size:.83rem">No cards yet — click <strong>＋ Add Card</strong> to create one.</div>';
+    return;
+  }
+
+  var IS = 'width:100%;background:rgba(255,255,255,.05);border:1px solid var(--card-border);border-radius:8px;padding:7px 10px;color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.84rem;box-sizing:border-box';
+  var LS = 'display:block;font-size:.7rem;font-weight:700;color:var(--text-muted);margin-bottom:3px;text-transform:uppercase;letter-spacing:.05em';
+  var BTN = 'padding:4px 9px;border-radius:7px;border:1px solid rgba(255,255,255,.12);background:transparent;color:var(--text-muted);font-size:.78rem;cursor:pointer';
+
+  (_hceCards || []).forEach(function(c, i) {
     var block = document.createElement('div');
-    block.style.cssText = 'background:rgba(255,255,255,.03);border:1px solid var(--card-border);border-radius:12px;padding:14px 16px';
+    block.id  = 'hce-block-' + i;
+    block.style.cssText = 'background:rgba(255,255,255,.03);border:1px solid var(--card-border);border-radius:12px;padding:14px 16px;transition:border-color .25s';
+
+    var upBtn   = i > 0         ? '<button onclick="hceMoveCard('+i+',-1)" title="Move up"   style="'+BTN+'">▲</button>' : '<span style="display:inline-block;width:29px"></span>';
+    var downBtn = i < total - 1 ? '<button onclick="hceMoveCard('+i+',1)"  title="Move down" style="'+BTN+'">▼</button>' : '<span style="display:inline-block;width:29px"></span>';
+    var dupBtn  = '<button onclick="hceDuplicateCard('+i+')" title="Duplicate" style="'+BTN+'">⧉</button>';
+    var delBtn  = '<button onclick="hceRequestDelete('+i+')" title="Delete" style="padding:4px 9px;border-radius:7px;border:1px solid rgba(239,68,68,.3);background:rgba(239,68,68,.07);color:#f87171;font-size:.78rem;cursor:pointer">🗑</button>';
+
     block.innerHTML =
-      '<div style="font-family:Nunito,sans-serif;font-size:.82rem;font-weight:900;color:var(--ya-gold);margin-bottom:12px">' +
-        'Card ' + (i + 1) + ' — ' + (card.title || labels[i] || '') +
+      // ── header row ──
+      '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:12px">' +
+        '<span style="font-family:Nunito,sans-serif;font-size:.82rem;font-weight:900;color:var(--ya-gold)">Card '+(i+1)+'</span>' +
+        '<span id="hce-label-'+i+'" style="font-size:.78rem;color:var(--text-muted);flex:1;min-width:0;padding:0 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+_hscEsc(c.title||'Untitled')+'</span>' +
+        '<div style="display:flex;gap:5px;align-items:center">' + upBtn + downBtn + dupBtn + delBtn + '</div>' +
       '</div>' +
+      // ── icon + title row ──
+      '<div style="display:grid;grid-template-columns:84px 1fr;gap:10px;margin-bottom:10px">' +
+        '<div>' +
+          '<label style="'+LS+'">Icon</label>' +
+          '<input type="text" id="hce-icon-'+i+'" value="'+_hscEsc(c.icon)+'" ' +
+            'oninput="_hceField('+i+',\'icon\',this.value)" ' +
+            'style="width:100%;background:rgba(255,255,255,.05);border:1px solid var(--card-border);border-radius:8px;padding:7px 8px;color:var(--text-main);font-size:1.2rem;text-align:center;box-sizing:border-box">' +
+        '</div>' +
+        '<div>' +
+          '<label style="'+LS+'">Program Title *</label>' +
+          '<input type="text" id="hce-title-'+i+'" value="'+_hscEsc(c.title)+'" ' +
+            'oninput="_hceField('+i+',\'title\',this.value)" ' +
+            'placeholder="e.g. Emerging Leaders Workshop" style="'+IS+'">' +
+        '</div>' +
+      '</div>' +
+      // ── remaining fields ──
       '<div style="display:grid;gap:10px">' +
         '<div>' +
-          '<label style="display:block;font-size:.72rem;font-weight:700;color:var(--text-muted);margin-bottom:3px;text-transform:uppercase;letter-spacing:.05em">Icon (emoji)</label>' +
-          '<input type="text" id="hce-card-icon-' + i + '" value="' + _esc(card.icon || '') + '" ' +
-            'style="width:80px;background:rgba(255,255,255,.05);border:1px solid var(--card-border);border-radius:8px;padding:7px 10px;color:var(--text-main);font-size:1.1rem;box-sizing:border-box">' +
+          '<label style="'+LS+'">Schedule Line</label>' +
+          '<input type="text" id="hce-sched-'+i+'" value="'+_hscEsc(c.schedule)+'" ' +
+            'oninput="_hceField('+i+',\'schedule\',this.value)" ' +
+            'placeholder="e.g. Every Sunday · 2:00–4:00 PM" style="'+IS+'">' +
+        '</div>' +
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">' +
+          '<div>' +
+            '<label style="'+LS+'">Age Range <span style="font-weight:400;text-transform:none;font-size:.68rem">(optional)</span></label>' +
+            '<input type="text" id="hce-age-'+i+'" value="'+_hscEsc(c.age)+'" ' +
+              'oninput="_hceField('+i+',\'age\',this.value)" ' +
+              'placeholder="e.g. Ages 10–29" style="'+IS+'">' +
+          '</div>' +
+          '<div>' +
+            '<label style="'+LS+'">Location <span style="font-weight:400;text-transform:none;font-size:.68rem">(optional)</span></label>' +
+            '<input type="text" id="hce-loc-'+i+'" value="'+_hscEsc(c.location)+'" ' +
+              'oninput="_hceField('+i+',\'location\',this.value)" ' +
+              'placeholder="e.g. Youth Airdrie" style="'+IS+'">' +
+          '</div>' +
         '</div>' +
         '<div>' +
-          '<label style="display:block;font-size:.72rem;font-weight:700;color:var(--text-muted);margin-bottom:3px;text-transform:uppercase;letter-spacing:.05em">Program Title</label>' +
-          '<input type="text" id="hce-card-title-' + i + '" value="' + _esc(card.title || '') + '" ' +
-            'style="width:100%;background:rgba(255,255,255,.05);border:1px solid var(--card-border);border-radius:8px;padding:7px 10px;color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.84rem;box-sizing:border-box">' +
-        '</div>' +
-        '<div>' +
-          '<label style="display:block;font-size:.72rem;font-weight:700;color:var(--text-muted);margin-bottom:3px;text-transform:uppercase;letter-spacing:.05em">Schedule Line</label>' +
-          '<input type="text" id="hce-card-sched-' + i + '" value="' + _esc(card.schedule || '') + '" ' +
-            'style="width:100%;background:rgba(255,255,255,.05);border:1px solid var(--card-border);border-radius:8px;padding:7px 10px;color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.84rem;box-sizing:border-box">' +
-        '</div>' +
-        '<div>' +
-          '<label style="display:block;font-size:.72rem;font-weight:700;color:var(--text-muted);margin-bottom:3px;text-transform:uppercase;letter-spacing:.05em">Description</label>' +
-          '<textarea id="hce-card-desc-' + i + '" rows="2" ' +
-            'style="width:100%;background:rgba(255,255,255,.05);border:1px solid var(--card-border);border-radius:8px;padding:7px 10px;color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.84rem;resize:vertical;box-sizing:border-box;line-height:1.5">' +
-            _esc(card.desc || '') +
-          '</textarea>' +
+          '<label style="'+LS+'">Description</label>' +
+          '<textarea id="hce-desc-'+i+'" rows="2" ' +
+            'oninput="_hceField('+i+',\'desc\',this.value)" ' +
+            'placeholder="Brief description of the program..." ' +
+            'style="'+IS+';resize:vertical;line-height:1.5">'+_hscEsc(c.desc)+'</textarea>' +
         '</div>' +
       '</div>';
-    container.appendChild(block);
+
+    wrap.appendChild(block);
   });
 }
 
-function _esc(s) {
-  return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+// ── Live-update a field in the working copy as admin types ──
+function _hceField(idx, field, val) {
+  if (!_hceCards || !_hceCards[idx]) return;
+  _hceCards[idx][field] = val;
+  // Keep the card header label current
+  if (field === 'title') {
+    var lbl = document.getElementById('hce-label-' + idx);
+    if (lbl) lbl.textContent = val || 'Untitled';
+  }
 }
 
-function saveHomeContent() {
-  var gv = function(id) {
-    var el = document.getElementById(id);
-    return el ? el.value.trim() : '';
-  };
+// ── Move card up (-1) or down (+1) ──
+function hceMoveCard(idx, dir) {
+  if (!_hceCards) return;
+  var to = idx + dir;
+  if (to < 0 || to >= _hceCards.length) return;
+  var tmp = _hceCards[idx]; _hceCards[idx] = _hceCards[to]; _hceCards[to] = tmp;
+  _hceRenderBlocks();
+  setTimeout(function() {
+    var el = document.getElementById('hce-block-' + to);
+    if (el) el.scrollIntoView({ behavior:'smooth', block:'nearest' });
+  }, 50);
+}
 
-  var cards = [];
-  for (var i = 0; i < HS_DEFAULTS.cards.length; i++) {
-    cards.push({
-      icon: gv('hce-card-icon-' + i) || HS_DEFAULTS.cards[i].icon,
-      title: gv('hce-card-title-' + i) || HS_DEFAULTS.cards[i].title,
-      schedule: gv('hce-card-sched-' + i),
-      desc: gv('hce-card-desc-' + i)
-    });
-  }
+// ── Add a new blank card ──
+function hceAddCard() {
+  if (!_hceCards) _hceCards = [];
+  _hceCards.push({ icon:'📌', title:'', schedule:'', age:'', location:'', desc:'' });
+  _hceRenderBlocks();
+  var newIdx = _hceCards.length - 1;
+  setTimeout(function() {
+    var el = document.getElementById('hce-block-' + newIdx);
+    if (el) {
+      el.scrollIntoView({ behavior:'smooth', block:'nearest' });
+      el.style.borderColor = 'var(--ya-teal)';
+      setTimeout(function(){ el.style.borderColor = ''; }, 1600);
+      var t = el.querySelector('input[id^="hce-title-"]');
+      if (t) t.focus();
+    }
+  }, 80);
+}
+
+// ── Duplicate a card ──
+function hceDuplicateCard(idx) {
+  if (!_hceCards || !_hceCards[idx]) return;
+  var copy = Object.assign({}, _hceCards[idx]);
+  copy.title = copy.title ? copy.title + ' (copy)' : '(copy)';
+  _hceCards.splice(idx + 1, 0, copy);
+  _hceRenderBlocks();
+  setTimeout(function() {
+    var el = document.getElementById('hce-block-' + (idx + 1));
+    if (el) {
+      el.scrollIntoView({ behavior:'smooth', block:'nearest' });
+      el.style.borderColor = 'var(--ya-gold)';
+      setTimeout(function(){ el.style.borderColor = ''; }, 1600);
+    }
+  }, 80);
+}
+
+// ── Request delete — show inline confirm ──
+function hceRequestDelete(idx) {
+  _hceDeleteIdx = idx;
+  var card  = (_hceCards && _hceCards[idx]) || {};
+  var nameEl = document.getElementById('hce-delete-name');
+  if (nameEl) nameEl.textContent = '"' + (card.title || 'Untitled card') + '"';
+  var box = document.getElementById('hce-delete-confirm');
+  if (box) { box.style.display = 'block'; box.scrollIntoView({ behavior:'smooth', block:'nearest' }); }
+}
+
+function hceConfirmDelete() {
+  if (_hceDeleteIdx === null || !_hceCards) return;
+  _hceCards.splice(_hceDeleteIdx, 1);
+  _hceDeleteIdx = null;
+  _hceRenderBlocks();
+}
+
+function hceCancelDelete() {
+  _hceDeleteIdx = null;
+  var box = document.getElementById('hce-delete-confirm');
+  if (box) box.style.display = 'none';
+}
+
+// ── Save all home content ──
+function saveHomeContent() {
+  var gv = function(id){ var el=document.getElementById(id); return el ? el.value.trim() : ''; };
 
   var data = {
-    tagline: gv('hce-tagline') || HS_DEFAULTS.tagline,
+    tagline:   gv('hce-tagline')   || HS_DEFAULTS.tagline,
     headline1: gv('hce-headline1') || HS_DEFAULTS.headline1,
     headline2: gv('hce-headline2') || HS_DEFAULTS.headline2,
-    sub: gv('hce-sub') || HS_DEFAULTS.sub,
-    cards: cards
+    sub:       gv('hce-sub')       || HS_DEFAULTS.sub,
+    cards: (_hceCards || []).map(function(c){ return Object.assign({}, c); })
   };
 
-  try {
-    localStorage.setItem(HS_STORAGE_KEY, JSON.stringify(data));
-  } catch(e) {
-    console.warn('Could not save home content to localStorage:', e);
-  }
+  try { localStorage.setItem(HS_STORAGE_KEY, JSON.stringify(data)); }
+  catch(e) { console.warn('Could not save home content:', e); }
 
-  // Apply to live home screen immediately
-  applyHomeContent();
+  applyHomeContent();   // update live home screen instantly
+  _hceRenderBlocks();   // refresh editor headers
 
-  // Re-render card editor titles to reflect new names
-  loadHomeContentEditor();
-
-  // Show success banner, hide after 3s
-  var saved = document.getElementById('hce-saved-banner');
-  var reset = document.getElementById('hce-reset-banner');
-  if (reset) reset.style.display = 'none';
-  if (saved) {
-    saved.style.display = 'block';
-    setTimeout(function(){ if(saved) saved.style.display = 'none'; }, 3000);
-  }
+  var sv = document.getElementById('hce-saved-banner');
+  var rb = document.getElementById('hce-reset-banner');
+  if (rb) rb.style.display = 'none';
+  if (sv) { sv.style.display = 'block'; setTimeout(function(){ sv.style.display='none'; }, 3000); }
 }
 
+// ── Reset to built-in defaults ──
 function resetHomeContent() {
+  if (!confirm('Reset all home screen content (including program cards) to original defaults?\nThis cannot be undone.')) return;
   try { localStorage.removeItem(HS_STORAGE_KEY); } catch(e) {}
-
-  // Apply defaults to live home screen
   applyHomeContent();
-
-  // Reload editor with default values
   loadHomeContentEditor();
 
-  // Show reset banner
-  var saved = document.getElementById('hce-saved-banner');
-  var reset = document.getElementById('hce-reset-banner');
-  if (saved) saved.style.display = 'none';
-  if (reset) {
-    reset.style.display = 'block';
-    setTimeout(function(){ if(reset) reset.style.display = 'none'; }, 3000);
-  }
+  var sv = document.getElementById('hce-saved-banner');
+  var rb = document.getElementById('hce-reset-banner');
+  if (sv) sv.style.display = 'none';
+  if (rb) { rb.style.display = 'block'; setTimeout(function(){ rb.style.display='none'; }, 3000); }
 }
 
 // ── CUSTOM DROPDOWN ──

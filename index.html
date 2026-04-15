@@ -2568,6 +2568,8 @@ function showLogin(){
 function showLanding(){
   document.getElementById('login-screen').style.display='none';
   document.getElementById('landing-screen').style.display='block';
+  // Re-apply home content so edits are visible without a full page reload
+  if (typeof applyHomeContent === 'function') applyHomeContent();
 }
 
 function renderLandingCalendar(){
@@ -7367,7 +7369,9 @@ function checkYouth18thBirthday(){
 
 
 // ── HOME SCREEN CONTENT EDITOR ──
-var HS_STORAGE_KEY = 'ya_home_content_v1';
+var HS_STORAGE_KEY  = 'ya_home_content_v1';   // localStorage cache key
+var HS_SUPA_TABLE   = 'site_config';           // Supabase table
+var HS_SUPA_ROW_ID  = 'home_content';          // row id in that table
 
 var HS_DEFAULTS = {
   tagline:   'Youth Airdrie · Volunteer & Program Hub',
@@ -7400,29 +7404,69 @@ function _hscEsc(s) {
   return String(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
-// ── Load saved data from localStorage ──
+// ── Migrate a raw data object to ensure all card fields exist ──
+function _hsMigrateData(d) {
+  if (!d) return null;
+  if (d.cards) {
+    d.cards = d.cards.map(function(c) {
+      return { icon:c.icon||'📌', title:c.title||'', schedule:c.schedule||'',
+               age:c.age||'', location:c.location||'', desc:c.desc||'' };
+    });
+  }
+  return d;
+}
+
+// ── Read from localStorage cache (instant, synchronous) ──
 function loadHomeContentData() {
   try {
     var raw = localStorage.getItem(HS_STORAGE_KEY);
     if (!raw) return null;
-    var d = JSON.parse(raw);
-    // migrate cards that may lack age/location fields added in this version
-    if (d.cards) {
-      d.cards = d.cards.map(function(c) {
-        return { icon:c.icon||'📌', title:c.title||'', schedule:c.schedule||'',
-                 age:c.age||'', location:c.location||'', desc:c.desc||'' };
-      });
-    }
-    return d;
+    return _hsMigrateData(JSON.parse(raw));
   } catch(e) { return null; }
 }
 
+// ── Write to localStorage cache ──
+function _hsSaveCache(data) {
+  try { localStorage.setItem(HS_STORAGE_KEY, JSON.stringify(data)); } catch(e) {}
+}
+
+// ── Fetch latest content from Supabase and update the page ──
+// Called on page load (async, fires after initial paint) and after every admin save.
+async function fetchHomeContentFromDB() {
+  try {
+    var rows = await dbGet(HS_SUPA_TABLE, 'select=value&id=eq.' + HS_SUPA_ROW_ID);
+    if (rows && rows.length && rows[0].value) {
+      var data = _hsMigrateData(
+        typeof rows[0].value === 'string' ? JSON.parse(rows[0].value) : rows[0].value
+      );
+      if (data) {
+        _hsSaveCache(data);      // update local cache
+        applyHomeContent(data);  // re-render with fresh data
+        return data;
+      }
+    }
+  } catch(e) {
+    // DB not reachable — silently fall through to cached / default data
+  }
+  return null;
+}
+
+// ── Upsert home content to Supabase ──
+async function _hsSaveToDB(data) {
+  try {
+    // Use POST with upsert semantics (merge-duplicates Prefer header is set in supa())
+    await dbPost(HS_SUPA_TABLE, { id: HS_SUPA_ROW_ID, value: JSON.stringify(data) });
+  } catch(e) {
+    console.warn('Could not save home content to DB:', e);
+  }
+}
+
 // ── Render program cards on the live home screen ──
-function renderHomeProgramCards() {
+function renderHomeProgramCards(data) {
   var showcase = document.getElementById('hs-prog-showcase');
   if (!showcase) return;
-  var data  = loadHomeContentData() || HS_DEFAULTS;
-  var cards = (data.cards && data.cards.length) ? data.cards : HS_DEFAULTS.cards;
+  var d     = data || loadHomeContentData() || HS_DEFAULTS;
+  var cards = (d.cards && d.cards.length) ? d.cards : HS_DEFAULTS.cards;
   showcase.innerHTML = '';
   cards.forEach(function(c) {
     var div = document.createElement('div');
@@ -7439,8 +7483,8 @@ function renderHomeProgramCards() {
 }
 
 // ── Apply all home content (hero text + program cards) to the live page ──
-function applyHomeContent() {
-  var data = loadHomeContentData() || HS_DEFAULTS;
+function applyHomeContent(dataOverride) {
+  var data = dataOverride || loadHomeContentData() || HS_DEFAULTS;
 
   var tagEl = document.getElementById('hs-tagline');
   if (tagEl) tagEl.textContent = data.tagline || HS_DEFAULTS.tagline;
@@ -7456,11 +7500,15 @@ function applyHomeContent() {
   var subEl = document.getElementById('hs-sub');
   if (subEl) subEl.textContent = data.sub || HS_DEFAULTS.sub;
 
-  renderHomeProgramCards();
+  renderHomeProgramCards(data);
 }
 
-// Run immediately on page load
+// Phase 1: render immediately from cache (instant, no flash of defaults)
 applyHomeContent();
+
+// Phase 2: fetch fresh data from DB in the background; re-render if different
+// Runs after the current call stack (gives the rest of the script time to set up supa())
+setTimeout(function() { fetchHomeContentFromDB(); }, 0);
 
 // ── Open the editor tab: populate hero fields + card blocks ──
 function loadHomeContentEditor() {
@@ -7651,7 +7699,7 @@ function hceCancelDelete() {
   if (box) box.style.display = 'none';
 }
 
-// ── Save all home content ──
+// ── Save all home content (localStorage + Supabase) ──
 function saveHomeContent() {
   var gv = function(id){ var el=document.getElementById(id); return el ? el.value.trim() : ''; };
 
@@ -7663,12 +7711,19 @@ function saveHomeContent() {
     cards: (_hceCards || []).map(function(c){ return Object.assign({}, c); })
   };
 
-  try { localStorage.setItem(HS_STORAGE_KEY, JSON.stringify(data)); }
-  catch(e) { console.warn('Could not save home content:', e); }
+  // 1. Update local cache immediately
+  _hsSaveCache(data);
 
-  applyHomeContent();   // update live home screen instantly
-  _hceRenderBlocks();   // refresh editor headers
+  // 2. Push to Supabase so all devices see the update
+  _hsSaveToDB(data);
 
+  // 3. Apply to live home screen right now
+  applyHomeContent(data);
+
+  // 4. Refresh editor headers
+  _hceRenderBlocks();
+
+  // 5. Show success banner
   var sv = document.getElementById('hce-saved-banner');
   var rb = document.getElementById('hce-reset-banner');
   if (rb) rb.style.display = 'none';
@@ -7678,7 +7733,10 @@ function saveHomeContent() {
 // ── Reset to built-in defaults ──
 function resetHomeContent() {
   if (!confirm('Reset all home screen content (including program cards) to original defaults?\nThis cannot be undone.')) return;
+  // Clear local cache
   try { localStorage.removeItem(HS_STORAGE_KEY); } catch(e) {}
+  // Delete from Supabase so all devices revert to defaults
+  try { dbDel(HS_SUPA_TABLE, 'id=eq.' + HS_SUPA_ROW_ID); } catch(e) {}
   applyHomeContent();
   loadHomeContentEditor();
 

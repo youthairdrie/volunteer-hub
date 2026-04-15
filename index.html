@@ -242,7 +242,8 @@ body{font-family:"DM Sans",sans-serif;background:var(--navy);color:var(--text-ma
   .login-title{font-size:.8rem!important;letter-spacing:.08em!important}
   .role-tabs{flex-wrap:nowrap}
   .role-tab{font-size:.75rem!important;padding:7px 6px!important}
-  .cdd-list{bottom:auto;top:calc(100% + 4px);max-height:220px;z-index:10000}
+  .cdd-list{top:calc(100% + 4px);bottom:auto;max-height:220px;z-index:10000}
+  #cdd-native{display:none;width:100%;padding:11px 14px;border-radius:10px;border:1px solid rgba(255,255,255,.25);background:#1a2d47;color:var(--text-main);font-family:"DM Sans",sans-serif;font-size:1rem;margin-bottom:10px;cursor:pointer;-webkit-appearance:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M0 0l6 8 6-8z' fill='%23aab'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center}
 
   /* ── LANDING SCREEN MOBILE ── */
   .landing-nav{padding:12px 16px!important}
@@ -352,7 +353,7 @@ body{font-family:"DM Sans",sans-serif;background:var(--navy);color:var(--text-ma
   .custom-dropdown{position:relative;width:100%;margin-bottom:10px;overflow:visible}
   .cdd-selected{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.15);border-radius:10px;padding:10px 14px;color:var(--text-muted);cursor:pointer;font-size:.85rem;transition:border-color .2s;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
   .cdd-selected:hover,.custom-dropdown.open .cdd-selected{border-color:var(--ya-orange);color:var(--text-main)}
-  .cdd-list{position:absolute;left:0;right:0;bottom:calc(100% + 4px);background:#1a2d47;border:1px solid rgba(255,255,255,.15);border-radius:10px;z-index:10000;max-height:260px;overflow-y:auto;box-shadow:0 -8px 32px rgba(0,0,0,.4)}
+  .cdd-list{position:absolute;left:0;right:0;top:calc(100% + 4px);bottom:auto;background:#1a2d47;border:1px solid rgba(255,255,255,.15);border-radius:10px;z-index:10000;max-height:260px;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,.4)}
   .cdd-group-label{padding:8px 14px 4px;font-size:.7rem;font-weight:800;color:var(--ya-orange);text-transform:uppercase;letter-spacing:.08em;background:rgba(0,0,0,.2);position:sticky;top:0}
   .cdd-item{padding:9px 14px;font-size:.84rem;color:var(--text-main);cursor:pointer;transition:background .15s;-webkit-tap-highlight-color:transparent;touch-action:manipulation;min-height:44px;display:flex;align-items:center}
   .cdd-item:hover{background:rgba(255,255,255,.08)}
@@ -498,7 +499,94 @@ body{font-family:"DM Sans",sans-serif;background:var(--navy);color:var(--text-ma
           <button class="login-btn" onclick="attemptLogin()">Enter Dashboard →</button>
           <div style="margin-top:16px;padding-top:14px;border-top:1px solid rgba(255,255,255,.07)">
             <div style="font-size:.75rem;color:var(--text-muted);text-align:center;margin-bottom:10px">First time? Set up your password:</div>
+            <!-- Name selector: native <select> on mobile, custom dropdown on desktop -->
             <div class="custom-dropdown" id="setup-name-dropdown">
+              <!-- Native select — always present, shown on mobile, hidden on desktop -->
+              <select id="cdd-native" class="login-select" style="display:none" onchange="nativeSelectName(this)">
+                <option value="">— Select your name —</option>
+                <optgroup label="🌱 Youth">
+                  <option value="yn_aaliyah">Aaliyah</option>
+                  <option value="yn_abegail_jbborustrian">Abegail Jbbo-Rustrian</option>
+                  <option value="yn_abigail_robinson">Abigail Robinson</option>
+                  <option value="yn_adam_choe">Adam Choe</option>
+                  <option value="yn_aiden_bruce">Aiden Bruce</option>
+                  <option value="yn_alleem_hammed">Alleem Hammed</option>
+                  <option value="yn_ameerah_hammed">Ameerah Hammed</option>
+                  <option value="yn_anastasia_strokova">Anastasia Strokova</option>
+                  <option value="yn_anisim_rashid">Anisim Rashid</option>
+                  <option value="yn_anna_choi">Anna Choi</option>
+                  <option value="yn_ariel_young">Ariel Young</option>
+                  <option value="yn_avery_sengsavang">Avery Sengsavang</option>
+                  <option value="yn_azeem_hammed">Azeem Hammed</option>
+                  <option value="yn_caitlen">Caitlen</option>
+                  <option value="yn_chaey_moon">Chaey Moon</option>
+                  <option value="yn_cindy_hwang">Cindy Hwang</option>
+                  <option value="yn_claire_choe">Claire Choe</option>
+                  <option value="yn_connor_sengsavang">Connor Sengsavang</option>
+                  <option value="yn_david">David</option>
+                  <option value="yn_denise">Denise</option>
+                  <option value="yn_devira">Devira</option>
+                  <option value="yn_eilleen_shin">Eilleen Shin</option>
+                  <option value="yn_elijah_butler">Elijah butler</option>
+                  <option value="yn_elisa_choi">Elisa Choi</option>
+                  <option value="yn_emma_memedovski">Emma Memedovski</option>
+                  <option value="yn_emma_tumak">Emma Tumak</option>
+                  <option value="yn_eoin">Eoin</option>
+                  <option value="yn_everett_rempel">Everett Rempel</option>
+                  <option value="yn_greyson_riley">Greyson Riley</option>
+                  <option value="yn_haytham">Haytham</option>
+                  <option value="yn_ji_hoon">Ji Hoon</option>
+                  <option value="yn_ji_woo">Ji Woo</option>
+                  <option value="yn_juanna_shin">Juanna Shin</option>
+                  <option value="yn_jude_effah">Jude Effah</option>
+                  <option value="yn_khanishka_kaur">Khanishka Kaur</option>
+                  <option value="yn_kinsey_ehigiator">Kinsey Ehigiator</option>
+                  <option value="yn_koby_bolton">Koby Bolton</option>
+                  <option value="yn_kristen_robinson">Kristen Robinson</option>
+                  <option value="yn_lee_karlee">Lee (Karlee)</option>
+                  <option value="yn_mackensie">Mackensie</option>
+                  <option value="yn_mason_guise">Mason Guise</option>
+                  <option value="yn_mason_seo">Mason Seo</option>
+                  <option value="yn_navkar_sing">Navkar Sing</option>
+                  <option value="yn_oliver">Oliver</option>
+                  <option value="yn_polina_strokova">Polina Strokova</option>
+                  <option value="yn_preston">Preston</option>
+                  <option value="yn_reed_bieganski">Reed Bieganski</option>
+                  <option value="yn_roza">Roza</option>
+                  <option value="yn_sasha_tumak">Sasha Tumak</option>
+                  <option value="yn_sebastian_baitson">Sebastian Baitson</option>
+                  <option value="yn_serena_shin">Serena Shin</option>
+                  <option value="yn_sophia_tong">Sophia Tong</option>
+                  <option value="yn_sophie_hwang">Sophie Hwang</option>
+                  <option value="yn_taya_allen">Taya Allen</option>
+                  <option value="yn_teni_olaniyan">Teni Olaniyan</option>
+                  <option value="yn_theodore_bourdeau">Theodore Bourdeau</option>
+                  <option value="yn_tobi_olaniyan">Tobi Olaniyan</option>
+                  <option value="yn_zoya_rashid">Zoya Rashid</option>
+                </optgroup>
+                <optgroup label="🙌 Adults &amp; Admins">
+                  <option value="alex">Alex Strokova</option>
+                  <option value="bj">BJ (Bolaji) Hammed</option>
+                  <option value="bolaji_a">Bolaji Ajoke Hammed</option>
+                  <option value="carol">Carol Brosoto</option>
+                  <option value="chloe">Chloe Nayoung Kim</option>
+                  <option value="connie">Connie Wu</option>
+                  <option value="jollean">Jollean Chapiel</option>
+                  <option value="julie">Julie Robertson</option>
+                  <option value="kathy">Kathy March</option>
+                  <option value="kim">Kim Sundset</option>
+                  <option value="marybeth">Mary-Beth Finney (Ursa)</option>
+                  <option value="mimi">Mimi Omoare</option>
+                  <option value="olga">Olga Korcheva</option>
+                  <option value="roberta">Roberta Ehigiator</option>
+                  <option value="shameen">Shameen</option>
+                  <option value="simi">Simisola Obasan (Simi)</option>
+                  <option value="sudi">Sudi Hedley</option>
+                  <option value="tamanna">Tamanna Kaur</option>
+                  <option value="tina">Tina Petrow</option>
+                </optgroup>
+              </select>
+              <!-- Custom dropdown — shown on desktop only, hidden on mobile via JS -->
               <div class="cdd-selected" id="cdd-display" onclick="toggleCDD(event)">— Select your name —</div>
               <div class="cdd-list" id="cdd-list" style="display:none">
                 <div class="cdd-search-wrap">
@@ -7601,106 +7689,159 @@ function resetHomeContent() {
 }
 
 // ── CUSTOM DROPDOWN ──
-var _cddJustOpened = false;
+// ── CUSTOM DROPDOWN (desktop) / NATIVE SELECT (mobile) ──
+// On touch devices we show the native <select> for 100% reliable behaviour.
+// On pointer devices (mouse) we show the custom styled dropdown.
 
-function toggleCDD(e){
-  if(e){ e.stopPropagation(); }
-  var list = document.getElementById('cdd-list');
-  var dd   = document.querySelector('.custom-dropdown');
-  if(!list) return;
-  var isOpen = list.style.display !== 'none';
-  list.style.display = isOpen ? 'none' : 'block';
-  if(dd) dd.classList.toggle('open', !isOpen);
-  if(!isOpen){
-    _cddJustOpened = true;
-    setTimeout(function(){ _cddJustOpened = false; }, 300);
-    var s = document.getElementById('cdd-search');
-    if(s){ s.value=''; filterCDD(''); }
-    // Don't auto-focus search on mobile — it triggers keyboard and shifts layout
-    if(s && window.innerWidth > 600){ s.focus(); }
+var _cddJustOpened = false;
+var _cddIsMobile = false;
+
+function _cddDetectMode() {
+  // Use hover-capable pointer as the desktop signal (same as CSS hover media).
+  // Falls back to screen width for environments that don't support matchMedia.
+  if (window.matchMedia) {
+    _cddIsMobile = !window.matchMedia('(hover:hover) and (pointer:fine)').matches;
+  } else {
+    _cddIsMobile = window.innerWidth < 768;
   }
 }
 
-function _doSelectCustomName(el){
+function _cddApplyMode() {
+  var native  = document.getElementById('cdd-native');
+  var display = document.getElementById('cdd-display');
+  if (!native || !display) return;
+  if (_cddIsMobile) {
+    native.style.display  = 'block';
+    display.style.display = 'none';
+    // Make sure the list is closed
+    var list = document.getElementById('cdd-list');
+    if (list) list.style.display = 'none';
+    var dd = document.getElementById('setup-name-dropdown');
+    if (dd) dd.classList.remove('open');
+  } else {
+    native.style.display  = 'none';
+    display.style.display = '';
+  }
+}
+
+// Called when the native <select> value changes
+function nativeSelectName(sel) {
+  var val  = sel.value;
+  var name = val ? sel.options[sel.selectedIndex].text.replace(/\s*⚡/g,'').trim() : '';
+  document.getElementById('setup-name-select').value = val;
+  if (val) showSetupField();
+}
+
+function toggleCDD(e) {
+  if (_cddIsMobile) return;   // native select handles mobile
+  if (e) e.stopPropagation();
+  var list = document.getElementById('cdd-list');
+  var dd   = document.querySelector('.custom-dropdown');
+  if (!list) return;
+  var isOpen = list.style.display !== 'none';
+  list.style.display = isOpen ? 'none' : 'block';
+  if (dd) dd.classList.toggle('open', !isOpen);
+  if (!isOpen) {
+    _cddJustOpened = true;
+    setTimeout(function(){ _cddJustOpened = false; }, 300);
+    var s = document.getElementById('cdd-search');
+    if (s) { s.value = ''; filterCDD(''); }
+    if (s && window.innerWidth > 600) { s.focus(); }
+  }
+}
+
+function _doSelectCustomName(el) {
   var name = el.textContent.replace(/\s*⚡/g,'').trim();
-  // For youth, use the name directly as ID — no fragile index
-  var val = el.getAttribute('data-value');
-  if(val && (val.startsWith('y_') || val.startsWith('yn_'))) {
-    // Always use stable yn_ key derived from the displayed name
+  var val  = el.getAttribute('data-value');
+  if (val && (val.startsWith('y_') || val.startsWith('yn_'))) {
     val = 'yn_' + name.toLowerCase().replace(/\s+/g,'_').replace(/[^a-z0-9_]/g,'');
   }
   document.getElementById('setup-name-select').value = val;
   document.getElementById('cdd-display').textContent = name;
   document.getElementById('cdd-display').style.color = 'var(--text-main)';
-  document.getElementById('cdd-list').style.display = 'none';
+  document.getElementById('cdd-list').style.display  = 'none';
   document.querySelector('.custom-dropdown').classList.remove('open');
-  document.querySelectorAll('.cdd-item').forEach(function(i){i.classList.remove('selected');});
+  document.querySelectorAll('.cdd-item').forEach(function(i){ i.classList.remove('selected'); });
   el.classList.add('selected');
   showSetupField();
 }
 
-function selectCustomName(el){
+function selectCustomName(el) {
   _doSelectCustomName(el);
 }
 
-function filterCDD(query){
+function filterCDD(query) {
   var q = query.toLowerCase().trim();
   document.querySelectorAll('.cdd-item').forEach(function(item){
     var text = item.textContent.toLowerCase();
     item.classList.toggle('hidden', q.length > 0 && text.indexOf(q) < 0);
   });
-  // Hide group label if all items in group are hidden
   document.querySelectorAll('.cdd-group-label').forEach(function(label){
     var next = label.nextElementSibling;
     var allHidden = true;
-    while(next && !next.classList.contains('cdd-group-label')){
-      if(!next.classList.contains('hidden')){ allHidden = false; break; }
+    while (next && !next.classList.contains('cdd-group-label')) {
+      if (!next.classList.contains('hidden')) { allHidden = false; break; }
       next = next.nextElementSibling;
     }
     label.style.display = (q.length > 0 && allHidden) ? 'none' : '';
   });
 }
 
-// Attach touch-friendly listeners to all cdd-items after DOM ready
-document.addEventListener('DOMContentLoaded', function(){
-  // Use touchend for mobile-reliable selection
-  document.querySelectorAll('.cdd-item').forEach(function(item){
-    item.addEventListener('touchend', function(e){
+// Initialise on DOM ready
+document.addEventListener('DOMContentLoaded', function() {
+
+  // Detect mobile/desktop and show the right control
+  _cddDetectMode();
+  _cddApplyMode();
+
+  // Re-evaluate if orientation / window size changes
+  window.addEventListener('resize', function() {
+    _cddDetectMode();
+    _cddApplyMode();
+  });
+
+  // Touch-reliable selection for the custom list (desktop-only path,
+  // but harmless if triggered on a touch-enabled desktop)
+  document.querySelectorAll('.cdd-item').forEach(function(item) {
+    item.addEventListener('touchend', function(e) {
       e.preventDefault();
       e.stopPropagation();
       _doSelectCustomName(item);
-    }, {passive: false});
+    }, { passive: false });
   });
-  // Touch on trigger button
+
+  // Touch on trigger
   var trigger = document.getElementById('cdd-display');
-  if(trigger){
-    trigger.addEventListener('touchend', function(e){
+  if (trigger) {
+    trigger.addEventListener('touchend', function(e) {
+      if (_cddIsMobile) return;
       e.preventDefault();
       e.stopPropagation();
       toggleCDD(e);
-    }, {passive: false});
+    }, { passive: false });
   }
 });
 
-// Close dropdown when clicking/touching outside
-document.addEventListener('click', function(e){
-  if(_cddJustOpened) return;
+// Close custom dropdown when clicking / touching outside
+document.addEventListener('click', function(e) {
+  if (_cddJustOpened) return;
   var dd = document.querySelector('.custom-dropdown');
-  if(dd && !dd.contains(e.target)){
+  if (dd && !dd.contains(e.target)) {
     var list = document.getElementById('cdd-list');
-    if(list) list.style.display = 'none';
+    if (list) list.style.display = 'none';
     dd.classList.remove('open');
   }
 });
-document.addEventListener('touchstart', function(e){
-  if(_cddJustOpened) return;
+document.addEventListener('touchstart', function(e) {
+  if (_cddJustOpened) return;
   var dd = document.querySelector('.custom-dropdown');
-  if(dd && !dd.contains(e.target)){
+  if (dd && !dd.contains(e.target)) {
     var list = document.getElementById('cdd-list');
-    if(list) list.style.display = 'none';
+    if (list) list.style.display = 'none';
     dd.classList.remove('open');
   }
-}, {passive: true});
+}, { passive: true });
+
 
 
 // ── ADMIN ↔ VOLUNTEER VIEW TOGGLE ──

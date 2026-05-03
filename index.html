@@ -5615,23 +5615,50 @@ async function loadEventRegistrations() {
 async function loadEventVolunteers() {
   const rows = await dbGet('event_volunteers', 'select=event_id,name,role,hours');
   if (!rows || rows.length === 0) return;
-  // Clear existing hardcoded volunteer lists for events that have DB data
-  var eventIds = [...new Set(rows.map(function(r){ return r.event_id; }))];
-  eventIds.forEach(function(eid){
-    var ev = EVENTS_DATA.find(function(e){ return e.id === eid; });
-    if(!ev) return;
-    ev.youth_5hrs = []; ev.youth_4hrs = []; ev.youth_2hrs = [];
-    ev.adult_5hrs = []; ev.adult_4hrs = []; ev.adult_2hrs = [];
+  // Clear volunteer buckets for ALL non-hardcoded events before repopulating.
+  // This ensures deleted volunteers don't linger from hardcoded defaults.
+  // For hardcoded completed events (Taste of Nations, Board Meeting), we only
+  // override if the DB actually has rows for them.
+  var dbEventIds = new Set(rows.map(function(r){ return r.event_id; }));
+  EVENTS_DATA.forEach(function(ev){
+    // Always clear DB-managed events; for hardcoded events only clear if DB has data
+    if(dbEventIds.has(ev.id) || ev.status === 'upcoming'){
+      ev.youth_5hrs = []; ev.youth_4hrs = []; ev.youth_2hrs = [];
+      ev.adult_5hrs = []; ev.adult_4hrs = []; ev.adult_2hrs = [];
+    }
   });
   // Populate from DB rows
+  // Track max hours per person per role for accurate totals
+  var youthHrMap = {}, adultHrMap = {};
   rows.forEach(function(row){
     var ev = EVENTS_DATA.find(function(e){ return e.id === row.event_id; });
     if(!ev) return;
     var key = row.role + '_' + row.hours + 'hrs';
     ev[key] = ev[key] || [];
     if(ev[key].indexOf(row.name) < 0) ev[key].push(row.name);
-    // Keep YOUTH_HOURS in sync
-    if(row.role === 'youth') YOUTH_HOURS[row.name] = row.hours;
+    // Accumulate hours per person
+    if(row.role === 'youth'){
+      youthHrMap[row.name] = (youthHrMap[row.name] || 0) + row.hours;
+    } else if(row.role === 'adult'){
+      adultHrMap[row.name] = (adultHrMap[row.name] || 0) + row.hours;
+    }
+  });
+  // Sync YOUTH_HOURS from accumulated event hours
+  Object.keys(youthHrMap).forEach(function(name){
+    // Only update if DB has a higher value (don't overwrite manually-added hours)
+    if((youthHrMap[name] || 0) > (YOUTH_HOURS[name] || 0)){
+      YOUTH_HOURS[name] = youthHrMap[name];
+    }
+  });
+  // Sync FAC_PROFILES event volunteer hours
+  Object.keys(adultHrMap).forEach(function(name){
+    var profileKey = Object.keys(FAC_PROFILES).find(function(k){
+      return FAC_PROFILES[k].name === name;
+    });
+    if(profileKey && adultHrMap[name] > 0){
+      // Merge event hours into profile — don't overwrite manually-tracked hours
+      FAC_PROFILES[profileKey]._eventHours = adultHrMap[name];
+    }
   });
   console.log('Event volunteers loaded:', rows.length, 'rows');
 }
@@ -5780,10 +5807,12 @@ async function dbStartup() {
 
   try {
     if(statusEl) statusEl.textContent = 'Loading program data…';
+    // loadEventStatus MUST run before loadEventVolunteers so event objects
+    // exist before volunteers are populated into them (fixes race condition)
+    await loadEventStatus();
     await Promise.all([
       loadEventRegistrations(),
       loadEventVolunteers(),
-      loadEventStatus(),
       loadWorkshopConducted(),
       loadWorkshopCancellations(),
       loadProgramData(),
@@ -6576,6 +6605,8 @@ async function closeOutEvent(eventId){
   if(!ok) console.warn('closeOutEvent: persistEventMeta failed for', eventId);
   else console.log('Event closed out and persisted:', eventId);
 
+  // Re-fetch volunteers so stat cards reflect the newly completed event immediately
+  await loadEventVolunteers();
   // Re-render admin view and force Events Log tab open so stats refresh immediately
   renderAdmin();
   var evLogTab = Array.from(document.querySelectorAll('.tab-btn')).find(function(b){
@@ -8266,8 +8297,14 @@ async function saveEventEditor(){
     else console.log('Event volunteers saved:', rows.length, 'rows');
   }
 
+  // Re-fetch event volunteers from Supabase and re-render all views
+  // so dashboards and stat cards update immediately after save
+  await loadEventVolunteers();
   closeEventEditor();
   renderAdmin();
+  // If the events log tab is open, refresh it too
+  var evLogTab = document.getElementById('tab-events-log');
+  if(evLogTab && evLogTab.style.display !== 'none') renderEventsLog();
 }
 
 function closeEventEditor(){

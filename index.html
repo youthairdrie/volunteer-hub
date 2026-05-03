@@ -443,9 +443,9 @@ body{font-family:"DM Sans",sans-serif;background:var(--navy);color:var(--text-ma
 
     <!-- Community stats -->
     <div class="stats-strip" id="landing-stats">
-      <div class="stat-strip-card"><div class="stat-strip-num">39</div><div class="stat-strip-label">Youth Members</div></div>
+      <div class="stat-strip-card"><div class="stat-strip-num" id="ls-youth">—</div><div class="stat-strip-label">Youth Members</div></div>
       <div class="stat-strip-card"><div class="stat-strip-num" id="ls-workshops">18</div><div class="stat-strip-label">Workshops This Year</div></div>
-      <div class="stat-strip-card"><div class="stat-strip-num">20+</div><div class="stat-strip-label">Adult Volunteers</div></div>
+      <div class="stat-strip-card"><div class="stat-strip-num" id="ls-adult">—</div><div class="stat-strip-label">Adult Volunteers</div></div>
       <div class="stat-strip-card"><div class="stat-strip-num" id="ls-events">4</div><div class="stat-strip-label">Community Events</div></div>
     </div>
 
@@ -2413,6 +2413,91 @@ function showLanding(){
   if (typeof applyHomeContent === 'function') applyHomeContent();
 }
 
+// ══════════════════════════════════════════════════════════════════════════
+// updateLandingStats — single source-of-truth for home screen stat cards
+//
+// Called after all async data loads complete (end of dbStartup) and after
+// any mutation that changes these counts (events, profiles, etc.).
+//
+// Counting rules:
+//   Youth Members  — unique names with ANY activity across:
+//                    EL workshop attendance (EL_YOUTH),
+//                    Scrabble participation (SCRABBLE_SESSIONS),
+//                    Event volunteering (EVENTS_DATA youth_Nhrs arrays)
+//   Adult Volunteers — unique names with ANY activity across:
+//                    Workshop facilitation/volunteering (FAC_PROFILES),
+//                    Event volunteering (EVENTS_DATA adult_Nhrs arrays)
+//   Workshops      — non-cancelled workshops in WORKSHOPS
+//   Community Events — all events in EVENTS_DATA (hardcoded + DB-loaded)
+// ══════════════════════════════════════════════════════════════════════════
+function updateLandingStats() {
+  // ── Youth Members ──
+  var youthSet = new Set();
+
+  // EL workshop attendance
+  Object.keys(EL_YOUTH).forEach(function(name) {
+    if ((EL_YOUTH[name] || []).length > 0) youthSet.add(name.toLowerCase().trim());
+  });
+
+  // Scrabble participation
+  Object.keys(SCRABBLE_SESSIONS || {}).forEach(function(name) {
+    var sessions = SCRABBLE_SESSIONS[name];
+    if (sessions && Object.keys(sessions).length > 0) youthSet.add(name.toLowerCase().trim());
+  });
+
+  // Event volunteering (any youth_Nhrs bucket across all events)
+  EVENTS_DATA.forEach(function(ev) {
+    ['youth_5hrs','youth_4hrs','youth_2hrs'].forEach(function(bucket) {
+      (ev[bucket] || []).forEach(function(name) {
+        youthSet.add(name.toLowerCase().trim());
+      });
+    });
+  });
+
+  // ── Adult Volunteers ──
+  var adultSet = new Set();
+
+  // Workshop facilitation or volunteering
+  Object.values(FAC_PROFILES).forEach(function(p) {
+    if (!p || !p.name) return;
+    var hasFac = p.facilitated && p.facilitated.length > 0;
+    var hasVol = p.volunteered && p.volunteered.length > 0;
+    var hasHrs = p.hours && p.hours > 0;
+    if (hasFac || hasVol || hasHrs) adultSet.add(p.name.toLowerCase().trim());
+  });
+
+  // Event volunteering (any adult_Nhrs bucket across all events)
+  EVENTS_DATA.forEach(function(ev) {
+    ['adult_5hrs','adult_4hrs','adult_2hrs'].forEach(function(bucket) {
+      (ev[bucket] || []).forEach(function(name) {
+        adultSet.add(name.toLowerCase().trim());
+      });
+    });
+  });
+
+  // ── Workshops This Year ──
+  var wsCount = (WORKSHOPS || []).filter(function(w) { return !w.cancelled; }).length;
+
+  // ── Community Events ──
+  // Count all events in EVENTS_DATA (both hardcoded and DB-loaded via loadEventStatus)
+  // Exclude internal-only meeting types if desired; currently count all.
+  var evCount = EVENTS_DATA.length;
+
+  // ── Update DOM ──
+  var elYouth = document.getElementById('ls-youth');
+  var elAdult = document.getElementById('ls-adult');
+  var elWs    = document.getElementById('ls-workshops');
+  var elEv    = document.getElementById('ls-events');
+
+  if (elYouth) elYouth.textContent = youthSet.size;
+  if (elAdult) elAdult.textContent = adultSet.size;
+  if (elWs)    elWs.textContent    = wsCount;
+  if (elEv)    elEv.textContent    = evCount;
+
+  console.log('[Stats] Youth:', youthSet.size, '| Adults:', adultSet.size,
+              '| Workshops:', wsCount, '| Events:', evCount);
+}
+
 function renderLandingCalendar(){
   var grid=document.getElementById('landing-cal-grid');
   if(!grid) return;
@@ -4182,6 +4267,7 @@ function wsStaffSave(wsId) {
   });
   Promise.all(savePromises).then(function(){
     console.log('Workshop staff saved for ws', wsId);
+    updateLandingStats();
   });
 
   document.getElementById('ws-staff-modal').remove();
@@ -5909,6 +5995,7 @@ async function dbStartup() {
   // This is the key fix for new events not appearing on the public page after sign-out
   renderLandingCalendar();
   renderLoginAlerts();
+  updateLandingStats(); // ← live stat cards from actual app data
 
   // Re-render current view now that all DB data is loaded
   if(currentRole === 'youth' && youthState && youthState.name){
@@ -5923,6 +6010,7 @@ async function dbStartup() {
 // Run on page load
 window.addEventListener('load', function() {
   renderLandingCalendar();
+  updateLandingStats(); // initial call with hardcoded data, will be refreshed after dbStartup
   renderLoginAlerts();
   dbStartup();
 });
@@ -6692,6 +6780,7 @@ async function closeOutEvent(eventId){
   else renderEventsLog();
   // Remove from landing calendar
   renderLandingCalendar();
+  updateLandingStats();
 }
 
 async function loadEventStatus(){
@@ -8381,6 +8470,7 @@ async function saveEventEditor(){
   // If the events log tab is open, refresh it too
   var evLogTab = document.getElementById('tab-events-log');
   if(evLogTab && evLogTab.style.display !== 'none') renderEventsLog();
+  updateLandingStats();
 }
 
 function closeEventEditor(){

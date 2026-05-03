@@ -4118,8 +4118,19 @@ function wsStaffSave(wsId) {
           method: 'POST',
           headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY,
             'Content-Type': 'application/json', 'Prefer': 'resolution=merge-duplicates,return=minimal' },
-          body: JSON.stringify({ id: facKey, name: p.name,
-            facilitated: p.facilitated, volunteered: p.volunteered, hours: p.hours })
+          body: JSON.stringify({
+            id: facKey,
+            name: p.name,
+            role: p.role || 'Adult Volunteer',
+            avatar: p.avatar || '',
+            bg: p.bg || '',
+            facilitated: p.facilitated,
+            volunteered: p.volunteered,
+            hours: p.hours || 0,
+            fac_level: p.fac_level || 0,
+            grandfathered: p.grandfathered || false,
+            is_admin: p.isAdmin || false
+          })
         }).then(function(r){ if(!r.ok) console.warn('wsStaffSave adult save failed:', p.name); })
       );
     }

@@ -820,6 +820,7 @@ body{font-family:"DM Sans",sans-serif;background:var(--navy);color:var(--text-ma
         <button class="tab-btn" onclick="switchTab('users-admin',this)" >👥 Users</button>
         <button class="tab-btn" onclick="switchTab('credentials-admin',this)">🔑 Credentials</button>
         <button class="tab-btn" onclick="switchTab('home-content-editor',this);loadHomeContentEditor()">🏠 Home Content</button>
+        <button class="tab-btn" onclick="switchTab('stats-diagnostic',this);renderStatsDiagnostic()">🔬 Stats Audit</button>
       </div>
       <div id="tab-youth-metrics">
         <div class="cards-grid">
@@ -1389,6 +1390,31 @@ body{font-family:"DM Sans",sans-serif;background:var(--navy);color:var(--text-ma
       </div>
 
     </div>
+
+      <!-- ═══════════════════════════════════════════════════════════
+           STATS AUDIT — admin-only, read-only diagnostic panel
+           Mirrors the exact counting logic in updateLandingStats()
+           ═══════════════════════════════════════════════════════════ -->
+      <div id="tab-stats-diagnostic" style="display:none">
+        <div class="section-box" style="margin-bottom:14px">
+          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:6px">
+            <div style="font-family:Nunito,sans-serif;font-size:1rem;font-weight:900;color:var(--ya-blue)">🔬 Home Screen Stats — Live Audit</div>
+            <button onclick="renderStatsDiagnostic()" style="padding:6px 14px;border-radius:8px;border:1px solid rgba(29,127,212,.35);background:rgba(29,127,212,.08);color:var(--ya-blue);font-family:DM Sans,sans-serif;font-size:.78rem;cursor:pointer">↻ Refresh</button>
+          </div>
+          <div style="font-size:.75rem;color:var(--text-muted)">Read-only. Shows exactly who is counted in each home screen stat card and why. Does not change any data.</div>
+        </div>
+
+        <!-- Summary row -->
+        <div id="diag-summary" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px"></div>
+
+        <!-- Detail panels -->
+        <div style="display:flex;flex-direction:column;gap:14px">
+          <div id="diag-youth"  class="section-box"></div>
+          <div id="diag-adults" class="section-box"></div>
+          <div id="diag-events" class="section-box"></div>
+        </div>
+      </div>
+
   </main>
 </div>
 
@@ -2376,7 +2402,7 @@ function showPage(id,navItem){
 }
 
 function switchTab(tabId,btn){
-  ['tab-youth-metrics','tab-scrabble-admin','tab-future-schedule','tab-workshop-tracker','tab-facilitators','tab-events-log','tab-compliance','tab-impact','tab-credentials-admin','tab-users-admin','tab-home-content-editor'].forEach(function(t){
+  ['tab-youth-metrics','tab-scrabble-admin','tab-future-schedule','tab-workshop-tracker','tab-facilitators','tab-events-log','tab-compliance','tab-impact','tab-credentials-admin','tab-users-admin','tab-home-content-editor','tab-stats-diagnostic'].forEach(function(t){
     var el=document.getElementById(t);if(el)el.style.display='none';
   });
   document.querySelectorAll('.tab-btn').forEach(function(b){b.classList.remove('active');});
@@ -2430,6 +2456,157 @@ function showLanding(){
 //   Workshops      — non-cancelled workshops in WORKSHOPS
 //   Community Events — all events in EVENTS_DATA (hardcoded + DB-loaded)
 // ══════════════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════════════════
+// renderStatsDiagnostic — admin-only read-only diagnostic for stats audit tab
+//
+// Recomputes the same logic as updateLandingStats() and renders a detailed
+// breakdown of who is counted and why.  Does not mutate any data.
+// ══════════════════════════════════════════════════════════════════════════
+function renderStatsDiagnostic() {
+  var summaryEl = document.getElementById('diag-summary');
+  var youthEl   = document.getElementById('diag-youth');
+  var adultEl   = document.getElementById('diag-adults');
+  var eventsEl  = document.getElementById('diag-events');
+  if (!summaryEl) return;
+
+  // ─── Helpers ─────────────────────────────────────────────────────────────
+  function pill(label, color) {
+    return '<span style="display:inline-block;padding:2px 7px;border-radius:5px;font-size:.68rem;font-weight:700;background:'+color+';color:#fff;margin:1px 2px 1px 0;white-space:nowrap">'+label+'</span>';
+  }
+  function sectionHead(icon, title, color) {
+    return '<div style="font-family:Nunito,sans-serif;font-size:1rem;font-weight:900;color:'+color+';margin-bottom:14px">'+icon+' '+title+'</div>';
+  }
+  function tableRow(name, reasons) {
+    return '<tr><td style="padding:5px 8px;font-size:.8rem;color:var(--text-main)">'+name+'</td><td style="padding:5px 8px">'+reasons+'</td></tr>';
+  }
+  function table(rows) {
+    return '<table style="width:100%;border-collapse:collapse">'+
+      '<thead><tr><th style="text-align:left;padding:5px 8px;font-size:.72rem;color:var(--text-muted);font-weight:700;border-bottom:1px solid var(--card-border)">Name</th>'+
+      '<th style="text-align:left;padding:5px 8px;font-size:.72rem;color:var(--text-muted);font-weight:700;border-bottom:1px solid var(--card-border)">Counted because…</th></tr></thead>'+
+      '<tbody>'+rows.join('')+'</tbody></table>';
+  }
+  function summaryCard(label, count, icon, color) {
+    return '<div style="background:var(--card-bg);border:1px solid var(--card-border);border-radius:12px;padding:14px;text-align:center;border-top:3px solid '+color+'">'+
+      '<div style="font-size:1.8rem;font-family:Nunito,sans-serif;font-weight:900;color:'+color+'">'+count+'</div>'+
+      '<div style="font-size:.65rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-top:3px">'+icon+' '+label+'</div>'+
+      '</div>';
+  }
+
+  // ─── Youth ───────────────────────────────────────────────────────────────
+  // Map: canonical (lowercase-trimmed) name → { display, reasons[] }
+  var youthMap = {};
+
+  function addYouth(rawName, reason) {
+    var key = rawName.toLowerCase().trim();
+    if (!youthMap[key]) youthMap[key] = { display: rawName.trim(), reasons: [] };
+    if (youthMap[key].reasons.indexOf(reason) < 0) youthMap[key].reasons.push(reason);
+  }
+
+  Object.keys(EL_YOUTH).forEach(function(name) {
+    var ids = EL_YOUTH[name] || [];
+    if (ids.length > 0) addYouth(name, 'EL Workshops ('+ids.length+')');
+  });
+
+  Object.keys(SCRABBLE_SESSIONS || {}).forEach(function(name) {
+    var sessions = SCRABBLE_SESSIONS[name];
+    if (sessions && Object.keys(sessions).length > 0)
+      addYouth(name, 'Scrabble ('+Object.keys(sessions).length+' sessions)');
+  });
+
+  EVENTS_DATA.forEach(function(ev) {
+    ['youth_5hrs','youth_4hrs','youth_2hrs'].forEach(function(bucket) {
+      var hrs = parseInt(bucket.replace(/\D/g,''));
+      (ev[bucket] || []).forEach(function(name) {
+        addYouth(name, 'Event: '+ev.name+' ('+hrs+'h)');
+      });
+    });
+  });
+
+  var youthRows = Object.keys(youthMap).sort().map(function(key) {
+    var entry = youthMap[key];
+    var reasons = entry.reasons.map(function(r) {
+      var color = r.startsWith('EL') ? 'var(--ya-teal)'
+                : r.startsWith('Scrabble') ? 'var(--ya-gold)'
+                : 'var(--ya-orange)';
+      return pill(r, color);
+    }).join('');
+    return tableRow(entry.display, reasons);
+  });
+
+  // ─── Adults ──────────────────────────────────────────────────────────────
+  var adultMap = {};
+
+  function addAdult(rawName, reason) {
+    var key = rawName.toLowerCase().trim();
+    if (!adultMap[key]) adultMap[key] = { display: rawName.trim(), reasons: [] };
+    if (adultMap[key].reasons.indexOf(reason) < 0) adultMap[key].reasons.push(reason);
+  }
+
+  Object.values(FAC_PROFILES).forEach(function(p) {
+    if (!p || !p.name) return;
+    var facIds = p.facilitated || [];
+    var volIds = p.volunteered || [];
+    if (facIds.length > 0) addAdult(p.name, 'Facilitated ('+facIds.length+' wksp)');
+    if (volIds.length > 0) addAdult(p.name, 'WS Volunteer ('+volIds.length+' wksp)');
+    if (!facIds.length && !volIds.length && p.hours > 0)
+      addAdult(p.name, 'Hours logged ('+p.hours+'h)');
+  });
+
+  EVENTS_DATA.forEach(function(ev) {
+    ['adult_5hrs','adult_4hrs','adult_2hrs'].forEach(function(bucket) {
+      var hrs = parseInt(bucket.replace(/\D/g,''));
+      (ev[bucket] || []).forEach(function(name) {
+        addAdult(name, 'Event: '+ev.name+' ('+hrs+'h)');
+      });
+    });
+  });
+
+  var adultRows = Object.keys(adultMap).sort().map(function(key) {
+    var entry = adultMap[key];
+    var reasons = entry.reasons.map(function(r) {
+      var color = r.startsWith('Facilit') ? 'var(--ya-orange)'
+                : r.startsWith('WS Vol') ? 'var(--ya-blue)'
+                : r.startsWith('Hours') ? 'var(--ya-gold)'
+                : 'var(--ya-teal)';
+      return pill(r, color);
+    }).join('');
+    return tableRow(entry.display, reasons);
+  });
+
+  // ─── Events ──────────────────────────────────────────────────────────────
+  var wsCount  = (WORKSHOPS || []).filter(function(w) { return !w.cancelled; }).length;
+  var evRows   = EVENTS_DATA.map(function(ev) {
+    var statusColor = ev.status === 'completed' ? 'var(--ya-teal)' : 'var(--ya-orange)';
+    var reasons = pill(ev.status, statusColor) + pill(ev.type, 'rgba(255,255,255,.2)');
+    return tableRow(ev.name + ' <span style="font-size:.72rem;color:var(--text-muted)">('+ev.date+')</span>', reasons);
+  });
+
+  // ─── Render ───────────────────────────────────────────────────────────────
+  summaryEl.innerHTML =
+    summaryCard('Youth Members',     Object.keys(youthMap).length, '🌱', 'var(--ya-teal)') +
+    summaryCard('Adult Volunteers',  Object.keys(adultMap).length, '🙌', 'var(--ya-blue)') +
+    summaryCard('Workshops',         wsCount,                      '📚', 'var(--ya-orange)') +
+    summaryCard('Community Events',  EVENTS_DATA.length,           '📅', 'var(--ya-gold)');
+
+  youthEl.innerHTML =
+    sectionHead('🌱', 'Youth Members ('+Object.keys(youthMap).length+')', 'var(--ya-teal)') +
+    '<div style="font-size:.73rem;color:var(--text-muted);margin-bottom:10px">Counted if active in: EL workshops · Scrabble Club · event volunteering</div>' +
+    (youthRows.length ? table(youthRows) :
+      '<div style="color:var(--text-muted);font-size:.82rem">No youth activity found.</div>');
+
+  adultEl.innerHTML =
+    sectionHead('🙌', 'Adult Volunteers ('+Object.keys(adultMap).length+')', 'var(--ya-blue)') +
+    '<div style="font-size:.73rem;color:var(--text-muted);margin-bottom:10px">Counted if active in: workshop facilitation · workshop volunteering · hours logged · event volunteering</div>' +
+    (adultRows.length ? table(adultRows) :
+      '<div style="color:var(--text-muted);font-size:.82rem">No adult activity found.</div>');
+
+  eventsEl.innerHTML =
+    sectionHead('📅', 'Community Events ('+EVENTS_DATA.length+')', 'var(--ya-gold)') +
+    '<div style="font-size:.73rem;color:var(--text-muted);margin-bottom:10px">All events in EVENTS_DATA — hardcoded + any created via Admin. Workshops counted separately above.</div>' +
+    (evRows.length ? table(evRows) :
+      '<div style="color:var(--text-muted);font-size:.82rem">No events found.</div>');
+}
+
 function updateLandingStats() {
   // ── Youth Members ──
   var youthSet = new Set();

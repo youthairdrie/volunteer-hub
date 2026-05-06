@@ -3809,31 +3809,54 @@ async function upsertProfile(email, name, role, linkedId) {
   var row = {
     email:     cleanEmail,
     name:      (name || '').trim(),
-    role:      role,
+    role:      role || 'youth',
     linked_id: linkedId || '',
     active:    true
   };
-  try {
+
+  async function attempt() {
     var r = await fetch(SUPA_URL + '/rest/v1/profiles?on_conflict=email', {
       method: 'POST',
       headers: {
-        'apikey': SUPA_KEY,
+        'apikey':        SUPA_KEY,
         'Authorization': 'Bearer ' + SUPA_KEY,
-        'Content-Type': 'application/json',
-        'Prefer': 'resolution=merge-duplicates,return=minimal'
+        'Content-Type':  'application/json',
+        'Prefer':        'resolution=merge-duplicates,return=minimal'
       },
       body: JSON.stringify(row)
     });
+    return r;
+  }
+
+  try {
+    var r = await attempt();
+
+    // One automatic retry on transient server errors (5xx)
+    if (!r.ok && r.status >= 500) {
+      await new Promise(function(res){ setTimeout(res, 800); });
+      r = await attempt();
+    }
+
     if (!r.ok) {
       var errText = await r.text();
-      console.error('[upsertProfile] FAILED — HTTP ' + r.status + ' for ' + cleanEmail + ':', errText);
-      return false;
+      // Try to parse Supabase JSON error for a readable message
+      var detail = errText;
+      try {
+        var parsed = JSON.parse(errText);
+        detail = parsed.message || parsed.msg || parsed.hint || parsed.details || errText;
+      } catch(_){}
+      console.error('[upsertProfile] HTTP ' + r.status + ' for ' + cleanEmail
+        + '\n  row: ' + JSON.stringify(row)
+        + '\n  error: ' + errText);
+      return { ok: false, status: r.status, detail: detail };
     }
-    console.log('[upsertProfile] OK — ' + cleanEmail + ' role=' + role + ' linked_id=' + linkedId);
-    return true;
+
+    console.log('[upsertProfile] ✔ ' + cleanEmail + ' | role=' + role + ' | linked_id=' + linkedId);
+    return { ok: true };
+
   } catch(e) {
     console.error('[upsertProfile] Network error for ' + cleanEmail + ':', e);
-    return false;
+    return { ok: false, status: 0, detail: 'Network error: ' + e.message };
   }
 }
 
@@ -7505,15 +7528,15 @@ async function openEditYouth(name){
   document.getElementById('eyu-feedback').innerHTML = '';
   document.getElementById('eyu-email').value = '';
   modal.style.display = 'flex';
-
-  // Live DB fetch for email — more reliable than stale _cachedProfiles cache
+  // Live DB fetch — always accurate, not dependent on stale cache
   var linkedId = 'yn_' + name.toLowerCase().replace(/\s+/g,'_').replace(/[^a-z0-9_]/g,'');
-  var rows = await dbGet('profiles',
-    'select=email&or=(linked_id.eq.' + encodeURIComponent(linkedId) +
-    ',name.eq.' + encodeURIComponent(name.trim()) + ')&limit=1');
-  if(rows && rows.length > 0 && rows[0].email) {
-    document.getElementById('eyu-email').value = rows[0].email;
-  }
+  try {
+    var rows = await dbGet('profiles',
+      'select=email&or=(linked_id.eq.' + encodeURIComponent(linkedId) +
+      ',name.eq.' + encodeURIComponent(name.trim()) + ')&limit=1');
+    if(rows && rows.length > 0 && rows[0].email)
+      document.getElementById('eyu-email').value = rows[0].email;
+  } catch(_){}
 }
 
 async function saveEditYouth(){
@@ -7539,7 +7562,6 @@ async function saveEditYouth(){
   if(!newName){ showErr('Name cannot be empty.'); return; }
   if(newEmail && !newEmail.includes('@')){ showErr('Please enter a valid email address.'); return; }
 
-  // ── Name-change: rename across all in-memory data structures ──
   if(newName !== origName){
     var dup = ALL_YOUTH_NAMES.find(function(n){ return n !== origName && n.toLowerCase() === newName.toLowerCase(); });
     if(dup){ showErr('"'+dup+'" already exists.'); return; }
@@ -7565,46 +7587,40 @@ async function saveEditYouth(){
 
   var cur = newName;
   if(newAge) YOUTH_AGES[cur] = newAge;
-
   if(enrolEL && !(cur in EL_YOUTH)) EL_YOUTH[cur] = [];
   else if(!enrolEL && cur in EL_YOUTH) delete EL_YOUTH[cur];
-
   if(enrolScrabble && !(cur in SCRABBLE_SESSIONS)){
-    SCRABBLE_SESSIONS[cur] = {};
-    SCRABBLE_TOTALS[cur] = 0;
+    SCRABBLE_SESSIONS[cur] = {}; SCRABBLE_TOTALS[cur] = 0;
     var qKey = QUARTER_STATE_KEY.replace('_closed','');
     fetch(SUPA_URL+'/rest/v1/scrabble_sessions?on_conflict=player_name,session_date,quarter',{
       method:'POST', headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates,return=minimal'},
       body:JSON.stringify({player_name:cur,session_date:'_registered',points:0,quarter:qKey})
     });
   }
-
   if(enrolGarden && PROGRAMS_DATA['garden_2026']){
     PROGRAMS_DATA['garden_2026'].youth_participants = PROGRAMS_DATA['garden_2026'].youth_participants || {};
     PROGRAMS_DATA['garden_2026'].youth_participants[cur] = [];
   } else if(!enrolGarden && PROGRAMS_DATA['garden_2026'] && PROGRAMS_DATA['garden_2026'].youth_participants){
     delete PROGRAMS_DATA['garden_2026'].youth_participants[cur];
   }
-
   saveYouthToDB(cur, newAge || YOUTH_AGES[cur] || null, EL_YOUTH[cur] || []);
 
-  // ── Profile upsert — awaited, result gates the success message ──
+  // ── Profile upsert: awaited, result gates the success message ──────────────
   if(newEmail) {
     setBusy(true);
     var linkedId = 'yn_' + cur.toLowerCase().replace(/\s+/g,'_').replace(/[^a-z0-9_]/g,'');
-    var ok = await upsertProfile(newEmail, cur, 'youth', linkedId);
+    var result = await upsertProfile(newEmail, cur, 'youth', linkedId);
     setBusy(false);
-    if(!ok) {
-      showErr('User data saved locally, but the profile link to "' + newEmail + '" could not be saved in Supabase. Check the console for details. The user will not be able to log in until this is resolved. Try clicking Save again.');
-      return; // keep modal open so admin sees the error
+    if(!result || !result.ok) {
+      var why = (result && result.detail) ? result.detail : 'Unknown error';
+      showErr('Profile link to "'+newEmail+'" failed: ' + why + ' (HTTP ' + (result&&result.status||'?') + '). User data was saved locally. Try again or check Credentials tab.');
+      return; // keep modal open
     }
-    // Refresh cache so Credentials tab shows the new email without reopening
     loadProfiles().then(function(rows){ _cachedProfiles = rows; });
     fb.innerHTML = '<span style="color:var(--ya-teal)">✔ Saved — profile linked to ' + newEmail + '</span>';
   } else {
     fb.innerHTML = '<span style="color:var(--ya-teal)">✔ Saved</span>';
   }
-
   setTimeout(function(){ modal.style.display='none'; renderYouthRoster(); renderAdmin(); }, 900);
 }
 
@@ -7621,14 +7637,14 @@ async function openEditAdult(key){
   document.getElementById('eau-feedback').innerHTML = '';
   document.getElementById('eau-email').value = '';
   modal.style.display = 'flex';
-
-  // Live DB fetch for email — more reliable than stale _cachedProfiles cache
-  var rows = await dbGet('profiles',
-    'select=email&or=(linked_id.eq.' + encodeURIComponent(key) +
-    ',name.eq.' + encodeURIComponent(p.name.trim()) + ')&limit=1');
-  if(rows && rows.length > 0 && rows[0].email) {
-    document.getElementById('eau-email').value = rows[0].email;
-  }
+  // Live DB fetch — always accurate, not dependent on stale cache
+  try {
+    var rows = await dbGet('profiles',
+      'select=email&or=(linked_id.eq.' + encodeURIComponent(key) +
+      ',name.eq.' + encodeURIComponent(p.name.trim()) + ')&limit=1');
+    if(rows && rows.length > 0 && rows[0].email)
+      document.getElementById('eau-email').value = rows[0].email;
+  } catch(_){}
 }
 
 async function saveEditAdult(){
@@ -7655,7 +7671,6 @@ async function saveEditAdult(){
   if(!newName){ showErr('Name cannot be empty.'); return; }
   if(newEmail && !newEmail.includes('@')){ showErr('Please enter a valid email address.'); return; }
 
-  // ── Name-change: rename across all in-memory data structures ──
   if(newName !== origName){
     var dup = Object.values(FAC_PROFILES).find(function(x){ return x !== p && x.name.toLowerCase() === newName.toLowerCase(); });
     if(dup){ showErr('"'+dup.name+'" already exists.'); return; }
@@ -7685,23 +7700,22 @@ async function saveEditAdult(){
   }
   delete p._prevName;
 
-  // ── Profile upsert — awaited, result gates the success message ──
+  // ── Profile upsert: awaited, result gates the success message ──────────────
   if(newEmail) {
     setBusy(true);
     var appRole = (p.isAdmin || newRole.toLowerCase().includes('admin')) ? 'admin' : 'adult';
-    var ok = await upsertProfile(newEmail, newName, appRole, key);
+    var result = await upsertProfile(newEmail, newName, appRole, key);
     setBusy(false);
-    if(!ok) {
-      showErr('User data saved locally, but the profile link to "' + newEmail + '" could not be saved in Supabase. Check the console for details. The user will not be able to log in until this is resolved. Try clicking Save again.');
-      return; // keep modal open so admin sees the error
+    if(!result || !result.ok) {
+      var why = (result && result.detail) ? result.detail : 'Unknown error';
+      showErr('Profile link to "'+newEmail+'" failed: ' + why + ' (HTTP ' + (result&&result.status||'?') + '). User data was saved locally. Try again or check Credentials tab.');
+      return; // keep modal open
     }
-    // Refresh cache so Credentials tab shows the new email without reopening
     loadProfiles().then(function(rows){ _cachedProfiles = rows; });
     fb.innerHTML = '<span style="color:var(--ya-teal)">✔ Saved — profile linked to ' + newEmail + '</span>';
   } else {
     fb.innerHTML = '<span style="color:var(--ya-teal)">✔ Saved</span>';
   }
-
   setTimeout(function(){ modal.style.display='none'; renderAdultRoster(); renderAdmin(); }, 900);
 }
 

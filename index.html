@@ -186,6 +186,37 @@ select option[value=""]{
 .ws-att-cell.editable:hover{background:rgba(0,181,160,.12)!important;border-radius:5px}
 .ws-att-cell.attended{color:var(--ya-teal);font-weight:700}
 .ws-att-cell.absent{color:rgba(255,255,255,.15)}
+
+/* ── Sticky frozen columns — Workshop Attendance table ────────────────────────
+   Columns 1 (Name), 2 (Workshops), 3 (Status) stay visible during h-scroll.
+   We use a solid background matching --card-bg so cells don't become glass
+   over the scrolling workshop columns behind them.                            */
+#youth-ws-att-table thead th.ws-sticky,
+#youth-ws-att-table tbody td.ws-sticky{
+  position:sticky;
+  background:#131f30;   /* matches var(--card-bg) — must be solid, no rgba */
+  z-index:2;
+}
+#youth-ws-att-table thead th.ws-sticky{ z-index:3; }  /* header sits above body stickies */
+
+/* Column left-offsets: col1=0, col2=after-col1, col3=after-col1+col2 */
+#youth-ws-att-table .ws-sticky-1{ left:0;   min-width:170px; }
+#youth-ws-att-table .ws-sticky-2{ left:170px; min-width:90px;  }
+#youth-ws-att-table .ws-sticky-3{ left:260px; min-width:160px; }
+
+/* Subtle right-edge shadow on the last sticky column to signal scrollability */
+#youth-ws-att-table .ws-sticky-3::after{
+  content:'';
+  position:absolute;
+  top:0; right:-8px; bottom:0;
+  width:8px;
+  background:linear-gradient(to right, rgba(0,0,0,.18), transparent);
+  pointer-events:none;
+}
+#youth-ws-att-table thead th.ws-sticky-3::after{ top:0; }
+
+/* Row hover: keep sticky cells highlighted too */
+#youth-ws-att-table tr:hover td.ws-sticky{ background:#1a2d47; }
 .tab-bar{display:flex;gap:4px;margin-bottom:18px;background:rgba(255,255,255,.04);padding:4px;border-radius:12px;width:fit-content;flex-wrap:wrap}
 .tab-btn{padding:6px 14px;border-radius:9px;border:none;background:transparent;color:var(--text-muted);font-size:.79rem;cursor:pointer;transition:all .2s;font-family:"DM Sans",sans-serif;font-weight:600}
 .tab-btn.active{background:var(--card-bg);color:var(--text-main);box-shadow:0 2px 8px rgba(0,0,0,.25)}
@@ -4642,9 +4673,9 @@ function renderYouthAttendanceTable(){
   // ── Header row ──
   // Fixed columns: Name | # Workshops | Progress bar | Status pills | then one col per workshop
   thead.innerHTML =
-    '<th style="min-width:140px">Name</th>' +
-    '<th style="text-align:center;min-width:80px">Workshops</th>' +
-    '<th style="min-width:160px">Status</th>' +
+    '<th class="ws-sticky ws-sticky-1">Name</th>' +
+    '<th class="ws-sticky ws-sticky-2" style="text-align:center;min-width:90px">Workshops</th>' +
+    '<th class="ws-sticky ws-sticky-3" style="min-width:160px">Status</th>' +
     conductedWs.map(function(w){
       var shortDate = w.date.replace(', 2026','');
       return '<th style="text-align:center;font-size:.6rem;min-width:42px;padding:6px 3px" title="'+w.name+'">#'+w.id+'<br><span style="font-weight:400;color:var(--text-muted)">'+shortDate+'</span></th>';
@@ -4695,9 +4726,9 @@ function renderYouthAttendanceTable(){
     var attCount = conductedWs.filter(function(w){ return attended.has(w.id); }).length;
 
     return '<tr>'+
-      '<td><strong style="font-size:.83rem">'+n+'</strong><div style="font-size:.68rem;color:var(--text-muted)">'+h+' vol hrs'+ageStr+'</div></td>'+
-      '<td style="text-align:center;vertical-align:middle"><strong>'+c+'</strong><br>'+progressBar+'</td>'+
-      '<td style="vertical-align:middle">'+st+'</td>'+
+      '<td class="ws-sticky ws-sticky-1"><strong style="font-size:.83rem">'+n+'</strong><div style="font-size:.68rem;color:var(--text-muted)">'+h+' vol hrs'+ageStr+'</div></td>'+
+      '<td class="ws-sticky ws-sticky-2" style="text-align:center;vertical-align:middle"><strong>'+c+'</strong><br>'+progressBar+'</td>'+
+      '<td class="ws-sticky ws-sticky-3" style="vertical-align:middle">'+st+'</td>'+
       wsCells+
       '<td style="text-align:center;font-weight:700;color:var(--ya-teal)">'+attCount+' / '+conductedWs.length+'</td>'+
       '</tr>';

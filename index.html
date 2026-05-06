@@ -32,7 +32,49 @@ body{font-family:"DM Sans",sans-serif;background:var(--navy);color:var(--text-ma
 .role-tab.active{background:var(--card-bg);color:var(--text-main);box-shadow:0 2px 8px rgba(0,0,0,.3)}
 .login-panel{display:none}.login-panel.active{display:block}
 .login-select{width:100%;padding:10px 14px;border-radius:10px;border:1px solid var(--card-border);background:rgba(255,255,255,.05);color:var(--text-main);font-family:"DM Sans",sans-serif;font-size:.9rem;margin-bottom:14px;cursor:pointer}
-.login-select option{background:#1a2d47}
+/* ── Global select / dropdown dark-theme fix ──────────────────────────────────
+   Native <option> lists ignore CSS variables and rgba() backgrounds in most
+   browsers — they must use solid hex colors to stay readable on all platforms. */
+select{
+  background:#0f1c2e;
+  color:#e8edf5;
+  border:1px solid rgba(29,127,212,0.28);
+  border-radius:8px;
+  font-family:"DM Sans",sans-serif;
+  font-size:.88rem;
+  padding:8px 12px;
+  cursor:pointer;
+  /* Remove default OS arrow on IE/old Edge; keep native arrow elsewhere */
+  -webkit-appearance:auto;
+  appearance:auto;
+}
+select:focus{
+  outline:none;
+  border-color:rgba(29,127,212,0.6);
+  box-shadow:0 0 0 2px rgba(29,127,212,0.18);
+}
+select option{
+  background:#0f1c2e;
+  color:#e8edf5;
+}
+select option:checked,
+select option:hover{
+  background:#1a3a5c;
+  color:#e8edf5;
+}
+select option:disabled,
+select option[value=""]{
+  color:#8fa3bf;
+}
+/* login-select keeps its own width/spacing but inherits the dark base */
+.login-select{
+  background:#0f1c2e;
+  color:#e8edf5;
+}
+.login-select option{
+  background:#0f1c2e;
+  color:#e8edf5;
+}
 .demo-notice{background:rgba(124,131,253,.08);border:1px solid rgba(124,131,253,.18);border-radius:10px;padding:9px;font-size:.75rem;color:var(--lavender);margin-bottom:16px}
 .login-btn{width:100%;padding:14px;border-radius:12px;border:none;background:linear-gradient(135deg,var(--ya-orange),#c94a00);color:#fff;font-family:"Nunito",sans-serif;font-size:1rem;font-weight:800;cursor:pointer;transition:all .2s}
 .login-btn:hover{transform:translateY(-2px);box-shadow:0 8px 28px rgba(232,98,10,.35)}
@@ -1005,7 +1047,7 @@ body{font-family:"DM Sans",sans-serif;background:var(--navy);color:var(--text-ma
           </div>
           <div style="display:flex;align-items:center;gap:8px;margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,.06);flex-wrap:wrap">
             <div style="font-size:.75rem;font-weight:700;color:var(--text-muted);white-space:nowrap">＋ Add volunteer:</div>
-            <select id="new-scrabble-vol-select" style="flex:1;min-width:160px;padding:6px 10px;border-radius:8px;border:1px solid var(--card-border);background:rgba(255,255,255,.05);color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.82rem">
+            <select id="new-scrabble-vol-select" style="flex:1;min-width:160px;padding:6px 10px;border-radius:8px;border:1px solid var(--card-border);background:#0f1c2e;color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.82rem">
               <option value="">— Select adult —</option>
             </select>
             <button onclick="addAdultScrabbleVolunteer()" style="padding:6px 16px;border-radius:8px;border:none;background:var(--ya-orange);color:#fff;font-family:Nunito,sans-serif;font-weight:800;font-size:.8rem;cursor:pointer">Add</button>
@@ -1223,7 +1265,7 @@ body{font-family:"DM Sans",sans-serif;background:var(--navy);color:var(--text-ma
               <div style="font-size:.78rem;font-weight:700;color:var(--ya-blue);margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em">＋ Add New Adult</div>
               <div style="display:grid;gap:8px">
                 <input id="new-adult-name" placeholder="Full name" style="padding:8px 12px;border-radius:8px;border:1px solid var(--card-border);background:rgba(255,255,255,.05);color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem;width:100%">
-                <select id="new-adult-role" style="padding:8px 12px;border-radius:8px;border:1px solid var(--card-border);background:rgba(29,127,212,.08);color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem">
+                <select id="new-adult-role" style="padding:8px 12px;border-radius:8px;border:1px solid var(--card-border);background:#0f1c2e;color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem">
                   <option value="Adult Volunteer">Adult Volunteer</option>
                   <option value="JYSEP Animator">JYSEP Animator</option>
                   <option value="Level 1 Certified Facilitator">Level 1 Facilitator</option>
@@ -4469,7 +4511,7 @@ function openWsStaffEdit(wsId) {
       facNames.map(function(n){ return '<span style="display:flex;align-items:center;gap:4px;background:rgba(232,98,10,.12);border:1px solid rgba(232,98,10,.3);border-radius:20px;padding:3px 10px;font-size:.78rem">'+n+' <button onclick="wsRemoveStaff(\'fac\',\''+n.replace(/'/g,"\\'")+'\')" style="border:none;background:none;color:var(--badge-red);cursor:pointer;font-size:.85rem;padding:0;line-height:1">×</button></span>'; }).join('')+
     '</div>'+
     '<div style="display:flex;gap:8px;margin-bottom:18px">'+
-      '<select id="ws-add-fac-sel" style="flex:1;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.15);border-radius:8px;padding:7px 10px;color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.82rem">'+
+      '<select id="ws-add-fac-sel" style="flex:1;background:#0f1c2e;border:1px solid rgba(255,255,255,.15);border-radius:8px;padding:7px 10px;color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.82rem">'+
         '<option value="">— Add facilitator —</option>'+
         allAdults.map(function(n){ return '<option value="'+n+'">'+n+'</option>'; }).join('')+
       '</select>'+
@@ -4481,7 +4523,7 @@ function openWsStaffEdit(wsId) {
       volNames.map(function(n){ return '<span style="display:flex;align-items:center;gap:4px;background:rgba(29,127,212,.12);border:1px solid rgba(29,127,212,.3);border-radius:20px;padding:3px 10px;font-size:.78rem">'+n+' <button onclick="wsRemoveStaff(\'vol\',\''+n.replace(/'/g,"\\'")+'\')" style="border:none;background:none;color:var(--badge-red);cursor:pointer;font-size:.85rem;padding:0;line-height:1">×</button></span>'; }).join('')+
     '</div>'+
     '<div style="display:flex;gap:8px;margin-bottom:20px">'+
-      '<select id="ws-add-vol-sel" style="flex:1;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.15);border-radius:8px;padding:7px 10px;color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.82rem">'+
+      '<select id="ws-add-vol-sel" style="flex:1;background:#0f1c2e;border:1px solid rgba(255,255,255,.15);border-radius:8px;padding:7px 10px;color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.82rem">'+
         '<option value="">— Add volunteer —</option>'+
         allAdults.map(function(n){ return '<option value="'+n+'">'+n+'</option>'; }).join('')+
       '</select>'+
@@ -8522,7 +8564,7 @@ function toggleAdminVolunteerView(){
         </div>
         <div>
           <div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px">Type</div>
-          <select id="ne-type" style="width:100%;padding:9px 12px;border-radius:9px;border:1px solid var(--card-border);background:rgba(29,127,212,.08);color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.88rem">
+          <select id="ne-type" style="width:100%;padding:9px 12px;border-radius:9px;border:1px solid var(--card-border);background:#0f1c2e;color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.88rem">
             <option value="Event">Event</option>
             <option value="Meeting">Meeting</option>
             <option value="Workshop">Workshop</option>
@@ -8543,7 +8585,7 @@ function toggleAdminVolunteerView(){
       </div>
       <div>
         <div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px">Volunteer Hours on Completion</div>
-        <select id="ne-hours" style="width:100%;padding:9px 12px;border-radius:9px;border:1px solid var(--card-border);background:rgba(29,127,212,.08);color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.88rem">
+        <select id="ne-hours" style="width:100%;padding:9px 12px;border-radius:9px;border:1px solid var(--card-border);background:#0f1c2e;color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.88rem">
           <option value="2">2 hours</option>
           <option value="4" selected>4 hours</option>
           <option value="5">5 hours</option>
@@ -8576,10 +8618,10 @@ function toggleAdminVolunteerView(){
     <div id="event-editor-youth" style="display:grid;gap:6px;margin-bottom:18px"></div>
     <!-- Add youth -->
     <div style="display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap">
-      <select id="ev-add-youth-name" style="flex:1;min-width:160px;padding:7px 10px;border-radius:8px;border:1px solid var(--card-border);background:rgba(255,255,255,.05);color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem">
+      <select id="ev-add-youth-name" style="flex:1;min-width:160px;padding:7px 10px;border-radius:8px;border:1px solid var(--card-border);background:#0f1c2e;color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem">
         <option value="">— Select youth —</option>
       </select>
-      <select id="ev-add-youth-hrs" style="width:90px;padding:7px 10px;border-radius:8px;border:1px solid var(--card-border);background:rgba(255,255,255,.05);color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem">
+      <select id="ev-add-youth-hrs" style="width:90px;padding:7px 10px;border-radius:8px;border:1px solid var(--card-border);background:#0f1c2e;color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem">
         <option value="2">2 hrs</option>
         <option value="4">4 hrs</option>
         <option value="5">5 hrs</option>
@@ -8592,10 +8634,10 @@ function toggleAdminVolunteerView(){
     <div id="event-editor-adult" style="display:grid;gap:6px;margin-bottom:18px"></div>
     <!-- Add adult -->
     <div style="display:flex;gap:8px;margin-bottom:24px;flex-wrap:wrap">
-      <select id="ev-add-adult-name" style="flex:1;min-width:160px;padding:7px 10px;border-radius:8px;border:1px solid var(--card-border);background:rgba(255,255,255,.05);color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem">
+      <select id="ev-add-adult-name" style="flex:1;min-width:160px;padding:7px 10px;border-radius:8px;border:1px solid var(--card-border);background:#0f1c2e;color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem">
         <option value="">— Select adult —</option>
       </select>
-      <select id="ev-add-adult-hrs" style="width:90px;padding:7px 10px;border-radius:8px;border:1px solid var(--card-border);background:rgba(255,255,255,.05);color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem">
+      <select id="ev-add-adult-hrs" style="width:90px;padding:7px 10px;border-radius:8px;border:1px solid var(--card-border);background:#0f1c2e;color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem">
         <option value="2">2 hrs</option>
         <option value="4">4 hrs</option>
         <option value="5">5 hrs</option>
@@ -8649,7 +8691,7 @@ function evEditorRenderYouth(ev){
       rows.push('<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:rgba(255,255,255,.03);border-radius:8px;border:1px solid rgba(255,255,255,.07)">'+
         '<span style="flex:1;font-size:.85rem">'+name+'</span>'+
         '<span class="pill pill-teal" style="font-size:.7rem">'+bucket[1]+'</span>'+
-        '<select onchange="evEditorChangeYouthHrs(\''+name+'\',this.value)" style="padding:3px 6px;border-radius:6px;border:1px solid var(--card-border);background:rgba(255,255,255,.05);color:var(--text-main);font-size:.78rem">'+
+        '<select onchange="evEditorChangeYouthHrs(\''+name+'\',this.value)" style="padding:3px 6px;border-radius:6px;border:1px solid var(--card-border);background:#0f1c2e;color:var(--text-main);font-size:.78rem">'+
           '<option value="2"'+(bucket[1]==='2 hrs'?' selected':'')+'>2 hrs</option>'+
           '<option value="4"'+(bucket[1]==='4 hrs'?' selected':'')+'>4 hrs</option>'+
           '<option value="5"'+(bucket[1]==='5 hrs'?' selected':'')+'>5 hrs</option>'+
@@ -8670,7 +8712,7 @@ function evEditorRenderAdult(ev){
       rows.push('<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:rgba(255,255,255,.03);border-radius:8px;border:1px solid rgba(255,255,255,.07)">'+
         '<span style="flex:1;font-size:.85rem">'+name+'</span>'+
         '<span class="pill pill-blue" style="font-size:.7rem">'+bucket[1]+'</span>'+
-        '<select onchange="evEditorChangeAdultHrs(\''+name+'\',this.value)" style="padding:3px 6px;border-radius:6px;border:1px solid var(--card-border);background:rgba(255,255,255,.05);color:var(--text-main);font-size:.78rem">'+
+        '<select onchange="evEditorChangeAdultHrs(\''+name+'\',this.value)" style="padding:3px 6px;border-radius:6px;border:1px solid var(--card-border);background:#0f1c2e;color:var(--text-main);font-size:.78rem">'+
           '<option value="2"'+(bucket[1]==='2 hrs'?' selected':'')+'>2 hrs</option>'+
           '<option value="4"'+(bucket[1]==='4 hrs'?' selected':'')+'>4 hrs</option>'+
           '<option value="5"'+(bucket[1]==='5 hrs'?' selected':'')+'>5 hrs</option>'+
@@ -9008,7 +9050,7 @@ function addAdultScrabbleVolunteer(){
       </div>
       <div>
         <div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px">Role</div>
-        <select id="eau-role" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--card-border);background:rgba(29,127,212,.08);color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem">
+        <select id="eau-role" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--card-border);background:#0f1c2e;color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem">
           <option value="Adult Volunteer">Adult Volunteer</option>
           <option value="JYSEP Animator">JYSEP Animator</option>
           <option value="Level 1 Certified Facilitator">Level 1 Certified Facilitator</option>
@@ -9049,7 +9091,7 @@ function addAdultScrabbleVolunteer(){
         </div>
         <div>
           <div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px">Type</div>
-          <select id="em-type" style="width:100%;padding:9px 12px;border-radius:9px;border:1px solid var(--card-border);background:rgba(29,127,212,.08);color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.88rem">
+          <select id="em-type" style="width:100%;padding:9px 12px;border-radius:9px;border:1px solid var(--card-border);background:#0f1c2e;color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.88rem">
             <option value="Event">Event</option>
             <option value="Meeting">Meeting</option>
             <option value="Workshop">Workshop</option>
@@ -9070,7 +9112,7 @@ function addAdultScrabbleVolunteer(){
       </div>
       <div>
         <div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px">Volunteer Hours on Completion</div>
-        <select id="em-hours" style="width:100%;padding:9px 12px;border-radius:9px;border:1px solid var(--card-border);background:rgba(29,127,212,.08);color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.88rem">
+        <select id="em-hours" style="width:100%;padding:9px 12px;border-radius:9px;border:1px solid var(--card-border);background:#0f1c2e;color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.88rem">
           <option value="2">2 hours</option>
           <option value="4">4 hours</option>
           <option value="5">5 hours</option>

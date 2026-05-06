@@ -1160,11 +1160,6 @@ select option[value=""]{
           <div class="stat-card" style="--accent-color:var(--ya-gold)"><div class="stat-label">Total Hours</div><div class="stat-value" id="admin-total-vol-hrs">—</div><div class="stat-meta">All volunteers combined</div><div class="stat-icon">⏱</div></div>
         </div>
         <div id="events-log-list"></div>
-        <div class="section-box">
-          <div class="section-title">🎓 Youth Newly Eligible — Level 1 Certificate</div>
-          <div style="color:var(--text-muted);font-size:.8rem;margin-bottom:12px">6+ workshops + 2+ volunteer hours from Taste of Nations</div>
-          <div id="newly-eligible-list"></div>
-        </div>
         <div class="section-box"><div class="section-title">📅 Upcoming Volunteer Events</div><div id="admin-upcoming-events"></div></div>
       </div>
 
@@ -2016,24 +2011,6 @@ function renderAdmin(){
 
   // ── Stat cards + events log are now rendered by renderEventsLog() ──
   // Called on tab open via switchTab, and also after closeOutEvent
-
-  // Newly Level 1 eligible
-  var nel=document.getElementById('newly-eligible-list');
-  if(nel){
-    var eligible=[];
-    Object.keys(EL_YOUTH).forEach(function(n){
-      var ws=(EL_YOUTH[n]||[]).length;
-      var h=YOUTH_HOURS[n]||0;
-      if(ws>=6&&h>=2) eligible.push({name:n,ws:ws,hrs:h});
-    });
-    eligible.sort(function(a,b){return b.ws-a.ws;});
-    nel.innerHTML=eligible.map(function(e){
-      return '<div class="status-row"><div class="status-label">'+e.name+'</div>'+
-        '<div style="display:flex;gap:6px"><span class="pill pill-blue">'+e.ws+' workshops</span>'+
-        '<span class="pill pill-teal">'+e.hrs+' hrs</span>'+
-        '<span class="pill pill-green">✔ Level 1 Eligible</span></div></div>';
-    }).join('');
-  }
 
   var allNames=Object.keys(EL_YOUTH);
   var lvl1=allNames.filter(function(n){return EL_YOUTH[n].length>=6;}).length;

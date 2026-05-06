@@ -616,6 +616,65 @@ select option[value=""]{
     </div>
   </div>
 </div>
+<!-- PASSWORD RECOVERY / SET-PASSWORD SCREEN
+     Shown when Supabase redirects back with #type=recovery or #type=invite
+     in the URL hash. The user never sees the normal login screen in this path. -->
+<div id="recovery-screen" style="display:none;min-height:100vh;background:var(--navy);display:none;align-items:center;justify-content:center;padding:20px;box-sizing:border-box">
+  <div class="login-box" style="max-width:420px;width:100%">
+    <img src="https://www.youthairdrie.org/images/YA_Logo_RGB.png" class="login-logo" alt="Youth Airdrie" onerror="this.style.display='none'">
+    <div class="login-title">VOLUNTEER &amp; PROGRAM HUB</div>
+    <div class="ya-stripe"></div>
+
+    <!-- Step 1: enter + confirm new password -->
+    <div id="recovery-form-view">
+      <div style="text-align:center;margin:16px 0 20px">
+        <div style="font-size:1.5rem;margin-bottom:8px">🔑</div>
+        <div style="font-family:Nunito,sans-serif;font-weight:900;font-size:1.05rem;color:var(--text-main);margin-bottom:4px" id="recovery-heading">Set Your Password</div>
+        <div style="font-size:.82rem;color:var(--text-muted)" id="recovery-subheading">Choose a secure password for your Youth Airdrie account.</div>
+      </div>
+
+      <div style="margin-bottom:12px">
+        <label style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:5px">New Password</label>
+        <div style="position:relative">
+          <input type="password" id="recovery-password" placeholder="At least 8 characters" autocomplete="new-password"
+            style="width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.15);border-radius:10px;padding:12px 46px 12px 16px;color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.95rem;box-sizing:border-box;outline:none"
+            onkeydown="if(event.key==='Enter')document.getElementById('recovery-confirm').focus()">
+          <button onclick="toggleRecoveryPwdVisibility('recovery-password','recovery-eye-1')" title="Show/hide"
+            style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:1rem;padding:4px;line-height:1" id="recovery-eye-1">👁</button>
+        </div>
+      </div>
+
+      <div style="margin-bottom:16px">
+        <label style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:5px">Confirm Password</label>
+        <div style="position:relative">
+          <input type="password" id="recovery-confirm" placeholder="Re-enter your password" autocomplete="new-password"
+            style="width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.15);border-radius:10px;padding:12px 46px 12px 16px;color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.95rem;box-sizing:border-box;outline:none"
+            onkeydown="if(event.key==='Enter')submitNewPassword()">
+          <button onclick="toggleRecoveryPwdVisibility('recovery-confirm','recovery-eye-2')" title="Show/hide"
+            style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:1rem;padding:4px;line-height:1" id="recovery-eye-2">👁</button>
+        </div>
+      </div>
+
+      <!-- password strength indicator -->
+      <div id="recovery-strength-bar" style="height:4px;border-radius:2px;background:rgba(255,255,255,.08);margin-bottom:4px;overflow:hidden">
+        <div id="recovery-strength-fill" style="height:100%;width:0;border-radius:2px;transition:width .3s,background .3s"></div>
+      </div>
+      <div id="recovery-strength-label" style="font-size:.7rem;color:var(--text-muted);margin-bottom:14px;min-height:14px"></div>
+
+      <div id="recovery-error" style="font-size:.78rem;color:var(--badge-red);text-align:center;margin-bottom:10px;min-height:18px;border-radius:8px;padding:0;transition:padding .2s"></div>
+      <button class="login-btn" id="recovery-submit-btn" onclick="submitNewPassword()">Set Password →</button>
+    </div>
+
+    <!-- Step 2: success state -->
+    <div id="recovery-success-view" style="display:none;text-align:center;padding:20px 0">
+      <div style="font-size:2.4rem;margin-bottom:14px">✅</div>
+      <div style="font-family:Nunito,sans-serif;font-weight:900;font-size:1.1rem;color:var(--ya-teal);margin-bottom:8px">Password Set!</div>
+      <div style="font-size:.86rem;color:var(--text-muted);margin-bottom:24px">Your password has been saved. You can now sign in to your account.</div>
+      <button class="login-btn" onclick="recoveryGoToLogin()">Sign In →</button>
+    </div>
+  </div>
+</div>
+
 <!-- APP -->
 
   <!-- DB STATUS BANNER -->
@@ -1265,6 +1324,7 @@ select option[value=""]{
               <div style="font-size:.78rem;font-weight:700;color:var(--ya-teal);margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em">＋ Add New Youth</div>
               <div style="display:grid;gap:8px">
                 <input id="new-youth-name" placeholder="Full name (can edit later)" style="padding:8px 12px;border-radius:8px;border:1px solid var(--card-border);background:rgba(255,255,255,.05);color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem;width:100%">
+                <input id="new-youth-email" type="email" placeholder="Email address (for login)" style="padding:8px 12px;border-radius:8px;border:1px solid var(--card-border);background:rgba(255,255,255,.05);color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem;width:100%">
                 <input id="new-youth-age" type="number" placeholder="Age (optional)" min="8" max="29" style="padding:8px 12px;border-radius:8px;border:1px solid var(--card-border);background:rgba(255,255,255,.05);color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem;width:100%">
                 <div style="font-size:.75rem;color:var(--text-muted);font-weight:600;margin-top:2px">Enrol in:</div>
                 <div style="display:flex;flex-wrap:wrap;gap:10px;font-size:.82rem">
@@ -1291,6 +1351,7 @@ select option[value=""]{
               <div style="font-size:.78rem;font-weight:700;color:var(--ya-blue);margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em">＋ Add New Adult</div>
               <div style="display:grid;gap:8px">
                 <input id="new-adult-name" placeholder="Full name" style="padding:8px 12px;border-radius:8px;border:1px solid var(--card-border);background:rgba(255,255,255,.05);color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem;width:100%">
+                <input id="new-adult-email" type="email" placeholder="Email address (for login)" style="padding:8px 12px;border-radius:8px;border:1px solid var(--card-border);background:rgba(255,255,255,.05);color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem;width:100%">
                 <select id="new-adult-role" style="padding:8px 12px;border-radius:8px;border:1px solid var(--card-border);background:#0f1c2e;color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem">
                   <option value="Adult Volunteer">Adult Volunteer</option>
                   <option value="JYSEP Animator">JYSEP Animator</option>
@@ -1316,13 +1377,84 @@ select option[value=""]{
       </div>
 
       <div id="tab-credentials-admin" style="display:none">
+
+        <!-- ── HOW LOGIN WORKS explainer ── -->
+        <div class="alert-row info" style="margin-bottom:16px">
+          ℹ️
+          <div style="font-size:.8rem">
+            <strong>How account setup works:</strong>
+            (1) Add a youth or adult in the <em>Users</em> tab with their email.
+            (2) Go to <strong>Supabase Dashboard → Authentication → Users → Invite User</strong> and enter their email.
+            (3) They receive an invite email, click the link, and are taken here to set a password.
+            The app then matches their email to their profile automatically.
+          </div>
+        </div>
+
+        <!-- ── ACCOUNT STATUS TABLE ── -->
         <div class="section-box">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-            <div style="font-family:Nunito,sans-serif;font-size:1rem;font-weight:900;color:var(--ya-blue)">🔑 Credential Manager</div>
+          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:14px">
+            <div>
+              <div style="font-family:Nunito,sans-serif;font-size:1rem;font-weight:900;color:var(--ya-blue)">👤 Account Management</div>
+              <div style="font-size:.75rem;color:var(--text-muted);margin-top:2px">Shows everyone with a profile row. A profile row is created automatically when you add a user with an email.</div>
+            </div>
             <button onclick="renderCredentialManager()" class="ws-btn" style="border-color:var(--ya-blue);color:var(--ya-blue);font-size:.75rem">🔄 Refresh</button>
           </div>
-          <div style="font-size:.78rem;color:var(--text-muted);margin-bottom:12px">Reset a user's password so they can set up a new one on their next login.</div>
-          <div id="credential-manager-list"><div style="color:var(--text-muted);font-size:.82rem">Loading...</div></div>
+          <div id="credential-manager-list"><div style="color:var(--text-muted);font-size:.82rem">Loading…</div></div>
+        </div>
+
+        <!-- ── MANUAL PROFILE LINKER ── -->
+        <div class="section-box" style="border-color:rgba(245,166,35,.3)">
+          <div style="font-family:Nunito,sans-serif;font-size:.88rem;font-weight:900;color:var(--ya-gold);margin-bottom:10px">🔗 Link Existing User to Email (Manual Override)</div>
+          <div style="font-size:.76rem;color:var(--text-muted);margin-bottom:12px">
+            Use this to create or update a <code>profiles</code> table row for a user who was added before email collection. This does <em>not</em> create a Supabase Auth account — you still need to invite them from the Supabase dashboard.
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:10px;align-items:end;flex-wrap:wrap">
+            <div>
+              <div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px">Email</div>
+              <input type="email" id="manual-link-email" placeholder="user@example.com"
+                style="width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.15);border-radius:8px;padding:8px 12px;color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem;box-sizing:border-box">
+            </div>
+            <div>
+              <div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px">Role</div>
+              <select id="manual-link-role" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid rgba(255,255,255,.15);background:#0f1c2e;color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem">
+                <option value="youth">🌱 Youth</option>
+                <option value="adult">🙌 Adult Volunteer</option>
+                <option value="admin">⚡ Admin</option>
+              </select>
+            </div>
+            <div>
+              <div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px">Name</div>
+              <input type="text" id="manual-link-name" placeholder="Full name (must match exactly)"
+                style="width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.15);border-radius:8px;padding:8px 12px;color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem;box-sizing:border-box">
+            </div>
+          </div>
+          <div style="margin-top:10px;display:flex;gap:8px;align-items:center">
+            <button onclick="manualLinkProfile()" style="padding:8px 18px;border-radius:8px;border:none;background:var(--ya-gold);color:#0d1520;font-family:Nunito,sans-serif;font-weight:800;font-size:.82rem;cursor:pointer">🔗 Save Profile Link</button>
+            <div id="manual-link-feedback" style="font-size:.78rem;min-height:16px"></div>
+          </div>
+        </div>
+
+        <!-- ── SUPABASE DASHBOARD GUIDE ── -->
+        <div class="section-box" style="border-color:rgba(0,181,160,.25)">
+          <div style="font-family:Nunito,sans-serif;font-size:.88rem;font-weight:900;color:var(--ya-teal);margin-bottom:12px">📋 Supabase Dashboard Checklist</div>
+          <div style="display:flex;flex-direction:column;gap:8px;font-size:.82rem">
+            <div style="display:flex;gap:10px;align-items:flex-start">
+              <span style="color:var(--ya-teal);flex-shrink:0;font-weight:700">1.</span>
+              <div><strong>Add a redirect URL:</strong> Authentication → URL Configuration → add <code style="background:rgba(255,255,255,.06);padding:2px 6px;border-radius:4px">https://[your-github-pages-url]/</code> to Redirect URLs. Without this, password reset links won't work.</div>
+            </div>
+            <div style="display:flex;gap:10px;align-items:flex-start">
+              <span style="color:var(--ya-teal);flex-shrink:0;font-weight:700">2.</span>
+              <div><strong>Invite a user:</strong> Authentication → Users → Invite User → enter their email. They'll receive a setup link. When they click it they land here to set a password.</div>
+            </div>
+            <div style="display:flex;gap:10px;align-items:flex-start">
+              <span style="color:var(--ya-teal);flex-shrink:0;font-weight:700">3.</span>
+              <div><strong>Disable email confirmation (optional):</strong> Authentication → Providers → Email → disable "Confirm email" for internal apps so users don't need to verify first.</div>
+            </div>
+            <div style="display:flex;gap:10px;align-items:flex-start">
+              <span style="color:var(--ya-teal);flex-shrink:0;font-weight:700">4.</span>
+              <div><strong>Reset a password:</strong> Use the "Reset Email" button in the table above. This sends the user a password reset link to their registered email.</div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -3553,6 +3685,288 @@ function renderImpactTab(){
 }
 
 
+// ══════════════════════════════════════════════════════════════════════════
+// PHASE 1 — PASSWORD RECOVERY / SET-PASSWORD FLOW
+// Handles: password reset links, invite links (both use the same UI).
+// The access_token from the URL hash is used as a Bearer token to PATCH
+// /auth/v1/user — this is the documented Supabase Auth recovery flow.
+// No service-role key is required.
+// ══════════════════════════════════════════════════════════════════════════
+
+function toggleRecoveryPwdVisibility(inputId, eyeId) {
+  var inp = document.getElementById(inputId);
+  var eye = document.getElementById(eyeId);
+  if (!inp) return;
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+  if (eye) eye.textContent = inp.type === 'password' ? '👁' : '🙈';
+}
+
+function updatePasswordStrength() {
+  var pw = document.getElementById('recovery-password').value;
+  var fill = document.getElementById('recovery-strength-fill');
+  var label = document.getElementById('recovery-strength-label');
+  if (!fill || !label) return;
+  var score = 0;
+  if (pw.length >= 8)  score++;
+  if (pw.length >= 12) score++;
+  if (/[A-Z]/.test(pw)) score++;
+  if (/[0-9]/.test(pw)) score++;
+  if (/[^A-Za-z0-9]/.test(pw)) score++;
+  var colours = ['#ef4444','#f59e0b','#f59e0b','#22c55e','#22c55e'];
+  var labels  = ['Too short','Weak','Fair','Good','Strong'];
+  fill.style.width   = (score / 5 * 100) + '%';
+  fill.style.background = colours[Math.max(0, score - 1)] || colours[0];
+  label.textContent  = pw.length ? labels[Math.max(0, score - 1)] : '';
+  label.style.color  = colours[Math.max(0, score - 1)] || 'var(--text-muted)';
+}
+
+async function submitNewPassword() {
+  var pw  = (document.getElementById('recovery-password').value  || '');
+  var pw2 = (document.getElementById('recovery-confirm').value   || '');
+  var errEl = document.getElementById('recovery-error');
+  var btn   = document.getElementById('recovery-submit-btn');
+  errEl.textContent = ''; errEl.style.padding = '';
+
+  function showErr(msg) {
+    errEl.textContent = msg;
+    errEl.style.padding = '8px 12px';
+    btn.textContent = 'Set Password →';
+    btn.style.opacity = '';
+    btn.style.pointerEvents = '';
+  }
+
+  if (pw.length < 8)    { showErr('Password must be at least 8 characters.'); return; }
+  if (pw !== pw2)       { showErr('Passwords do not match.'); return; }
+  if (!window._recoveryAccessToken) {
+    showErr('Session expired. Please request a new reset link.');
+    return;
+  }
+
+  btn.textContent = 'Saving…';
+  btn.style.opacity = '.6';
+  btn.style.pointerEvents = 'none';
+
+  try {
+    // Use the recovery access_token as the Bearer token to update password
+    var resp = await fetch(SUPA_URL + '/auth/v1/user', {
+      method: 'PUT',
+      headers: {
+        'apikey': SUPA_KEY,
+        'Authorization': 'Bearer ' + window._recoveryAccessToken,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ password: pw })
+    });
+    var data = await resp.json();
+
+    if (!resp.ok) {
+      var msg = data.msg || data.error_description || data.error || 'Failed to set password.';
+      showErr(msg);
+      return;
+    }
+
+    // Clear the token now that it's been used
+    window._recoveryAccessToken = null;
+    // Show success
+    document.getElementById('recovery-form-view').style.display = 'none';
+    document.getElementById('recovery-success-view').style.display = 'block';
+  } catch(e) {
+    showErr('Network error. Please check your connection and try again.');
+    console.error('submitNewPassword error:', e);
+  }
+}
+
+function recoveryGoToLogin() {
+  document.getElementById('recovery-screen').style.display = 'none';
+  document.getElementById('landing-screen').style.display = 'block';
+  showLogin();
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// PHASE 2 — PROFILES TABLE HELPERS
+//
+// profiles table schema (created in initDB below):
+//   id         uuid primary key default gen_random_uuid()
+//   email      text unique not null
+//   name       text not null
+//   role       text not null   -- 'youth' | 'adult' | 'admin'
+//   linked_id  text            -- matches youth yn_* or adults key
+//   active     boolean default true
+//   created_at timestamptz default now()
+//
+// This is the bridge between Supabase Auth identity (email) and the app's
+// internal profile IDs. Login reads from this table after auth succeeds.
+//
+// TODO(future-stable-ids): replace name-based linked_id with a stable uuid
+// once youth/adult tables are migrated to uuid primary keys.
+// ══════════════════════════════════════════════════════════════════════════
+
+// Write or update a profiles row. Safe to call on every user creation.
+// email is optional — if absent, no profile row is written (login won't work
+// until one is added via the Credentials tab).
+async function upsertProfile(email, name, role, linkedId) {
+  if (!email || !email.trim()) return; // no email = no profile row yet
+  var cleanEmail = email.trim().toLowerCase();
+  var row = {
+    email:     cleanEmail,
+    name:      name,
+    role:      role,
+    linked_id: linkedId,
+    active:    true
+  };
+  var r = await fetch(SUPA_URL + '/rest/v1/profiles?on_conflict=email', {
+    method: 'POST',
+    headers: {
+      'apikey': SUPA_KEY,
+      'Authorization': 'Bearer ' + SUPA_KEY,
+      'Content-Type': 'application/json',
+      'Prefer': 'resolution=merge-duplicates,return=minimal'
+    },
+    body: JSON.stringify(row)
+  });
+  if (!r.ok) {
+    var err = await r.text();
+    console.warn('upsertProfile failed:', r.status, err);
+  } else {
+    console.log('Profile row upserted:', cleanEmail, role, linkedId);
+  }
+}
+
+// Load all profiles rows for the Credentials tab. Returns array or [].
+async function loadProfiles() {
+  var rows = await dbGet('profiles', 'select=*&order=role.asc,name.asc');
+  return rows || [];
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// PHASE 3 — CREDENTIALS / ACCOUNT MANAGEMENT TAB
+// ══════════════════════════════════════════════════════════════════════════
+
+var _cachedProfiles = []; // refreshed when the tab opens
+
+async function renderCredentialManager() {
+  var el = document.getElementById('credential-manager-list');
+  if (!el) return;
+  el.innerHTML = '<div style="color:var(--text-muted);font-size:.82rem">Loading accounts…</div>';
+
+  _cachedProfiles = await loadProfiles();
+
+  if (_cachedProfiles.length === 0) {
+    el.innerHTML =
+      '<div style="color:var(--text-muted);font-size:.82rem;padding:8px 0">No profile rows found yet. ' +
+      'Add users with an email in the <strong>Users</strong> tab to populate this list.</div>';
+    return;
+  }
+
+  var roleOrder = { admin: 0, adult: 1, youth: 2 };
+  var sorted = _cachedProfiles.slice().sort(function(a, b) {
+    var rd = (roleOrder[a.role] || 9) - (roleOrder[b.role] || 9);
+    return rd !== 0 ? rd : (a.name || '').localeCompare(b.name || '');
+  });
+
+  function roleTag(role) {
+    var map = { admin: ['⚡ Admin','var(--ya-orange)'], adult: ['🙌 Adult','var(--ya-teal)'], youth: ['🌱 Youth','var(--ya-blue)'] };
+    var v = map[role] || ['?','var(--text-muted)'];
+    return '<span style="font-size:.7rem;font-weight:700;color:'+v[1]+';padding:2px 7px;border:1px solid '+v[1]+';border-radius:5px">'+v[0]+'</span>';
+  }
+  function statusDot(active) {
+    return active === false
+      ? '<span title="Deactivated" style="font-size:.7rem;color:var(--badge-red)">● Inactive</span>'
+      : '<span title="Active" style="font-size:.7rem;color:var(--ya-green)">● Active</span>';
+  }
+
+  el.innerHTML = sorted.map(function(p) {
+    var safeId = (p.id || '').replace(/'/g, "\\'");
+    var safeEmail = (p.email || '').replace(/'/g, "\\'");
+    var safeName = (p.name || '').replace(/'/g, "\\'");
+    return '<div style="display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;padding:9px 12px;border-radius:9px;background:rgba(255,255,255,.03);margin-bottom:6px;border:1px solid rgba(255,255,255,.05)">' +
+      '<div>' +
+        '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:3px">' +
+          '<span style="font-size:.86rem;font-weight:700;color:var(--text-main)">' + (p.name||'—') + '</span>' +
+          roleTag(p.role) +
+          statusDot(p.active) +
+        '</div>' +
+        '<div style="font-size:.74rem;color:var(--text-muted)">' +
+          (p.email ? '📧 ' + p.email : '<em>No email — cannot log in yet</em>') +
+          (p.linked_id ? ' &nbsp;·&nbsp; ID: <code style="font-size:.7rem">'+p.linked_id+'</code>' : '') +
+        '</div>' +
+      '</div>' +
+      '<div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">' +
+        (p.email
+          ? '<button onclick="sendResetEmailFor(\''+safeEmail+'\',\''+safeName+'\')" style="padding:4px 10px;border-radius:7px;border:1px solid var(--ya-blue);background:rgba(29,127,212,.1);color:var(--ya-blue);font-size:.72rem;font-weight:700;cursor:pointer;font-family:DM Sans,sans-serif;white-space:nowrap">📧 Reset Email</button>'
+          : '') +
+        (p.active !== false
+          ? '<button onclick="deactivateProfile(\''+safeId+'\',\''+safeName+'\')" style="padding:4px 10px;border-radius:7px;border:1px solid var(--badge-red);background:rgba(239,68,68,.1);color:var(--badge-red);font-size:.72rem;font-weight:700;cursor:pointer;font-family:DM Sans,sans-serif;white-space:nowrap">Deactivate</button>'
+          : '<button onclick="reactivateProfile(\''+safeId+'\',\''+safeName+'\')" style="padding:4px 10px;border-radius:7px;border:1px solid var(--ya-green);background:rgba(34,197,94,.1);color:var(--ya-green);font-size:.72rem;font-weight:700;cursor:pointer;font-family:DM Sans,sans-serif;white-space:nowrap">Reactivate</button>') +
+      '</div>' +
+    '</div>';
+  }).join('');
+}
+
+// Send a Supabase Auth password-reset email for a specific address
+async function sendResetEmailFor(email, name) {
+  if (!confirm('Send a password reset email to ' + name + ' (' + email + ')?')) return;
+  try {
+    var r = await fetch(SUPA_URL + '/auth/v1/recover', {
+      method: 'POST',
+      headers: { 'apikey': SUPA_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: email })
+    });
+    alert('✔ Reset email sent to ' + email + '. They will receive a link to set a new password.');
+  } catch(e) {
+    alert('Network error sending reset email. Please try again.');
+  }
+}
+
+// Soft-deactivate a profile (sets active=false in profiles table)
+async function deactivateProfile(id, name) {
+  if (!confirm('Deactivate ' + name + '?\n\nThey will no longer be able to log in. You can reactivate them at any time.')) return;
+  var r = await dbPatch('profiles', { active: false }, 'id=eq.' + encodeURIComponent(id));
+  renderCredentialManager();
+}
+
+async function reactivateProfile(id, name) {
+  if (!confirm('Reactivate ' + name + '?')) return;
+  var r = await dbPatch('profiles', { active: true }, 'id=eq.' + encodeURIComponent(id));
+  renderCredentialManager();
+}
+
+// Manual profile linker — used for users added before email collection
+async function manualLinkProfile() {
+  var email = (document.getElementById('manual-link-email').value || '').trim().toLowerCase();
+  var role  = document.getElementById('manual-link-role').value;
+  var name  = (document.getElementById('manual-link-name').value || '').trim();
+  var fb    = document.getElementById('manual-link-feedback');
+  fb.textContent = '';
+
+  if (!email || !email.includes('@')) {
+    fb.style.color = 'var(--badge-red)';
+    fb.textContent = '⚠ Please enter a valid email address.';
+    return;
+  }
+  if (!name) {
+    fb.style.color = 'var(--badge-red)';
+    fb.textContent = '⚠ Please enter the user\'s full name (must match exactly).';
+    return;
+  }
+
+  // Derive linked_id using the same logic as user creation
+  var linkedId = '';
+  if (role === 'youth') {
+    // TODO(future-stable-ids): replace with uuid lookup once youth table has stable ids
+    linkedId = 'yn_' + name.toLowerCase().replace(/\s+/g,'_').replace(/[^a-z0-9_]/g,'');
+  } else {
+    linkedId = name.toLowerCase().replace(/\s+/g,'_').replace(/[^a-z0-9_]/g,'').substring(0,20);
+  }
+
+  await upsertProfile(email, name, role, linkedId);
+  fb.style.color = 'var(--ya-teal)';
+  fb.textContent = '✔ Profile link saved for ' + name + ' (' + email + ')';
+  document.getElementById('manual-link-email').value = '';
+  document.getElementById('manual-link-name').value = '';
+  renderCredentialManager();
+}
+
 function getCurrentRecurring(){
   var month = new Date().getMonth() + 1; // 1=Jan…12=Dec
   if(month>=5&&month<=9) return RECURRING_PROGRAMS[1];
@@ -5474,7 +5888,8 @@ function addNewPlayer(){
 }
 
 function rebuildYouthLoginDropdown(){
-  // Stable ID for a youth name: yn_firstname_lastname (lowercase, no special chars)
+  // TODO(future-stable-ids): youthId is derived from name — fragile if names change.
+  // Future: store uuid in profiles.linked_id and use that directly.
   function youthId(name){ return 'yn_' + name.toLowerCase().replace(/\s+/g,'_').replace(/[^a-z0-9_]/g,''); }
 
   var nativeSelect = document.getElementById('setup-name-select');
@@ -5697,6 +6112,16 @@ async function initDB() {
     alter table youth_compliance disable row level security;
     alter table credentials disable row level security;
     alter table pending_entries disable row level security;
+    create table if not exists profiles (
+      id         uuid primary key default gen_random_uuid(),
+      email      text unique not null,
+      name       text not null,
+      role       text not null default 'youth',
+      linked_id  text,
+      active     boolean not null default true,
+      created_at timestamptz default now()
+    );
+    alter table profiles disable row level security;
   `;
   const r = await fetch(SUPA_URL + '/rest/v1/rpc/exec_sql', {
     method: 'POST',
@@ -6587,6 +7012,39 @@ async function dbStartup() {
 
 // Run on page load
 window.addEventListener('load', function() {
+  // ── Phase 1: detect Supabase recovery / invite redirect ──────────────────
+  // Supabase encodes tokens in the URL hash as key=value pairs.
+  // Both password-reset and invite links share this pattern.
+  var hash = window.location.hash;
+  if (hash && hash.length > 1) {
+    var params = {};
+    hash.slice(1).split('&').forEach(function(pair) {
+      var kv = pair.split('=');
+      if (kv.length >= 2) params[kv[0]] = decodeURIComponent(kv.slice(1).join('='));
+    });
+    if ((params['type'] === 'recovery' || params['type'] === 'invite') && params['access_token']) {
+      // Store the access token so submitNewPassword() can use it
+      window._recoveryAccessToken = params['access_token'];
+      window._recoveryType = params['type'];
+      // Show recovery screen, hide everything else
+      document.getElementById('landing-screen').style.display = 'none';
+      document.getElementById('login-screen').style.display = 'none';
+      var rs = document.getElementById('recovery-screen');
+      rs.style.display = 'flex';
+      // Tailor heading for invite vs. reset
+      if (params['type'] === 'invite') {
+        document.getElementById('recovery-heading').textContent = 'Welcome! Set Your Password';
+        document.getElementById('recovery-subheading').textContent = 'You\'ve been invited to Youth Airdrie. Choose a password to activate your account.';
+      }
+      // Wire up strength meter
+      document.getElementById('recovery-password').addEventListener('input', updatePasswordStrength);
+      // Clean the URL so back/refresh doesn't re-trigger
+      history.replaceState(null, '', window.location.pathname + window.location.search);
+      // Still run dbStartup in background so data loads
+      dbStartup();
+      return; // don't show landing
+    }
+  }
   renderLandingCalendar();
   updateLandingStats(); // initial call with hardcoded data, will be refreshed after dbStartup
   renderLoginAlerts();
@@ -6891,15 +7349,17 @@ function renderAdultRoster(){
 }
 
 function addNewYouthUser(){
-  var name = document.getElementById('new-youth-name').value.trim();
-  var age  = parseInt(document.getElementById('new-youth-age').value) || null;
-  var enrolEl      = document.getElementById('ny-enrol-el').checked;
-  var enrolScrabble= document.getElementById('ny-enrol-scrabble').checked;
-  var enrolGarden  = document.getElementById('ny-enrol-garden').checked;
-  var enrolEvents  = document.getElementById('ny-enrol-events').checked;
+  var name  = document.getElementById('new-youth-name').value.trim();
+  var email = (document.getElementById('new-youth-email') ? document.getElementById('new-youth-email').value.trim().toLowerCase() : '');
+  var age   = parseInt(document.getElementById('new-youth-age').value) || null;
+  var enrolEl       = document.getElementById('ny-enrol-el').checked;
+  var enrolScrabble = document.getElementById('ny-enrol-scrabble').checked;
+  var enrolGarden   = document.getElementById('ny-enrol-garden').checked;
+  var enrolEvents   = document.getElementById('ny-enrol-events').checked;
   var fb = document.getElementById('new-youth-feedback');
 
   if(!name){ fb.innerHTML='<span style="color:var(--badge-red)">⚠ Please enter a name.</span>'; return; }
+  if(email && !email.includes('@')){ fb.innerHTML='<span style="color:var(--badge-red)">⚠ Please enter a valid email address.</span>'; return; }
   if(ALL_YOUTH_NAMES.find(function(n){return n.toLowerCase()===name.toLowerCase();})){
     fb.innerHTML='<span style="color:var(--badge-amber)">⚠ "'+name+'" already exists.</span>'; return;
   }
@@ -6935,23 +7395,35 @@ function addNewYouthUser(){
   }
 
   // Persist to DB
+  // TODO(future-stable-ids): once youth table uses uuid PKs, store the uuid
+  // in profiles.linked_id instead of the derived yn_* string.
+  var linkedId = 'yn_' + name.toLowerCase().replace(/\s+/g,'_').replace(/[^a-z0-9_]/g,'');
   saveYouthToDB(name, age, []);
+
+  // Phase 2: write profiles row if email provided
+  if(email) {
+    upsertProfile(email, name, 'youth', linkedId);
+  }
+
   rebuildYouthLoginDropdown();
 
-  fb.innerHTML='<span style="color:var(--ya-teal)">✔ <strong>'+name+'</strong> added!</span>';
+  fb.innerHTML='<span style="color:var(--ya-teal)">✔ <strong>'+name+'</strong> added'+(email?' — profile linked to <em>'+email+'</em>':'')+'!</span>';
   document.getElementById('new-youth-name').value='';
+  if(document.getElementById('new-youth-email')) document.getElementById('new-youth-email').value='';
   document.getElementById('new-youth-age').value='';
   renderYouthRoster();
   renderAdminScrabble && renderAdminScrabble();
 }
 
 function addNewAdultUser(){
-  var name = document.getElementById('new-adult-name').value.trim();
-  var role = document.getElementById('new-adult-role').value;
+  var name  = document.getElementById('new-adult-name').value.trim();
+  var email = (document.getElementById('new-adult-email') ? document.getElementById('new-adult-email').value.trim().toLowerCase() : '');
+  var role  = document.getElementById('new-adult-role').value;
   var enrolScrabble = document.getElementById('na-enrol-scrabble').checked;
   var fb = document.getElementById('new-adult-feedback');
 
   if(!name){ fb.innerHTML='<span style="color:var(--badge-red)">⚠ Please enter a name.</span>'; return; }
+  if(email && !email.includes('@')){ fb.innerHTML='<span style="color:var(--badge-red)">⚠ Please enter a valid email address.</span>'; return; }
   var existingKey = Object.keys(FAC_PROFILES).find(function(k){return FAC_PROFILES[k].name.toLowerCase()===name.toLowerCase();});
   if(existingKey){ fb.innerHTML='<span style="color:var(--badge-amber)">⚠ "'+name+'" already exists.</span>'; return; }
 
@@ -7002,8 +7474,17 @@ function addNewAdultUser(){
     else { console.log('New adult saved to DB:', name, '(key:', key + ')'); }
   });
 
-  fb.innerHTML='<span style="color:var(--ya-teal)">✔ <strong>'+name+'</strong> added!</span>';
+  fb.innerHTML='<span style="color:var(--ya-teal)">✔ <strong>'+name+'</strong> added'+(email?' — profile linked to <em>'+email+'</em>':'')+'!</span>';
   document.getElementById('new-adult-name').value='';
+  if(document.getElementById('new-adult-email')) document.getElementById('new-adult-email').value='';
+
+  // Phase 2: write profiles row if email provided
+  // TODO(future-stable-ids): store the uuid from adults table once it uses uuid PKs.
+  if(email) {
+    var appRole = (role.toLowerCase().includes('admin') || FAC_PROFILES[key] && FAC_PROFILES[key].isAdmin) ? 'admin' : 'adult';
+    upsertProfile(email, name, appRole, key);
+  }
+
   renderAdultRoster();
 }
 
@@ -7828,6 +8309,9 @@ function attemptAdminLogin() {
 // ── CORE LOGIN HANDLER (unchanged) ──
 function doLogin(id, role) {
   if(role === 'youth') {
+    // TODO(future-stable-ids): once profiles.linked_id stores a uuid that maps
+    // directly to the youth table, replace this name-derivation cascade with a
+    // single lookup: youth = await dbGet('youth','id=eq.'+profile.uuid)
     var selectedName = null;
     if(id.startsWith('yn_')) {
       selectedName = ALL_YOUTH_NAMES.find(function(n){
@@ -7858,6 +8342,8 @@ function doLogin(id, role) {
     if(peEl) peEl.innerHTML = '';
     loadWorkshopAttendance(selectedName);
   } else if(role === 'adult' || role === 'admin') {
+    // TODO(future-stable-ids): once FAC_PROFILES uses uuid PKs, replace this
+    // key-then-name cascade with: profile = FAC_PROFILES[profile.uuid]
     var p = FAC_PROFILES[id];
     if(!p) {
       // Try to find by name stored in storedCredentials

@@ -7498,6 +7498,12 @@ function openEditYouth(name){
   document.getElementById('eyu-scrabble').checked = name in SCRABBLE_SESSIONS;
   document.getElementById('eyu-garden').checked = !!(PROGRAMS_DATA['garden_2026'] && PROGRAMS_DATA['garden_2026'].youth_participants && (name in PROGRAMS_DATA['garden_2026'].youth_participants));
   document.getElementById('eyu-feedback').innerHTML = '';
+  // Pre-fill email from cached profiles if available
+  var linkedId = 'yn_' + name.toLowerCase().replace(/\s+/g,'_').replace(/[^a-z0-9_]/g,'');
+  var existing = _cachedProfiles.find(function(p){
+    return p.linked_id === linkedId || (p.name||'').toLowerCase().trim() === name.toLowerCase().trim();
+  });
+  document.getElementById('eyu-email').value = (existing && existing.email) ? existing.email : '';
   modal.style.display = 'flex';
 }
 
@@ -7505,17 +7511,19 @@ function saveEditYouth(){
   var modal = document.getElementById('edit-youth-modal');
   var origName = modal.dataset.origName;
   var newName = document.getElementById('eyu-name').value.trim();
+  var newEmail = (document.getElementById('eyu-email').value || '').trim().toLowerCase();
   var newAge = parseInt(document.getElementById('eyu-age').value) || null;
   var enrolEL = document.getElementById('eyu-el').checked;
   var enrolScrabble = document.getElementById('eyu-scrabble').checked;
   var enrolGarden = document.getElementById('eyu-garden').checked;
   var fb = document.getElementById('eyu-feedback');
 
-  if(!newName){ fb.innerHTML = '<span style="color:var(--badge-red)">\u26a0 Name cannot be empty.</span>'; return; }
+  if(!newName){ fb.innerHTML = '<span style="color:var(--badge-red)">⚠ Name cannot be empty.</span>'; return; }
+  if(newEmail && !newEmail.includes('@')){ fb.innerHTML = '<span style="color:var(--badge-red)">⚠ Please enter a valid email address.</span>'; return; }
 
   if(newName !== origName){
     var dup = ALL_YOUTH_NAMES.find(function(n){ return n !== origName && n.toLowerCase() === newName.toLowerCase(); });
-    if(dup){ fb.innerHTML = '<span style="color:var(--badge-amber)">\u26a0 "'+dup+'" already exists.</span>'; return; }
+    if(dup){ fb.innerHTML = '<span style="color:var(--badge-amber)">⚠ "'+dup+'" already exists.</span>'; return; }
     var idx = ALL_YOUTH_NAMES.indexOf(origName);
     if(idx>=0) ALL_YOUTH_NAMES[idx] = newName;
     ALL_YOUTH_NAMES.sort();
@@ -7532,6 +7540,10 @@ function saveEditYouth(){
     dbPatch('scrabble_sessions', {player_name: newName}, 'player_name=eq.'+encodeURIComponent(origName));
     dbPatch('pending_entries', {youth_name: newName}, 'youth_name=eq.'+encodeURIComponent(origName));
     dbPatch('event_registrations', {youth_name: newName}, 'youth_name=eq.'+encodeURIComponent(origName));
+    // Update profiles name if a row exists for this user
+    if(newEmail) {
+      dbPatch('profiles', {name: newName}, 'email=eq.'+encodeURIComponent(newEmail));
+    }
     rebuildYouthLoginDropdown();
   }
 
@@ -7560,8 +7572,17 @@ function saveEditYouth(){
 
   saveYouthToDB(cur, newAge || YOUTH_AGES[cur] || null, EL_YOUTH[cur] || []);
 
-  fb.innerHTML = '<span style="color:var(--ya-teal)">\u2714 Saved!</span>';
-  setTimeout(function(){ modal.style.display='none'; renderYouthRoster(); renderAdmin(); }, 800);
+  // Upsert profiles row if email provided
+  if(newEmail) {
+    var linkedId = 'yn_' + cur.toLowerCase().replace(/\s+/g,'_').replace(/[^a-z0-9_]/g,'');
+    upsertProfile(newEmail, cur, 'youth', linkedId).then(function(){
+      // Refresh cached profiles so Credentials tab reflects the change immediately
+      loadProfiles().then(function(rows){ _cachedProfiles = rows; });
+    });
+  }
+
+  fb.innerHTML = '<span style="color:var(--ya-teal)">✔ Saved'+(newEmail?' — profile linked to '+newEmail:'')+'!</span>';
+  setTimeout(function(){ modal.style.display='none'; renderYouthRoster(); renderAdmin(); }, 900);
 }
 
 function openEditAdult(key){
@@ -7575,6 +7596,11 @@ function openEditAdult(key){
   document.getElementById('eau-role').value = p.role;
   document.getElementById('eau-scrabble').checked = p.name in ADULT_SCRABBLE;
   document.getElementById('eau-feedback').innerHTML = '';
+  // Pre-fill email from cached profiles if available
+  var existing = _cachedProfiles.find(function(pr){
+    return pr.linked_id === key || (pr.name||'').toLowerCase().trim() === p.name.toLowerCase().trim();
+  });
+  document.getElementById('eau-email').value = (existing && existing.email) ? existing.email : '';
   modal.style.display = 'flex';
 }
 
@@ -7585,21 +7611,27 @@ function saveEditAdult(){
   var p = FAC_PROFILES[key];
   if(!p) return;
   var newName = document.getElementById('eau-name').value.trim();
+  var newEmail = (document.getElementById('eau-email').value || '').trim().toLowerCase();
   var newRole = document.getElementById('eau-role').value;
   var enrolScrabble = document.getElementById('eau-scrabble').checked;
   var fb = document.getElementById('eau-feedback');
 
-  if(!newName){ fb.innerHTML = '<span style="color:var(--badge-red)">\u26a0 Name cannot be empty.</span>'; return; }
+  if(!newName){ fb.innerHTML = '<span style="color:var(--badge-red)">⚠ Name cannot be empty.</span>'; return; }
+  if(newEmail && !newEmail.includes('@')){ fb.innerHTML = '<span style="color:var(--badge-red)">⚠ Please enter a valid email address.</span>'; return; }
 
   if(newName !== origName){
     var dup = Object.values(FAC_PROFILES).find(function(x){ return x !== p && x.name.toLowerCase() === newName.toLowerCase(); });
-    if(dup){ fb.innerHTML = '<span style="color:var(--badge-amber)">\u26a0 "'+dup.name+'" already exists.</span>'; return; }
+    if(dup){ fb.innerHTML = '<span style="color:var(--badge-amber)">⚠ "'+dup.name+'" already exists.</span>'; return; }
     p._prevName = origName;
     if(ADULT_SCRABBLE[origName]){ ADULT_SCRABBLE[newName]=ADULT_SCRABBLE[origName]; delete ADULT_SCRABBLE[origName]; }
     if(ADULT_SCRABBLE_TOTALS[origName]!==undefined){ ADULT_SCRABBLE_TOTALS[newName]=ADULT_SCRABBLE_TOTALS[origName]; delete ADULT_SCRABBLE_TOTALS[origName]; }
     if(ADULT_COMPLIANCE[origName]){ ADULT_COMPLIANCE[newName]=ADULT_COMPLIANCE[origName]; delete ADULT_COMPLIANCE[origName]; }
     var parts = newName.split(' ');
     p.avatar = (parts[0][0]+(parts[1]?parts[1][0]:'')).toUpperCase();
+    // Keep profiles name in sync if an email row exists
+    if(newEmail) {
+      dbPatch('profiles', {name: newName}, 'email=eq.'+encodeURIComponent(newEmail));
+    }
   }
 
   p.name = newName;
@@ -7619,8 +7651,17 @@ function saveEditAdult(){
   }
   delete p._prevName;
 
-  fb.innerHTML = '<span style="color:var(--ya-teal)">\u2714 Saved!</span>';
-  setTimeout(function(){ modal.style.display='none'; renderAdultRoster(); renderAdmin(); }, 800);
+  // Upsert profiles row if email provided
+  if(newEmail) {
+    var appRole = (p.isAdmin || newRole.toLowerCase().includes('admin')) ? 'admin' : 'adult';
+    upsertProfile(newEmail, newName, appRole, key).then(function(){
+      // Refresh cached profiles so Credentials tab reflects the change immediately
+      loadProfiles().then(function(rows){ _cachedProfiles = rows; });
+    });
+  }
+
+  fb.innerHTML = '<span style="color:var(--ya-teal)">✔ Saved'+(newEmail?' — profile linked to '+newEmail:'')+'!</span>';
+  setTimeout(function(){ modal.style.display='none'; renderAdultRoster(); renderAdmin(); }, 900);
 }
 
 function deactivateYouth(name){
@@ -9726,6 +9767,10 @@ function addAdultScrabbleVolunteer(){
         <input id="eyu-name" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--card-border);background:rgba(255,255,255,.06);color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.88rem">
       </div>
       <div>
+        <div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px">Email Address <span style="font-weight:400;color:var(--text-muted);font-size:.68rem;text-transform:none">(for login — optional)</span></div>
+        <input type="email" id="eyu-email" placeholder="youth@example.com" autocomplete="off" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--card-border);background:rgba(255,255,255,.06);color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.88rem">
+      </div>
+      <div>
         <div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px">Age (optional)</div>
         <input id="eyu-age" type="number" min="5" max="29" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--card-border);background:rgba(255,255,255,.06);color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.88rem">
       </div>
@@ -9754,6 +9799,10 @@ function addAdultScrabbleVolunteer(){
       <div>
         <div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px">Full Name</div>
         <input id="eau-name" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--card-border);background:rgba(255,255,255,.06);color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.88rem">
+      </div>
+      <div>
+        <div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px">Email Address <span style="font-weight:400;color:var(--text-muted);font-size:.68rem;text-transform:none">(for login — optional)</span></div>
+        <input type="email" id="eau-email" placeholder="volunteer@example.com" autocomplete="off" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--card-border);background:rgba(255,255,255,.06);color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.88rem">
       </div>
       <div>
         <div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px">Role</div>

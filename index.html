@@ -1383,10 +1383,9 @@ select option[value=""]{
           ℹ️
           <div style="font-size:.8rem">
             <strong>How account setup works:</strong>
-            (1) Add a youth or adult in the <em>Users</em> tab with their email.
+            (1) Add a new user in the <em>Users</em> tab with their email, or edit an existing user to add their email.
             (2) Go to <strong>Supabase Dashboard → Authentication → Users → Invite User</strong> and enter their email.
-            (3) They receive an invite email, click the link, and are taken here to set a password.
-            The app then matches their email to their profile automatically.
+            (3) They receive an invite email, click the link, and land here to set a password. The app matches their email to their profile automatically.
           </div>
         </div>
 
@@ -3805,30 +3804,36 @@ function recoveryGoToLogin() {
 // email is optional — if absent, no profile row is written (login won't work
 // until one is added via the Credentials tab).
 async function upsertProfile(email, name, role, linkedId) {
-  if (!email || !email.trim()) return; // no email = no profile row yet
+  if (!email || !email.trim()) return false;
   var cleanEmail = email.trim().toLowerCase();
   var row = {
     email:     cleanEmail,
-    name:      name,
+    name:      (name || '').trim(),
     role:      role,
-    linked_id: linkedId,
+    linked_id: linkedId || '',
     active:    true
   };
-  var r = await fetch(SUPA_URL + '/rest/v1/profiles?on_conflict=email', {
-    method: 'POST',
-    headers: {
-      'apikey': SUPA_KEY,
-      'Authorization': 'Bearer ' + SUPA_KEY,
-      'Content-Type': 'application/json',
-      'Prefer': 'resolution=merge-duplicates,return=minimal'
-    },
-    body: JSON.stringify(row)
-  });
-  if (!r.ok) {
-    var err = await r.text();
-    console.warn('upsertProfile failed:', r.status, err);
-  } else {
-    console.log('Profile row upserted:', cleanEmail, role, linkedId);
+  try {
+    var r = await fetch(SUPA_URL + '/rest/v1/profiles?on_conflict=email', {
+      method: 'POST',
+      headers: {
+        'apikey': SUPA_KEY,
+        'Authorization': 'Bearer ' + SUPA_KEY,
+        'Content-Type': 'application/json',
+        'Prefer': 'resolution=merge-duplicates,return=minimal'
+      },
+      body: JSON.stringify(row)
+    });
+    if (!r.ok) {
+      var errText = await r.text();
+      console.error('[upsertProfile] FAILED — HTTP ' + r.status + ' for ' + cleanEmail + ':', errText);
+      return false;
+    }
+    console.log('[upsertProfile] OK — ' + cleanEmail + ' role=' + role + ' linked_id=' + linkedId);
+    return true;
+  } catch(e) {
+    console.error('[upsertProfile] Network error for ' + cleanEmail + ':', e);
+    return false;
   }
 }
 
@@ -7488,7 +7493,7 @@ function addNewAdultUser(){
   renderAdultRoster();
 }
 
-function openEditYouth(name){
+async function openEditYouth(name){
   var modal = document.getElementById('edit-youth-modal');
   if(!modal) return;
   modal.dataset.origName = name;
@@ -7498,16 +7503,20 @@ function openEditYouth(name){
   document.getElementById('eyu-scrabble').checked = name in SCRABBLE_SESSIONS;
   document.getElementById('eyu-garden').checked = !!(PROGRAMS_DATA['garden_2026'] && PROGRAMS_DATA['garden_2026'].youth_participants && (name in PROGRAMS_DATA['garden_2026'].youth_participants));
   document.getElementById('eyu-feedback').innerHTML = '';
-  // Pre-fill email from cached profiles if available
-  var linkedId = 'yn_' + name.toLowerCase().replace(/\s+/g,'_').replace(/[^a-z0-9_]/g,'');
-  var existing = _cachedProfiles.find(function(p){
-    return p.linked_id === linkedId || (p.name||'').toLowerCase().trim() === name.toLowerCase().trim();
-  });
-  document.getElementById('eyu-email').value = (existing && existing.email) ? existing.email : '';
+  document.getElementById('eyu-email').value = '';
   modal.style.display = 'flex';
+
+  // Live DB fetch for email — more reliable than stale _cachedProfiles cache
+  var linkedId = 'yn_' + name.toLowerCase().replace(/\s+/g,'_').replace(/[^a-z0-9_]/g,'');
+  var rows = await dbGet('profiles',
+    'select=email&or=(linked_id.eq.' + encodeURIComponent(linkedId) +
+    ',name.eq.' + encodeURIComponent(name.trim()) + ')&limit=1');
+  if(rows && rows.length > 0 && rows[0].email) {
+    document.getElementById('eyu-email').value = rows[0].email;
+  }
 }
 
-function saveEditYouth(){
+async function saveEditYouth(){
   var modal = document.getElementById('edit-youth-modal');
   var origName = modal.dataset.origName;
   var newName = document.getElementById('eyu-name').value.trim();
@@ -7517,13 +7526,23 @@ function saveEditYouth(){
   var enrolScrabble = document.getElementById('eyu-scrabble').checked;
   var enrolGarden = document.getElementById('eyu-garden').checked;
   var fb = document.getElementById('eyu-feedback');
+  var saveBtn = modal.querySelector('button[onclick="saveEditYouth()"]');
 
-  if(!newName){ fb.innerHTML = '<span style="color:var(--badge-red)">⚠ Name cannot be empty.</span>'; return; }
-  if(newEmail && !newEmail.includes('@')){ fb.innerHTML = '<span style="color:var(--badge-red)">⚠ Please enter a valid email address.</span>'; return; }
+  function showErr(msg){ fb.innerHTML = '<span style="color:var(--badge-red)">⚠ ' + msg + '</span>'; }
+  function setBusy(on){
+    if(!saveBtn) return;
+    saveBtn.disabled = on;
+    saveBtn.textContent = on ? 'Saving…' : '💾 Save';
+    saveBtn.style.opacity = on ? '.6' : '';
+  }
 
+  if(!newName){ showErr('Name cannot be empty.'); return; }
+  if(newEmail && !newEmail.includes('@')){ showErr('Please enter a valid email address.'); return; }
+
+  // ── Name-change: rename across all in-memory data structures ──
   if(newName !== origName){
     var dup = ALL_YOUTH_NAMES.find(function(n){ return n !== origName && n.toLowerCase() === newName.toLowerCase(); });
-    if(dup){ fb.innerHTML = '<span style="color:var(--badge-amber)">⚠ "'+dup+'" already exists.</span>'; return; }
+    if(dup){ showErr('"'+dup+'" already exists.'); return; }
     var idx = ALL_YOUTH_NAMES.indexOf(origName);
     if(idx>=0) ALL_YOUTH_NAMES[idx] = newName;
     ALL_YOUTH_NAMES.sort();
@@ -7540,10 +7559,7 @@ function saveEditYouth(){
     dbPatch('scrabble_sessions', {player_name: newName}, 'player_name=eq.'+encodeURIComponent(origName));
     dbPatch('pending_entries', {youth_name: newName}, 'youth_name=eq.'+encodeURIComponent(origName));
     dbPatch('event_registrations', {youth_name: newName}, 'youth_name=eq.'+encodeURIComponent(origName));
-    // Update profiles name if a row exists for this user
-    if(newEmail) {
-      dbPatch('profiles', {name: newName}, 'email=eq.'+encodeURIComponent(newEmail));
-    }
+    if(newEmail) dbPatch('profiles', {name: newName}, 'email=eq.'+encodeURIComponent(newEmail));
     rebuildYouthLoginDropdown();
   }
 
@@ -7572,20 +7588,27 @@ function saveEditYouth(){
 
   saveYouthToDB(cur, newAge || YOUTH_AGES[cur] || null, EL_YOUTH[cur] || []);
 
-  // Upsert profiles row if email provided
+  // ── Profile upsert — awaited, result gates the success message ──
   if(newEmail) {
+    setBusy(true);
     var linkedId = 'yn_' + cur.toLowerCase().replace(/\s+/g,'_').replace(/[^a-z0-9_]/g,'');
-    upsertProfile(newEmail, cur, 'youth', linkedId).then(function(){
-      // Refresh cached profiles so Credentials tab reflects the change immediately
-      loadProfiles().then(function(rows){ _cachedProfiles = rows; });
-    });
+    var ok = await upsertProfile(newEmail, cur, 'youth', linkedId);
+    setBusy(false);
+    if(!ok) {
+      showErr('User data saved locally, but the profile link to "' + newEmail + '" could not be saved in Supabase. Check the console for details. The user will not be able to log in until this is resolved. Try clicking Save again.');
+      return; // keep modal open so admin sees the error
+    }
+    // Refresh cache so Credentials tab shows the new email without reopening
+    loadProfiles().then(function(rows){ _cachedProfiles = rows; });
+    fb.innerHTML = '<span style="color:var(--ya-teal)">✔ Saved — profile linked to ' + newEmail + '</span>';
+  } else {
+    fb.innerHTML = '<span style="color:var(--ya-teal)">✔ Saved</span>';
   }
 
-  fb.innerHTML = '<span style="color:var(--ya-teal)">✔ Saved'+(newEmail?' — profile linked to '+newEmail:'')+'!</span>';
   setTimeout(function(){ modal.style.display='none'; renderYouthRoster(); renderAdmin(); }, 900);
 }
 
-function openEditAdult(key){
+async function openEditAdult(key){
   var p = FAC_PROFILES[key];
   if(!p) return;
   var modal = document.getElementById('edit-adult-modal');
@@ -7596,15 +7619,19 @@ function openEditAdult(key){
   document.getElementById('eau-role').value = p.role;
   document.getElementById('eau-scrabble').checked = p.name in ADULT_SCRABBLE;
   document.getElementById('eau-feedback').innerHTML = '';
-  // Pre-fill email from cached profiles if available
-  var existing = _cachedProfiles.find(function(pr){
-    return pr.linked_id === key || (pr.name||'').toLowerCase().trim() === p.name.toLowerCase().trim();
-  });
-  document.getElementById('eau-email').value = (existing && existing.email) ? existing.email : '';
+  document.getElementById('eau-email').value = '';
   modal.style.display = 'flex';
+
+  // Live DB fetch for email — more reliable than stale _cachedProfiles cache
+  var rows = await dbGet('profiles',
+    'select=email&or=(linked_id.eq.' + encodeURIComponent(key) +
+    ',name.eq.' + encodeURIComponent(p.name.trim()) + ')&limit=1');
+  if(rows && rows.length > 0 && rows[0].email) {
+    document.getElementById('eau-email').value = rows[0].email;
+  }
 }
 
-function saveEditAdult(){
+async function saveEditAdult(){
   var modal = document.getElementById('edit-adult-modal');
   var key = modal.dataset.key;
   var origName = modal.dataset.origName;
@@ -7615,23 +7642,30 @@ function saveEditAdult(){
   var newRole = document.getElementById('eau-role').value;
   var enrolScrabble = document.getElementById('eau-scrabble').checked;
   var fb = document.getElementById('eau-feedback');
+  var saveBtn = modal.querySelector('button[onclick="saveEditAdult()"]');
 
-  if(!newName){ fb.innerHTML = '<span style="color:var(--badge-red)">⚠ Name cannot be empty.</span>'; return; }
-  if(newEmail && !newEmail.includes('@')){ fb.innerHTML = '<span style="color:var(--badge-red)">⚠ Please enter a valid email address.</span>'; return; }
+  function showErr(msg){ fb.innerHTML = '<span style="color:var(--badge-red)">⚠ ' + msg + '</span>'; }
+  function setBusy(on){
+    if(!saveBtn) return;
+    saveBtn.disabled = on;
+    saveBtn.textContent = on ? 'Saving…' : '💾 Save';
+    saveBtn.style.opacity = on ? '.6' : '';
+  }
 
+  if(!newName){ showErr('Name cannot be empty.'); return; }
+  if(newEmail && !newEmail.includes('@')){ showErr('Please enter a valid email address.'); return; }
+
+  // ── Name-change: rename across all in-memory data structures ──
   if(newName !== origName){
     var dup = Object.values(FAC_PROFILES).find(function(x){ return x !== p && x.name.toLowerCase() === newName.toLowerCase(); });
-    if(dup){ fb.innerHTML = '<span style="color:var(--badge-amber)">⚠ "'+dup.name+'" already exists.</span>'; return; }
+    if(dup){ showErr('"'+dup.name+'" already exists.'); return; }
     p._prevName = origName;
     if(ADULT_SCRABBLE[origName]){ ADULT_SCRABBLE[newName]=ADULT_SCRABBLE[origName]; delete ADULT_SCRABBLE[origName]; }
     if(ADULT_SCRABBLE_TOTALS[origName]!==undefined){ ADULT_SCRABBLE_TOTALS[newName]=ADULT_SCRABBLE_TOTALS[origName]; delete ADULT_SCRABBLE_TOTALS[origName]; }
     if(ADULT_COMPLIANCE[origName]){ ADULT_COMPLIANCE[newName]=ADULT_COMPLIANCE[origName]; delete ADULT_COMPLIANCE[origName]; }
     var parts = newName.split(' ');
     p.avatar = (parts[0][0]+(parts[1]?parts[1][0]:'')).toUpperCase();
-    // Keep profiles name in sync if an email row exists
-    if(newEmail) {
-      dbPatch('profiles', {name: newName}, 'email=eq.'+encodeURIComponent(newEmail));
-    }
+    if(newEmail) dbPatch('profiles', {name: newName}, 'email=eq.'+encodeURIComponent(newEmail));
   }
 
   p.name = newName;
@@ -7651,16 +7685,23 @@ function saveEditAdult(){
   }
   delete p._prevName;
 
-  // Upsert profiles row if email provided
+  // ── Profile upsert — awaited, result gates the success message ──
   if(newEmail) {
+    setBusy(true);
     var appRole = (p.isAdmin || newRole.toLowerCase().includes('admin')) ? 'admin' : 'adult';
-    upsertProfile(newEmail, newName, appRole, key).then(function(){
-      // Refresh cached profiles so Credentials tab reflects the change immediately
-      loadProfiles().then(function(rows){ _cachedProfiles = rows; });
-    });
+    var ok = await upsertProfile(newEmail, newName, appRole, key);
+    setBusy(false);
+    if(!ok) {
+      showErr('User data saved locally, but the profile link to "' + newEmail + '" could not be saved in Supabase. Check the console for details. The user will not be able to log in until this is resolved. Try clicking Save again.');
+      return; // keep modal open so admin sees the error
+    }
+    // Refresh cache so Credentials tab shows the new email without reopening
+    loadProfiles().then(function(rows){ _cachedProfiles = rows; });
+    fb.innerHTML = '<span style="color:var(--ya-teal)">✔ Saved — profile linked to ' + newEmail + '</span>';
+  } else {
+    fb.innerHTML = '<span style="color:var(--ya-teal)">✔ Saved</span>';
   }
 
-  fb.innerHTML = '<span style="color:var(--ya-teal)">✔ Saved'+(newEmail?' — profile linked to '+newEmail:'')+'!</span>';
   setTimeout(function(){ modal.style.display='none'; renderAdultRoster(); renderAdmin(); }, 900);
 }
 

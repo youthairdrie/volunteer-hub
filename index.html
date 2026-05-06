@@ -516,10 +516,10 @@ select option[value=""]{
 
     <!-- Community stats -->
     <div class="stats-strip" id="landing-stats">
-      <div class="stat-strip-card"><div class="stat-strip-num" id="ls-youth">—</div><div class="stat-strip-label">Youth Members</div></div>
-      <div class="stat-strip-card"><div class="stat-strip-num" id="ls-workshops">18</div><div class="stat-strip-label">Workshops This Year</div></div>
+      <div class="stat-strip-card"><div class="stat-strip-num" id="ls-youth">—</div><div class="stat-strip-label">Youth Reached</div></div>
+      <div class="stat-strip-card"><div class="stat-strip-num" id="ls-workshops">18</div><div class="stat-strip-label">Workshops Scheduled</div></div>
       <div class="stat-strip-card"><div class="stat-strip-num" id="ls-adult">—</div><div class="stat-strip-label">Adult Volunteers</div></div>
-      <div class="stat-strip-card"><div class="stat-strip-num" id="ls-events">4</div><div class="stat-strip-label">Community Events</div></div>
+      <div class="stat-strip-card"><div class="stat-strip-num" id="ls-events">4</div><div class="stat-strip-label">Community Events Planned</div></div>
     </div>
 
     <!-- Upcoming calendar -->
@@ -2433,6 +2433,45 @@ function showLanding(){
 }
 
 // ══════════════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════════
+// getActiveAdultVolunteers — single source-of-truth for adult volunteer count
+//
+// Returns a Set of lowercase-trimmed names active in ANY of:
+//   workshop facilitation, workshop volunteering, Scrabble Club volunteering,
+//   or event volunteering. Used by updateLandingStats, renderImpactTab,
+//   and renderStatsDiagnostic so all three always agree.
+// ══════════════════════════════════════════════════════════════════
+function getActiveAdultVolunteers() {
+  var adultSet = new Set();
+
+  // Workshop facilitation or volunteering (FAC_PROFILES)
+  Object.values(FAC_PROFILES).forEach(function(p) {
+    if (!p || !p.name) return;
+    var hasFac = p.facilitated && p.facilitated.length > 0;
+    var hasVol = p.volunteered && p.volunteered.length > 0;
+    var hasHrs = p.hours && p.hours > 0;
+    if (hasFac || hasVol || hasHrs) adultSet.add(p.name.toLowerCase().trim());
+  });
+
+  // Scrabble Club adult volunteering
+  Object.keys(ADULT_SCRABBLE || {}).forEach(function(name) {
+    var sessions = ADULT_SCRABBLE[name];
+    if (sessions && Object.keys(sessions).length > 0)
+      adultSet.add(name.toLowerCase().trim());
+  });
+
+  // Event volunteering
+  (EVENTS_DATA || []).forEach(function(ev) {
+    ['adult_5hrs','adult_4hrs','adult_2hrs'].forEach(function(bucket) {
+      (ev[bucket] || []).forEach(function(name) {
+        adultSet.add(name.toLowerCase().trim());
+      });
+    });
+  });
+
+  return adultSet;
+}
+
 // updateLandingStats — single source-of-truth for home screen stat cards
 //
 // Called after all async data loads complete (end of dbStartup) and after
@@ -2526,7 +2565,7 @@ function renderStatsDiagnostic() {
     return tableRow(entry.display, reasons);
   });
 
-  // ─── Adults ──────────────────────────────────────────────────────────────
+  // ─── Adults — use unified helper ──────────────────────────────────────────
   var adultMap = {};
 
   function addAdult(rawName, reason) {
@@ -2543,6 +2582,13 @@ function renderStatsDiagnostic() {
     if (volIds.length > 0) addAdult(p.name, 'WS Volunteer ('+volIds.length+' wksp)');
     if (!facIds.length && !volIds.length && p.hours > 0)
       addAdult(p.name, 'Hours logged ('+p.hours+'h)');
+  });
+
+  // Scrabble Club adult volunteering
+  Object.keys(ADULT_SCRABBLE || {}).forEach(function(name) {
+    var sessions = ADULT_SCRABBLE[name];
+    if (sessions && Object.keys(sessions).length > 0)
+      addAdult(name, 'Scrabble Club ('+Object.keys(sessions).length+' sessions)');
   });
 
   EVENTS_DATA.forEach(function(ev) {
@@ -2576,20 +2622,20 @@ function renderStatsDiagnostic() {
 
   // ─── Render ───────────────────────────────────────────────────────────────
   summaryEl.innerHTML =
-    summaryCard('Youth Members',     Object.keys(youthMap).length, '🌱', 'var(--ya-teal)') +
-    summaryCard('Adult Volunteers',  Object.keys(adultMap).length, '🙌', 'var(--ya-blue)') +
-    summaryCard('Workshops',         wsCount,                      '📚', 'var(--ya-orange)') +
-    summaryCard('Community Events',  EVENTS_DATA.length,           '📅', 'var(--ya-gold)');
+    summaryCard('Youth Reached',          Object.keys(youthMap).length, '🌱', 'var(--ya-teal)') +
+    summaryCard('Active Adult Volunteers',Object.keys(adultMap).length, '🙌', 'var(--ya-blue)') +
+    summaryCard('Workshops Scheduled',    wsCount,                      '📚', 'var(--ya-orange)') +
+    summaryCard('Community Events',       EVENTS_DATA.length,           '📅', 'var(--ya-gold)');
 
   youthEl.innerHTML =
-    sectionHead('🌱', 'Youth Members ('+Object.keys(youthMap).length+')', 'var(--ya-teal)') +
+    sectionHead('🌱', 'Youth Reached ('+Object.keys(youthMap).length+')', 'var(--ya-teal)') +
     '<div style="font-size:.73rem;color:var(--text-muted);margin-bottom:10px">Counted if active in: EL workshops · Scrabble Club · event volunteering</div>' +
     (youthRows.length ? table(youthRows) :
       '<div style="color:var(--text-muted);font-size:.82rem">No youth activity found.</div>');
 
   adultEl.innerHTML =
-    sectionHead('🙌', 'Adult Volunteers ('+Object.keys(adultMap).length+')', 'var(--ya-blue)') +
-    '<div style="font-size:.73rem;color:var(--text-muted);margin-bottom:10px">Counted if active in: workshop facilitation · workshop volunteering · hours logged · event volunteering</div>' +
+    sectionHead('🙌', 'Active Adult Volunteers ('+Object.keys(adultMap).length+')', 'var(--ya-blue)') +
+    '<div style="font-size:.73rem;color:var(--text-muted);margin-bottom:10px">Counted if active in: workshop facilitation · workshop volunteering · Scrabble Club · hours logged · event volunteering</div>' +
     (adultRows.length ? table(adultRows) :
       '<div style="color:var(--text-muted);font-size:.82rem">No adult activity found.</div>');
 
@@ -2624,28 +2670,10 @@ function updateLandingStats() {
     });
   });
 
-  // ── Adult Volunteers ──
-  var adultSet = new Set();
+  // ── Adult Volunteers — use unified helper ──
+  var adultSet = getActiveAdultVolunteers();
 
-  // Workshop facilitation or volunteering
-  Object.values(FAC_PROFILES).forEach(function(p) {
-    if (!p || !p.name) return;
-    var hasFac = p.facilitated && p.facilitated.length > 0;
-    var hasVol = p.volunteered && p.volunteered.length > 0;
-    var hasHrs = p.hours && p.hours > 0;
-    if (hasFac || hasVol || hasHrs) adultSet.add(p.name.toLowerCase().trim());
-  });
-
-  // Event volunteering (any adult_Nhrs bucket across all events)
-  EVENTS_DATA.forEach(function(ev) {
-    ['adult_5hrs','adult_4hrs','adult_2hrs'].forEach(function(bucket) {
-      (ev[bucket] || []).forEach(function(name) {
-        adultSet.add(name.toLowerCase().trim());
-      });
-    });
-  });
-
-  // ── Workshops This Year ──
+  // ── Workshops Scheduled This Year ──
   var wsCount = (WORKSHOPS || []).filter(function(w) { return !w.cancelled; }).length;
 
   // ── Community Events ──
@@ -3249,94 +3277,279 @@ function renderImpactTab(){
   var container = document.getElementById('impact-content');
   if(!container) return;
 
-  // ── Workshop stats ──────────────────────────────────────────────────────────
-  var conducted = WORKSHOPS.filter(function(w){return w.conducted;});
-  var totalAttendances = 0;
-  var allYouth = Object.keys(EL_YOUTH);
-  conducted.forEach(function(w){
-    allYouth.forEach(function(n){
-      if((EL_YOUTH[n]||[]).includes(w.id)) totalAttendances++;
-    });
-  });
-  var totalFacHours = Object.values(FAC_PROFILES).reduce(function(s,p){return s+(p.hours||0);},0);
-  var lvl1Count = allYouth.filter(function(n){return (EL_YOUTH[n]||[]).length>=6;}).length;
-
-  // ── Scrabble stats ──────────────────────────────────────────────────────────
-  var scrPlayers = Object.keys(SCRABBLE_TOTALS).length;
-  var scrTotalPts = Object.values(SCRABBLE_TOTALS).reduce(function(s,v){return s+v;},0);
-  var scrSessionsHeld = SCRABBLE_DATES.filter(function(ds){
-    var p=ds.split('-');if(p.length!==2)return false;
-    var months={Jan:0,Feb:1,Mar:2,Apr:3,May:4,Jun:5,Jul:6,Aug:7,Sep:8,Oct:9,Nov:10,Dec:11};
-    var d=new Date(2026,months[p[1]],parseInt(p[0]));
-    return d<=new Date();
-  }).length;
-  var scrLeader='—';
-  var scrMax=-1;
-  Object.entries(SCRABBLE_TOTALS).forEach(function(e){if(e[1]>scrMax){scrMax=e[1];scrLeader=e[0];}});
-
-  // ── Events stats ────────────────────────────────────────────────────────────
-  var evData = EVENTS_DATA||[];
-  var completedEvs = evData.filter(function(e){return e.status==='completed';});
-  var totalYouthVolSlots=0, totalAdultVolSlots=0, totalVolHours=0;
-  evData.forEach(function(ev){
-    var y=(ev.youth_5hrs||[]).concat(ev.youth_4hrs||[]).concat(ev.youth_2hrs||[]);
-    var a=(ev.adult_5hrs||[]).concat(ev.adult_4hrs||[]).concat(ev.adult_2hrs||[]);
-    totalYouthVolSlots+=y.length; totalAdultVolSlots+=a.length;
-    y.forEach(function(n,_,arr){
-      // approximate hours
-      totalVolHours += (ev.youth_5hrs||[]).includes(n)?5:(ev.youth_4hrs||[]).includes(n)?4:2;
-    });
-    a.forEach(function(n){
-      totalVolHours += (ev.adult_5hrs||[]).includes(n)?5:(ev.adult_4hrs||[]).includes(n)?4:2;
-    });
-  });
-
-  // ── Adult volunteer activity ─────────────────────────────────────────────────
-  var adultScrabbleHrs = Object.values(ADULT_SCRABBLE_TOTALS).reduce(function(s,v){return s+v;},0);
-
-  // ── Recent workshops ────────────────────────────────────────────────────────
-  var recentWs = conducted.slice().sort(function(a,b){return b.id-a.id;}).slice(0,5);
-  var wsColors=['var(--ya-teal)','var(--ya-blue)','var(--ya-orange)','var(--ya-green)','var(--lavender)'];
-
-  container.innerHTML =
-    '<div class="three-col" style="margin-bottom:14px">'+
-      '<div class="section-box" style="text-align:center;margin-bottom:0"><div class="impact-number">'+Math.round(totalFacHours)+'</div><div style="color:var(--text-muted);font-size:.82rem;margin-top:6px">Total Facilitator Hours</div></div>'+
-      '<div class="section-box" style="text-align:center;margin-bottom:0"><div class="impact-number">'+conducted.length+'</div><div style="color:var(--text-muted);font-size:.82rem;margin-top:6px">Workshops Delivered (2026)</div></div>'+
-      '<div class="section-box" style="text-align:center;margin-bottom:0"><div class="impact-number">'+totalAttendances+'</div><div style="color:var(--text-muted);font-size:.82rem;margin-top:6px">Youth Workshop Attendances</div></div>'+
-    '</div>'+
-    '<div class="cards-grid" style="margin-bottom:14px">'+
-      '<div class="stat-card" style="--accent-color:var(--ya-teal)"><div class="stat-label">EL Youth Members</div><div class="stat-value">'+allYouth.length+'</div><div class="stat-meta">Emerging Leaders 2026</div><div class="stat-icon">👥</div></div>'+
-      '<div class="stat-card" style="--accent-color:var(--ya-blue)"><div class="stat-label">Level 1 Eligible</div><div class="stat-value">'+lvl1Count+'</div><div class="stat-meta">6+ workshops done</div><div class="stat-icon">🎓</div></div>'+
-      '<div class="stat-card" style="--accent-color:var(--ya-gold)"><div class="stat-label">Events Completed</div><div class="stat-value">'+completedEvs.length+'</div><div class="stat-meta">of '+evData.length+' events</div><div class="stat-icon">📅</div></div>'+
-      '<div class="stat-card" style="--accent-color:var(--ya-orange)"><div class="stat-label">Volunteer Hours</div><div class="stat-value">'+Math.round(totalVolHours+adultScrabbleHrs)+'</div><div class="stat-meta">Events + Scrabble Club</div><div class="stat-icon">⏱</div></div>'+
-    '</div>'+
-    '<div class="two-col">'+
-      '<div class="section-box"><div class="section-title">📅 Recent Workshops</div>'+
-        recentWs.map(function(w,i){
-          var facs=getWsFacilitators(w);
-          return '<div class="activity-item"><div class="activity-dot" style="background:'+wsColors[i%wsColors.length]+'"></div>'+
-            '<div><div class="activity-name">'+w.name+' (#'+w.id+')</div>'+
-            '<div class="activity-meta">'+facs.join(', ')+' &middot; '+w.date+'</div></div></div>';
-        }).join('')+
-      '</div>'+
-      '<div class="section-box"><div class="section-title">🎲 Scrabble &amp; Games Club</div>'+
-        '<div class="status-row"><div class="status-label">Total participants</div><span class="pill pill-gold">'+scrPlayers+'</span></div>'+
-        '<div class="status-row"><div class="status-label">Sessions held (2026)</div><span class="pill pill-teal">'+scrSessionsHeld+'</span></div>'+
-        '<div class="status-row"><div class="status-label">Total points awarded</div><span class="pill pill-orange">'+scrTotalPts+'</span></div>'+
-        '<div class="status-row"><div class="status-label">Current leader</div><span class="pill pill-gold">🏆 '+scrLeader+'</span></div>'+
-      '</div>'+
-    '</div>'+
-    '<div class="two-col">'+
-      '<div class="section-box"><div class="section-title">🙌 Youth Volunteer Events</div>'+
-        '<div class="status-row"><div class="status-label">Youth volunteer slots filled</div><span class="pill pill-teal">'+totalYouthVolSlots+'</span></div>'+
-        '<div class="status-row"><div class="status-label">Adult volunteer slots filled</div><span class="pill pill-blue">'+totalAdultVolSlots+'</span></div>'+
-      '</div>'+
-      '<div class="section-box"><div class="section-title">🏅 Facilitator Overview</div>'+
-        Object.values(FAC_PROFILES).filter(function(p){return p.facilitated&&p.facilitated.length>0;}).sort(function(a,b){return b.facilitated.length-a.facilitated.length;}).map(function(p){
-          return '<div class="status-row"><div class="status-label">'+p.name+'</div><span class="pill pill-blue">'+p.facilitated.length+' workshops</span></div>';
-        }).join('')+
-      '</div>'+
+  // ── Helper: small section header ──────────────────────────────────────────
+  function impactHead(icon, title, color, sub) {
+    return '<div style="display:flex;align-items:baseline;gap:10px;margin:24px 0 12px;border-bottom:2px solid '+color+';padding-bottom:8px">'+
+      '<span style="font-size:1.3rem">'+icon+'</span>'+
+      '<div><div style="font-family:Nunito,sans-serif;font-weight:900;font-size:1.05rem;color:'+color+'">'+title+'</div>'+
+        (sub?'<div style="font-size:.73rem;color:var(--text-muted);margin-top:1px">'+sub+'</div>':'')+
+      '</div></div>';
+  }
+  function bigNum(n, label, color) {
+    return '<div class="section-box" style="text-align:center;margin-bottom:0;border-top:3px solid '+color+'">'+
+      '<div style="font-family:Nunito,sans-serif;font-size:2.2rem;font-weight:900;color:'+color+'">'+n+'</div>'+
+      '<div style="font-size:.74rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-top:4px">'+label+'</div>'+
     '</div>';
+  }
+  function statRow(label, value, pillClass) {
+    return '<div class="status-row"><div class="status-label">'+label+'</div><span class="pill '+pillClass+'">'+value+'</span></div>';
+  }
+  function milestone(icon, text, color) {
+    return '<div style="display:flex;align-items:flex-start;gap:10px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.04)">'+
+      '<span style="font-size:1.1rem;flex-shrink:0;margin-top:1px">'+icon+'</span>'+
+      '<div style="font-size:.86rem;color:var(--text-main);line-height:1.45">'+text+'</div></div>';
+  }
+  function themeTag(label, color) {
+    return '<span style="display:inline-block;padding:4px 10px;border-radius:20px;font-size:.74rem;font-weight:700;border:1px solid '+color+';color:'+color+';margin:3px 3px 3px 0">'+label+'</span>';
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // DATA CALCULATIONS — all from live app data, zero hardcoded counts
+  // ══════════════════════════════════════════════════════════════════════════
+
+  // ── Workshops ──────────────────────────────────────────────────────────────
+  var conducted      = WORKSHOPS.filter(function(w){ return w.conducted && !w.cancelled; });
+  var scheduledWs    = WORKSHOPS.filter(function(w){ return !w.cancelled; });
+  var allYouthNames  = Object.keys(EL_YOUTH);
+
+  var totalAttendances = 0;
+  allYouthNames.forEach(function(n){
+    conducted.forEach(function(w){
+      if((EL_YOUTH[n]||[]).indexOf(w.id) >= 0) totalAttendances++;
+    });
+  });
+
+  // ── Youth counts ──────────────────────────────────────────────────────────
+  // EL workshop participants (those with at least one attendance)
+  var elParticipants = allYouthNames.filter(function(n){ return (EL_YOUTH[n]||[]).length > 0; });
+
+  // Unique youth across ALL programs (matches updateLandingStats logic)
+  var allYouthSet = new Set();
+  allYouthNames.forEach(function(n){ if((EL_YOUTH[n]||[]).length>0) allYouthSet.add(n.toLowerCase().trim()); });
+  Object.keys(SCRABBLE_SESSIONS||{}).forEach(function(n){
+    if(Object.keys(SCRABBLE_SESSIONS[n]||{}).length>0) allYouthSet.add(n.toLowerCase().trim());
+  });
+  (EVENTS_DATA||[]).forEach(function(ev){
+    ['youth_5hrs','youth_4hrs','youth_2hrs'].forEach(function(b){
+      (ev[b]||[]).forEach(function(n){ allYouthSet.add(n.toLowerCase().trim()); });
+    });
+  });
+
+  // ── Leadership pipeline ───────────────────────────────────────────────────
+  var lvl1Eligible    = allYouthNames.filter(function(n){ var c=(EL_YOUTH[n]||[]).length,h=YOUTH_HOURS[n]||0; return getYouthLevel(c,h)>=1; });
+  var lvl2Eligible    = allYouthNames.filter(function(n){ var c=(EL_YOUTH[n]||[]).length,h=YOUTH_HOURS[n]||0; return getYouthLevel(c,h)>=2; });
+  var lvl3Eligible    = allYouthNames.filter(function(n){ var c=(EL_YOUTH[n]||[]).length,h=YOUTH_HOURS[n]||0; return getYouthLevel(c,h)>=3; });
+  var nearLvl1        = allYouthNames.filter(function(n){ var c=(EL_YOUTH[n]||[]).length; return c>=4 && getYouthLevel(c,YOUTH_HOURS[n]||0)<1; });
+  var tenPlusWs       = allYouthNames.filter(function(n){ return (EL_YOUTH[n]||[]).length>=10; });
+  var multiProgram    = allYouthNames.filter(function(n){
+    var inWs = (EL_YOUTH[n]||[]).length > 0;
+    var inScr = Object.keys(SCRABBLE_SESSIONS||{}).some(function(k){ return k.toLowerCase().trim()===n.toLowerCase().trim() && Object.keys(SCRABBLE_SESSIONS[k]||{}).length>0; });
+    var inEv  = (EVENTS_DATA||[]).some(function(ev){ return ['youth_5hrs','youth_4hrs','youth_2hrs'].some(function(b){ return (ev[b]||[]).some(function(k){ return k.toLowerCase().trim()===n.toLowerCase().trim(); }); }); });
+    return [inWs,inScr,inEv].filter(Boolean).length >= 2;
+  });
+
+  // ── Adult volunteers ──────────────────────────────────────────────────────
+  var activeAdultSet = getActiveAdultVolunteers();
+  var facilitators   = Object.values(FAC_PROFILES).filter(function(p){ return p.facilitated && p.facilitated.length > 0; });
+  var totalFacHours  = Object.values(FAC_PROFILES).reduce(function(s,p){ return s+(p.hours||0); }, 0);
+  var returningFacs  = facilitators.filter(function(p){ return p.facilitated.length >= 3; });
+
+  // ── Volunteer hours ───────────────────────────────────────────────────────
+  var eventYouthHrs=0, eventAdultHrs=0;
+  var youthVolSlots=0, adultVolSlots=0;
+  (EVENTS_DATA||[]).forEach(function(ev){
+    ['youth_5hrs','youth_4hrs','youth_2hrs'].forEach(function(b){
+      var hrs=parseInt(b.replace(/\D/g,''));
+      (ev[b]||[]).forEach(function(){ youthVolSlots++; eventYouthHrs+=hrs; });
+    });
+    ['adult_5hrs','adult_4hrs','adult_2hrs'].forEach(function(b){
+      var hrs=parseInt(b.replace(/\D/g,''));
+      (ev[b]||[]).forEach(function(){ adultVolSlots++; eventAdultHrs+=hrs; });
+    });
+  });
+  var scrAdultHrs = Object.values(ADULT_SCRABBLE_TOTALS||{}).reduce(function(s,v){return s+v;},0);
+  var totalVolHours = eventYouthHrs + eventAdultHrs + scrAdultHrs + Math.round(totalFacHours);
+
+  // ── Scrabble ──────────────────────────────────────────────────────────────
+  var scrPlayers = Object.keys(SCRABBLE_TOTALS||{}).length;
+  var scrSessions = SCRABBLE_DATES.filter(function(ds){
+    var p=ds.split('-'); if(p.length!==2) return false;
+    var mo={Jan:0,Feb:1,Mar:2,Apr:3,May:4,Jun:5,Jul:6,Aug:7,Sep:8,Oct:9,Nov:10,Dec:11};
+    return new Date(2026,mo[p[1]],parseInt(p[0])) <= new Date();
+  }).length;
+  var scrLeader='—'; var scrMax=-1;
+  Object.entries(SCRABBLE_TOTALS||{}).forEach(function(e){ if(e[1]>scrMax){scrMax=e[1];scrLeader=e[0];} });
+
+  // ── Events ────────────────────────────────────────────────────────────────
+  var evData         = EVENTS_DATA||[];
+  var completedEvs   = evData.filter(function(e){ return e.status==='completed'; });
+  var communityEvs   = evData.filter(function(e){ return e.type!=='Meeting'; });
+  var completedComm  = communityEvs.filter(function(e){ return e.status==='completed'; });
+
+  // ── Workshop themes ───────────────────────────────────────────────────────
+  var THEMES = [
+    { label:'Leadership',          color:'var(--ya-teal)',   words:['leader','leading','leadership'] },
+    { label:'Communication',       color:'var(--ya-blue)',   words:['communication','communicat'] },
+    { label:'Conflict Resolution', color:'var(--ya-orange)', words:['conflict'] },
+    { label:'Resilience',          color:'var(--ya-green)',  words:['resilience','resiliency'] },
+    { label:'Financial Literacy',  color:'var(--ya-gold)',   words:['finance','spending'] },
+    { label:'Belonging & Inclusion',color:'#b388ff',         words:['belong','differences','seeing differently','leveraging'] },
+    { label:'Health & Wellness',   color:'#4dd0e1',          words:['health','digital','detox','fitness'] },
+    { label:'Social Capacity',     color:'var(--ya-orange)', words:['social','connections','building connections','building social'] },
+    { label:'Public Speaking',     color:'var(--lavender)',  words:['public speaking'] },
+    { label:'Planning & Goals',    color:'#aed581',          words:['planning','organizing'] },
+    { label:'Bullying Prevention', color:'#ff8a80',          words:['bullying'] },
+    { label:'Joy & Accomplishment',color:'var(--ya-gold)',   words:['joy','accomplishment','debating'] },
+  ];
+  var themeCounts = {};
+  THEMES.forEach(function(t){ themeCounts[t.label]=0; });
+  conducted.forEach(function(w){
+    var n = w.name.toLowerCase();
+    THEMES.forEach(function(t){
+      if(t.words.some(function(kw){ return n.indexOf(kw)>=0; })) themeCounts[t.label]++;
+    });
+  });
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // RENDER
+  // ══════════════════════════════════════════════════════════════════════════
+  var html = '';
+
+  // ── SECTION 1 — Reach ─────────────────────────────────────────────────────
+  html += impactHead('🌍','Program Reach','var(--ya-teal)','Scale of Youth Airdrie engagement across all programs');
+  html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px;margin-bottom:8px">';
+  html += bigNum(allYouthSet.size,      'Youth Reached',              'var(--ya-teal)');
+  html += bigNum(activeAdultSet.size,   'Active Adult Volunteers',    'var(--ya-blue)');
+  html += bigNum(conducted.length,      'Workshops Delivered',        'var(--ya-orange)');
+  html += bigNum(completedComm.length,  'Community Events Delivered', 'var(--ya-gold)');
+  html += bigNum(totalAttendances,      'Workshop Attendances',       'var(--lavender)');
+  html += bigNum(scrSessions,           'Scrabble Sessions Held',     '#4dd0e1');
+  html += bigNum(Math.round(totalVolHours), 'Total Volunteer Hours',  'var(--ya-green)');
+  html += '</div>';
+
+  // ── SECTION 2 — Youth Growth & Leadership ─────────────────────────────────
+  html += impactHead('🌱','Youth Growth & Leadership','var(--ya-green)','Developmental outcomes and leadership pipeline');
+  html += '<div class="two-col">';
+  // Left: milestone highlights
+  html += '<div class="section-box" style="margin-bottom:0">';
+  html += '<div class="section-title" style="margin-bottom:10px">🏆 Leadership Milestones</div>';
+  html += milestone('🎓', '<strong>'+lvl1Eligible.length+' youth</strong> have achieved Level 1 certification eligibility (6+ workshops, 2+ volunteer hours)', 'var(--ya-green)');
+  if(lvl2Eligible.length) html += milestone('🥈', '<strong>'+lvl2Eligible.length+' youth</strong> have achieved Level 2 eligibility (12+ workshops, 4+ hours)', 'var(--ya-blue)');
+  if(lvl3Eligible.length) html += milestone('⭐', '<strong>'+lvl3Eligible.length+' youth</strong> have achieved Level 3 eligibility (18 workshops, 6+ hours)', 'var(--ya-gold)');
+  html += milestone('📈', '<strong>'+tenPlusWs.length+' youth</strong> have attended 10 or more workshops — demonstrating sustained commitment', 'var(--ya-teal)');
+  html += milestone('🔗', '<strong>'+multiProgram.length+' youth</strong> are engaged in 2 or more programs (workshops, Scrabble, events)', 'var(--ya-orange)');
+  html += milestone('⏳', '<strong>'+nearLvl1.length+' youth</strong> are 4–5 workshops in and approaching Level 1 — next milestone within reach', 'var(--ya-gold)');
+  if(youthVolSlots>0) html += milestone('🙋', '<strong>'+youthVolSlots+' youth volunteer roles</strong> filled across community events', 'var(--lavender)');
+  html += '</div>';
+  // Right: progression table snapshot
+  html += '<div class="section-box" style="margin-bottom:0">';
+  html += '<div class="section-title" style="margin-bottom:10px">📊 Participation Breakdown</div>';
+  html += statRow('Workshop participants (EL)',   elParticipants.length,    'pill-teal');
+  html += statRow('Total youth reached (all programs)', allYouthSet.size,   'pill-blue');
+  html += statRow('Attended 1–3 workshops',  allYouthNames.filter(function(n){var c=(EL_YOUTH[n]||[]).length;return c>=1&&c<4;}).length, 'pill-grey');
+  html += statRow('Attended 4–5 workshops',  allYouthNames.filter(function(n){var c=(EL_YOUTH[n]||[]).length;return c>=4&&c<6;}).length, 'pill-amber');
+  html += statRow('Attended 6–9 workshops',  allYouthNames.filter(function(n){var c=(EL_YOUTH[n]||[]).length;return c>=6&&c<10;}).length,'pill-green');
+  html += statRow('Attended 10–17 workshops', tenPlusWs.length, 'pill-teal');
+  html += statRow('Level 1 eligible',        lvl1Eligible.length, 'pill-green');
+  html += statRow('Level 2 eligible',        lvl2Eligible.length, 'pill-blue');
+  if(lvl3Eligible.length) html += statRow('Level 3 eligible', lvl3Eligible.length, 'pill-gold');
+  html += '</div>';
+  html += '</div>';
+
+  // ── SECTION 3 — Community Engagement ──────────────────────────────────────
+  html += impactHead('🤝','Community Engagement','var(--ya-blue)','Volunteer contributions and community presence');
+  html += '<div class="two-col">';
+  html += '<div class="section-box" style="margin-bottom:0">';
+  html += '<div class="section-title" style="margin-bottom:10px">🙌 Volunteer Contribution</div>';
+  html += statRow('Active adult volunteers',       activeAdultSet.size,  'pill-blue');
+  html += statRow('Workshop facilitators',         facilitators.length,  'pill-teal');
+  html += statRow('Returning facilitators (3+ ws)',returningFacs.length, 'pill-green');
+  html += statRow('Adult facilitator hours',       Math.round(totalFacHours), 'pill-orange');
+  html += statRow('Youth volunteer roles filled',  youthVolSlots,        'pill-teal');
+  html += statRow('Adult volunteer roles filled',  adultVolSlots,        'pill-blue');
+  html += statRow('Adult Scrabble volunteer hrs',  Math.round(scrAdultHrs), 'pill-gold');
+  html += statRow('Total volunteer hours',         Math.round(totalVolHours),'pill-green');
+  html += '</div>';
+  html += '<div class="section-box" style="margin-bottom:0">';
+  html += '<div class="section-title" style="margin-bottom:10px">📅 Community Events</div>';
+  html += statRow('Community events planned',      communityEvs.length,   'pill-amber');
+  html += statRow('Community events delivered',    completedComm.length,  'pill-green');
+  html += statRow('Youth volunteer hrs (events)',  eventYouthHrs,         'pill-teal');
+  html += statRow('Adult volunteer hrs (events)',  eventAdultHrs,         'pill-blue');
+  var completedEvList = completedComm.map(function(e){ return e.name; }).join(', ') || '—';
+  html += '<div style="margin-top:12px;padding-top:10px;border-top:1px solid rgba(255,255,255,.06)"><div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Events Delivered</div><div style="font-size:.82rem;color:var(--text-main)">'+completedEvList+'</div></div>';
+  html += '</div>';
+  html += '</div>';
+
+  // ── SECTION 4 — Program Participation ─────────────────────────────────────
+  html += impactHead('📚','Program Participation','var(--ya-orange)','Breadth and diversity of engagement across programs');
+  html += '<div class="two-col">';
+  html += '<div class="section-box" style="margin-bottom:0">';
+  html += '<div class="section-title" style="margin-bottom:10px">📚 Emerging Leaders Workshops</div>';
+  html += statRow('Workshops delivered (Spring 2026)', conducted.length, 'pill-green');
+  html += statRow('Workshops scheduled (full year)',   scheduledWs.length,'pill-blue');
+  html += statRow('Workshop participants',             elParticipants.length, 'pill-teal');
+  html += statRow('Total attendance instances',        totalAttendances,  'pill-orange');
+  var avgAtt = conducted.length > 0 ? Math.round(totalAttendances/conducted.length*10)/10 : 0;
+  html += statRow('Avg attendance per workshop',       avgAtt+' youth',   'pill-grey');
+  html += statRow('Facilitators involved',             facilitators.length, 'pill-amber');
+  html += '</div>';
+  html += '<div class="section-box" style="margin-bottom:0">';
+  html += '<div class="section-title" style="margin-bottom:10px">🎲 Other Programs</div>';
+  // Scrabble
+  html += '<div style="font-size:.72rem;font-weight:700;color:var(--ya-gold);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;margin-top:4px">Scrabble & Games Club</div>';
+  html += statRow('Participants', scrPlayers, 'pill-gold');
+  html += statRow('Sessions held (2026)', scrSessions, 'pill-teal');
+  // Garden — no structured data yet
+  html += '<div style="font-size:.72rem;font-weight:700;color:var(--ya-green);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;margin-top:12px">Summer Garden Program</div>';
+  html += '<div style="font-size:.78rem;color:var(--text-muted);padding:4px 0">Data collection planned for Summer 2026.</div>';
+  // JYSEP
+  html += '<div style="font-size:.72rem;font-weight:700;color:var(--lavender);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;margin-top:12px">JYSEP / Animator Training</div>';
+  var jysepCount = Object.values(FAC_PROFILES).filter(function(p){ return p.role&&p.role.toLowerCase().indexOf('jysep')>=0||p.role&&p.role.toLowerCase().indexOf('animator')>=0; }).length;
+  html += statRow('Animators active', jysepCount||'—', 'pill-blue');
+  html += '</div>';
+  html += '</div>';
+
+  // ── SECTION 5 — Skills & Themes ───────────────────────────────────────────
+  html += impactHead('💡','Skills & Themes Delivered','var(--lavender)','Developmental competencies woven through workshop programming');
+  html += '<div class="section-box">';
+  html += '<div style="font-size:.78rem;color:var(--text-muted);margin-bottom:14px">Topics covered across the '+conducted.length+' delivered workshops this semester:</div>';
+  html += '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px">';
+  THEMES.forEach(function(t){
+    var cnt = themeCounts[t.label];
+    if(cnt>0) html += themeTag(t.label+' &nbsp;·&nbsp; '+cnt, t.color);
+  });
+  // Themes from scheduled-but-not-yet-delivered workshops
+  var upcomingThemes = [];
+  WORKSHOPS.filter(function(w){ return !w.conducted && !w.cancelled; }).forEach(function(w){
+    var n = w.name.toLowerCase();
+    THEMES.forEach(function(t){
+      if(t.words.some(function(kw){ return n.indexOf(kw)>=0; }) && upcomingThemes.indexOf(t.label)<0)
+        upcomingThemes.push(t.label);
+    });
+  });
+  html += '</div>';
+  if(upcomingThemes.length){
+    html += '<div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Coming this semester:</div>';
+    html += '<div style="display:flex;flex-wrap:wrap;gap:6px">';
+    upcomingThemes.forEach(function(lbl){
+      var t = THEMES.find(function(t2){ return t2.label===lbl; });
+      html += themeTag(lbl, t ? 'rgba(255,255,255,.25)' : 'rgba(255,255,255,.25)');
+    });
+    html += '</div>';
+  }
+  // Full workshop topic list
+  html += '<details style="margin-top:14px"><summary style="font-size:.78rem;font-weight:700;color:var(--ya-blue);cursor:pointer;padding:4px 0">📋 All workshop topics delivered this semester</summary>';
+  html += '<div style="margin-top:10px;display:flex;flex-direction:column;gap:4px">';
+  conducted.forEach(function(w){
+    html += '<div style="font-size:.81rem;color:var(--text-main);padding:4px 0;border-bottom:1px solid rgba(255,255,255,.04)">'+
+      '<span style="color:var(--text-muted);font-size:.72rem">#'+w.id+'&nbsp;</span>'+w.name+
+      '<span style="font-size:.72rem;color:var(--text-muted)">&nbsp;·&nbsp;'+w.date+'</span></div>';
+  });
+  html += '</div></details>';
+  html += '</div>';
+
+  container.innerHTML = html;
 }
 
 

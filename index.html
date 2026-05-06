@@ -809,11 +809,9 @@ body{font-family:"DM Sans",sans-serif;background:var(--navy);color:var(--text-ma
         </div>
       </div>
       <div class="tab-bar">
-        <button class="tab-btn active" onclick="switchTab('youth-metrics',this)">Youth Metrics</button>
+        <button class="tab-btn active" onclick="switchTab('workshops',this)">📚 Workshops</button>
         <button class="tab-btn" onclick="switchTab('scrabble-admin',this)">🎲 Scrabble Club</button>
-        <button class="tab-btn" onclick="switchTab('workshop-tracker',this)">Workshop Tracker</button>
         <button class="tab-btn" onclick="switchTab('future-schedule',this)">📆 Schedule</button>
-        <button class="tab-btn" onclick="switchTab('facilitators',this)">Facilitators</button>
         <button class="tab-btn" onclick="switchTab('events-log',this)">📋 Events Log</button>
         <button class="tab-btn" onclick="switchTab('compliance',this)">Compliance</button>
         <button class="tab-btn" onclick="switchTab('impact',this)">Impact</button>
@@ -822,7 +820,7 @@ body{font-family:"DM Sans",sans-serif;background:var(--navy);color:var(--text-ma
         <button class="tab-btn" onclick="switchTab('home-content-editor',this);loadHomeContentEditor()">🏠 Home Content</button>
         <button class="tab-btn" onclick="switchTab('stats-diagnostic',this);renderStatsDiagnostic()">🔬 Stats Audit</button>
       </div>
-      <div id="tab-youth-metrics">
+      <div id="tab-workshops">
         <div class="cards-grid">
           <div class="stat-card" style="--accent-color:var(--ya-teal)"><div class="stat-label">EL Youth Members</div><div class="stat-value">39</div><div class="stat-meta">Emerging Leaders 2026</div><div class="stat-icon">👥</div></div>
           <div class="stat-card" style="--accent-color:var(--ya-blue)"><div class="stat-label">Total Attendances</div><div class="stat-value">174</div><div class="stat-meta">Across 9 workshops</div><div class="stat-icon">✅</div></div>
@@ -871,6 +869,25 @@ body{font-family:"DM Sans",sans-serif;background:var(--navy);color:var(--text-ma
             </table>
           </div>
         </div>
+
+        <details open style="margin-bottom:14px">
+          <summary style="font-family:Nunito,sans-serif;font-weight:900;font-size:.95rem;color:var(--ya-blue);cursor:pointer;padding:10px 0;list-style:none;display:flex;align-items:center;gap:8px">📋 Workshop Schedule &amp; Status</summary>
+          <div style="margin-top:10px">
+            <div class="section-box"><div class="section-title">📋 Full 2026 Workshop Schedule</div>
+          <table class="data-table"><thead><tr><th>#</th><th>Workshop</th><th>Facilitator(s)</th><th>Volunteers</th><th>Date</th><th>Status</th><th>Attendance</th><th>Staff</th></tr></thead><tbody id="admin-ws-tbody"></tbody></table>
+        </div>
+          </div>
+        </details>
+
+        <details open style="margin-bottom:14px">
+          <summary style="font-family:Nunito,sans-serif;font-weight:900;font-size:.95rem;color:var(--ya-orange);cursor:pointer;padding:10px 0;list-style:none;display:flex;align-items:center;gap:8px">👥 Facilitators &amp; Volunteers</summary>
+          <div style="margin-top:10px">
+            <div class="section-box"><div class="section-title">👥 Facilitator Overview — 2026</div>
+          <table class="data-table"><thead><tr><th>Facilitator</th><th>Workshops</th><th>Count</th><th>Cert Level</th></tr></thead><tbody id="admin-fac-tbody"></tbody></table>
+        </div>
+        <div class="section-box"><div class="section-title">🏆 Leaderboard</div><div id="admin-fac-leaderboard"></div></div>
+          </div>
+        </details>
       </div>
       <div id="tab-scrabble-admin" style="display:none">
         <div class="cards-grid" id="admin-scrabble-stat-cards"></div>
@@ -1025,98 +1042,39 @@ body{font-family:"DM Sans",sans-serif;background:var(--navy);color:var(--text-ma
       </div>
       
       <div id="tab-future-schedule" style="display:none">
-        <div class="cards-grid">
+        <div class="cards-grid" id="schedule-stat-cards">
           <div class="stat-card" style="--accent-color:var(--ya-teal)">
             <div class="stat-label">Spring 2026</div>
             <div class="stat-value" style="font-size:1.1rem;padding-top:4px">Jan 12–May 25</div>
-            <div class="stat-meta">Workshops #1–18 · 10 done</div>
+            <div class="stat-meta">Workshops #1–18</div>
             <div class="stat-icon">🌱</div>
           </div>
           <div class="stat-card" style="--accent-color:var(--ya-orange)">
             <div class="stat-label">Fall 2026</div>
             <div class="stat-value" style="font-size:1.1rem;padding-top:4px">Sep 14–Dec 14</div>
-            <div class="stat-meta">Workshops #1–12 · TBD facilitators</div>
+            <div class="stat-meta">Workshops #1–12</div>
             <div class="stat-icon">🍂</div>
           </div>
           <div class="stat-card" style="--accent-color:var(--ya-blue)">
             <div class="stat-label">Winter/Spring 2027</div>
             <div class="stat-value" style="font-size:1.1rem;padding-top:4px">Jan 11–Feb 22</div>
-            <div class="stat-meta">Workshops #13–18 · TBD facilitators</div>
+            <div class="stat-meta">Workshops #13–18</div>
             <div class="stat-icon">❄️</div>
           </div>
           <div class="stat-card" style="--accent-color:var(--ya-green)">
-            <div class="stat-label">Stat Holidays Skipped</div>
-            <div class="stat-value">5</div>
-            <div class="stat-meta">Across Fall + Winter 2027</div>
-            <div class="stat-icon">🗓</div>
+            <div class="stat-label">Scrabble Sessions</div>
+            <div class="stat-value" id="sched-scrabble-count">—</div>
+            <div class="stat-meta">Scheduled this year</div>
+            <div class="stat-icon">🎲</div>
           </div>
         </div>
-
-        <!-- SPRING 2026 SUMMARY -->
-        <div class="section-box" style="border-left:4px solid var(--ya-teal);border-radius:0 15px 15px 0">
-          <div class="section-title">🌱 Spring 2026 — Jan 12 to May 25</div>
-          <div style="color:var(--text-muted);font-size:.82rem;margin-bottom:10px">Every Monday · Skips: Family Day Feb 16, Easter Monday Apr 6, Victoria Day May 18</div>
-          <div id="spring-2026-table"></div>
-        </div>
-
-        <!-- FALL 2026 -->
-        <div class="section-box" style="border-left:4px solid var(--ya-orange);border-radius:0 15px 15px 0">
-          <div class="section-title">🍂 Fall 2026 — Sep 14 to Dec 14</div>
-          <div style="color:var(--text-muted);font-size:.82rem;margin-bottom:10px">Every Monday · Skips: Labour Day Sep 7, Thanksgiving Oct 12 · Facilitators TBD</div>
-          <table class="data-table" id="fall-2026-table">
-            <thead><tr><th>#</th><th>Workshop</th><th>Date</th><th>Facilitator</th><th>Status</th></tr></thead>
-            <tbody id="fall-2026-tbody"></tbody>
-          </table>
-        </div>
-
-        <!-- WINTER/SPRING 2027 -->
-        <div class="section-box" style="border-left:4px solid var(--ya-blue);border-radius:0 15px 15px 0">
-          <div class="section-title">❄️ Winter/Spring 2027 — Jan 11 to Feb 22</div>
-          <div style="color:var(--text-muted);font-size:.82rem;margin-bottom:10px">Every Monday · Skips: Family Day Feb 15 · Continues from Fall #12 · Facilitators TBD</div>
-          <table class="data-table" id="winter-2027-table">
-            <thead><tr><th>#</th><th>Workshop</th><th>Date</th><th>Facilitator</th><th>Status</th></tr></thead>
-            <tbody id="winter-2027-tbody"></tbody>
-          </table>
-          <div class="alert-row info" style="margin-top:14px;margin-bottom:0">
-            📅 <div>Youth completing <strong>Fall 2026 + Winter 2027</strong> will have attended all 18 workshops and be eligible for Level 1, 2, or 3 certification!</div>
-          </div>
-        </div>
-
-        <!-- STAT HOLIDAY REFERENCE -->
-        <div class="section-box">
-          <div class="section-title">⛔ Stat Holidays — Full Reference</div>
-          <div class="two-col">
-            <div>
-              <div style="font-size:.78rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Fall 2026</div>
-              <div class="status-row"><div class="status-label">Labour Day</div><span class="pill pill-grey">Sep 7, 2026</span></div>
-              <div class="status-row"><div class="status-label">Thanksgiving</div><span class="pill pill-grey">Oct 12, 2026</span></div>
-              <div class="status-row"><div class="status-label">Remembrance Day</div><span class="pill pill-green">Nov 11 = Wed ✔</span></div>
-              <div class="status-row"><div class="status-label">Christmas</div><span class="pill pill-green">Dec 25 = Fri ✔</span></div>
-            </div>
-            <div>
-              <div style="font-size:.78rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Winter/Spring 2027</div>
-              <div class="status-row"><div class="status-label">New Year's Day</div><span class="pill pill-green">Jan 1 = Fri ✔</span></div>
-              <div class="status-row"><div class="status-label">Family Day</div><span class="pill pill-grey">Feb 15, 2027</span></div>
-              <div class="status-row"><div class="status-label">Good Friday</div><span class="pill pill-green">Apr 2 = Fri ✔</span></div>
-              <div class="status-row"><div class="status-label">Easter Monday</div><span class="pill pill-grey">Apr 5, 2027</span></div>
-              <div class="status-row"><div class="status-label">Victoria Day</div><span class="pill pill-grey">May 24, 2027</span></div>
-            </div>
-          </div>
+        <div class="section-box" style="margin-bottom:14px">
+          <div class="section-title">📆 Combined Program Schedule</div>
+          <div style="color:var(--text-muted);font-size:.8rem;margin-bottom:14px">All workshops, Scrabble sessions, and events — sorted chronologically. Past dates collapsed below.</div>
+          <div id="schedule-combined-list"><div style="color:var(--text-muted);font-size:.83rem">Loading schedule…</div></div>
         </div>
       </div>
 
-      <div id="tab-workshop-tracker" style="display:none">
-        <div class="section-box"><div class="section-title">📋 Full 2026 Workshop Schedule</div>
-          <table class="data-table"><thead><tr><th>#</th><th>Workshop</th><th>Facilitator(s)</th><th>Volunteers</th><th>Date</th><th>Status</th><th>Attendance</th><th>Staff</th></tr></thead><tbody id="admin-ws-tbody"></tbody></table>
-        </div>
-      </div>
-      <div id="tab-facilitators" style="display:none">
-        <div class="section-box"><div class="section-title">👥 Facilitator Overview — 2026</div>
-          <table class="data-table"><thead><tr><th>Facilitator</th><th>Workshops</th><th>Count</th><th>Cert Level</th></tr></thead><tbody id="admin-fac-tbody"></tbody></table>
-        </div>
-        <div class="section-box"><div class="section-title">🏆 Leaderboard</div><div id="admin-fac-leaderboard"></div></div>
-      </div>
-      
       <div id="tab-events-log" style="display:none">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
           <div style="font-family:Nunito,sans-serif;font-size:1rem;font-weight:900;color:var(--ya-orange)">📋 Events Log</div>
@@ -1223,25 +1181,7 @@ body{font-family:"DM Sans",sans-serif;background:var(--navy);color:var(--text-ma
         </div>
       </div>
       <div id="tab-impact" style="display:none">
-        <div class="three-col" style="margin-bottom:14px">
-          <div class="section-box" style="text-align:center;margin-bottom:0"><div class="impact-number">441</div><div style="color:var(--text-muted);font-size:.82rem;margin-top:6px">Total Facilitator Hours</div></div>
-          <div class="section-box" style="text-align:center;margin-bottom:0"><div class="impact-number">9</div><div style="color:var(--text-muted);font-size:.82rem;margin-top:6px">Workshops Delivered 2026</div></div>
-          <div class="section-box" style="text-align:center;margin-bottom:0"><div class="impact-number">174</div><div style="color:var(--text-muted);font-size:.82rem;margin-top:6px">Workshop Attendances</div></div>
-        </div>
-        <div class="two-col">
-          <div class="section-box"><div class="section-title">📅 Recent Workshops</div>
-            <div class="activity-item"><div class="activity-dot" style="background:var(--ya-blue)"></div><div><div class="activity-name">Seeing Differently (#9)</div><div class="activity-meta">Mary-Beth Finney &amp; Roberta Ehigiator · Mar 16</div></div></div>
-            <div class="activity-item"><div class="activity-dot" style="background:var(--ya-teal)"></div><div><div class="activity-name">Building Social Capacity (#8)</div><div class="activity-meta">Kim Sundset · Mar 9</div></div></div>
-            <div class="activity-item"><div class="activity-dot" style="background:var(--ya-orange)"></div><div><div class="activity-name">Building Connections (#7)</div><div class="activity-meta">Kim Sundset · Mar 2</div></div></div>
-            <div class="activity-item"><div class="activity-dot" style="background:var(--ya-green)"></div><div><div class="activity-name">Learn to Belong (#6)</div><div class="activity-meta">Simisola Obasan &amp; Kim Sundset · Feb 26</div></div></div>
-          </div>
-          <div class="section-box"><div class="section-title">🎲 Scrabble &amp; Games Club</div>
-            <div class="status-row"><div class="status-label">Total participants</div><span class="pill pill-gold">17</span></div>
-            <div class="status-row"><div class="status-label">Sessions held (2026)</div><span class="pill pill-teal">11</span></div>
-            <div class="status-row"><div class="status-label">Total points awarded</div><span class="pill pill-orange">515</span></div>
-            <div class="status-row"><div class="status-label">Trophy leader</div><span class="pill pill-gold" id="impact-q1-leader">🏆 —</span></div>
-          </div>
-        </div>
+        <div id="impact-content"><div style="color:var(--text-muted);font-size:.83rem">Loading impact data…</div></div>
       </div>
 
       <!-- CREDENTIALS TAB -->
@@ -2402,15 +2342,18 @@ function showPage(id,navItem){
 }
 
 function switchTab(tabId,btn){
-  ['tab-youth-metrics','tab-scrabble-admin','tab-future-schedule','tab-workshop-tracker','tab-facilitators','tab-events-log','tab-compliance','tab-impact','tab-credentials-admin','tab-users-admin','tab-home-content-editor','tab-stats-diagnostic'].forEach(function(t){
+  ['tab-workshops','tab-scrabble-admin','tab-future-schedule','tab-events-log','tab-compliance','tab-impact','tab-credentials-admin','tab-users-admin','tab-home-content-editor','tab-stats-diagnostic'].forEach(function(t){
     var el=document.getElementById(t);if(el)el.style.display='none';
   });
   document.querySelectorAll('.tab-btn').forEach(function(b){b.classList.remove('active');});
   var tab=document.getElementById('tab-'+tabId);if(tab)tab.style.display='block';
   btn.classList.add('active');
+  if(tabId==='workshops') renderAdmin();
+  if(tabId==='future-schedule') renderScheduleTab();
   if(tabId==='credentials-admin') renderCredentialManager();
   if(tabId==='users-admin') renderUsersTab();
   if(tabId==='events-log') renderEventsLog();
+  if(tabId==='impact') renderImpactTab();
 }
 
 function filterEvents(type,btn){
@@ -3111,47 +3054,242 @@ function logEventHours(btn){
 
 
 function renderScheduleTab(){
-  // Spring 2026 summary
-  var s26 = document.getElementById('spring-2026-table');
-  if(s26){
-    var spring = WORKSHOPS.filter(function(w){return !w.cancelled;});
-    s26.innerHTML = '<table class="data-table"><thead><tr><th>#</th><th>Workshop</th><th>Date</th><th>Facilitator(s)</th><th>Status</th></tr></thead><tbody>' +
-    spring.map(function(w){
-      return '<tr><td>'+w.id+'</td><td>'+w.name+'</td><td>'+w.date+'</td>'+
-        '<td style="font-size:.75rem">'+w.facilitators.join(', ')+'</td>'+
-        '<td>'+(w.conducted?'<span class="pill pill-green">Done</span>':'<span class="pill pill-grey">Upcoming</span>')+'</td></tr>';
-    }).join('') + '</tbody></table>';
+  var container = document.getElementById('schedule-combined-list');
+  if(!container) return;
+
+  var now = new Date(); now.setHours(0,0,0,0);
+  var months = {Jan:0,Feb:1,Mar:2,Apr:3,May:4,Jun:5,Jul:6,Aug:7,Sep:8,Oct:9,Nov:10,Dec:11};
+
+  function parseDate(str){
+    if(!str || str==='CANCELLED'||str==='TBD') return null;
+    var p = str.replace(',','').split(' ');
+    if(p.length<3) return null;
+    return new Date(parseInt(p[2]), months[p[0]]||0, parseInt(p[1]));
   }
 
-  // Fall 2026
-  var f26 = document.getElementById('fall-2026-tbody');
-  if(f26){
-    var fall = FUTURE_WORKSHOPS.filter(function(w){return w.semester==='Fall 2026';});
-    f26.innerHTML = fall.map(function(w,i){
-      var skipNote = w.skipped_before ? '<div style="font-size:.68rem;color:var(--badge-amber)">⛔ '+w.skipped_before+' skipped before this</div>' : '';
-      return '<tr><td>'+( i+1)+'</td><td>'+w.name+'</td><td>'+w.date+'</td>'+
-        '<td><span class="pill pill-grey">TBD</span></td>'+
-        '<td><span class="pill pill-blue">Scheduled</span></td></tr>'+
-        (skipNote?'<tr><td colspan="5" style="padding:2px 12px 8px">'+skipNote+'</td></tr>':'');
-    }).join('');
+  var items = [];
+
+  // Workshops — Spring 2026
+  WORKSHOPS.forEach(function(w){
+    var d = parseDate(w.date);
+    items.push({
+      date: d, dateStr: w.date,
+      type: 'Workshop', sem: 'Spring 2026',
+      title: '#'+w.id+' '+w.name,
+      detail: (w.facilitators||[]).join(', ')||'—',
+      status: w.cancelled?'cancelled':w.conducted?'done':'upcoming',
+      typeColor: 'var(--ya-teal)', typeIcon: '📚'
+    });
+  });
+
+  // Future Workshops — Fall 2026 + Winter/Spring 2027
+  FUTURE_WORKSHOPS.forEach(function(w){
+    var d = parseDate(w.date);
+    items.push({
+      date: d, dateStr: w.date,
+      type: 'Workshop', sem: w.semester,
+      title: w.name,
+      detail: w.semester + ' · Facilitator TBD',
+      status: 'scheduled',
+      typeColor: w.semester==='Fall 2026'?'var(--ya-orange)':'var(--ya-blue)',
+      typeIcon: w.semester==='Fall 2026'?'🍂':'❄️'
+    });
+  });
+
+  // Scrabble dates
+  SCRABBLE_DATES.forEach(function(ds){
+    // Convert "7-Jan" → date in 2026
+    var p = ds.split('-');
+    if(p.length!==2) return;
+    var day = parseInt(p[0]);
+    var mon = months[p[1]];
+    if(isNaN(day)||mon===undefined) return;
+    var year = mon>=8 ? 2025 : 2026; // 14-Jan=2026, etc — all 2026 for this data
+    var d = new Date(2026, mon, day);
+    var isPast = d < now;
+    items.push({
+      date: d, dateStr: p[1]+' '+day+', 2026',
+      type: 'Scrabble', sem: '',
+      title: 'Scrabble & Games Club',
+      detail: 'Community Centre · Wednesday',
+      status: isPast ? 'done' : 'upcoming',
+      typeColor: 'var(--lavender)', typeIcon: '🎲'
+    });
+  });
+
+  // Events
+  (EVENTS_DATA||[]).forEach(function(ev){
+    var d = ev.date ? new Date(ev.date) : null;
+    items.push({
+      date: d, dateStr: ev.date||'TBD',
+      type: 'Event', sem: '',
+      title: ev.name,
+      detail: (ev.location||'')+(ev.time&&ev.time!=='—'?' · '+ev.time:''),
+      status: ev.status==='completed'?'done':d&&d<now?'past':'upcoming',
+      typeColor: 'var(--ya-orange)', typeIcon: '📋'
+    });
+  });
+
+  // Sort chronologically — nulls (no date) go to end
+  items.sort(function(a,b){
+    if(!a.date && !b.date) return 0;
+    if(!a.date) return 1;
+    if(!b.date) return -1;
+    return a.date - b.date;
+  });
+
+  var upcoming=[], past=[];
+  items.forEach(function(item){
+    if(!item.date || item.date >= now) upcoming.push(item);
+    else past.push(item);
+  });
+
+  // Update scrabble count stat card
+  var sc = document.getElementById('sched-scrabble-count');
+  if(sc) sc.textContent = SCRABBLE_DATES.length;
+
+  function pillClass(status){
+    if(status==='done'||status==='completed') return 'pill-green';
+    if(status==='cancelled') return 'pill-red';
+    if(status==='scheduled') return 'pill-blue';
+    if(status==='past') return 'pill-grey';
+    return 'pill-amber';
+  }
+  function pillLabel(status){
+    if(status==='done'||status==='completed') return '✔ Done';
+    if(status==='cancelled') return '✘ Cancelled';
+    if(status==='scheduled') return 'Scheduled';
+    if(status==='past') return 'Past';
+    return 'Upcoming';
   }
 
-  // Winter 2027
-  var w27 = document.getElementById('winter-2027-tbody');
-  if(w27){
-    var winter = FUTURE_WORKSHOPS.filter(function(w){return w.semester==='Winter/Spring 2027';});
-    w27.innerHTML = winter.map(function(w,i){
-      var skipNote = w.skipped_before ? '<div style="font-size:.68rem;color:var(--badge-amber)">⛔ '+w.skipped_before+' skipped before this</div>' : '';
-      return '<tr><td>'+(i+13)+'</td><td>'+w.name+'</td><td>'+w.date+'</td>'+
-        '<td><span class="pill pill-grey">TBD</span></td>'+
-        '<td><span class="pill pill-blue">Scheduled</span></td></tr>'+
-        (skipNote?'<tr><td colspan="5" style="padding:2px 12px 8px">'+skipNote+'</td></tr>':'');
-    }).join('');
+  function renderRow(item){
+    return '<div class="status-row" style="align-items:flex-start;flex-wrap:wrap;gap:6px;padding:8px 0">'+
+      '<div style="display:flex;gap:8px;flex:1;min-width:200px;align-items:flex-start">'+
+        '<span style="font-size:.95rem;flex-shrink:0;margin-top:2px">'+item.typeIcon+'</span>'+
+        '<div>'+
+          '<div style="font-size:.88rem;font-weight:700;color:var(--text-main)">'+item.title+'</div>'+
+          '<div style="font-size:.76rem;color:var(--text-muted);margin-top:2px">'+item.dateStr+(item.sem?' &middot; '+item.sem:'')+
+            (item.detail?' &middot; '+item.detail:'')+'</div>'+
+        '</div>'+
+      '</div>'+
+      '<div style="display:flex;gap:6px;align-items:center">'+
+        '<span class="pill pill-grey" style="font-size:.68rem;color:'+item.typeColor+'">'+item.type+'</span>'+
+        '<span class="pill '+pillClass(item.status)+'">'+pillLabel(item.status)+'</span>'+
+      '</div>'+
+    '</div>';
   }
+
+  var html = '';
+  if(upcoming.length){
+    html += '<div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Upcoming &amp; Current</div>';
+    html += upcoming.map(renderRow).join('<hr style="border:none;border-top:1px solid rgba(255,255,255,.05);margin:0">');
+  }
+  if(past.length){
+    html += '<details style="margin-top:16px"><summary style="font-size:.78rem;font-weight:700;color:var(--text-muted);cursor:pointer;padding:4px 0;text-transform:uppercase;letter-spacing:.06em">📁 Past Dates ('+past.length+')</summary>'+
+      '<div style="margin-top:8px">'+past.map(renderRow).join('<hr style="border:none;border-top:1px solid rgba(255,255,255,.05);margin:0">')+'</div></details>';
+  }
+  if(!html) html='<div style="color:var(--text-muted);font-size:.83rem">No schedule items found.</div>';
+  container.innerHTML = html;
 }
 
 
 // ── RECURRING PROGRAMS ──
+function renderImpactTab(){
+  var container = document.getElementById('impact-content');
+  if(!container) return;
+
+  // ── Workshop stats ──────────────────────────────────────────────────────────
+  var conducted = WORKSHOPS.filter(function(w){return w.conducted;});
+  var totalAttendances = 0;
+  var allYouth = Object.keys(EL_YOUTH);
+  conducted.forEach(function(w){
+    allYouth.forEach(function(n){
+      if((EL_YOUTH[n]||[]).includes(w.id)) totalAttendances++;
+    });
+  });
+  var totalFacHours = Object.values(FAC_PROFILES).reduce(function(s,p){return s+(p.hours||0);},0);
+  var lvl1Count = allYouth.filter(function(n){return (EL_YOUTH[n]||[]).length>=6;}).length;
+
+  // ── Scrabble stats ──────────────────────────────────────────────────────────
+  var scrPlayers = Object.keys(SCRABBLE_TOTALS).length;
+  var scrTotalPts = Object.values(SCRABBLE_TOTALS).reduce(function(s,v){return s+v;},0);
+  var scrSessionsHeld = SCRABBLE_DATES.filter(function(ds){
+    var p=ds.split('-');if(p.length!==2)return false;
+    var months={Jan:0,Feb:1,Mar:2,Apr:3,May:4,Jun:5,Jul:6,Aug:7,Sep:8,Oct:9,Nov:10,Dec:11};
+    var d=new Date(2026,months[p[1]],parseInt(p[0]));
+    return d<=new Date();
+  }).length;
+  var scrLeader='—';
+  var scrMax=-1;
+  Object.entries(SCRABBLE_TOTALS).forEach(function(e){if(e[1]>scrMax){scrMax=e[1];scrLeader=e[0];}});
+
+  // ── Events stats ────────────────────────────────────────────────────────────
+  var evData = EVENTS_DATA||[];
+  var completedEvs = evData.filter(function(e){return e.status==='completed';});
+  var totalYouthVolSlots=0, totalAdultVolSlots=0, totalVolHours=0;
+  evData.forEach(function(ev){
+    var y=(ev.youth_5hrs||[]).concat(ev.youth_4hrs||[]).concat(ev.youth_2hrs||[]);
+    var a=(ev.adult_5hrs||[]).concat(ev.adult_4hrs||[]).concat(ev.adult_2hrs||[]);
+    totalYouthVolSlots+=y.length; totalAdultVolSlots+=a.length;
+    y.forEach(function(n,_,arr){
+      // approximate hours
+      totalVolHours += (ev.youth_5hrs||[]).includes(n)?5:(ev.youth_4hrs||[]).includes(n)?4:2;
+    });
+    a.forEach(function(n){
+      totalVolHours += (ev.adult_5hrs||[]).includes(n)?5:(ev.adult_4hrs||[]).includes(n)?4:2;
+    });
+  });
+
+  // ── Adult volunteer activity ─────────────────────────────────────────────────
+  var adultScrabbleHrs = Object.values(ADULT_SCRABBLE_TOTALS).reduce(function(s,v){return s+v;},0);
+
+  // ── Recent workshops ────────────────────────────────────────────────────────
+  var recentWs = conducted.slice().sort(function(a,b){return b.id-a.id;}).slice(0,5);
+  var wsColors=['var(--ya-teal)','var(--ya-blue)','var(--ya-orange)','var(--ya-green)','var(--lavender)'];
+
+  container.innerHTML =
+    '<div class="three-col" style="margin-bottom:14px">'+
+      '<div class="section-box" style="text-align:center;margin-bottom:0"><div class="impact-number">'+Math.round(totalFacHours)+'</div><div style="color:var(--text-muted);font-size:.82rem;margin-top:6px">Total Facilitator Hours</div></div>'+
+      '<div class="section-box" style="text-align:center;margin-bottom:0"><div class="impact-number">'+conducted.length+'</div><div style="color:var(--text-muted);font-size:.82rem;margin-top:6px">Workshops Delivered (2026)</div></div>'+
+      '<div class="section-box" style="text-align:center;margin-bottom:0"><div class="impact-number">'+totalAttendances+'</div><div style="color:var(--text-muted);font-size:.82rem;margin-top:6px">Youth Workshop Attendances</div></div>'+
+    '</div>'+
+    '<div class="cards-grid" style="margin-bottom:14px">'+
+      '<div class="stat-card" style="--accent-color:var(--ya-teal)"><div class="stat-label">EL Youth Members</div><div class="stat-value">'+allYouth.length+'</div><div class="stat-meta">Emerging Leaders 2026</div><div class="stat-icon">👥</div></div>'+
+      '<div class="stat-card" style="--accent-color:var(--ya-blue)"><div class="stat-label">Level 1 Eligible</div><div class="stat-value">'+lvl1Count+'</div><div class="stat-meta">6+ workshops done</div><div class="stat-icon">🎓</div></div>'+
+      '<div class="stat-card" style="--accent-color:var(--ya-gold)"><div class="stat-label">Events Completed</div><div class="stat-value">'+completedEvs.length+'</div><div class="stat-meta">of '+evData.length+' events</div><div class="stat-icon">📅</div></div>'+
+      '<div class="stat-card" style="--accent-color:var(--ya-orange)"><div class="stat-label">Volunteer Hours</div><div class="stat-value">'+Math.round(totalVolHours+adultScrabbleHrs)+'</div><div class="stat-meta">Events + Scrabble Club</div><div class="stat-icon">⏱</div></div>'+
+    '</div>'+
+    '<div class="two-col">'+
+      '<div class="section-box"><div class="section-title">📅 Recent Workshops</div>'+
+        recentWs.map(function(w,i){
+          var facs=getWsFacilitators(w);
+          return '<div class="activity-item"><div class="activity-dot" style="background:'+wsColors[i%wsColors.length]+'"></div>'+
+            '<div><div class="activity-name">'+w.name+' (#'+w.id+')</div>'+
+            '<div class="activity-meta">'+facs.join(', ')+' &middot; '+w.date+'</div></div></div>';
+        }).join('')+
+      '</div>'+
+      '<div class="section-box"><div class="section-title">🎲 Scrabble &amp; Games Club</div>'+
+        '<div class="status-row"><div class="status-label">Total participants</div><span class="pill pill-gold">'+scrPlayers+'</span></div>'+
+        '<div class="status-row"><div class="status-label">Sessions held (2026)</div><span class="pill pill-teal">'+scrSessionsHeld+'</span></div>'+
+        '<div class="status-row"><div class="status-label">Total points awarded</div><span class="pill pill-orange">'+scrTotalPts+'</span></div>'+
+        '<div class="status-row"><div class="status-label">Current leader</div><span class="pill pill-gold">🏆 '+scrLeader+'</span></div>'+
+      '</div>'+
+    '</div>'+
+    '<div class="two-col">'+
+      '<div class="section-box"><div class="section-title">🙌 Youth Volunteer Events</div>'+
+        '<div class="status-row"><div class="status-label">Youth volunteer slots filled</div><span class="pill pill-teal">'+totalYouthVolSlots+'</span></div>'+
+        '<div class="status-row"><div class="status-label">Adult volunteer slots filled</div><span class="pill pill-blue">'+totalAdultVolSlots+'</span></div>'+
+      '</div>'+
+      '<div class="section-box"><div class="section-title">🏅 Facilitator Overview</div>'+
+        Object.values(FAC_PROFILES).filter(function(p){return p.facilitated&&p.facilitated.length>0;}).sort(function(a,b){return b.facilitated.length-a.facilitated.length;}).map(function(p){
+          return '<div class="status-row"><div class="status-label">'+p.name+'</div><span class="pill pill-blue">'+p.facilitated.length+' workshops</span></div>';
+        }).join('')+
+      '</div>'+
+    '</div>';
+}
+
+
 function getCurrentRecurring(){
   var month = new Date().getMonth() + 1; // 1=Jan…12=Dec
   if(month>=5&&month<=9) return RECURRING_PROGRAMS[1];
@@ -4305,7 +4443,7 @@ function markWorkshopDone(wsId) {
   dbPost('workshop_conducted', { workshop_id: wsId, conducted: true, marked_at: new Date().toISOString() })
     .then(function(){ console.log('Workshop marked done in DB:', wsId); });
   renderAdmin();
-  alert('Workshop #'+wsId+' marked as Done! You can now enter attendance in the Youth Metrics tab.');
+  alert('Workshop #'+wsId+' marked as Done! You can now enter attendance in the Workshops tab.');
 }
 
 function openWsStaffEdit(wsId) {

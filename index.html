@@ -943,6 +943,7 @@ select option[value=""]{
       <div class="tab-bar">
         <button class="tab-btn active" onclick="switchTab('workshops',this)">📚 Workshops</button>
         <button class="tab-btn" onclick="switchTab('scrabble-admin',this)">🎲 Scrabble Club</button>
+        <button class="tab-btn" onclick="switchTab('garden-admin',this)">🌱 Garden Program</button>
         <button class="tab-btn" onclick="switchTab('future-schedule',this)">📆 Schedule</button>
         <button class="tab-btn" onclick="switchTab('events-log',this)">📋 Events Log</button>
         <button class="tab-btn" onclick="switchTab('compliance',this)">Compliance</button>
@@ -1173,6 +1174,58 @@ select option[value=""]{
         </div>
       </div>
       
+      <div id="tab-garden-admin" style="display:none">
+        <!-- stat cards rendered by renderGardenAdmin() -->
+        <div class="cards-grid" id="garden-admin-stat-cards" style="margin-bottom:14px"></div>
+
+        <!-- session edit modal -->
+        <div id="garden-session-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:1000;align-items:center;justify-content:center">
+          <div class="login-box" style="max-width:460px;width:100%;max-height:90vh;overflow-y:auto">
+            <div style="font-family:Nunito,sans-serif;font-weight:900;font-size:1rem;color:var(--ya-green);margin-bottom:14px">🌱 Edit Session</div>
+            <div style="display:grid;gap:10px">
+              <div>
+                <div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Date</div>
+                <input id="gsm-date" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--card-border);background:rgba(255,255,255,.06);color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem;box-sizing:border-box" placeholder="e.g. May 6, 2026">
+              </div>
+              <div>
+                <div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Activity / Theme</div>
+                <input id="gsm-theme" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--card-border);background:rgba(255,255,255,.06);color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem;box-sizing:border-box" placeholder="e.g. Planting day, Multicultural crafts">
+              </div>
+              <div>
+                <div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Session Description</div>
+                <input id="gsm-desc" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--card-border);background:rgba(255,255,255,.06);color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem;box-sizing:border-box" placeholder="Optional notes for grant reporting">
+              </div>
+              <div>
+                <div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Location</div>
+                <input id="gsm-location" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--card-border);background:rgba(255,255,255,.06);color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem;box-sizing:border-box" placeholder="Youth Airdrie (default)">
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+                <div>
+                  <div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Start Time</div>
+                  <input id="gsm-start" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--card-border);background:rgba(255,255,255,.06);color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem;box-sizing:border-box" placeholder="4:30 PM">
+                </div>
+                <div>
+                  <div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">End Time</div>
+                  <input id="gsm-end" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--card-border);background:rgba(255,255,255,.06);color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem;box-sizing:border-box" placeholder="6:30 PM">
+                </div>
+              </div>
+              <div id="gsm-cancel-row">
+                <div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Cancellation Reason</div>
+                <input id="gsm-cancel-reason" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--card-border);background:rgba(255,255,255,.06);color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem;box-sizing:border-box" placeholder="Reason (leave blank if not cancelled)">
+              </div>
+            </div>
+            <div id="gsm-feedback" style="min-height:16px;font-size:.78rem;margin-top:10px"></div>
+            <div style="display:flex;gap:10px;margin-top:14px;justify-content:flex-end">
+              <button onclick="document.getElementById('garden-session-modal').style.display='none'" style="padding:8px 18px;border-radius:9px;border:1px solid rgba(255,255,255,.15);background:transparent;color:var(--text-muted);font-family:Nunito,sans-serif;font-weight:700;cursor:pointer">Cancel</button>
+              <button id="gsm-save-btn" onclick="saveGardenSessionMeta()" style="padding:8px 22px;border-radius:9px;border:none;background:var(--ya-green);color:#fff;font-family:Nunito,sans-serif;font-weight:800;cursor:pointer">💾 Save</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- main session list -->
+        <div id="garden-admin-sessions"></div>
+      </div>
+
       <div id="tab-future-schedule" style="display:none">
         <div class="cards-grid" id="schedule-stat-cards">
           <div class="stat-card" style="--accent-color:var(--ya-teal)">
@@ -1562,7 +1615,7 @@ var WORKSHOPS=[{"id":1,"name":"Becoming a Leader","facilitators":["Roberta Ehigi
 var FUTURE_WORKSHOPS=[{"id":101,"semester":"Fall 2026","name":"Becoming a Leader","facilitators":["TBD"],"volunteers":[],"date":"Sep 14, 2026","conducted":false},{"id":102,"semester":"Fall 2026","name":"Junior Finance","facilitators":["TBD"],"volunteers":[],"date":"Sep 21, 2026","conducted":false},{"id":103,"semester":"Fall 2026","name":"Effective Communication","facilitators":["TBD"],"volunteers":[],"date":"Sep 28, 2026","conducted":false},{"id":104,"semester":"Fall 2026","name":"Conflict Management","facilitators":["TBD"],"volunteers":[],"date":"Oct 5, 2026","conducted":false},{"id":105,"semester":"Fall 2026","name":"Planning and Organizing","facilitators":["TBD"],"volunteers":[],"date":"Oct 19, 2026","conducted":false,"skipped_before":"Oct 12 \u2014 Thanksgiving"},{"id":106,"semester":"Fall 2026","name":"Learn to Belong","facilitators":["TBD"],"volunteers":[],"date":"Oct 26, 2026","conducted":false},{"id":107,"semester":"Fall 2026","name":"Building Connections","facilitators":["TBD"],"volunteers":[],"date":"Nov 2, 2026","conducted":false},{"id":108,"semester":"Fall 2026","name":"Building Social Capacity","facilitators":["TBD"],"volunteers":[],"date":"Nov 9, 2026","conducted":false},{"id":109,"semester":"Fall 2026","name":"Seeing Differently","facilitators":["TBD"],"volunteers":[],"date":"Nov 16, 2026","conducted":false},{"id":110,"semester":"Fall 2026","name":"Tools for Resilience","facilitators":["TBD"],"volunteers":[],"date":"Nov 23, 2026","conducted":false},{"id":111,"semester":"Fall 2026","name":"Digital Detoxing","facilitators":["TBD"],"volunteers":[],"date":"Nov 30, 2026","conducted":false},{"id":112,"semester":"Fall 2026","name":"Bullying Prevention","facilitators":["TBD"],"volunteers":[],"date":"Dec 7, 2026","conducted":false},{"id":201,"semester":"Winter/Spring 2027","name":"Healthy Debating","facilitators":["TBD"],"volunteers":[],"date":"Jan 11, 2027","conducted":false},{"id":202,"semester":"Winter/Spring 2027","name":"Health & Fitness","facilitators":["TBD"],"volunteers":[],"date":"Jan 18, 2027","conducted":false},{"id":203,"semester":"Winter/Spring 2027","name":"Healthy Spending","facilitators":["TBD"],"volunteers":[],"date":"Jan 25, 2027","conducted":false},{"id":204,"semester":"Winter/Spring 2027","name":"Leveraging Differences","facilitators":["TBD"],"volunteers":[],"date":"Feb 1, 2027","conducted":false},{"id":205,"semester":"Winter/Spring 2027","name":"Joy of Accomplishment","facilitators":["TBD"],"volunteers":[],"date":"Feb 8, 2027","conducted":false},{"id":206,"semester":"Winter/Spring 2027","name":"Public Speaking","facilitators":["TBD"],"volunteers":[],"date":"Feb 22, 2027","conducted":false,"skipped_before":"Feb 15 \u2014 Family Day"}];
 
 var EL_YOUTH={"Aaliyah": [6], "Abegail Jbbo-Rustrian": [7, 8, 9], "Abigail Robinson": [2], "Adam Choe": [2, 3, 5, 7, 8, 4], "Aiden Bruce": [1, 4], "Anisim Rashid": [2, 1, 3, 5, 6, 7, 8, 4, 9], "Anna Choi": [2, 1, 3, 5, 6, 4], "Ariel Young": [2, 3, 5, 6], "Avery Sengsavang": [2, 1, 3, 5, 6, 7, 8, 4, 9], "Caitlen": [2], "Claire Choe": [2, 1, 3, 5, 6, 7, 8, 4, 9], "Connor Sengsavang": [2, 1, 3, 5, 6, 7, 8, 4, 9], "David": [6, 7, 8, 9], "Devira": [6, 7, 8, 9], "Eilleen Shin": [2, 1, 5, 6, 4], "Elijah butler": [7, 8, 9], "Elisa Choi": [3, 6, 4], "Emma Memedovski": [9], "Everett Rempel": [2, 1, 3, 5, 4], "Greyson Riley": [9], "Haytham": [2, 3, 5, 4], "Ji Hoon": [2, 1, 3, 5, 6, 7, 8, 4, 9], "Ji Woo": [2, 1, 3, 5, 6, 7, 8, 4, 9], "Jude Effah": [8], "Kinsey Ehigiator": [2, 1, 3, 5, 6, 7, 8, 4, 9], "Kristen Robinson": [2], "Lee (Karlee)": [7, 8, 9], "Mackensie": [7, 8, 9], "Mason Guise": [1, 6], "Mason Seo": [2, 3, 5, 6, 4], "Oliver": [7, 8, 9], "Preston": [1], "Reed Bieganski": [2, 1, 3, 5, 6, 7, 8, 4, 9], "Roza": [1], "Sebastian Baitson": [7, 8, 9], "Sophia Tong": [2, 3, 5, 6, 7, 8, 4, 9], "Taya Allen": [2], "Theodore Bourdeau": [2, 3, 5, 7, 8, 4, 9], "Zoya Rashid": [2, 1, 3, 5, 6, 7, 8, 4, 9]};
-var FAC_PROFILES={"kim":{"name":"Kim Sundset","avatar":"KS","bg":"#1a0d05","role":"Level 3 Certified Facilitator","facilitated":[1,2,3,4,5,6,7,8],"volunteered":[9,10],"hours":159,"fac_level":3,"grandfathered":true,"isAdmin":true,"email":"youthairdrie@gmail.com"},"olga":{"name":"Olga Korcheva","avatar":"OK","bg":"#0c1f38","role":"Adult Volunteer","facilitated":[3,4,10],"volunteered":[1,2,4,5,6,7,8],"hours":72,"fac_level":0},"connie":{"name":"Connie Wu","avatar":"CW","bg":"#12243a","role":"Adult Volunteer","facilitated":[2],"volunteered":[],"hours":42,"fac_level":0},"chloe":{"name":"Chloe Nayoung Kim","avatar":"CK","bg":"#0f1f30","role":"Adult Volunteer","facilitated":[],"volunteered":[],"hours":28,"fac_level":0},"bj":{"name":"BJ (Bolaji) Hammed","avatar":"BH","bg":"#1a1605","role":"Adult Volunteer","facilitated":[],"volunteered":[3],"hours":50.5,"fac_level":0,"isAdmin":true},"roberta":{"name":"Roberta Ehigiator","avatar":"RE","bg":"#12200f","role":"Adult Volunteer","facilitated":[1,9],"volunteered":[2,3,4,5,6,7,8,10],"hours":80,"fac_level":0,"isAdmin":true},"julie":{"name":"Julie Robertson","avatar":"JR","bg":"#1f1230","role":"Adult Volunteer","facilitated":[],"volunteered":[3,9],"hours":40,"fac_level":0,"isAdmin":true},"tina":{"name":"Tina Petrow","avatar":"TP","bg":"#1a0d18","role":"Adult Volunteer","facilitated":[5],"volunteered":[],"hours":66,"fac_level":0},"marybeth":{"name":"Mary-Beth Finney (Ursa)","avatar":"MF","bg":"#0d1a1a","role":"Adult Volunteer","facilitated":[9],"volunteered":[],"hours":30,"fac_level":0},"simi":{"name":"Simisola Obasan (Simi)","avatar":"SO","bg":"#1f1a0d","role":"Adult Volunteer","facilitated":[6],"volunteered":[],"hours":43,"fac_level":0},"tamanna":{"name":"Tamanna Kaur","avatar":"TK","bg":"#1a1240","role":"Adult Volunteer","facilitated":[],"volunteered":[],"hours":2,"fac_level":0,"grandfathered":false},"bolaji_a":{"name":"Bolaji Ajoke Hammed","avatar":"BA","bg":"#0d1f2d","role":"Adult Volunteer","facilitated":[],"volunteered":[],"hours":4,"fac_level":0,"grandfathered":false},"jollean":{"name":"Jollean Chapiel","avatar":"JC","bg":"#1a2010","role":"Adult Volunteer","facilitated":[],"volunteered":[3],"hours":2,"fac_level":0,"grandfathered":false},"mimi":{"name":"Mimi Omoare","avatar":"MO","bg":"#201020","role":"Adult Volunteer","facilitated":[],"volunteered":[6,7,8,9],"hours":8,"fac_level":0,"grandfathered":false},"alex":{"name":"Alex Strokova","avatar":"AS","bg":"#0d1f30","role":"Adult Volunteer","facilitated":[],"volunteered":[],"hours":5,"fac_level":0,"grandfathered":false,"isAdmin":false},"sudi":{"name":"Sudi Hedley","avatar":"SH","bg":"#1a1a0a","role":"JYSEP Animator","facilitated":[],"volunteered":[],"hours":4,"fac_level":0,"grandfathered":false,"isAdmin":false},"shameen":{"name":"Shameen","avatar":"SM","bg":"#0a1a1a","role":"JYSEP Animator","facilitated":[],"volunteered":[],"hours":4,"fac_level":0,"grandfathered":false,"isAdmin":false},"carol":{"name":"Carol Brosoto","avatar":"CB","bg":"#1a0d1a","role":"Adult Volunteer","facilitated":[],"volunteered":[],"hours":2,"fac_level":0,"grandfathered":false,"isAdmin":false},"kathy":{"name":"Kathy March","avatar":"KM","bg":"#0d1a2a","role":"Adult Volunteer","facilitated":[],"volunteered":[],"hours":0,"fac_level":0,"grandfathered":false,"isAdmin":false}};
+var FAC_PROFILES={"kim":{"name":"Kim Sundset","avatar":"KS","bg":"#1a0d05","role":"Level 3 Certified Facilitator","facilitated":[1,2,3,4,5,6,7,8],"volunteered":[9,10],"hours":159,"fac_level":3,"grandfathered":true,"isAdmin":true},"olga":{"name":"Olga Korcheva","avatar":"OK","bg":"#0c1f38","role":"Adult Volunteer","facilitated":[3,4,10],"volunteered":[1,2,4,5,6,7,8],"hours":72,"fac_level":0},"connie":{"name":"Connie Wu","avatar":"CW","bg":"#12243a","role":"Adult Volunteer","facilitated":[2],"volunteered":[],"hours":42,"fac_level":0},"chloe":{"name":"Chloe Nayoung Kim","avatar":"CK","bg":"#0f1f30","role":"Adult Volunteer","facilitated":[],"volunteered":[],"hours":28,"fac_level":0},"bj":{"name":"BJ (Bolaji) Hammed","avatar":"BH","bg":"#1a1605","role":"Adult Volunteer","facilitated":[],"volunteered":[3],"hours":50.5,"fac_level":0,"isAdmin":true},"roberta":{"name":"Roberta Ehigiator","avatar":"RE","bg":"#12200f","role":"Adult Volunteer","facilitated":[1,9],"volunteered":[2,3,4,5,6,7,8,10],"hours":80,"fac_level":0,"isAdmin":true},"julie":{"name":"Julie Robertson","avatar":"JR","bg":"#1f1230","role":"Adult Volunteer","facilitated":[],"volunteered":[3,9],"hours":40,"fac_level":0,"isAdmin":true},"tina":{"name":"Tina Petrow","avatar":"TP","bg":"#1a0d18","role":"Adult Volunteer","facilitated":[5],"volunteered":[],"hours":66,"fac_level":0},"marybeth":{"name":"Mary-Beth Finney (Ursa)","avatar":"MF","bg":"#0d1a1a","role":"Adult Volunteer","facilitated":[9],"volunteered":[],"hours":30,"fac_level":0},"simi":{"name":"Simisola Obasan (Simi)","avatar":"SO","bg":"#1f1a0d","role":"Adult Volunteer","facilitated":[6],"volunteered":[],"hours":43,"fac_level":0},"tamanna":{"name":"Tamanna Kaur","avatar":"TK","bg":"#1a1240","role":"Adult Volunteer","facilitated":[],"volunteered":[],"hours":2,"fac_level":0,"grandfathered":false},"bolaji_a":{"name":"Bolaji Ajoke Hammed","avatar":"BA","bg":"#0d1f2d","role":"Adult Volunteer","facilitated":[],"volunteered":[],"hours":4,"fac_level":0,"grandfathered":false},"jollean":{"name":"Jollean Chapiel","avatar":"JC","bg":"#1a2010","role":"Adult Volunteer","facilitated":[],"volunteered":[3],"hours":2,"fac_level":0,"grandfathered":false},"mimi":{"name":"Mimi Omoare","avatar":"MO","bg":"#201020","role":"Adult Volunteer","facilitated":[],"volunteered":[6,7,8,9],"hours":8,"fac_level":0,"grandfathered":false},"alex":{"name":"Alex Strokova","avatar":"AS","bg":"#0d1f30","role":"Adult Volunteer","facilitated":[],"volunteered":[],"hours":5,"fac_level":0,"grandfathered":false,"isAdmin":false},"sudi":{"name":"Sudi Hedley","avatar":"SH","bg":"#1a1a0a","role":"JYSEP Animator","facilitated":[],"volunteered":[],"hours":4,"fac_level":0,"grandfathered":false,"isAdmin":false},"shameen":{"name":"Shameen","avatar":"SM","bg":"#0a1a1a","role":"JYSEP Animator","facilitated":[],"volunteered":[],"hours":4,"fac_level":0,"grandfathered":false,"isAdmin":false},"carol":{"name":"Carol Brosoto","avatar":"CB","bg":"#1a0d1a","role":"Adult Volunteer","facilitated":[],"volunteered":[],"hours":2,"fac_level":0,"grandfathered":false,"isAdmin":false},"kathy":{"name":"Kathy March","avatar":"KM","bg":"#0d1a2a","role":"Adult Volunteer","facilitated":[],"volunteered":[],"hours":0,"fac_level":0,"grandfathered":false,"isAdmin":false}};
 var SCRABBLE_SESSIONS={"Reed Bieganski": {"14-Jan": 1, "21-Jan": 1, "28-Jan": 1, "4-Feb": 1, "11-Feb": 1, "18-Feb": 1, "25-Feb": 1, "4-Mar": 1, "11-Mar": 1, "18-Mar": 1}, "Anisim Rashid": {"28-Jan": 1}, "Koby Bolton": {"7-Jan": 5, "14-Jan": 1, "4-Feb": 1, "11-Feb": 1, "25-Feb": 1, "4-Mar": 1, "11-Mar": 1}, "Sasha Tumak": {"7-Jan": 6, "14-Jan": 1, "25-Feb": 1, "4-Mar": 1, "11-Mar": 1}, "Emma Tumak": {"7-Jan": 1, "14-Jan": 2, "11-Feb": 5, "25-Feb": 5, "4-Mar": 19, "11-Mar": 2}, "Alleem Hammed": {"11-Feb": 6, "4-Mar": 3, "11-Mar": 2, "18-Mar": 1}, "Ameerah Hammed": {"7-Jan": 2, "14-Jan": 11, "21-Jan": 22, "28-Jan": 8, "4-Feb": 2, "11-Feb": 1, "4-Mar": 1, "18-Mar": 1}, "Azeem Hammed": {"7-Jan": 3, "14-Jan": 4, "21-Jan": 10, "28-Jan": 7, "4-Feb": 2, "25-Feb": 2, "18-Mar": 1}, "Juanna Shin": {"14-Jan": 12, "21-Jan": 25, "28-Jan": 1, "4-Feb": 8, "11-Feb": 1, "18-Feb": 5, "25-Feb": 6, "4-Mar": 4, "18-Mar": 1}, "Serena Shin": {"7-Jan": 2, "14-Jan": 14, "21-Jan": 23, "28-Jan": 4, "4-Feb": 11, "11-Feb": 2, "18-Feb": 1, "25-Feb": 1, "4-Mar": 2, "18-Mar": 1}, "Cindy Hwang": {"7-Jan": 1, "14-Jan": 15, "21-Jan": 25, "28-Jan": 1, "4-Feb": 9, "11-Feb": 2, "18-Feb": 1, "25-Feb": 7, "4-Mar": 2, "18-Mar": 1}, "Sophie Hwang": {"7-Jan": 2, "14-Jan": 15, "21-Jan": 24, "28-Jan": 3, "4-Feb": 14, "18-Feb": 3, "25-Feb": 7, "4-Mar": 5, "18-Mar": 1}, "Chaey Moon": {"4-Feb": 6, "11-Feb": 2, "25-Feb": 6, "4-Mar": 2, "18-Mar": 1}, "Khanishka Kaur": {"14-Jan": 13, "21-Jan": 21, "28-Jan": 14, "4-Feb": 2, "11-Feb": 2, "25-Feb": 15, "11-Mar": 2, "18-Mar": 1}, "Navkar Sing": {"4-Feb": 1, "25-Feb": 7, "18-Mar": 1}, "Teni Olaniyan": {"18-Mar": 1}, "Tobi Olaniyan": {"18-Mar": 1}};
 var SCRABBLE_TOTALS={"Reed Bieganski": 10, "Anisim Rashid": 1, "Koby Bolton": 11, "Sasha Tumak": 10, "Emma Tumak": 34, "Alleem Hammed": 12, "Ameerah Hammed": 48, "Azeem Hammed": 29, "Juanna Shin": 63, "Serena Shin": 61, "Cindy Hwang": 64, "Sophie Hwang": 74, "Chaey Moon": 17, "Khanishka Kaur": 70, "Navkar Sing": 9, "Teni Olaniyan": 1, "Tobi Olaniyan": 1};
 var SCRABBLE_SCORES={"Ameerah Hammed":{"4-Feb":127,"11-Feb":147},"Azeem Hammed":{"4-Feb":91,"11-Feb":54},"Juanna Shin":{"11-Feb":226},"Sophie Hwang":{"11-Feb":145},"Khanishka Kaur":{"11-Feb":236}};
@@ -2523,13 +2576,14 @@ function showPage(id,navItem){
 }
 
 function switchTab(tabId,btn){
-  ['tab-workshops','tab-scrabble-admin','tab-future-schedule','tab-events-log','tab-compliance','tab-impact','tab-credentials-admin','tab-users-admin','tab-home-content-editor','tab-stats-diagnostic'].forEach(function(t){
+  ['tab-workshops','tab-scrabble-admin','tab-garden-admin','tab-future-schedule','tab-events-log','tab-compliance','tab-impact','tab-credentials-admin','tab-users-admin','tab-home-content-editor','tab-stats-diagnostic'].forEach(function(t){
     var el=document.getElementById(t);if(el)el.style.display='none';
   });
   document.querySelectorAll('.tab-btn').forEach(function(b){b.classList.remove('active');});
   var tab=document.getElementById('tab-'+tabId);if(tab)tab.style.display='block';
   btn.classList.add('active');
   if(tabId==='workshops') renderAdmin();
+  if(tabId==='garden-admin') renderGardenAdmin();
   if(tabId==='future-schedule') renderScheduleTab();
   if(tabId==='credentials-admin') renderCredentialManager();
   if(tabId==='users-admin') renderUsersTab();
@@ -2590,6 +2644,14 @@ function getActiveAdultVolunteers() {
     if (sessions && Object.keys(sessions).length > 0)
       adultSet.add(name.toLowerCase().trim());
   });
+
+  // Garden Program adult volunteering
+  var gardenProg = PROGRAMS_DATA && PROGRAMS_DATA['garden_2026'];
+  if (gardenProg) {
+    Object.values(gardenProg.adult_volunteers || {}).forEach(function(vols) {
+      (vols || []).forEach(function(name) { adultSet.add(name.toLowerCase().trim()); });
+    });
+  }
 
   // Event volunteering
   (EVENTS_DATA || []).forEach(function(ev) {
@@ -3326,6 +3388,26 @@ function renderScheduleTab(){
     });
   });
 
+  // Garden sessions — from PROGRAMS_DATA['garden_2026']
+  var gardenProg = PROGRAMS_DATA['garden_2026'];
+  if (gardenProg) {
+    gardenProg.dates.forEach(function(dateStr) {
+      var d = parseDate(dateStr);
+      var isCancelled = (gardenProg.cancellations||[]).indexOf(dateStr) >= 0;
+      var meta = (gardenProg.session_meta && gardenProg.session_meta[dateStr]) || {};
+      var detail = (meta.location || 'Youth Airdrie') + ' · Wed 4:30–6:30 PM';
+      if (meta.theme) detail += ' · ' + meta.theme;
+      items.push({
+        date: d, dateStr: dateStr,
+        type: 'Garden', sem: 'Summer 2026',
+        title: 'Summer Garden Program',
+        detail: detail,
+        status: isCancelled ? 'cancelled' : (d && d < now) ? 'done' : 'upcoming',
+        typeColor: 'var(--ya-green)', typeIcon: '🌱'
+      });
+    });
+  }
+
   // Events
   (EVENTS_DATA||[]).forEach(function(ev){
     var d = ev.date ? new Date(ev.date) : null;
@@ -3476,10 +3558,43 @@ function renderImpactTab(){
     var inWs = (EL_YOUTH[n]||[]).length > 0;
     var inScr = Object.keys(SCRABBLE_SESSIONS||{}).some(function(k){ return k.toLowerCase().trim()===n.toLowerCase().trim() && Object.keys(SCRABBLE_SESSIONS[k]||{}).length>0; });
     var inEv  = (EVENTS_DATA||[]).some(function(ev){ return ['youth_5hrs','youth_4hrs','youth_2hrs'].some(function(b){ return (ev[b]||[]).some(function(k){ return k.toLowerCase().trim()===n.toLowerCase().trim(); }); }); });
-    return [inWs,inScr,inEv].filter(Boolean).length >= 2;
+    var inGarden = gardenYouthSet.has(n) || !!(gardenProg2 && gardenProg2.youth_participants && n in gardenProg2.youth_participants);
+    return [inWs,inScr,inEv,inGarden].filter(Boolean).length >= 2;
   });
 
-  // ── Adult volunteers ──────────────────────────────────────────────────────
+  // ── Garden stats (participation only for youth; hours for adults) ──────────
+  var gardenProg2 = PROGRAMS_DATA['garden_2026'];
+  var gardenSessionsHeld = 0, gardenYouthAtt = 0, gardenAdultHrs = 0;
+  var gardenAdultVolSet = new Set();
+  var gardenEnrolledYouth = [];
+  var gardenYouthSet = new Set();
+  if (gardenProg2) {
+    var now2 = new Date(); now2.setHours(0,0,0,0);
+    var mo2={Jan:0,Feb:1,Mar:2,Apr:3,May:4,Jun:5,Jul:6,Aug:7,Sep:8,Oct:9,Nov:10,Dec:11};
+    function pd2(s){var p=s.replace(',','').split(' ');return new Date(parseInt(p[2]),mo2[p[0]]||0,parseInt(p[1]));}
+    gardenSessionsHeld = gardenProg2.dates.filter(function(d){
+      return pd2(d)<now2 && (gardenProg2.cancellations||[]).indexOf(d)<0;
+    }).length;
+    gardenEnrolledYouth = Object.keys(gardenProg2.youth_participants || {});
+    Object.entries(gardenProg2.attendance || {}).forEach(function(e) {
+      e[1].forEach(function(r) {
+        if (r.type==='youth' && r.attended) { gardenYouthAtt++; gardenYouthSet.add(r.name); }
+        if (r.type==='adult' && r.attended) {
+          gardenAdultHrs += (r.hours || 2);
+          gardenAdultVolSet.add(r.name);
+        }
+      });
+    });
+    // Also count from adult_volunteers if program_attendance not yet written
+    Object.keys(gardenProg2.adult_volunteers || {}).forEach(function(dateStr) {
+      var vols = gardenProg2.adult_volunteers[dateStr] || [];
+      var meta = (gardenProg2.session_meta && gardenProg2.session_meta[dateStr]) || {};
+      var hrs = parseSessionHours(meta.start_time||'4:30 PM', meta.end_time||'6:30 PM');
+      vols.forEach(function(n) {
+        if (!gardenAdultVolSet.has(n)) { gardenAdultHrs += hrs; gardenAdultVolSet.add(n); }
+      });
+    });
+  }
   var activeAdultSet = getActiveAdultVolunteers();
   var facilitators   = Object.values(FAC_PROFILES).filter(function(p){ return p.facilitated && p.facilitated.length > 0; });
   var totalFacHours  = Object.values(FAC_PROFILES).reduce(function(s,p){ return s+(p.hours||0); }, 0);
@@ -3499,7 +3614,7 @@ function renderImpactTab(){
     });
   });
   var scrAdultHrs = Object.values(ADULT_SCRABBLE_TOTALS||{}).reduce(function(s,v){return s+v;},0);
-  var totalVolHours = eventYouthHrs + eventAdultHrs + scrAdultHrs + Math.round(totalFacHours);
+  var totalVolHours = eventYouthHrs + eventAdultHrs + scrAdultHrs + Math.round(totalFacHours) + Math.round(gardenAdultHrs);
 
   // ── Scrabble ──────────────────────────────────────────────────────────────
   var scrPlayers = Object.keys(SCRABBLE_TOTALS||{}).length;
@@ -3631,9 +3746,14 @@ function renderImpactTab(){
   html += '<div style="font-size:.72rem;font-weight:700;color:var(--ya-gold);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;margin-top:4px">Scrabble & Games Club</div>';
   html += statRow('Participants', scrPlayers, 'pill-gold');
   html += statRow('Sessions held (2026)', scrSessions, 'pill-teal');
-  // Garden — no structured data yet
-  html += '<div style="font-size:.72rem;font-weight:700;color:var(--ya-green);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;margin-top:12px">Summer Garden Program</div>';
-  html += '<div style="font-size:.78rem;color:var(--text-muted);padding:4px 0">Data collection planned for Summer 2026.</div>';
+  // Garden
+  html += '<div style="font-size:.72rem;font-weight:700;color:var(--ya-green);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;margin-top:12px">Summer Garden Program 🌱</div>';
+  html += statRow('Sessions held (2026)',        gardenSessionsHeld,       'pill-green');
+  html += statRow('Enrolled youth',              gardenEnrolledYouth.length,'pill-teal');
+  html += statRow('Youth attendances',           gardenYouthAtt,            'pill-blue');
+  html += statRow('Adult garden volunteers',     gardenAdultVolSet.size,    'pill-orange');
+  html += statRow('Adult garden volunteer hrs',  Math.round(gardenAdultHrs),'pill-gold');
+  html += '<div style="font-size:.7rem;color:var(--text-muted);margin-top:4px;font-style:italic">Youth garden attendance = participation only, not volunteer hours.</div>';
   // JYSEP
   html += '<div style="font-size:.72rem;font-weight:700;color:var(--lavender);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;margin-top:12px">JYSEP / Animator Training</div>';
   var jysepCount = Object.values(FAC_PROFILES).filter(function(p){ return p.role&&p.role.toLowerCase().indexOf('jysep')>=0||p.role&&p.role.toLowerCase().indexOf('animator')>=0; }).length;
@@ -3970,6 +4090,441 @@ async function manualLinkProfile() {
   document.getElementById('manual-link-email').value = '';
   document.getElementById('manual-link-name').value = '';
   renderCredentialManager();
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// GARDEN PROGRAM — ADMIN FUNCTIONS
+// programme_id: 'garden_2026'  programme_type: 'garden'
+// Tables: program_session_meta, program_attendance, program_volunteers (shared)
+// Youth attendance  = participation only (no volunteer_hours)
+// Adult attendance  = volunteer hours (default = session duration = 2hrs)
+// ══════════════════════════════════════════════════════════════════════════════
+
+var _gardenEditDate = ''; // currently open session in the edit modal
+
+// ── Save session metadata ─────────────────────────────────────────────────────
+async function saveGardenSessionMeta() {
+  var btn = document.getElementById('gsm-save-btn');
+  var fb  = document.getElementById('gsm-feedback');
+  var origDate = _gardenEditDate;
+  var newDate  = (document.getElementById('gsm-date').value || '').trim();
+  fb.textContent = '';
+  if (!newDate) { fb.style.color='var(--badge-red)'; fb.textContent='⚠ Date is required.'; return; }
+  btn.textContent = 'Saving…'; btn.style.opacity = '.6'; btn.disabled = true;
+
+  var row = {
+    program_id:          'garden_2026',
+    program_type:        'garden',
+    session_date:        origDate,
+    activity_theme:      document.getElementById('gsm-theme').value.trim(),
+    session_description: document.getElementById('gsm-desc').value.trim(),
+    location:            document.getElementById('gsm-location').value.trim(),
+    start_time:          document.getElementById('gsm-start').value.trim(),
+    end_time:            document.getElementById('gsm-end').value.trim(),
+    cancellation_reason: document.getElementById('gsm-cancel-reason').value.trim(),
+    notes:               ''
+  };
+
+  // Upsert to Supabase
+  var r = await fetch(SUPA_URL + '/rest/v1/program_session_meta?on_conflict=program_id,session_date', {
+    method: 'POST',
+    headers: {
+      'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY,
+      'Content-Type': 'application/json', 'Prefer': 'resolution=merge-duplicates,return=minimal'
+    },
+    body: JSON.stringify(row)
+  });
+
+  if (!r.ok) {
+    var err = await r.text();
+    console.error('[saveGardenSessionMeta] HTTP', r.status, err);
+    fb.style.color = 'var(--badge-red)';
+    fb.textContent = '⚠ Save failed: ' + (JSON.parse(err||'{}').message || err);
+    btn.textContent = '💾 Save'; btn.style.opacity = ''; btn.disabled = false;
+    return;
+  }
+
+  // If date was edited, update the session date in PROGRAMS_DATA
+  var prog = PROGRAMS_DATA['garden_2026'];
+  if (prog) {
+    // Handle date change
+    if (newDate !== origDate) {
+      var idx = prog.dates.indexOf(origDate);
+      if (idx >= 0) prog.dates[idx] = newDate;
+      var cancelIdx = prog.cancellations.indexOf(origDate);
+      if (cancelIdx >= 0) { prog.cancellations[cancelIdx] = newDate; }
+      if (prog.session_meta[origDate]) {
+        prog.session_meta[newDate] = prog.session_meta[origDate];
+        delete prog.session_meta[origDate];
+      }
+      if (prog.attendance[origDate]) {
+        prog.attendance[newDate] = prog.attendance[origDate];
+        delete prog.attendance[origDate];
+      }
+      // Update DB session_date reference
+      dbPatch('program_session_meta', {session_date: newDate},
+        'program_id=eq.garden_2026&session_date=eq.'+encodeURIComponent(origDate));
+    }
+    prog.session_meta[newDate] = {
+      theme:               row.activity_theme,
+      description:         row.session_description,
+      location:            row.location,
+      start_time:          row.start_time,
+      end_time:            row.end_time,
+      cancellation_reason: row.cancellation_reason
+    };
+    // Handle cancellation state from reason field
+    if (row.cancellation_reason) {
+      if (prog.cancellations.indexOf(newDate) < 0) prog.cancellations.push(newDate);
+    } else {
+      prog.cancellations = prog.cancellations.filter(function(d){ return d !== newDate; });
+    }
+  }
+
+  fb.style.color = 'var(--ya-teal)';
+  fb.textContent = '✔ Saved';
+  btn.textContent = '💾 Save'; btn.style.opacity = ''; btn.disabled = false;
+  setTimeout(function() {
+    document.getElementById('garden-session-modal').style.display = 'none';
+    renderGardenAdmin();
+    renderScheduleTab();
+  }, 700);
+}
+
+// ── Open the session edit modal ───────────────────────────────────────────────
+function openGardenSessionEdit(dateStr) {
+  var prog = PROGRAMS_DATA['garden_2026'];
+  var meta = (prog && prog.session_meta && prog.session_meta[dateStr]) || {};
+  _gardenEditDate = dateStr;
+  document.getElementById('gsm-date').value          = dateStr;
+  document.getElementById('gsm-theme').value         = meta.theme        || '';
+  document.getElementById('gsm-desc').value          = meta.description  || '';
+  document.getElementById('gsm-location').value      = meta.location     || '';
+  document.getElementById('gsm-start').value         = meta.start_time   || '4:30 PM';
+  document.getElementById('gsm-end').value           = meta.end_time     || '6:30 PM';
+  document.getElementById('gsm-cancel-reason').value = meta.cancellation_reason || '';
+  document.getElementById('gsm-feedback').textContent = '';
+  document.getElementById('garden-session-modal').style.display = 'flex';
+}
+
+// ── Toggle youth attendance (admin only) ──────────────────────────────────────
+async function toggleGardenYouthAttendance(dateStr, youthName, attended, btn) {
+  var prog = PROGRAMS_DATA['garden_2026'];
+  if (!prog) return;
+  prog.attendance = prog.attendance || {};
+  prog.attendance[dateStr] = prog.attendance[dateStr] || [];
+
+  var existing = prog.attendance[dateStr].find(function(r){ return r.name === youthName; });
+  var newAttended = existing ? !existing.attended : true;
+
+  // Upsert to program_attendance
+  var row = {
+    program_id:       'garden_2026',
+    program_type:     'garden',
+    session_date:     dateStr,
+    participant_name: youthName,
+    participant_type: 'youth',
+    attended:         newAttended,
+    volunteer_hours:  null  // youth attendance NEVER counts as volunteer hours
+  };
+  var r = await fetch(SUPA_URL + '/rest/v1/program_attendance?on_conflict=program_id,session_date,participant_name', {
+    method: 'POST',
+    headers: {
+      'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY,
+      'Content-Type': 'application/json', 'Prefer': 'resolution=merge-duplicates,return=minimal'
+    },
+    body: JSON.stringify(row)
+  });
+  if (!r.ok) {
+    var err = await r.text();
+    console.error('[toggleGardenYouthAttendance] HTTP', r.status, err);
+    if (btn) { btn.textContent = '⚠ Error'; btn.style.color = 'var(--badge-red)'; }
+    return;
+  }
+
+  // Update in-memory
+  if (existing) { existing.attended = newAttended; }
+  else { prog.attendance[dateStr].push({name:youthName,type:'youth',attended:newAttended,hours:null}); }
+
+  // Re-render just this session row
+  renderGardenSessionRow(dateStr);
+}
+
+// ── Toggle adult volunteer attendance ─────────────────────────────────────────
+// Uses the existing program_volunteers table + saveProgramVolunteer for compatibility.
+// Also writes to program_attendance for unified reporting.
+async function toggleGardenAdultAttendance(dateStr, adultName, btn) {
+  var prog = PROGRAMS_DATA['garden_2026'];
+  if (!prog) return;
+
+  // Determine current state
+  var vols = (prog.adult_volunteers || {})[dateStr] || [];
+  var isVol = vols.indexOf(adultName) >= 0;
+
+  if (!isVol) {
+    // Add volunteer
+    prog.adult_volunteers = prog.adult_volunteers || {};
+    prog.adult_volunteers[dateStr] = prog.adult_volunteers[dateStr] || [];
+    prog.adult_volunteers[dateStr].push(adultName);
+    saveProgramVolunteer('garden_2026', dateStr, adultName);
+
+    // Also write to program_attendance for unified Impact reporting
+    var meta = (prog.session_meta && prog.session_meta[dateStr]) || {};
+    var hrs = parseSessionHours(meta.start_time || '4:30 PM', meta.end_time || '6:30 PM');
+    var row = {
+      program_id: 'garden_2026', program_type: 'garden',
+      session_date: dateStr, participant_name: adultName,
+      participant_type: 'adult', attended: true, volunteer_hours: hrs
+    };
+    fetch(SUPA_URL + '/rest/v1/program_attendance?on_conflict=program_id,session_date,participant_name', {
+      method: 'POST',
+      headers: {'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates,return=minimal'},
+      body: JSON.stringify(row)
+    });
+    // Update in-memory attendance
+    prog.attendance = prog.attendance || {};
+    prog.attendance[dateStr] = prog.attendance[dateStr] || [];
+    var existing = prog.attendance[dateStr].find(function(r){ return r.name===adultName; });
+    if (existing) { existing.attended=true; existing.hours=hrs; }
+    else { prog.attendance[dateStr].push({name:adultName,type:'adult',attended:true,hours:hrs}); }
+  } else {
+    // Remove volunteer
+    prog.adult_volunteers[dateStr] = prog.adult_volunteers[dateStr].filter(function(n){ return n!==adultName; });
+    dbDel('program_volunteers',
+      'program_id=eq.garden_2026&session_date=eq.'+encodeURIComponent(dateStr)+'&adult_name=eq.'+encodeURIComponent(adultName));
+    dbDel('program_attendance',
+      'program_id=eq.garden_2026&session_date=eq.'+encodeURIComponent(dateStr)+'&participant_name=eq.'+encodeURIComponent(adultName));
+    prog.attendance = prog.attendance || {};
+    if (prog.attendance[dateStr]) {
+      prog.attendance[dateStr] = prog.attendance[dateStr].filter(function(r){ return r.name!==adultName; });
+    }
+  }
+
+  renderGardenSessionRow(dateStr);
+}
+
+// ── Parse session duration in hours from start/end time strings ───────────────
+function parseSessionHours(startStr, endStr) {
+  function toMins(s) {
+    var m = s.match(/(\d+):(\d+)\s*(AM|PM)/i);
+    if (!m) return null;
+    var h = parseInt(m[1]), min = parseInt(m[2]), pm = m[3].toUpperCase()==='PM';
+    if (pm && h !== 12) h += 12;
+    if (!pm && h === 12) h = 0;
+    return h * 60 + min;
+  }
+  var s = toMins(startStr), e = toMins(endStr);
+  if (s === null || e === null) return 2; // default 2 hrs
+  return Math.round((e - s) / 60 * 10) / 10;
+}
+
+// ── Cancel / resume a Garden session ─────────────────────────────────────────
+function cancelGardenSession(dateStr) {
+  var reason = prompt('Cancellation reason (optional):') || '';
+  var prog = PROGRAMS_DATA['garden_2026'];
+  if (!prog) return;
+  if (prog.cancellations.indexOf(dateStr) < 0) prog.cancellations.push(dateStr);
+  // Save metadata with reason
+  var existing = (prog.session_meta && prog.session_meta[dateStr]) || {};
+  existing.cancellation_reason = reason;
+  prog.session_meta = prog.session_meta || {};
+  prog.session_meta[dateStr] = existing;
+  var row = {
+    program_id:'garden_2026', program_type:'garden', session_date:dateStr,
+    activity_theme: existing.theme||'', session_description: existing.description||'',
+    location: existing.location||'', start_time: existing.start_time||'',
+    end_time: existing.end_time||'', cancellation_reason: reason
+  };
+  fetch(SUPA_URL + '/rest/v1/program_session_meta?on_conflict=program_id,session_date', {
+    method: 'POST',
+    headers: {'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates,return=minimal'},
+    body: JSON.stringify(row)
+  });
+  saveProgramCancellation('garden_2026', dateStr, reason);
+  renderGardenAdmin();
+}
+
+function resumeGardenSession(dateStr) {
+  var prog = PROGRAMS_DATA['garden_2026'];
+  if (!prog) return;
+  prog.cancellations = prog.cancellations.filter(function(d){ return d !== dateStr; });
+  if (prog.session_meta && prog.session_meta[dateStr]) {
+    prog.session_meta[dateStr].cancellation_reason = '';
+    dbPatch('program_session_meta', {cancellation_reason: ''},
+      'program_id=eq.garden_2026&session_date=eq.'+encodeURIComponent(dateStr));
+  }
+  dbDel('program_cancellations',
+    'program_id=eq.garden_2026&session_date=eq.'+encodeURIComponent(dateStr));
+  renderGardenAdmin();
+}
+
+// ── Render a single session row (used for fast in-place refresh) ──────────────
+function renderGardenSessionRow(dateStr) {
+  var el = document.getElementById('garden-session-row-' + dateStr.replace(/[\s,]/g,'_'));
+  if (!el) { renderGardenAdmin(); return; }
+  var prog = PROGRAMS_DATA['garden_2026'];
+  el.innerHTML = buildGardenSessionRowHTML(prog, dateStr);
+}
+
+// ── Build HTML for one session row ───────────────────────────────────────────
+function buildGardenSessionRowHTML(prog, dateStr) {
+  var isAdmin = adultState && adultState.isAdmin;
+  var isCancelled = (prog.cancellations || []).indexOf(dateStr) >= 0;
+  var meta = (prog.session_meta && prog.session_meta[dateStr]) || {};
+  var vols = (prog.adult_volunteers || {})[dateStr] || [];
+  var att  = (prog.attendance || {})[dateStr] || [];
+  var youthAtt = att.filter(function(r){ return r.type==='youth' && r.attended; });
+  var now = new Date(); now.setHours(0,0,0,0);
+  var months={Jan:0,Feb:1,Mar:2,Apr:3,May:4,Jun:5,Jul:6,Aug:7,Sep:8,Oct:9,Nov:10,Dec:11};
+  function pd(s){ var p=s.replace(',','').split(' '); return new Date(parseInt(p[2]),months[p[0]]||0,parseInt(p[1])); }
+  var sessionDate = pd(dateStr);
+  var isPast = sessionDate < now;
+  var hrs = parseSessionHours(meta.start_time||'4:30 PM', meta.end_time||'6:30 PM');
+
+  // Enrolled youth (those with garden_2026 in their PROGRAMS_DATA enrollment)
+  var enrolledYouth = Object.keys(PROGRAMS_DATA['garden_2026'].youth_participants || {});
+
+  var h = '<div style="padding:10px 0;border-bottom:1px solid rgba(255,255,255,.05)">';
+
+  // Header row
+  h += '<div style="display:flex;align-items:flex-start;flex-wrap:wrap;gap:8px;justify-content:space-between">';
+  h += '<div>';
+  h += '<div style="font-size:.88rem;font-weight:700;color:'+(isCancelled?'var(--badge-red)':'var(--text-main)')+'">'+dateStr+(isCancelled?' — CANCELLED':'')+'</div>';
+  h += '<div style="font-size:.74rem;color:var(--text-muted);margin-top:2px">';
+  h += (meta.start_time||'4:30 PM')+' – '+(meta.end_time||'6:30 PM');
+  if (meta.location) h += ' · ' + meta.location;
+  if (meta.theme) h += ' · <em>'+meta.theme+'</em>';
+  if (isCancelled && meta.cancellation_reason) h += ' · Reason: '+meta.cancellation_reason;
+  h += '</div></div>';
+
+  // Action buttons
+  h += '<div style="display:flex;gap:6px;flex-wrap:wrap">';
+  if (isAdmin) {
+    h += '<button onclick="openGardenSessionEdit(\''+dateStr+'\')" class="ws-btn" style="font-size:.72rem">✏️ Edit</button>';
+    if (isCancelled) {
+      h += '<button onclick="resumeGardenSession(\''+dateStr+'\')" class="ws-btn" style="border-color:var(--ya-green);color:var(--ya-green);font-size:.72rem">↩ Resume</button>';
+    } else {
+      h += '<button onclick="cancelGardenSession(\''+dateStr+'\')" class="ws-btn" style="border-color:var(--badge-red);color:var(--badge-red);font-size:.72rem">✘ Cancel</button>';
+    }
+  }
+  h += '</div></div>';
+
+  if (!isCancelled) {
+    // Youth attendance (admin-only marking)
+    if (isAdmin && enrolledYouth.length > 0) {
+      h += '<div style="margin-top:10px">';
+      h += '<div style="font-size:.7rem;font-weight:700;color:var(--ya-green);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">🌱 Youth Attendance (participation only — not volunteer hours)</div>';
+      h += '<div style="display:flex;flex-wrap:wrap;gap:6px">';
+      enrolledYouth.forEach(function(name) {
+        var rec = att.find(function(r){ return r.name===name && r.type==='youth'; });
+        var wasHere = rec && rec.attended;
+        var safeDate = dateStr.replace(/'/g,"\\'");
+        var safeName = name.replace(/'/g,"\\'");
+        h += '<button onclick="toggleGardenYouthAttendance(\''+safeDate+'\',\''+safeName+'\','+wasHere+',this)" '+
+          'style="padding:4px 10px;border-radius:20px;font-size:.72rem;font-weight:700;cursor:pointer;font-family:DM Sans,sans-serif;'+
+          'border:1px solid '+(wasHere?'var(--ya-green)':'rgba(255,255,255,.2)')+';'+
+          'background:'+(wasHere?'rgba(0,181,160,.15)':'transparent')+';'+
+          'color:'+(wasHere?'var(--ya-green)':'var(--text-muted)')+'">'+
+          (wasHere?'✔ ':'')+name+'</button>';
+      });
+      h += '</div>';
+      if (youthAtt.length > 0) h += '<div style="font-size:.7rem;color:var(--text-muted);margin-top:5px">'+youthAtt.length+' attended</div>';
+      h += '</div>';
+    } else if (isAdmin && enrolledYouth.length === 0) {
+      h += '<div style="font-size:.74rem;color:var(--text-muted);margin-top:8px;font-style:italic">No youth enrolled in Garden yet. Enroll youth in the Users tab.</div>';
+    }
+
+    // Adult volunteers
+    h += '<div style="margin-top:10px">';
+    h += '<div style="font-size:.7rem;font-weight:700;color:var(--ya-blue);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">🙌 Adult Volunteers ('+hrs+' hrs each)</div>';
+    h += '<div style="display:flex;flex-wrap:wrap;gap:6px">';
+    // Show all adults who can volunteer
+    var adultNames = Object.keys(FAC_PROFILES).map(function(k){ return FAC_PROFILES[k].name; }).sort();
+    adultNames.forEach(function(name) {
+      var isVol = vols.indexOf(name) >= 0;
+      var safeDate = dateStr.replace(/'/g,"\\'");
+      var safeName = name.replace(/'/g,"\\'");
+      h += '<button onclick="toggleGardenAdultAttendance(\''+safeDate+'\',\''+safeName+'\',this)" '+
+        'style="padding:4px 10px;border-radius:20px;font-size:.72rem;font-weight:700;cursor:pointer;font-family:DM Sans,sans-serif;'+
+        'border:1px solid '+(isVol?'var(--ya-blue)':'rgba(255,255,255,.2)')+';'+
+        'background:'+(isVol?'rgba(29,127,212,.15)':'transparent')+';'+
+        'color:'+(isVol?'var(--ya-blue)':'var(--text-muted)')+'">'+
+        (isVol?'✔ ':'')+name+'</button>';
+    });
+    h += '</div>';
+    if (vols.length > 0) h += '<div style="font-size:.7rem;color:var(--text-muted);margin-top:5px">'+vols.length+' volunteer'+(vols.length>1?'s':'')+' · '+(vols.length*hrs)+' total hrs</div>';
+    h += '</div>';
+  }
+
+  h += '</div>';
+  return h;
+}
+
+// ── Main Garden admin render function ─────────────────────────────────────────
+function renderGardenAdmin() {
+  var statsEl = document.getElementById('garden-admin-stat-cards');
+  var sessEl  = document.getElementById('garden-admin-sessions');
+  if (!statsEl || !sessEl) return;
+
+  var prog = PROGRAMS_DATA['garden_2026'];
+  if (!prog) {
+    sessEl.innerHTML = '<div style="color:var(--text-muted)">No Garden 2026 data found.</div>';
+    return;
+  }
+
+  var now = new Date(); now.setHours(0,0,0,0);
+  var months={Jan:0,Feb:1,Mar:2,Apr:3,May:4,Jun:5,Jun:5,Jul:6,Aug:7,Sep:8,Oct:9,Nov:10,Dec:11};
+  function pd(s){ var p=s.replace(',','').split(' '); return new Date(parseInt(p[2]),months[p[0]]||0,parseInt(p[1])); }
+
+  var cancelled = prog.cancellations || [];
+  var past     = prog.dates.filter(function(d){ return pd(d) < now; });
+  var upcoming = prog.dates.filter(function(d){ return pd(d) >= now; });
+  var held     = past.filter(function(d){ return cancelled.indexOf(d) < 0; });
+  var enrolledYouth = Object.keys(prog.youth_participants || {});
+
+  // Count total youth attendances across all sessions
+  var totalYouthAtt = 0;
+  var allAttendance = prog.attendance || {};
+  Object.values(allAttendance).forEach(function(recs) {
+    recs.forEach(function(r){ if(r.type==='youth'&&r.attended) totalYouthAtt++; });
+  });
+
+  // Count adult garden hours
+  var totalAdultHrs = 0;
+  var adultVolSet = new Set();
+  Object.keys(prog.adult_volunteers || {}).forEach(function(dateStr) {
+    var vols = prog.adult_volunteers[dateStr] || [];
+    var meta = (prog.session_meta && prog.session_meta[dateStr]) || {};
+    var hrs = parseSessionHours(meta.start_time||'4:30 PM', meta.end_time||'6:30 PM');
+    vols.forEach(function(n){ totalAdultHrs += hrs; adultVolSet.add(n); });
+  });
+
+  statsEl.innerHTML =
+    '<div class="stat-card" style="--accent-color:var(--ya-green)"><div class="stat-label">Sessions Held</div><div class="stat-value">'+held.length+'</div><div class="stat-meta">of '+prog.dates.length+' scheduled</div><div class="stat-icon">✅</div></div>'+
+    '<div class="stat-card" style="--accent-color:var(--ya-teal)"><div class="stat-label">Enrolled Youth</div><div class="stat-value">'+enrolledYouth.length+'</div><div class="stat-meta">in Garden 2026</div><div class="stat-icon">🌱</div></div>'+
+    '<div class="stat-card" style="--accent-color:var(--ya-blue)"><div class="stat-label">Youth Attendances</div><div class="stat-value">'+totalYouthAtt+'</div><div class="stat-meta">participation (not hours)</div><div class="stat-icon">👥</div></div>'+
+    '<div class="stat-card" style="--accent-color:var(--ya-orange)"><div class="stat-label">Adult Garden Hours</div><div class="stat-value">'+Math.round(totalAdultHrs)+'</div><div class="stat-meta">'+adultVolSet.size+' adult volunteers</div><div class="stat-icon">⏱</div></div>';
+
+  // Build session list: upcoming first, then past collapsed
+  var html = '';
+
+  if (upcoming.length > 0) {
+    html += '<div class="section-box" style="margin-bottom:14px"><div class="section-title" style="margin-bottom:12px">📅 Upcoming Garden Sessions</div>';
+    upcoming.forEach(function(d) {
+      html += '<div id="garden-session-row-'+d.replace(/[\s,]/g,'_')+'">'+buildGardenSessionRowHTML(prog, d)+'</div>';
+    });
+    html += '</div>';
+  }
+  if (past.length > 0) {
+    html += '<details style="margin-bottom:14px"><summary style="font-family:Nunito,sans-serif;font-weight:700;font-size:.85rem;color:var(--text-muted);cursor:pointer;padding:8px 0;list-style:none">📁 Past Sessions ('+past.length+')</summary>';
+    html += '<div class="section-box" style="margin-top:8px"><div class="section-title" style="margin-bottom:12px">Past Garden Sessions</div>';
+    past.slice().reverse().forEach(function(d) {
+      html += '<div id="garden-session-row-'+d.replace(/[\s,]/g,'_')+'">'+buildGardenSessionRowHTML(prog, d)+'</div>';
+    });
+    html += '</div></details>';
+  }
+
+  sessEl.innerHTML = html;
 }
 
 function getCurrentRecurring(){
@@ -6127,6 +6682,35 @@ async function initDB() {
       created_at timestamptz default now()
     );
     alter table profiles disable row level security;
+    create table if not exists program_session_meta (
+      id                  bigserial primary key,
+      program_id          text not null,
+      program_type        text not null default 'garden',
+      session_date        text not null,
+      activity_theme      text,
+      session_description text,
+      location            text,
+      start_time          text,
+      end_time            text,
+      cancellation_reason text,
+      notes               text,
+      unique(program_id, session_date)
+    );
+    alter table program_session_meta disable row level security;
+    create table if not exists program_attendance (
+      id               bigserial primary key,
+      program_id       text not null,
+      program_type     text not null default 'garden',
+      session_date     text not null,
+      participant_name text not null,
+      participant_type text not null,
+      attended         boolean not null default true,
+      volunteer_hours  numeric,
+      notes            text,
+      unique(program_id, session_date, participant_name)
+    );
+    alter table program_attendance disable row level security;
+    alter table program_volunteers add column if not exists hours numeric default 2;
   `;
   const r = await fetch(SUPA_URL + '/rest/v1/rpc/exec_sql', {
     method: 'POST',
@@ -6905,6 +7489,61 @@ async function loadProgramData() {
   console.log('Program data loaded');
 }
 
+// ── Garden-specific data: session metadata + attendance ───────────────────────
+// Stored in PROGRAMS_DATA['garden_2026'].session_meta  = { dateStr: {theme,desc,location,...} }
+//           PROGRAMS_DATA['garden_2026'].attendance    = { dateStr: [{name,type,attended,hours},...] }
+// Designed to be reusable for any future program (JYSEP etc.) by changing program_id.
+async function loadGardenData() {
+  var prog = PROGRAMS_DATA['garden_2026'];
+  if (!prog) return;
+  prog.session_meta = prog.session_meta || {};
+  prog.attendance   = prog.attendance   || {};
+
+  // Session metadata (theme, location, times, cancellation reason)
+  var metaRows = await dbGet('program_session_meta',
+    'select=session_date,activity_theme,session_description,location,start_time,end_time,cancellation_reason,notes&program_id=eq.garden_2026');
+  if (metaRows) {
+    metaRows.forEach(function(row) {
+      prog.session_meta[row.session_date] = {
+        theme:              row.activity_theme      || '',
+        description:        row.session_description || '',
+        location:           row.location            || '',
+        start_time:         row.start_time          || '',
+        end_time:           row.end_time            || '',
+        cancellation_reason:row.cancellation_reason || '',
+        notes:              row.notes               || ''
+      };
+      // If there's a cancellation reason saved and not already in cancellations array, add it
+      if (row.cancellation_reason && prog.cancellations.indexOf(row.session_date) < 0) {
+        prog.cancellations.push(row.session_date);
+      }
+    });
+  }
+
+  // Attendance records (youth participation + adult volunteering)
+  var attRows = await dbGet('program_attendance',
+    'select=session_date,participant_name,participant_type,attended,volunteer_hours&program_id=eq.garden_2026');
+  if (attRows) {
+    attRows.forEach(function(row) {
+      prog.attendance[row.session_date] = prog.attendance[row.session_date] || [];
+      // Avoid duplicates on re-load
+      var exists = prog.attendance[row.session_date].find(function(r) {
+        return r.name === row.participant_name;
+      });
+      if (!exists) {
+        prog.attendance[row.session_date].push({
+          name:    row.participant_name,
+          type:    row.participant_type,
+          attended:row.attended,
+          hours:   row.volunteer_hours || null
+        });
+      }
+    });
+  }
+  console.log('Garden data loaded — sessions with meta:', Object.keys(prog.session_meta).length,
+    '| attendance records:', attRows ? attRows.length : 0);
+}
+
 async function loadComplianceData() {
   const adults = await dbGet('adult_compliance', 'select=*');
   if (adults) {
@@ -6986,6 +7625,7 @@ async function dbStartup() {
       loadWorkshopConducted(),
       loadWorkshopCancellations(),
       loadProgramData(),
+      loadGardenData(),
       loadComplianceData(),
       loadPendingEntries(),
       loadScrabbleData(),
@@ -8330,50 +8970,14 @@ async function attemptEmailLogin() {
     }
 
     var accessToken = authData.access_token;
-    var userEmail   = (authData.user && authData.user.email) ? authData.user.email.toLowerCase() : email.toLowerCase().trim();
+    var userEmail   = (authData.user && authData.user.email) ? authData.user.email.toLowerCase() : email;
 
     // 2. Look up profile in the profiles table by email
-    var profileRows = null;
-    try {
-      profileRows = await dbGet('profiles',
-        'select=linked_id,role,active,name&email=eq.' + encodeURIComponent(userEmail) + '&limit=1');
-    } catch(profileErr) {
-      console.warn('profiles lookup error:', profileErr);
-      profileRows = null;
-    }
+    var profileRows = await dbGet('profiles',
+      'select=linked_id,role,active&email=eq.' + encodeURIComponent(userEmail) + '&limit=1');
 
     if (!profileRows || profileRows.length === 0) {
-      // ── Graceful fallback: check if this email matches a known admin in FAC_PROFILES ──
-      // This prevents admins from being locked out when the profiles table is empty
-      // or when a profile row hasn't been written yet.
-      var adminMatch = null;
-      Object.keys(FAC_PROFILES).forEach(function(key) {
-        var p = FAC_PROFILES[key];
-        if (p.isAdmin && p.email && p.email.toLowerCase().trim() === userEmail) {
-          adminMatch = { linked_id: key, role: 'admin', active: true };
-        }
-      });
-
-      if (adminMatch) {
-        console.log('Login: no profiles row found, but email matches known admin — allowing login');
-        doLogin(adminMatch.linked_id, 'admin');
-        return;
-      }
-
-      // Check if table itself is missing vs. just no row
-      var diagOk = false;
-      try {
-        var diagResp = await fetch(SUPA_URL + '/rest/v1/profiles?select=id&limit=1', {
-          headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY }
-        });
-        diagOk = diagResp.ok;
-      } catch(_) {}
-
-      if (!diagOk) {
-        showError('Database setup incomplete. Please contact the administrator.');
-      } else {
-        showError('No account found for ' + userEmail + '. Please ask an admin to add your email in the Users tab.');
-      }
+      showError('No profile found for this email. Please ask an admin to set up your account.');
       return;
     }
 

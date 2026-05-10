@@ -217,6 +217,21 @@ select option[value=""]{
 
 /* Row hover: keep sticky cells highlighted too */
 #youth-ws-att-table tr:hover td.ws-sticky{ background:#1a2d47; }
+
+/* ── Garden youth attendance table — same sticky pattern as workshop table ── */
+#garden-youth-att-table thead th.grd-sticky,
+#garden-youth-att-table tbody td.grd-sticky{
+  position:sticky; background:#131f30; z-index:2;
+}
+#garden-youth-att-table thead th.grd-sticky{ z-index:3; }
+#garden-youth-att-table .grd-sticky-1{ left:0;   min-width:160px; }
+#garden-youth-att-table .grd-sticky-2{ left:160px; min-width:70px; }
+#garden-youth-att-table .grd-sticky-3{ left:230px; min-width:140px; }
+#garden-youth-att-table .grd-sticky-3::after{
+  content:''; position:absolute; top:0; right:-8px; bottom:0;
+  width:8px; background:linear-gradient(to right,rgba(0,0,0,.18),transparent); pointer-events:none;
+}
+#garden-youth-att-table tr:hover td.grd-sticky{ background:#1a2d47; }
 .tab-bar{display:flex;gap:4px;margin-bottom:18px;background:rgba(255,255,255,.04);padding:4px;border-radius:12px;width:fit-content;flex-wrap:wrap}
 .tab-btn{padding:6px 14px;border-radius:9px;border:none;background:transparent;color:var(--text-muted);font-size:.79rem;cursor:pointer;transition:all .2s;font-family:"DM Sans",sans-serif;font-weight:600}
 .tab-btn.active{background:var(--card-bg);color:var(--text-main);box-shadow:0 2px 8px rgba(0,0,0,.25)}
@@ -1174,45 +1189,130 @@ select option[value=""]{
         </div>
       </div>
       
-      <div id="tab-garden-admin" style="display:none">
-        <!-- stat cards rendered by renderGardenAdmin() -->
-        <div class="cards-grid" id="garden-admin-stat-cards" style="margin-bottom:14px"></div>
+      </div>
 
-        <!-- session edit modal -->
+      <!-- ══════════════════════════════════════════════════════════════════
+           GARDEN PROGRAM ADMIN TAB
+           ══════════════════════════════════════════════════════════════════ -->
+      <div id="tab-garden-admin" style="display:none">
+
+        <!-- Stat cards -->
+        <div class="cards-grid" id="garden-stat-cards" style="margin-bottom:14px"></div>
+
+        <!-- SECTION 1: Youth Attendance Grid -->
+        <details open style="margin-bottom:14px">
+          <summary style="font-family:Nunito,sans-serif;font-weight:900;font-size:.95rem;color:var(--ya-green);cursor:pointer;padding:10px 0;list-style:none;display:flex;align-items:center;gap:8px">
+            🌱 Youth Attendance &amp; Certification
+          </summary>
+          <div style="margin-top:10px">
+            <!-- Enroll youth panel -->
+            <div class="section-box" style="margin-bottom:10px">
+              <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:10px">
+                <div style="font-size:.78rem;color:var(--text-muted)">Only enrolled Garden youth appear below. Youth attendance = participation only — not volunteer hours.</div>
+                <button id="garden-enroll-btn" onclick="toggleGardenEnrollPanel()" class="ws-btn" style="border-color:var(--ya-green);color:var(--ya-green);font-size:.75rem;white-space:nowrap">+ Enroll Youth</button>
+              </div>
+              <div id="garden-enroll-panel" style="display:none;border-top:1px solid rgba(255,255,255,.08);padding-top:10px;margin-top:4px">
+                <div style="font-size:.78rem;font-weight:700;color:var(--ya-green);margin-bottom:8px">Add youth to Garden Program:</div>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+                  <select id="garden-enroll-select" style="flex:1;min-width:160px;background:#0f1c2e;border:1px solid rgba(255,255,255,.15);border-radius:8px;padding:7px 10px;color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.83rem">
+                    <option value="">— Select youth —</option>
+                  </select>
+                  <button onclick="enrollGardenYouth()" style="padding:7px 16px;border-radius:8px;border:none;background:var(--ya-green);color:#fff;font-family:Nunito,sans-serif;font-weight:800;font-size:.82rem;cursor:pointer">Enroll</button>
+                </div>
+                <div id="garden-enroll-feedback" style="font-size:.78rem;margin-top:8px;min-height:16px"></div>
+              </div>
+            </div>
+            <!-- Certification config -->
+            <div class="section-box" style="margin-bottom:10px;border-color:rgba(0,181,160,.25)">
+              <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+                <div>
+                  <div style="font-size:.8rem;font-weight:700;color:var(--ya-teal)">🎓 Certification: <span id="garden-cert-name-display">Summer Garden Participant</span></div>
+                  <div style="font-size:.74rem;color:var(--text-muted);margin-top:2px">Required: <span id="garden-cert-threshold-display">6</span> sessions</div>
+                </div>
+                <button onclick="toggleGardenCertEdit()" class="ws-btn" style="border-color:var(--ya-teal);color:var(--ya-teal);font-size:.72rem">✏️ Edit</button>
+              </div>
+              <div id="garden-cert-edit-panel" style="display:none;margin-top:10px;border-top:1px solid rgba(255,255,255,.08);padding-top:10px">
+                <div style="display:grid;gap:8px">
+                  <div>
+                    <div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Certificate Name</div>
+                    <input id="garden-cert-name-input" value="Summer Garden Participant" style="width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.15);border-radius:8px;padding:7px 12px;color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem;box-sizing:border-box">
+                  </div>
+                  <div>
+                    <div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Minimum Sessions Required</div>
+                    <input id="garden-cert-threshold-input" type="number" min="1" max="40" value="6" style="width:120px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.15);border-radius:8px;padding:7px 12px;color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem">
+                  </div>
+                  <div>
+                    <div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Notes / Description (optional)</div>
+                    <input id="garden-cert-notes-input" placeholder="e.g. Awarded at end-of-season celebration" style="width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.15);border-radius:8px;padding:7px 12px;color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem;box-sizing:border-box">
+                  </div>
+                </div>
+                <div style="display:flex;gap:8px;margin-top:10px">
+                  <button onclick="saveGardenCertConfig()" style="padding:7px 18px;border-radius:8px;border:none;background:var(--ya-teal);color:#fff;font-family:Nunito,sans-serif;font-weight:800;font-size:.82rem;cursor:pointer">💾 Save</button>
+                  <button onclick="toggleGardenCertEdit()" class="ws-btn" style="font-size:.82rem">Cancel</button>
+                </div>
+                <div id="garden-cert-feedback" style="font-size:.78rem;margin-top:6px;min-height:14px"></div>
+              </div>
+            </div>
+            <!-- Attendance grid -->
+            <div style="overflow-x:auto">
+              <table class="data-table" id="garden-youth-att-table" style="width:auto;min-width:100%">
+                <thead><tr id="garden-youth-att-thead"></tr></thead>
+                <tbody id="garden-youth-att-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+        </details>
+
+        <!-- SECTION 2: Adult Volunteer Hours Grid -->
+        <details open style="margin-bottom:14px">
+          <summary style="font-family:Nunito,sans-serif;font-weight:900;font-size:.95rem;color:var(--ya-blue);cursor:pointer;padding:10px 0;list-style:none;display:flex;align-items:center;gap:8px">
+            🙌 Adult Volunteer Hours
+          </summary>
+          <div style="margin-top:10px">
+            <div class="section-box" style="margin-bottom:10px">
+              <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+                <div style="font-size:.78rem;color:var(--text-muted)">Hours per adult per session. Default = session duration. Adult Garden hours count toward volunteer totals.</div>
+                <button id="garden-hrs-edit-btn" onclick="toggleGardenHrsEdit()" class="ws-btn" style="border-color:var(--ya-blue);color:var(--ya-blue);font-size:.75rem;white-space:nowrap">✏️ Edit Hours</button>
+              </div>
+            </div>
+            <div style="overflow-x:auto">
+              <table class="data-table" id="garden-adult-hrs-table" style="width:auto;min-width:100%">
+                <thead><tr id="garden-adult-hrs-thead"></tr></thead>
+                <tbody id="garden-adult-hrs-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+        </details>
+
+        <!-- SECTION 3: Sessions & Cancellations -->
+        <details style="margin-bottom:14px">
+          <summary style="font-family:Nunito,sans-serif;font-weight:900;font-size:.95rem;color:var(--ya-orange);cursor:pointer;padding:10px 0;list-style:none;display:flex;align-items:center;gap:8px">
+            📅 Sessions &amp; Cancellations
+          </summary>
+          <div id="garden-sessions-list" style="margin-top:10px"></div>
+        </details>
+
+        <!-- Session edit modal -->
         <div id="garden-session-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:1000;align-items:center;justify-content:center">
-          <div class="login-box" style="max-width:460px;width:100%;max-height:90vh;overflow-y:auto">
-            <div style="font-family:Nunito,sans-serif;font-weight:900;font-size:1rem;color:var(--ya-green);margin-bottom:14px">🌱 Edit Session</div>
-            <div style="display:grid;gap:10px">
-              <div>
-                <div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Date</div>
-                <input id="gsm-date" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--card-border);background:rgba(255,255,255,.06);color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem;box-sizing:border-box" placeholder="e.g. May 6, 2026">
+          <div class="login-box" style="max-width:440px;width:100%;max-height:90vh;overflow-y:auto">
+            <div style="font-family:Nunito,sans-serif;font-weight:900;font-size:1rem;color:var(--ya-green);margin-bottom:14px">🌱 Edit Garden Session</div>
+            <div style="display:grid;gap:9px">
+              <div><div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Date</div>
+                <input id="gsm-date" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--card-border);background:rgba(255,255,255,.06);color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem;box-sizing:border-box" placeholder="e.g. May 6, 2026"></div>
+              <div><div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Activity / Theme</div>
+                <input id="gsm-theme" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--card-border);background:rgba(255,255,255,.06);color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem;box-sizing:border-box" placeholder="e.g. Planting day, Multicultural crafts"></div>
+              <div><div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Session Description</div>
+                <input id="gsm-desc" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--card-border);background:rgba(255,255,255,.06);color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem;box-sizing:border-box" placeholder="Optional, for grant reporting"></div>
+              <div><div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Location</div>
+                <input id="gsm-location" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--card-border);background:rgba(255,255,255,.06);color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem;box-sizing:border-box" placeholder="Youth Airdrie (default)"></div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+                <div><div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Start Time</div>
+                  <input id="gsm-start" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--card-border);background:rgba(255,255,255,.06);color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem;box-sizing:border-box" placeholder="4:30 PM"></div>
+                <div><div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">End Time</div>
+                  <input id="gsm-end" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--card-border);background:rgba(255,255,255,.06);color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem;box-sizing:border-box" placeholder="6:30 PM"></div>
               </div>
-              <div>
-                <div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Activity / Theme</div>
-                <input id="gsm-theme" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--card-border);background:rgba(255,255,255,.06);color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem;box-sizing:border-box" placeholder="e.g. Planting day, Multicultural crafts">
-              </div>
-              <div>
-                <div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Session Description</div>
-                <input id="gsm-desc" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--card-border);background:rgba(255,255,255,.06);color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem;box-sizing:border-box" placeholder="Optional notes for grant reporting">
-              </div>
-              <div>
-                <div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Location</div>
-                <input id="gsm-location" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--card-border);background:rgba(255,255,255,.06);color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem;box-sizing:border-box" placeholder="Youth Airdrie (default)">
-              </div>
-              <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-                <div>
-                  <div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Start Time</div>
-                  <input id="gsm-start" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--card-border);background:rgba(255,255,255,.06);color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem;box-sizing:border-box" placeholder="4:30 PM">
-                </div>
-                <div>
-                  <div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">End Time</div>
-                  <input id="gsm-end" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--card-border);background:rgba(255,255,255,.06);color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem;box-sizing:border-box" placeholder="6:30 PM">
-                </div>
-              </div>
-              <div id="gsm-cancel-row">
-                <div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Cancellation Reason</div>
-                <input id="gsm-cancel-reason" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--card-border);background:rgba(255,255,255,.06);color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem;box-sizing:border-box" placeholder="Reason (leave blank if not cancelled)">
-              </div>
+              <div><div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Cancellation Reason <span style="font-weight:400;text-transform:none">(leave blank if not cancelled)</span></div>
+                <input id="gsm-cancel-reason" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--card-border);background:rgba(255,255,255,.06);color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem;box-sizing:border-box"></div>
             </div>
             <div id="gsm-feedback" style="min-height:16px;font-size:.78rem;margin-top:10px"></div>
             <div style="display:flex;gap:10px;margin-top:14px;justify-content:flex-end">
@@ -1221,9 +1321,6 @@ select option[value=""]{
             </div>
           </div>
         </div>
-
-        <!-- main session list -->
-        <div id="garden-admin-sessions"></div>
       </div>
 
       <div id="tab-future-schedule" style="display:none">
@@ -2645,11 +2742,15 @@ function getActiveAdultVolunteers() {
       adultSet.add(name.toLowerCase().trim());
   });
 
-  // Garden Program adult volunteering
-  var gardenProg = PROGRAMS_DATA && PROGRAMS_DATA['garden_2026'];
-  if (gardenProg) {
-    Object.values(gardenProg.adult_volunteers || {}).forEach(function(vols) {
-      (vols || []).forEach(function(name) { adultSet.add(name.toLowerCase().trim()); });
+  // Garden Program adult volunteering (from program_attendance)
+  var gardenP = PROGRAMS_DATA && PROGRAMS_DATA['garden_2026'];
+  if (gardenP) {
+    Object.values(gardenP.attendance || {}).forEach(function(recs) {
+      (recs||[]).forEach(function(r){ if(r.type==='adult'&&r.attended) adultSet.add(r.name.toLowerCase().trim()); });
+    });
+    // Also include adult_volunteers for backwards compat
+    Object.values(gardenP.adult_volunteers || {}).forEach(function(vols){
+      (vols||[]).forEach(function(n){ adultSet.add(n.toLowerCase().trim()); });
     });
   }
 
@@ -3388,26 +3489,6 @@ function renderScheduleTab(){
     });
   });
 
-  // Garden sessions — from PROGRAMS_DATA['garden_2026']
-  var gardenProg = PROGRAMS_DATA['garden_2026'];
-  if (gardenProg) {
-    gardenProg.dates.forEach(function(dateStr) {
-      var d = parseDate(dateStr);
-      var isCancelled = (gardenProg.cancellations||[]).indexOf(dateStr) >= 0;
-      var meta = (gardenProg.session_meta && gardenProg.session_meta[dateStr]) || {};
-      var detail = (meta.location || 'Youth Airdrie') + ' · Wed 4:30–6:30 PM';
-      if (meta.theme) detail += ' · ' + meta.theme;
-      items.push({
-        date: d, dateStr: dateStr,
-        type: 'Garden', sem: 'Summer 2026',
-        title: 'Summer Garden Program',
-        detail: detail,
-        status: isCancelled ? 'cancelled' : (d && d < now) ? 'done' : 'upcoming',
-        typeColor: 'var(--ya-green)', typeIcon: '🌱'
-      });
-    });
-  }
-
   // Events
   (EVENTS_DATA||[]).forEach(function(ev){
     var d = ev.date ? new Date(ev.date) : null;
@@ -3420,6 +3501,26 @@ function renderScheduleTab(){
       typeColor: 'var(--ya-orange)', typeIcon: '📋'
     });
   });
+
+  // Garden 2026 sessions
+  var gardenSched = PROGRAMS_DATA && PROGRAMS_DATA['garden_2026'];
+  if (gardenSched) {
+    (gardenSched.dates || []).forEach(function(dateStr) {
+      var d = parseDate(dateStr);
+      var isCan = (gardenSched.cancellations||[]).indexOf(dateStr) >= 0;
+      var meta  = (gardenSched.session_meta||{})[dateStr] || {};
+      var detail = (meta.location || gardenSched.location || 'Youth Airdrie') + ' · Wed ' + (meta.start_time||'4:30') + '–' + (meta.end_time||'6:30 PM');
+      if (meta.theme) detail += ' · ' + meta.theme;
+      items.push({
+        date: d, dateStr: dateStr,
+        type: 'Garden', sem: 'Summer 2026',
+        title: 'Summer Garden Program',
+        detail: detail,
+        status: isCan ? 'cancelled' : (d && d < now ? 'done' : 'upcoming'),
+        typeColor: 'var(--ya-green)', typeIcon: '🌱'
+      });
+    });
+  }
 
   // Sort chronologically — nulls (no date) go to end
   items.sort(function(a,b){
@@ -3558,43 +3659,10 @@ function renderImpactTab(){
     var inWs = (EL_YOUTH[n]||[]).length > 0;
     var inScr = Object.keys(SCRABBLE_SESSIONS||{}).some(function(k){ return k.toLowerCase().trim()===n.toLowerCase().trim() && Object.keys(SCRABBLE_SESSIONS[k]||{}).length>0; });
     var inEv  = (EVENTS_DATA||[]).some(function(ev){ return ['youth_5hrs','youth_4hrs','youth_2hrs'].some(function(b){ return (ev[b]||[]).some(function(k){ return k.toLowerCase().trim()===n.toLowerCase().trim(); }); }); });
-    var inGarden = gardenYouthSet.has(n) || !!(gardenProg2 && gardenProg2.youth_participants && n in gardenProg2.youth_participants);
-    return [inWs,inScr,inEv,inGarden].filter(Boolean).length >= 2;
+    return [inWs,inScr,inEv].filter(Boolean).length >= 2;
   });
 
-  // ── Garden stats (participation only for youth; hours for adults) ──────────
-  var gardenProg2 = PROGRAMS_DATA['garden_2026'];
-  var gardenSessionsHeld = 0, gardenYouthAtt = 0, gardenAdultHrs = 0;
-  var gardenAdultVolSet = new Set();
-  var gardenEnrolledYouth = [];
-  var gardenYouthSet = new Set();
-  if (gardenProg2) {
-    var now2 = new Date(); now2.setHours(0,0,0,0);
-    var mo2={Jan:0,Feb:1,Mar:2,Apr:3,May:4,Jun:5,Jul:6,Aug:7,Sep:8,Oct:9,Nov:10,Dec:11};
-    function pd2(s){var p=s.replace(',','').split(' ');return new Date(parseInt(p[2]),mo2[p[0]]||0,parseInt(p[1]));}
-    gardenSessionsHeld = gardenProg2.dates.filter(function(d){
-      return pd2(d)<now2 && (gardenProg2.cancellations||[]).indexOf(d)<0;
-    }).length;
-    gardenEnrolledYouth = Object.keys(gardenProg2.youth_participants || {});
-    Object.entries(gardenProg2.attendance || {}).forEach(function(e) {
-      e[1].forEach(function(r) {
-        if (r.type==='youth' && r.attended) { gardenYouthAtt++; gardenYouthSet.add(r.name); }
-        if (r.type==='adult' && r.attended) {
-          gardenAdultHrs += (r.hours || 2);
-          gardenAdultVolSet.add(r.name);
-        }
-      });
-    });
-    // Also count from adult_volunteers if program_attendance not yet written
-    Object.keys(gardenProg2.adult_volunteers || {}).forEach(function(dateStr) {
-      var vols = gardenProg2.adult_volunteers[dateStr] || [];
-      var meta = (gardenProg2.session_meta && gardenProg2.session_meta[dateStr]) || {};
-      var hrs = parseSessionHours(meta.start_time||'4:30 PM', meta.end_time||'6:30 PM');
-      vols.forEach(function(n) {
-        if (!gardenAdultVolSet.has(n)) { gardenAdultHrs += hrs; gardenAdultVolSet.add(n); }
-      });
-    });
-  }
+  // ── Adult volunteers ──────────────────────────────────────────────────────
   var activeAdultSet = getActiveAdultVolunteers();
   var facilitators   = Object.values(FAC_PROFILES).filter(function(p){ return p.facilitated && p.facilitated.length > 0; });
   var totalFacHours  = Object.values(FAC_PROFILES).reduce(function(s,p){ return s+(p.hours||0); }, 0);
@@ -3614,7 +3682,15 @@ function renderImpactTab(){
     });
   });
   var scrAdultHrs = Object.values(ADULT_SCRABBLE_TOTALS||{}).reduce(function(s,v){return s+v;},0);
-  var totalVolHours = eventYouthHrs + eventAdultHrs + scrAdultHrs + Math.round(totalFacHours) + Math.round(gardenAdultHrs);
+  // Garden adult hours (calculated below with gardenAdultHrs — compute here for total)
+  var gardenHrsForTotal = (function(){
+    var gp=PROGRAMS_DATA&&PROGRAMS_DATA['garden_2026']; if(!gp) return 0;
+    var t=0; var seen=new Set();
+    Object.values(gp.attendance||{}).forEach(function(recs){ (recs||[]).forEach(function(r){ if(r.type==='adult'&&r.attended&&r.hours){ t+=r.hours; seen.add(r.name); } }); });
+    Object.keys(gp.adult_volunteers||{}).forEach(function(d){ var meta=(gp.session_meta||{})[d]||{}; var h=parseSessionHours(meta.start_time||'4:30 PM',meta.end_time||'6:30 PM'); (gp.adult_volunteers[d]||[]).forEach(function(n){ if(!seen.has(n)){t+=h;seen.add(n);} }); });
+    return t;
+  })();
+  var totalVolHours = eventYouthHrs + eventAdultHrs + scrAdultHrs + Math.round(totalFacHours) + Math.round(gardenHrsForTotal);
 
   // ── Scrabble ──────────────────────────────────────────────────────────────
   var scrPlayers = Object.keys(SCRABBLE_TOTALS||{}).length;
@@ -3746,14 +3822,48 @@ function renderImpactTab(){
   html += '<div style="font-size:.72rem;font-weight:700;color:var(--ya-gold);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;margin-top:4px">Scrabble & Games Club</div>';
   html += statRow('Participants', scrPlayers, 'pill-gold');
   html += statRow('Sessions held (2026)', scrSessions, 'pill-teal');
-  // Garden
+  // Garden — data-driven from program_attendance + adult_volunteers
+  var gardenP = PROGRAMS_DATA['garden_2026'];
+  var gardenSessionsHeld=0, gardenYouthAtt=0, gardenAdultHrs=0, gardenCertElig=0;
+  var gardenAdultSet=new Set(), gardenYouthSet=new Set(), gardenEnrolled=[];
+  if(gardenP){
+    var now3=new Date();now3.setHours(0,0,0,0);
+    var mo3={Jan:0,Feb:1,Mar:2,Apr:3,May:4,Jun:5,Jul:6,Aug:7,Sep:8,Oct:9,Nov:10,Dec:11};
+    function pd3(s){var p=s.replace(',','').split(' ');return new Date(parseInt(p[2]),mo3[p[0]]||0,parseInt(p[1]));}
+    var pastHeld=(gardenP.dates||[]).filter(function(d){return pd3(d)<=now3&&(gardenP.cancellations||[]).indexOf(d)<0;});
+    gardenSessionsHeld=pastHeld.length;
+    gardenEnrolled=Object.keys(gardenP.youth_participants||{});
+    var certMin=(gardenP.cert_rules||{}).cert_min_sessions||6;
+    Object.entries(gardenP.attendance||{}).forEach(function(e){
+      (e[1]||[]).forEach(function(r){
+        if(r.type==='youth'&&r.attended){gardenYouthAtt++;gardenYouthSet.add(r.name);}
+        if(r.type==='adult'&&r.attended){gardenAdultHrs+=(r.hours||2);gardenAdultSet.add(r.name);}
+      });
+    });
+    // Cert eligible — count attended sessions per enrolled youth
+    gardenCertElig=gardenEnrolled.filter(function(name){
+      var cnt=pastHeld.filter(function(d){var r=gardenAttRow(gardenP,d,name);return r&&r.attended;}).length;
+      return cnt>=certMin;
+    }).length;
+    // Backwards compat: also count from adult_volunteers if not in program_attendance
+    Object.keys(gardenP.adult_volunteers||{}).forEach(function(d){
+      var meta=(gardenP.session_meta||{})[d]||{};
+      var hrs=parseSessionHours(meta.start_time||'4:30 PM',meta.end_time||'6:30 PM');
+      (gardenP.adult_volunteers[d]||[]).forEach(function(n){ if(!gardenAdultSet.has(n)){gardenAdultHrs+=hrs;gardenAdultSet.add(n);} });
+    });
+  }
   html += '<div style="font-size:.72rem;font-weight:700;color:var(--ya-green);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;margin-top:12px">Summer Garden Program 🌱</div>';
-  html += statRow('Sessions held (2026)',        gardenSessionsHeld,       'pill-green');
-  html += statRow('Enrolled youth',              gardenEnrolledYouth.length,'pill-teal');
-  html += statRow('Youth attendances',           gardenYouthAtt,            'pill-blue');
-  html += statRow('Adult garden volunteers',     gardenAdultVolSet.size,    'pill-orange');
-  html += statRow('Adult garden volunteer hrs',  Math.round(gardenAdultHrs),'pill-gold');
-  html += '<div style="font-size:.7rem;color:var(--text-muted);margin-top:4px;font-style:italic">Youth garden attendance = participation only, not volunteer hours.</div>';
+  if(gardenSessionsHeld>0||gardenEnrolled.length>0){
+    html += statRow('Sessions held (2026)',        gardenSessionsHeld,        'pill-green');
+    html += statRow('Enrolled youth',              gardenEnrolled.length,     'pill-teal');
+    html += statRow('Youth attendances',           gardenYouthAtt,            'pill-blue');
+    html += statRow('Cert eligible ('+((gardenP&&gardenP.cert_rules&&gardenP.cert_rules.cert_min_sessions)||6)+'+ sessions)',gardenCertElig,'pill-gold');
+    html += statRow('Adult garden volunteers',     gardenAdultSet.size,       'pill-orange');
+    html += statRow('Adult garden volunteer hrs',  Math.round(gardenAdultHrs),'pill-gold');
+    html += '<div style="font-size:.7rem;color:var(--text-muted);margin-top:4px;font-style:italic">Youth attendance = participation only, not volunteer hours.</div>';
+  } else {
+    html += '<div style="font-size:.78rem;color:var(--text-muted);padding:4px 0">Garden sessions and enrollments will appear here once the program begins.</div>';
+  }
   // JYSEP
   html += '<div style="font-size:.72rem;font-weight:700;color:var(--lavender);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;margin-top:12px">JYSEP / Animator Training</div>';
   var jysepCount = Object.values(FAC_PROFILES).filter(function(p){ return p.role&&p.role.toLowerCase().indexOf('jysep')>=0||p.role&&p.role.toLowerCase().indexOf('animator')>=0; }).length;
@@ -4093,40 +4203,57 @@ async function manualLinkProfile() {
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-// GARDEN PROGRAM — ADMIN FUNCTIONS
-// programme_id: 'garden_2026'  programme_type: 'garden'
-// Tables: program_session_meta, program_attendance, program_volunteers (shared)
-// Youth attendance  = participation only (no volunteer_hours)
-// Adult attendance  = volunteer hours (default = session duration = 2hrs)
+// GARDEN PROGRAM — ADMIN
+// Reusable architecture: program_id, program_type, program_session_meta,
+// program_attendance, program_settings.
+// Youth attendance  = participation only  (volunteer_hours = null always)
+// Adult attendance  = volunteer hours     (volunteer_hours = session duration)
 // ══════════════════════════════════════════════════════════════════════════════
 
-var _gardenEditDate = ''; // currently open session in the edit modal
+var _gardenEditDate  = '';   // session date open in the edit modal
+var _gardenHrsEdit   = false; // adult hours edit mode
 
-// ── Save session metadata ─────────────────────────────────────────────────────
-async function saveGardenSessionMeta() {
-  var btn = document.getElementById('gsm-save-btn');
-  var fb  = document.getElementById('gsm-feedback');
-  var origDate = _gardenEditDate;
-  var newDate  = (document.getElementById('gsm-date').value || '').trim();
-  fb.textContent = '';
-  if (!newDate) { fb.style.color='var(--badge-red)'; fb.textContent='⚠ Date is required.'; return; }
-  btn.textContent = 'Saving…'; btn.style.opacity = '.6'; btn.disabled = true;
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function parseSessionHours(startStr, endStr) {
+  function toMins(s) {
+    var m = (s||'').match(/(\d+):(\d+)\s*(AM|PM)/i);
+    if (!m) return null;
+    var h = parseInt(m[1]), min = parseInt(m[2]), pm = m[3].toUpperCase()==='PM';
+    if (pm && h !== 12) h += 12;
+    if (!pm && h === 12) h = 0;
+    return h * 60 + min;
+  }
+  var s = toMins(startStr), e = toMins(endStr);
+  if (s === null || e === null || e <= s) return 2;
+  return Math.round((e - s) / 60 * 10) / 10;
+}
 
-  var row = {
-    program_id:          'garden_2026',
-    program_type:        'garden',
-    session_date:        origDate,
-    activity_theme:      document.getElementById('gsm-theme').value.trim(),
-    session_description: document.getElementById('gsm-desc').value.trim(),
-    location:            document.getElementById('gsm-location').value.trim(),
-    start_time:          document.getElementById('gsm-start').value.trim(),
-    end_time:            document.getElementById('gsm-end').value.trim(),
-    cancellation_reason: document.getElementById('gsm-cancel-reason').value.trim(),
-    notes:               ''
-  };
+function gardenProg() { return PROGRAMS_DATA['garden_2026'] || null; }
 
-  // Upsert to Supabase
-  var r = await fetch(SUPA_URL + '/rest/v1/program_session_meta?on_conflict=program_id,session_date', {
+function gardenCert() {
+  var p = gardenProg();
+  return (p && p.cert_rules) || { cert_name:'Summer Garden Participant', cert_min_sessions:6, cert_notes:'' };
+}
+
+function gardenPastDates() {
+  var p = gardenProg(); if(!p) return [];
+  var now = new Date(); now.setHours(0,0,0,0);
+  return p.dates.filter(function(d){ return parseGardenDate(d) <= now; });
+}
+
+function parseGardenDate(str) {
+  var mo={Jan:0,Feb:1,Mar:2,Apr:3,May:4,Jun:5,Jul:6,Aug:7,Sep:8,Oct:9,Nov:10,Dec:11};
+  var p = str.replace(',','').split(' ');
+  return new Date(parseInt(p[2]), mo[p[0]]||0, parseInt(p[1]));
+}
+
+function gardenAttRow(prog, dateStr, name) {
+  return ((prog.attendance || {})[dateStr] || []).find(function(r){ return r.name === name; });
+}
+
+// ── Upsert helper for program_attendance ─────────────────────────────────────
+async function upsertProgramAttendance(row) {
+  var r = await fetch(SUPA_URL + '/rest/v1/program_attendance?on_conflict=program_id,session_date,participant_name', {
     method: 'POST',
     headers: {
       'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY,
@@ -4134,67 +4261,356 @@ async function saveGardenSessionMeta() {
     },
     body: JSON.stringify(row)
   });
-
   if (!r.ok) {
     var err = await r.text();
-    console.error('[saveGardenSessionMeta] HTTP', r.status, err);
-    fb.style.color = 'var(--badge-red)';
-    fb.textContent = '⚠ Save failed: ' + (JSON.parse(err||'{}').message || err);
-    btn.textContent = '💾 Save'; btn.style.opacity = ''; btn.disabled = false;
-    return;
+    console.error('[upsertProgramAttendance] HTTP', r.status, err);
+    return false;
   }
-
-  // If date was edited, update the session date in PROGRAMS_DATA
-  var prog = PROGRAMS_DATA['garden_2026'];
-  if (prog) {
-    // Handle date change
-    if (newDate !== origDate) {
-      var idx = prog.dates.indexOf(origDate);
-      if (idx >= 0) prog.dates[idx] = newDate;
-      var cancelIdx = prog.cancellations.indexOf(origDate);
-      if (cancelIdx >= 0) { prog.cancellations[cancelIdx] = newDate; }
-      if (prog.session_meta[origDate]) {
-        prog.session_meta[newDate] = prog.session_meta[origDate];
-        delete prog.session_meta[origDate];
-      }
-      if (prog.attendance[origDate]) {
-        prog.attendance[newDate] = prog.attendance[origDate];
-        delete prog.attendance[origDate];
-      }
-      // Update DB session_date reference
-      dbPatch('program_session_meta', {session_date: newDate},
-        'program_id=eq.garden_2026&session_date=eq.'+encodeURIComponent(origDate));
-    }
-    prog.session_meta[newDate] = {
-      theme:               row.activity_theme,
-      description:         row.session_description,
-      location:            row.location,
-      start_time:          row.start_time,
-      end_time:            row.end_time,
-      cancellation_reason: row.cancellation_reason
-    };
-    // Handle cancellation state from reason field
-    if (row.cancellation_reason) {
-      if (prog.cancellations.indexOf(newDate) < 0) prog.cancellations.push(newDate);
-    } else {
-      prog.cancellations = prog.cancellations.filter(function(d){ return d !== newDate; });
-    }
-  }
-
-  fb.style.color = 'var(--ya-teal)';
-  fb.textContent = '✔ Saved';
-  btn.textContent = '💾 Save'; btn.style.opacity = ''; btn.disabled = false;
-  setTimeout(function() {
-    document.getElementById('garden-session-modal').style.display = 'none';
-    renderGardenAdmin();
-    renderScheduleTab();
-  }, 700);
+  return true;
 }
 
-// ── Open the session edit modal ───────────────────────────────────────────────
+// ── Enroll Youth ──────────────────────────────────────────────────────────────
+function toggleGardenEnrollPanel() {
+  var panel = document.getElementById('garden-enroll-panel');
+  var btn   = document.getElementById('garden-enroll-btn');
+  if (!panel) return;
+  var open = panel.style.display !== 'none';
+  panel.style.display = open ? 'none' : 'block';
+  if (!open) {
+    // Populate dropdown with unenrolled youth
+    var p = gardenProg();
+    var enrolled = Object.keys((p && p.youth_participants) || {});
+    var sel = document.getElementById('garden-enroll-select');
+    sel.innerHTML = '<option value="">— Select youth —</option>';
+    ALL_YOUTH_NAMES.forEach(function(n) {
+      if (enrolled.indexOf(n) < 0)
+        sel.innerHTML += '<option value="'+n+'">'+n+'</option>';
+    });
+    document.getElementById('garden-enroll-feedback').textContent = '';
+  }
+}
+
+function enrollGardenYouth() {
+  var sel = document.getElementById('garden-enroll-select');
+  var fb  = document.getElementById('garden-enroll-feedback');
+  var name = sel.value;
+  if (!name) { fb.style.color='var(--badge-red)'; fb.textContent='⚠ Select a youth first.'; return; }
+  var p = gardenProg(); if (!p) return;
+  p.youth_participants = p.youth_participants || {};
+  if (p.youth_participants[name]) { fb.style.color='var(--badge-amber)'; fb.textContent=name+' is already enrolled.'; return; }
+  p.youth_participants[name] = [];
+  fb.style.color = 'var(--ya-teal)'; fb.textContent = '✔ '+name+' enrolled in Garden Program.';
+  sel.value = '';
+  renderGardenAdmin();
+}
+
+function removeGardenYouth(name) {
+  if (!confirm('Remove '+name+' from the Garden Program?\n\nTheir attendance records will be preserved.')) return;
+  var p = gardenProg(); if (!p) return;
+  delete p.youth_participants[name];
+  renderGardenAdmin();
+}
+
+// ── Certification config ──────────────────────────────────────────────────────
+function toggleGardenCertEdit() {
+  var panel = document.getElementById('garden-cert-edit-panel');
+  if (!panel) return;
+  var open = panel.style.display !== 'none';
+  panel.style.display = open ? 'none' : 'block';
+  if (!open) {
+    var c = gardenCert();
+    document.getElementById('garden-cert-name-input').value       = c.cert_name;
+    document.getElementById('garden-cert-threshold-input').value  = c.cert_min_sessions;
+    document.getElementById('garden-cert-notes-input').value      = c.cert_notes || '';
+    document.getElementById('garden-cert-feedback').textContent   = '';
+  }
+}
+
+async function saveGardenCertConfig() {
+  var name  = document.getElementById('garden-cert-name-input').value.trim();
+  var mins  = parseInt(document.getElementById('garden-cert-threshold-input').value) || 6;
+  var notes = document.getElementById('garden-cert-notes-input').value.trim();
+  var fb    = document.getElementById('garden-cert-feedback');
+  if (!name) { fb.style.color='var(--badge-red)'; fb.textContent='⚠ Certificate name required.'; return; }
+
+  var row = { program_id:'garden_2026', cert_name:name, cert_min_sessions:mins, cert_notes:notes, updated_at:new Date().toISOString() };
+  var r = await fetch(SUPA_URL + '/rest/v1/program_settings?on_conflict=program_id', {
+    method:'POST', headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates,return=minimal'},
+    body: JSON.stringify(row)
+  });
+  if (!r.ok) { var err=await r.text(); fb.style.color='var(--badge-red)'; fb.textContent='⚠ Save failed: '+(JSON.parse(err||'{}').message||err); return; }
+
+  var p = gardenProg();
+  if (p) p.cert_rules = { cert_name:name, cert_min_sessions:mins, cert_notes:notes };
+  fb.style.color = 'var(--ya-teal)'; fb.textContent = '✔ Certification settings saved.';
+  document.getElementById('garden-cert-name-display').textContent      = name;
+  document.getElementById('garden-cert-threshold-display').textContent = mins;
+  setTimeout(function(){ document.getElementById('garden-cert-edit-panel').style.display='none'; renderGardenYouthGrid(); }, 700);
+}
+
+// ── Youth Attendance Grid ─────────────────────────────────────────────────────
+function renderGardenYouthGrid() {
+  var thead = document.getElementById('garden-youth-att-thead');
+  var tbody = document.getElementById('garden-youth-att-tbody');
+  if (!thead || !tbody) return;
+  var p = gardenProg();
+  if (!p) { thead.innerHTML=''; tbody.innerHTML='<tr><td colspan="4" style="color:var(--text-muted)">No Garden data.</td></tr>'; return; }
+
+  var cert = gardenCert();
+  var pastDates = gardenPastDates();
+  var enrolled  = Object.keys(p.youth_participants || {}).sort();
+
+  if (enrolled.length === 0) {
+    thead.innerHTML = ''; tbody.innerHTML = '<tr><td colspan="4" style="color:var(--text-muted);font-size:.82rem;padding:12px">No youth enrolled yet. Use "Enroll Youth" above.</td></tr>'; return;
+  }
+
+  // Header: frozen columns + one col per past session
+  thead.innerHTML =
+    '<th class="grd-sticky grd-sticky-1">Name</th>'+
+    '<th class="grd-sticky grd-sticky-2" style="text-align:center">Sessions</th>'+
+    '<th class="grd-sticky grd-sticky-3">Status</th>'+
+    pastDates.map(function(d){
+      var short = d.replace(', 2026','').replace(', 2027','');
+      var isCan = (p.cancellations||[]).indexOf(d) >= 0;
+      var meta  = (p.session_meta||{})[d] || {};
+      return '<th style="text-align:center;font-size:.6rem;min-width:42px;padding:5px 3px;'+(isCan?'opacity:.4':'')+'" title="'+(meta.theme||d)+'">'+short+'</th>';
+    }).join('')+
+    '<th style="text-align:center;min-width:60px">Attended</th>';
+
+  // Body rows
+  tbody.innerHTML = enrolled.map(function(name) {
+    // Count attended sessions from attendance records
+    var attCount = pastDates.filter(function(d){
+      var rec = gardenAttRow(p, d, name);
+      return rec && rec.attended;
+    }).length;
+
+    var minS = cert.cert_min_sessions;
+    var prog = Math.min(100, Math.round(attCount / minS * 100));
+    var progressBar = '<div class="prog-track" style="width:80px;margin-top:3px"><div class="prog-fill" style="width:'+prog+'%;background:linear-gradient(90deg,var(--ya-green),var(--ya-teal))"></div></div>';
+
+    // Status pill
+    var st = '';
+    if (attCount >= minS) {
+      st = '<span class="pill pill-green" style="font-size:.65rem">🌱 '+cert.cert_name+' ✔</span>';
+    } else {
+      var left = minS - attCount;
+      if (attCount >= Math.ceil(minS * 0.5)) {
+        st = '<span class="pill pill-amber" style="font-size:.65rem">'+attCount+'/'+minS+' sessions</span>';
+      } else {
+        st = '<span class="pill pill-grey" style="font-size:.65rem">'+attCount+'/'+minS+' sessions</span>';
+      }
+    }
+
+    // Cells per session
+    var cells = pastDates.map(function(d) {
+      var isCan = (p.cancellations||[]).indexOf(d) >= 0;
+      if (isCan) return '<td class="ws-att-cell absent" style="opacity:.35">✕</td>';
+      var rec = gardenAttRow(p, d, name);
+      var isAtt = rec && rec.attended;
+      var safeDate = d.replace(/'/g,"\\'"); var safeName = name.replace(/'/g,"\\'");
+      return '<td class="ws-att-cell'+(isAtt?' attended':' absent')+' editable" '+
+        'onclick="toggleGardenYouthCell(\''+safeDate+'\',\''+safeName+'\',this)">'+
+        (isAtt?'✔':'—')+'</td>';
+    }).join('');
+
+    var ageStr = YOUTH_AGES[name] ? ' · Age '+YOUTH_AGES[name] : '';
+    return '<tr>'+
+      '<td class="grd-sticky grd-sticky-1">'+
+        '<strong style="font-size:.83rem">'+name+'</strong>'+
+        '<div style="font-size:.65rem;color:var(--text-muted);margin-top:1px">'+ageStr+'<button onclick="removeGardenYouth(\''+name.replace(/'/g,"\\'")+'\')" style="border:none;background:none;color:var(--badge-red);cursor:pointer;font-size:.65rem;padding:0;margin-left:4px;opacity:.6" title="Remove from Garden">✕</button></div>'+
+      '</td>'+
+      '<td class="grd-sticky grd-sticky-2" style="text-align:center;vertical-align:middle"><strong>'+attCount+'</strong><br>'+progressBar+'</td>'+
+      '<td class="grd-sticky grd-sticky-3" style="vertical-align:middle">'+st+'</td>'+
+      cells+
+      '<td style="text-align:center;font-weight:700;color:var(--ya-green)">'+attCount+' / '+pastDates.length+'</td>'+
+    '</tr>';
+  }).join('');
+}
+
+async function toggleGardenYouthCell(dateStr, name, cell) {
+  var p = gardenProg(); if (!p) return;
+  p.attendance = p.attendance || {};
+  p.attendance[dateStr] = p.attendance[dateStr] || [];
+  var rec = gardenAttRow(p, dateStr, name);
+  var newAtt = !(rec && rec.attended);
+
+  // Optimistic UI update
+  cell.textContent = newAtt ? '✔' : '—';
+  cell.className = 'ws-att-cell editable ' + (newAtt ? 'attended' : 'absent');
+
+  // Update in-memory
+  if (rec) { rec.attended = newAtt; }
+  else { p.attendance[dateStr].push({ name:name, type:'youth', attended:newAtt, hours:null }); }
+
+  // Refresh count columns in this row without full re-render
+  var row = cell.parentNode;
+  var tds = row.querySelectorAll('td');
+  var p2 = gardenProg();
+  var pastDates = gardenPastDates();
+  var newCount = pastDates.filter(function(d){ var r2=gardenAttRow(p2,d,name); return r2&&r2.attended; }).length;
+  var minS = gardenCert().cert_min_sessions;
+  var prog = Math.min(100, Math.round(newCount/minS*100));
+  tds[1].innerHTML = '<strong>'+newCount+'</strong><br><div class="prog-track" style="width:80px;margin-top:3px"><div class="prog-fill" style="width:'+prog+'%;background:linear-gradient(90deg,var(--ya-green),var(--ya-teal))"></div></div>';
+  tds[tds.length-1].textContent = newCount+' / '+pastDates.length;
+  // Refresh status
+  var cert = gardenCert();
+  var st = newCount >= cert.cert_min_sessions
+    ? '<span class="pill pill-green" style="font-size:.65rem">🌱 '+cert.cert_name+' ✔</span>'
+    : (newCount >= Math.ceil(cert.cert_min_sessions*0.5)
+        ? '<span class="pill pill-amber" style="font-size:.65rem">'+newCount+'/'+cert.cert_min_sessions+' sessions</span>'
+        : '<span class="pill pill-grey" style="font-size:.65rem">'+newCount+'/'+cert.cert_min_sessions+' sessions</span>');
+  tds[2].innerHTML = st;
+
+  // Persist — youth attendance NEVER gets volunteer_hours
+  await upsertProgramAttendance({
+    program_id:'garden_2026', program_type:'garden',
+    session_date:dateStr, participant_name:name,
+    participant_type:'youth', attended:newAtt, volunteer_hours:null
+  });
+}
+
+// ── Adult Volunteer Hours Grid ────────────────────────────────────────────────
+function toggleGardenHrsEdit() {
+  _gardenHrsEdit = !_gardenHrsEdit;
+  var btn = document.getElementById('garden-hrs-edit-btn');
+  if (btn) {
+    btn.textContent = _gardenHrsEdit ? '✏️ Done' : '✏️ Edit Hours';
+    btn.style.borderColor = _gardenHrsEdit ? 'var(--ya-orange)' : 'var(--ya-blue)';
+    btn.style.color       = _gardenHrsEdit ? 'var(--ya-orange)' : 'var(--ya-blue)';
+    btn.style.background  = _gardenHrsEdit ? 'rgba(232,98,10,.08)' : '';
+  }
+  renderGardenAdultHrsGrid();
+  if (!_gardenHrsEdit) saveGardenAdultHrsFromInputs();
+}
+
+async function saveGardenAdultHrsFromInputs() {
+  var p = gardenProg(); if (!p) return;
+  var pastDates = gardenPastDates();
+  var adultNames = Object.keys(FAC_PROFILES).map(function(k){ return FAC_PROFILES[k].name; }).sort();
+  var promises = [];
+  pastDates.forEach(function(d) {
+    adultNames.forEach(function(name) {
+      var cellId = 'ghrs_'+name.replace(/\s+/g,'_').replace(/[^\w]/g,'_')+'_'+d.replace(/\W/g,'_');
+      var inp = document.getElementById(cellId);
+      if (!inp) return;
+      var val = parseFloat(inp.value);
+      if (isNaN(val) || val <= 0) return;
+      // Update in-memory
+      p.attendance = p.attendance || {};
+      p.attendance[d] = p.attendance[d] || [];
+      var rec = gardenAttRow(p, d, name);
+      if (rec) { rec.hours = val; rec.attended = true; }
+      else { p.attendance[d].push({ name:name, type:'adult', attended:true, hours:val }); }
+      // Also update adult_volunteers for compatibility
+      p.adult_volunteers = p.adult_volunteers || {};
+      p.adult_volunteers[d] = p.adult_volunteers[d] || [];
+      if (p.adult_volunteers[d].indexOf(name) < 0) p.adult_volunteers[d].push(name);
+      // Persist
+      promises.push(upsertProgramAttendance({
+        program_id:'garden_2026', program_type:'garden',
+        session_date:d, participant_name:name,
+        participant_type:'adult', attended:true, volunteer_hours:val
+      }));
+    });
+  });
+  await Promise.all(promises);
+  renderGardenAdultHrsGrid();
+}
+
+function renderGardenAdultHrsGrid() {
+  var thead = document.getElementById('garden-adult-hrs-thead');
+  var tbody = document.getElementById('garden-adult-hrs-tbody');
+  if (!thead || !tbody) return;
+  var p = gardenProg();
+  if (!p) { thead.innerHTML=''; tbody.innerHTML=''; return; }
+
+  var pastDates = gardenPastDates();
+  var adultNames = Object.keys(FAC_PROFILES).map(function(k){ return FAC_PROFILES[k].name; }).sort();
+
+  if (pastDates.length === 0) {
+    thead.innerHTML=''; tbody.innerHTML='<tr><td style="color:var(--text-muted);font-size:.82rem;padding:12px">No past sessions yet.</td></tr>'; return;
+  }
+
+  // Header: Date | adult names | Total
+  thead.innerHTML = '<th style="min-width:120px">Date</th>' +
+    adultNames.map(function(n){ return '<th style="font-size:.65rem;min-width:60px">'+n.split(' ')[0]+'</th>'; }).join('') +
+    '<th style="min-width:60px">Total</th>';
+
+  // Body rows — one per past session
+  var adultTotals = {}; adultNames.forEach(function(n){ adultTotals[n]=0; });
+  var grandTotal = 0;
+
+  var rows = pastDates.map(function(d) {
+    var isCan = (p.cancellations||[]).indexOf(d) >= 0;
+    var meta  = (p.session_meta||{})[d] || {};
+    var defaultHrs = parseSessionHours(meta.start_time||'4:30 PM', meta.end_time||'6:30 PM');
+    var sessionTotal = 0;
+
+    var cells = adultNames.map(function(name) {
+      var rec = gardenAttRow(p, d, name);
+      var hrs = rec && rec.attended ? (rec.hours || defaultHrs) : null;
+      if (hrs) { sessionTotal += hrs; adultTotals[name] += hrs; grandTotal += hrs; }
+
+      if (isCan) return '<td style="text-align:center;opacity:.35;color:var(--text-muted)">—</td>';
+      var cellId = 'ghrs_'+name.replace(/\s+/g,'_').replace(/[^\w]/g,'_')+'_'+d.replace(/\W/g,'_');
+      if (_gardenHrsEdit) {
+        return '<td style="padding:3px"><input id="'+cellId+'" type="number" min="0" max="12" step="0.5" value="'+(hrs||'')+'" placeholder="—" '+
+          'style="width:52px;background:rgba(0,181,160,.1);border:1px solid rgba(0,181,160,.4);border-radius:5px;padding:3px 5px;color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.78rem;text-align:center"></td>';
+      }
+      return '<td style="text-align:center;color:'+(hrs?'var(--ya-green)':'var(--text-muted)')+';font-weight:'+(hrs?'700':'400')+'">'+( hrs ? hrs.toFixed(1) : '—' )+'</td>';
+    }).join('');
+
+    var shortDate = d.replace(', 2026','').replace(', 2027','');
+    return '<tr'+(isCan?' style="opacity:.5" title="Cancelled"':'')+'><td style="font-weight:600;white-space:nowrap;font-size:.82rem">'+shortDate+(isCan?' ✕':'')+'</td>'+cells+'<td style="text-align:center;font-weight:700;color:var(--ya-green)">'+( sessionTotal ? sessionTotal.toFixed(1) : '—' )+'</td></tr>';
+  }).join('');
+
+  // Totals row
+  var totalsRow = '<tr style="border-top:2px solid var(--card-border)"><td style="font-weight:800;font-size:.82rem">Total</td>'+
+    adultNames.map(function(n){ return '<td style="text-align:center;font-weight:800;color:var(--ya-green)">'+( adultTotals[n] ? adultTotals[n].toFixed(1) : '—' )+'</td>'; }).join('')+
+    '<td style="text-align:center;font-weight:800;color:var(--ya-green)">'+( grandTotal ? grandTotal.toFixed(1) : '—' )+'</td></tr>';
+
+  tbody.innerHTML = rows + totalsRow;
+}
+
+// ── Sessions list (Section 3) ─────────────────────────────────────────────────
+function renderGardenSessionsList() {
+  var el = document.getElementById('garden-sessions-list'); if (!el) return;
+  var p  = gardenProg(); if (!p) { el.innerHTML=''; return; }
+  var now = new Date(); now.setHours(0,0,0,0);
+
+  var html = '<div class="section-box">';
+  p.dates.forEach(function(d) {
+    var isCan = (p.cancellations||[]).indexOf(d) >= 0;
+    var meta  = (p.session_meta||{})[d] || {};
+    var isPast = parseGardenDate(d) < now;
+    var sd = d.replace(/'/g,"\\'");
+
+    html += '<div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:6px;padding:7px 0;border-bottom:1px solid rgba(255,255,255,.05)">';
+    html += '<div>';
+    html += '<div style="font-size:.84rem;font-weight:700;color:'+(isCan?'var(--badge-red)':isPast?'var(--text-muted)':'var(--text-main)')+'">'+d+(isCan?' — <em>CANCELLED</em>':'')+'</div>';
+    html += '<div style="font-size:.73rem;color:var(--text-muted)">'+(meta.start_time||'4:30 PM')+' – '+(meta.end_time||'6:30 PM');
+    if (meta.location) html += ' · '+meta.location;
+    if (meta.theme) html += ' · <em>'+meta.theme+'</em>';
+    if (isCan && meta.cancellation_reason) html += ' · <span style="color:var(--badge-red)">'+meta.cancellation_reason+'</span>';
+    html += '</div></div>';
+    html += '<div style="display:flex;gap:6px;flex-wrap:wrap">';
+    html += '<button onclick="openGardenSessionEdit(\''+sd+'\')" class="ws-btn" style="font-size:.7rem">✏️ Edit</button>';
+    if (isCan) {
+      html += '<button onclick="resumeGardenSession(\''+sd+'\')" class="ws-btn" style="border-color:var(--ya-green);color:var(--ya-green);font-size:.7rem">↩ Resume</button>';
+    } else {
+      html += '<button onclick="cancelGardenSession(\''+sd+'\')" class="ws-btn" style="border-color:var(--badge-red);color:var(--badge-red);font-size:.7rem">✘ Cancel</button>';
+    }
+    html += '</div></div>';
+  });
+  html += '</div>';
+  el.innerHTML = html;
+}
+
+// ── Session edit modal ────────────────────────────────────────────────────────
 function openGardenSessionEdit(dateStr) {
-  var prog = PROGRAMS_DATA['garden_2026'];
-  var meta = (prog && prog.session_meta && prog.session_meta[dateStr]) || {};
+  var p    = gardenProg();
+  var meta = p && p.session_meta && p.session_meta[dateStr] ? p.session_meta[dateStr] : {};
   _gardenEditDate = dateStr;
   document.getElementById('gsm-date').value          = dateStr;
   document.getElementById('gsm-theme').value         = meta.theme        || '';
@@ -4207,324 +4623,130 @@ function openGardenSessionEdit(dateStr) {
   document.getElementById('garden-session-modal').style.display = 'flex';
 }
 
-// ── Toggle youth attendance (admin only) ──────────────────────────────────────
-async function toggleGardenYouthAttendance(dateStr, youthName, attended, btn) {
-  var prog = PROGRAMS_DATA['garden_2026'];
-  if (!prog) return;
-  prog.attendance = prog.attendance || {};
-  prog.attendance[dateStr] = prog.attendance[dateStr] || [];
+async function saveGardenSessionMeta() {
+  var btn = document.getElementById('gsm-save-btn');
+  var fb  = document.getElementById('gsm-feedback');
+  var origDate = _gardenEditDate;
+  var newDate  = (document.getElementById('gsm-date').value || '').trim();
+  fb.textContent = '';
+  if (!newDate) { fb.style.color='var(--badge-red)'; fb.textContent='⚠ Date is required.'; return; }
+  btn.textContent='Saving…'; btn.style.opacity='.6'; btn.disabled=true;
 
-  var existing = prog.attendance[dateStr].find(function(r){ return r.name === youthName; });
-  var newAttended = existing ? !existing.attended : true;
-
-  // Upsert to program_attendance
   var row = {
-    program_id:       'garden_2026',
-    program_type:     'garden',
-    session_date:     dateStr,
-    participant_name: youthName,
-    participant_type: 'youth',
-    attended:         newAttended,
-    volunteer_hours:  null  // youth attendance NEVER counts as volunteer hours
+    program_id:'garden_2026', program_type:'garden', session_date:origDate,
+    activity_theme:      document.getElementById('gsm-theme').value.trim(),
+    session_description: document.getElementById('gsm-desc').value.trim(),
+    location:            document.getElementById('gsm-location').value.trim(),
+    start_time:          document.getElementById('gsm-start').value.trim(),
+    end_time:            document.getElementById('gsm-end').value.trim(),
+    cancellation_reason: document.getElementById('gsm-cancel-reason').value.trim()
   };
-  var r = await fetch(SUPA_URL + '/rest/v1/program_attendance?on_conflict=program_id,session_date,participant_name', {
-    method: 'POST',
-    headers: {
-      'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY,
-      'Content-Type': 'application/json', 'Prefer': 'resolution=merge-duplicates,return=minimal'
-    },
-    body: JSON.stringify(row)
+
+  var r = await fetch(SUPA_URL+'/rest/v1/program_session_meta?on_conflict=program_id,session_date', {
+    method:'POST', headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates,return=minimal'},
+    body:JSON.stringify(row)
   });
   if (!r.ok) {
-    var err = await r.text();
-    console.error('[toggleGardenYouthAttendance] HTTP', r.status, err);
-    if (btn) { btn.textContent = '⚠ Error'; btn.style.color = 'var(--badge-red)'; }
-    return;
+    var err=await r.text();
+    fb.style.color='var(--badge-red)'; fb.textContent='⚠ Save failed: '+(JSON.parse(err||'{}').message||r.status);
+    btn.textContent='💾 Save'; btn.style.opacity=''; btn.disabled=false; return;
   }
 
-  // Update in-memory
-  if (existing) { existing.attended = newAttended; }
-  else { prog.attendance[dateStr].push({name:youthName,type:'youth',attended:newAttended,hours:null}); }
-
-  // Re-render just this session row
-  renderGardenSessionRow(dateStr);
-}
-
-// ── Toggle adult volunteer attendance ─────────────────────────────────────────
-// Uses the existing program_volunteers table + saveProgramVolunteer for compatibility.
-// Also writes to program_attendance for unified reporting.
-async function toggleGardenAdultAttendance(dateStr, adultName, btn) {
-  var prog = PROGRAMS_DATA['garden_2026'];
-  if (!prog) return;
-
-  // Determine current state
-  var vols = (prog.adult_volunteers || {})[dateStr] || [];
-  var isVol = vols.indexOf(adultName) >= 0;
-
-  if (!isVol) {
-    // Add volunteer
-    prog.adult_volunteers = prog.adult_volunteers || {};
-    prog.adult_volunteers[dateStr] = prog.adult_volunteers[dateStr] || [];
-    prog.adult_volunteers[dateStr].push(adultName);
-    saveProgramVolunteer('garden_2026', dateStr, adultName);
-
-    // Also write to program_attendance for unified Impact reporting
-    var meta = (prog.session_meta && prog.session_meta[dateStr]) || {};
-    var hrs = parseSessionHours(meta.start_time || '4:30 PM', meta.end_time || '6:30 PM');
-    var row = {
-      program_id: 'garden_2026', program_type: 'garden',
-      session_date: dateStr, participant_name: adultName,
-      participant_type: 'adult', attended: true, volunteer_hours: hrs
-    };
-    fetch(SUPA_URL + '/rest/v1/program_attendance?on_conflict=program_id,session_date,participant_name', {
-      method: 'POST',
-      headers: {'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates,return=minimal'},
-      body: JSON.stringify(row)
-    });
-    // Update in-memory attendance
-    prog.attendance = prog.attendance || {};
-    prog.attendance[dateStr] = prog.attendance[dateStr] || [];
-    var existing = prog.attendance[dateStr].find(function(r){ return r.name===adultName; });
-    if (existing) { existing.attended=true; existing.hours=hrs; }
-    else { prog.attendance[dateStr].push({name:adultName,type:'adult',attended:true,hours:hrs}); }
-  } else {
-    // Remove volunteer
-    prog.adult_volunteers[dateStr] = prog.adult_volunteers[dateStr].filter(function(n){ return n!==adultName; });
-    dbDel('program_volunteers',
-      'program_id=eq.garden_2026&session_date=eq.'+encodeURIComponent(dateStr)+'&adult_name=eq.'+encodeURIComponent(adultName));
-    dbDel('program_attendance',
-      'program_id=eq.garden_2026&session_date=eq.'+encodeURIComponent(dateStr)+'&participant_name=eq.'+encodeURIComponent(adultName));
-    prog.attendance = prog.attendance || {};
-    if (prog.attendance[dateStr]) {
-      prog.attendance[dateStr] = prog.attendance[dateStr].filter(function(r){ return r.name!==adultName; });
+  var p = gardenProg();
+  if (p) {
+    if (newDate !== origDate) {
+      var idx = p.dates.indexOf(origDate); if (idx>=0) p.dates[idx]=newDate;
+      if (p.session_meta[origDate]) { p.session_meta[newDate]=p.session_meta[origDate]; delete p.session_meta[origDate]; }
+      if (p.attendance[origDate])   { p.attendance[newDate]=p.attendance[origDate];     delete p.attendance[origDate]; }
+      var ci=p.cancellations.indexOf(origDate); if(ci>=0) p.cancellations[ci]=newDate;
     }
+    p.session_meta[newDate] = { theme:row.activity_theme, description:row.session_description, location:row.location, start_time:row.start_time, end_time:row.end_time, cancellation_reason:row.cancellation_reason };
+    if (row.cancellation_reason) { if (p.cancellations.indexOf(newDate)<0) p.cancellations.push(newDate); }
+    else { p.cancellations = p.cancellations.filter(function(d){ return d!==newDate; }); }
   }
 
-  renderGardenSessionRow(dateStr);
+  fb.style.color='var(--ya-teal)'; fb.textContent='✔ Saved';
+  btn.textContent='💾 Save'; btn.style.opacity=''; btn.disabled=false;
+  setTimeout(function(){ document.getElementById('garden-session-modal').style.display='none'; renderGardenAdmin(); renderScheduleTab(); }, 600);
 }
 
-// ── Parse session duration in hours from start/end time strings ───────────────
-function parseSessionHours(startStr, endStr) {
-  function toMins(s) {
-    var m = s.match(/(\d+):(\d+)\s*(AM|PM)/i);
-    if (!m) return null;
-    var h = parseInt(m[1]), min = parseInt(m[2]), pm = m[3].toUpperCase()==='PM';
-    if (pm && h !== 12) h += 12;
-    if (!pm && h === 12) h = 0;
-    return h * 60 + min;
-  }
-  var s = toMins(startStr), e = toMins(endStr);
-  if (s === null || e === null) return 2; // default 2 hrs
-  return Math.round((e - s) / 60 * 10) / 10;
-}
-
-// ── Cancel / resume a Garden session ─────────────────────────────────────────
 function cancelGardenSession(dateStr) {
   var reason = prompt('Cancellation reason (optional):') || '';
-  var prog = PROGRAMS_DATA['garden_2026'];
-  if (!prog) return;
-  if (prog.cancellations.indexOf(dateStr) < 0) prog.cancellations.push(dateStr);
-  // Save metadata with reason
-  var existing = (prog.session_meta && prog.session_meta[dateStr]) || {};
-  existing.cancellation_reason = reason;
-  prog.session_meta = prog.session_meta || {};
-  prog.session_meta[dateStr] = existing;
-  var row = {
-    program_id:'garden_2026', program_type:'garden', session_date:dateStr,
-    activity_theme: existing.theme||'', session_description: existing.description||'',
-    location: existing.location||'', start_time: existing.start_time||'',
-    end_time: existing.end_time||'', cancellation_reason: reason
-  };
-  fetch(SUPA_URL + '/rest/v1/program_session_meta?on_conflict=program_id,session_date', {
-    method: 'POST',
-    headers: {'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates,return=minimal'},
-    body: JSON.stringify(row)
+  var p = gardenProg(); if (!p) return;
+  if (p.cancellations.indexOf(dateStr)<0) p.cancellations.push(dateStr);
+  p.session_meta = p.session_meta || {};
+  p.session_meta[dateStr] = p.session_meta[dateStr] || {};
+  p.session_meta[dateStr].cancellation_reason = reason;
+  var meta = p.session_meta[dateStr];
+  fetch(SUPA_URL+'/rest/v1/program_session_meta?on_conflict=program_id,session_date',{
+    method:'POST',headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates,return=minimal'},
+    body:JSON.stringify({program_id:'garden_2026',program_type:'garden',session_date:dateStr,
+      activity_theme:meta.theme||'',session_description:meta.description||'',location:meta.location||'',
+      start_time:meta.start_time||'',end_time:meta.end_time||'',cancellation_reason:reason})
   });
   saveProgramCancellation('garden_2026', dateStr, reason);
   renderGardenAdmin();
 }
 
 function resumeGardenSession(dateStr) {
-  var prog = PROGRAMS_DATA['garden_2026'];
-  if (!prog) return;
-  prog.cancellations = prog.cancellations.filter(function(d){ return d !== dateStr; });
-  if (prog.session_meta && prog.session_meta[dateStr]) {
-    prog.session_meta[dateStr].cancellation_reason = '';
-    dbPatch('program_session_meta', {cancellation_reason: ''},
-      'program_id=eq.garden_2026&session_date=eq.'+encodeURIComponent(dateStr));
-  }
-  dbDel('program_cancellations',
-    'program_id=eq.garden_2026&session_date=eq.'+encodeURIComponent(dateStr));
+  var p = gardenProg(); if (!p) return;
+  p.cancellations = p.cancellations.filter(function(d){ return d!==dateStr; });
+  if (p.session_meta && p.session_meta[dateStr]) p.session_meta[dateStr].cancellation_reason='';
+  dbPatch('program_session_meta',{cancellation_reason:''},'program_id=eq.garden_2026&session_date=eq.'+encodeURIComponent(dateStr));
+  dbDel('program_cancellations','program_id=eq.garden_2026&session_date=eq.'+encodeURIComponent(dateStr));
   renderGardenAdmin();
 }
 
-// ── Render a single session row (used for fast in-place refresh) ──────────────
-function renderGardenSessionRow(dateStr) {
-  var el = document.getElementById('garden-session-row-' + dateStr.replace(/[\s,]/g,'_'));
-  if (!el) { renderGardenAdmin(); return; }
-  var prog = PROGRAMS_DATA['garden_2026'];
-  el.innerHTML = buildGardenSessionRowHTML(prog, dateStr);
-}
-
-// ── Build HTML for one session row ───────────────────────────────────────────
-function buildGardenSessionRowHTML(prog, dateStr) {
-  var isAdmin = adultState && adultState.isAdmin;
-  var isCancelled = (prog.cancellations || []).indexOf(dateStr) >= 0;
-  var meta = (prog.session_meta && prog.session_meta[dateStr]) || {};
-  var vols = (prog.adult_volunteers || {})[dateStr] || [];
-  var att  = (prog.attendance || {})[dateStr] || [];
-  var youthAtt = att.filter(function(r){ return r.type==='youth' && r.attended; });
-  var now = new Date(); now.setHours(0,0,0,0);
-  var months={Jan:0,Feb:1,Mar:2,Apr:3,May:4,Jun:5,Jul:6,Aug:7,Sep:8,Oct:9,Nov:10,Dec:11};
-  function pd(s){ var p=s.replace(',','').split(' '); return new Date(parseInt(p[2]),months[p[0]]||0,parseInt(p[1])); }
-  var sessionDate = pd(dateStr);
-  var isPast = sessionDate < now;
-  var hrs = parseSessionHours(meta.start_time||'4:30 PM', meta.end_time||'6:30 PM');
-
-  // Enrolled youth (those with garden_2026 in their PROGRAMS_DATA enrollment)
-  var enrolledYouth = Object.keys(PROGRAMS_DATA['garden_2026'].youth_participants || {});
-
-  var h = '<div style="padding:10px 0;border-bottom:1px solid rgba(255,255,255,.05)">';
-
-  // Header row
-  h += '<div style="display:flex;align-items:flex-start;flex-wrap:wrap;gap:8px;justify-content:space-between">';
-  h += '<div>';
-  h += '<div style="font-size:.88rem;font-weight:700;color:'+(isCancelled?'var(--badge-red)':'var(--text-main)')+'">'+dateStr+(isCancelled?' — CANCELLED':'')+'</div>';
-  h += '<div style="font-size:.74rem;color:var(--text-muted);margin-top:2px">';
-  h += (meta.start_time||'4:30 PM')+' – '+(meta.end_time||'6:30 PM');
-  if (meta.location) h += ' · ' + meta.location;
-  if (meta.theme) h += ' · <em>'+meta.theme+'</em>';
-  if (isCancelled && meta.cancellation_reason) h += ' · Reason: '+meta.cancellation_reason;
-  h += '</div></div>';
-
-  // Action buttons
-  h += '<div style="display:flex;gap:6px;flex-wrap:wrap">';
-  if (isAdmin) {
-    h += '<button onclick="openGardenSessionEdit(\''+dateStr+'\')" class="ws-btn" style="font-size:.72rem">✏️ Edit</button>';
-    if (isCancelled) {
-      h += '<button onclick="resumeGardenSession(\''+dateStr+'\')" class="ws-btn" style="border-color:var(--ya-green);color:var(--ya-green);font-size:.72rem">↩ Resume</button>';
-    } else {
-      h += '<button onclick="cancelGardenSession(\''+dateStr+'\')" class="ws-btn" style="border-color:var(--badge-red);color:var(--badge-red);font-size:.72rem">✘ Cancel</button>';
-    }
-  }
-  h += '</div></div>';
-
-  if (!isCancelled) {
-    // Youth attendance (admin-only marking)
-    if (isAdmin && enrolledYouth.length > 0) {
-      h += '<div style="margin-top:10px">';
-      h += '<div style="font-size:.7rem;font-weight:700;color:var(--ya-green);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">🌱 Youth Attendance (participation only — not volunteer hours)</div>';
-      h += '<div style="display:flex;flex-wrap:wrap;gap:6px">';
-      enrolledYouth.forEach(function(name) {
-        var rec = att.find(function(r){ return r.name===name && r.type==='youth'; });
-        var wasHere = rec && rec.attended;
-        var safeDate = dateStr.replace(/'/g,"\\'");
-        var safeName = name.replace(/'/g,"\\'");
-        h += '<button onclick="toggleGardenYouthAttendance(\''+safeDate+'\',\''+safeName+'\','+wasHere+',this)" '+
-          'style="padding:4px 10px;border-radius:20px;font-size:.72rem;font-weight:700;cursor:pointer;font-family:DM Sans,sans-serif;'+
-          'border:1px solid '+(wasHere?'var(--ya-green)':'rgba(255,255,255,.2)')+';'+
-          'background:'+(wasHere?'rgba(0,181,160,.15)':'transparent')+';'+
-          'color:'+(wasHere?'var(--ya-green)':'var(--text-muted)')+'">'+
-          (wasHere?'✔ ':'')+name+'</button>';
-      });
-      h += '</div>';
-      if (youthAtt.length > 0) h += '<div style="font-size:.7rem;color:var(--text-muted);margin-top:5px">'+youthAtt.length+' attended</div>';
-      h += '</div>';
-    } else if (isAdmin && enrolledYouth.length === 0) {
-      h += '<div style="font-size:.74rem;color:var(--text-muted);margin-top:8px;font-style:italic">No youth enrolled in Garden yet. Enroll youth in the Users tab.</div>';
-    }
-
-    // Adult volunteers
-    h += '<div style="margin-top:10px">';
-    h += '<div style="font-size:.7rem;font-weight:700;color:var(--ya-blue);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">🙌 Adult Volunteers ('+hrs+' hrs each)</div>';
-    h += '<div style="display:flex;flex-wrap:wrap;gap:6px">';
-    // Show all adults who can volunteer
-    var adultNames = Object.keys(FAC_PROFILES).map(function(k){ return FAC_PROFILES[k].name; }).sort();
-    adultNames.forEach(function(name) {
-      var isVol = vols.indexOf(name) >= 0;
-      var safeDate = dateStr.replace(/'/g,"\\'");
-      var safeName = name.replace(/'/g,"\\'");
-      h += '<button onclick="toggleGardenAdultAttendance(\''+safeDate+'\',\''+safeName+'\',this)" '+
-        'style="padding:4px 10px;border-radius:20px;font-size:.72rem;font-weight:700;cursor:pointer;font-family:DM Sans,sans-serif;'+
-        'border:1px solid '+(isVol?'var(--ya-blue)':'rgba(255,255,255,.2)')+';'+
-        'background:'+(isVol?'rgba(29,127,212,.15)':'transparent')+';'+
-        'color:'+(isVol?'var(--ya-blue)':'var(--text-muted)')+'">'+
-        (isVol?'✔ ':'')+name+'</button>';
-    });
-    h += '</div>';
-    if (vols.length > 0) h += '<div style="font-size:.7rem;color:var(--text-muted);margin-top:5px">'+vols.length+' volunteer'+(vols.length>1?'s':'')+' · '+(vols.length*hrs)+' total hrs</div>';
-    h += '</div>';
-  }
-
-  h += '</div>';
-  return h;
-}
-
-// ── Main Garden admin render function ─────────────────────────────────────────
+// ── Main Garden admin render ──────────────────────────────────────────────────
 function renderGardenAdmin() {
-  var statsEl = document.getElementById('garden-admin-stat-cards');
-  var sessEl  = document.getElementById('garden-admin-sessions');
-  if (!statsEl || !sessEl) return;
+  var statsEl = document.getElementById('garden-stat-cards'); if (!statsEl) return;
+  var p = gardenProg();
+  if (!p) { statsEl.innerHTML='<div style="color:var(--text-muted)">Garden data not loaded.</div>'; return; }
 
-  var prog = PROGRAMS_DATA['garden_2026'];
-  if (!prog) {
-    sessEl.innerHTML = '<div style="color:var(--text-muted)">No Garden 2026 data found.</div>';
-    return;
-  }
+  var cert       = gardenCert();
+  var pastDates  = gardenPastDates();
+  var enrolled   = Object.keys(p.youth_participants || {});
+  var cancelled  = p.cancellations || [];
+  var heldDates  = pastDates.filter(function(d){ return cancelled.indexOf(d)<0; });
 
-  var now = new Date(); now.setHours(0,0,0,0);
-  var months={Jan:0,Feb:1,Mar:2,Apr:3,May:4,Jun:5,Jun:5,Jul:6,Aug:7,Sep:8,Oct:9,Nov:10,Dec:11};
-  function pd(s){ var p=s.replace(',','').split(' '); return new Date(parseInt(p[2]),months[p[0]]||0,parseInt(p[1])); }
-
-  var cancelled = prog.cancellations || [];
-  var past     = prog.dates.filter(function(d){ return pd(d) < now; });
-  var upcoming = prog.dates.filter(function(d){ return pd(d) >= now; });
-  var held     = past.filter(function(d){ return cancelled.indexOf(d) < 0; });
-  var enrolledYouth = Object.keys(prog.youth_participants || {});
-
-  // Count total youth attendances across all sessions
+  // Youth attendance totals
   var totalYouthAtt = 0;
-  var allAttendance = prog.attendance || {};
-  Object.values(allAttendance).forEach(function(recs) {
-    recs.forEach(function(r){ if(r.type==='youth'&&r.attended) totalYouthAtt++; });
+  enrolled.forEach(function(name) {
+    heldDates.forEach(function(d){ var r=gardenAttRow(p,d,name); if(r&&r.attended) totalYouthAtt++; });
   });
+  var certEligible = enrolled.filter(function(name){
+    var cnt=heldDates.filter(function(d){ var r=gardenAttRow(p,d,name); return r&&r.attended; }).length;
+    return cnt >= cert.cert_min_sessions;
+  }).length;
 
-  // Count adult garden hours
-  var totalAdultHrs = 0;
-  var adultVolSet = new Set();
-  Object.keys(prog.adult_volunteers || {}).forEach(function(dateStr) {
-    var vols = prog.adult_volunteers[dateStr] || [];
-    var meta = (prog.session_meta && prog.session_meta[dateStr]) || {};
-    var hrs = parseSessionHours(meta.start_time||'4:30 PM', meta.end_time||'6:30 PM');
-    vols.forEach(function(n){ totalAdultHrs += hrs; adultVolSet.add(n); });
+  // Adult hours totals
+  var totalAdultHrs = 0; var adultSet = new Set();
+  Object.values(p.attendance || {}).forEach(function(recs){
+    (recs||[]).forEach(function(r){ if(r.type==='adult'&&r.attended&&r.hours){ totalAdultHrs+=r.hours; adultSet.add(r.name); } });
+  });
+  // Also count from adult_volunteers for sessions not yet in program_attendance
+  Object.keys(p.adult_volunteers||{}).forEach(function(d){
+    var meta=(p.session_meta||{})[d]||{};
+    var hrs=parseSessionHours(meta.start_time||'4:30 PM',meta.end_time||'6:30 PM');
+    (p.adult_volunteers[d]||[]).forEach(function(n){ if(!adultSet.has(n)){ totalAdultHrs+=hrs; adultSet.add(n); } });
   });
 
   statsEl.innerHTML =
-    '<div class="stat-card" style="--accent-color:var(--ya-green)"><div class="stat-label">Sessions Held</div><div class="stat-value">'+held.length+'</div><div class="stat-meta">of '+prog.dates.length+' scheduled</div><div class="stat-icon">✅</div></div>'+
-    '<div class="stat-card" style="--accent-color:var(--ya-teal)"><div class="stat-label">Enrolled Youth</div><div class="stat-value">'+enrolledYouth.length+'</div><div class="stat-meta">in Garden 2026</div><div class="stat-icon">🌱</div></div>'+
-    '<div class="stat-card" style="--accent-color:var(--ya-blue)"><div class="stat-label">Youth Attendances</div><div class="stat-value">'+totalYouthAtt+'</div><div class="stat-meta">participation (not hours)</div><div class="stat-icon">👥</div></div>'+
-    '<div class="stat-card" style="--accent-color:var(--ya-orange)"><div class="stat-label">Adult Garden Hours</div><div class="stat-value">'+Math.round(totalAdultHrs)+'</div><div class="stat-meta">'+adultVolSet.size+' adult volunteers</div><div class="stat-icon">⏱</div></div>';
+    '<div class="stat-card" style="--accent-color:var(--ya-green)"><div class="stat-label">Sessions Held</div><div class="stat-value">'+heldDates.length+'</div><div class="stat-meta">of '+p.dates.length+' scheduled</div><div class="stat-icon">✅</div></div>'+
+    '<div class="stat-card" style="--accent-color:var(--ya-teal)"><div class="stat-label">Enrolled Youth</div><div class="stat-value">'+enrolled.length+'</div><div class="stat-meta">in Garden 2026</div><div class="stat-icon">🌱</div></div>'+
+    '<div class="stat-card" style="--accent-color:var(--ya-blue)"><div class="stat-label">Youth Attendances</div><div class="stat-value">'+totalYouthAtt+'</div><div class="stat-meta">participation only</div><div class="stat-icon">👥</div></div>'+
+    '<div class="stat-card" style="--accent-color:var(--ya-gold)"><div class="stat-label">Cert Eligible</div><div class="stat-value">'+certEligible+'</div><div class="stat-meta">'+cert.cert_min_sessions+'+ sessions</div><div class="stat-icon">🎓</div></div>'+
+    '<div class="stat-card" style="--accent-color:var(--ya-orange)"><div class="stat-label">Adult Garden Hrs</div><div class="stat-value">'+Math.round(totalAdultHrs)+'</div><div class="stat-meta">'+adultSet.size+' adult volunteers</div><div class="stat-icon">⏱</div></div>';
 
-  // Build session list: upcoming first, then past collapsed
-  var html = '';
+  // Update cert display labels
+  var nameDisplay = document.getElementById('garden-cert-name-display');
+  var threshDisplay = document.getElementById('garden-cert-threshold-display');
+  if (nameDisplay) nameDisplay.textContent = cert.cert_name;
+  if (threshDisplay) threshDisplay.textContent = cert.cert_min_sessions;
 
-  if (upcoming.length > 0) {
-    html += '<div class="section-box" style="margin-bottom:14px"><div class="section-title" style="margin-bottom:12px">📅 Upcoming Garden Sessions</div>';
-    upcoming.forEach(function(d) {
-      html += '<div id="garden-session-row-'+d.replace(/[\s,]/g,'_')+'">'+buildGardenSessionRowHTML(prog, d)+'</div>';
-    });
-    html += '</div>';
-  }
-  if (past.length > 0) {
-    html += '<details style="margin-bottom:14px"><summary style="font-family:Nunito,sans-serif;font-weight:700;font-size:.85rem;color:var(--text-muted);cursor:pointer;padding:8px 0;list-style:none">📁 Past Sessions ('+past.length+')</summary>';
-    html += '<div class="section-box" style="margin-top:8px"><div class="section-title" style="margin-bottom:12px">Past Garden Sessions</div>';
-    past.slice().reverse().forEach(function(d) {
-      html += '<div id="garden-session-row-'+d.replace(/[\s,]/g,'_')+'">'+buildGardenSessionRowHTML(prog, d)+'</div>';
-    });
-    html += '</div></details>';
-  }
-
-  sessEl.innerHTML = html;
+  renderGardenYouthGrid();
+  renderGardenAdultHrsGrid();
+  renderGardenSessionsList();
 }
 
 function getCurrentRecurring(){
@@ -6682,6 +6904,8 @@ async function initDB() {
       created_at timestamptz default now()
     );
     alter table profiles disable row level security;
+    -- Generic program session metadata (theme, location, cancellation reason, etc.)
+    -- Reusable for Garden, JYSEP, and any future programs.
     create table if not exists program_session_meta (
       id                  bigserial primary key,
       program_id          text not null,
@@ -6697,6 +6921,10 @@ async function initDB() {
       unique(program_id, session_date)
     );
     alter table program_session_meta disable row level security;
+    -- Generic program attendance: youth participation + adult volunteer hours.
+    -- participant_type: 'youth' | 'adult'
+    -- volunteer_hours is NULL for youth (attendance = participation only).
+    -- volunteer_hours is set for adults (attendance = volunteer hours).
     create table if not exists program_attendance (
       id               bigserial primary key,
       program_id       text not null,
@@ -6710,6 +6938,16 @@ async function initDB() {
       unique(program_id, session_date, participant_name)
     );
     alter table program_attendance disable row level security;
+    -- Program-level settings: certification rules, config. session_date='_config' for program-level rows.
+    create table if not exists program_settings (
+      id          bigserial primary key,
+      program_id  text not null unique,
+      cert_name   text not null default 'Certificate of Participation',
+      cert_min_sessions integer not null default 6,
+      cert_notes  text,
+      updated_at  timestamptz default now()
+    );
+    alter table program_settings disable row level security;
     alter table program_volunteers add column if not exists hours numeric default 2;
   `;
   const r = await fetch(SUPA_URL + '/rest/v1/rpc/exec_sql', {
@@ -7489,59 +7727,71 @@ async function loadProgramData() {
   console.log('Program data loaded');
 }
 
-// ── Garden-specific data: session metadata + attendance ───────────────────────
-// Stored in PROGRAMS_DATA['garden_2026'].session_meta  = { dateStr: {theme,desc,location,...} }
-//           PROGRAMS_DATA['garden_2026'].attendance    = { dateStr: [{name,type,attended,hours},...] }
-// Designed to be reusable for any future program (JYSEP etc.) by changing program_id.
+// ── Garden / generic program data loader ─────────────────────────────────────
+// Loads session_meta, attendance, and cert settings for garden_2026.
+// Reusable: call with any programId that has rows in these tables.
 async function loadGardenData() {
   var prog = PROGRAMS_DATA['garden_2026'];
   if (!prog) return;
   prog.session_meta = prog.session_meta || {};
   prog.attendance   = prog.attendance   || {};
 
-  // Session metadata (theme, location, times, cancellation reason)
+  // Certification config (stored in program_settings)
+  prog.cert_rules = prog.cert_rules || {
+    cert_name:         'Summer Garden Participant',
+    cert_min_sessions: 6,
+    cert_notes:        ''
+  };
+  var settings = await dbGet('program_settings', 'select=*&program_id=eq.garden_2026&limit=1');
+  if (settings && settings.length > 0) {
+    var s = settings[0];
+    prog.cert_rules = {
+      cert_name:         s.cert_name         || 'Summer Garden Participant',
+      cert_min_sessions: s.cert_min_sessions || 6,
+      cert_notes:        s.cert_notes        || ''
+    };
+  }
+
+  // Session metadata
   var metaRows = await dbGet('program_session_meta',
     'select=session_date,activity_theme,session_description,location,start_time,end_time,cancellation_reason,notes&program_id=eq.garden_2026');
   if (metaRows) {
     metaRows.forEach(function(row) {
       prog.session_meta[row.session_date] = {
-        theme:              row.activity_theme      || '',
-        description:        row.session_description || '',
-        location:           row.location            || '',
-        start_time:         row.start_time          || '',
-        end_time:           row.end_time            || '',
-        cancellation_reason:row.cancellation_reason || '',
-        notes:              row.notes               || ''
+        theme:               row.activity_theme      || '',
+        description:         row.session_description || '',
+        location:            row.location            || '',
+        start_time:          row.start_time          || '',
+        end_time:            row.end_time            || '',
+        cancellation_reason: row.cancellation_reason || '',
+        notes:               row.notes               || ''
       };
-      // If there's a cancellation reason saved and not already in cancellations array, add it
       if (row.cancellation_reason && prog.cancellations.indexOf(row.session_date) < 0) {
         prog.cancellations.push(row.session_date);
       }
     });
   }
 
-  // Attendance records (youth participation + adult volunteering)
+  // Attendance (youth + adult)
   var attRows = await dbGet('program_attendance',
-    'select=session_date,participant_name,participant_type,attended,volunteer_hours&program_id=eq.garden_2026');
+    'select=session_date,participant_name,participant_type,attended,volunteer_hours&program_id=eq.garden_2026&order=session_date.asc');
   if (attRows) {
     attRows.forEach(function(row) {
       prog.attendance[row.session_date] = prog.attendance[row.session_date] || [];
-      // Avoid duplicates on re-load
-      var exists = prog.attendance[row.session_date].find(function(r) {
-        return r.name === row.participant_name;
-      });
+      var exists = prog.attendance[row.session_date].find(function(r){ return r.name === row.participant_name; });
       if (!exists) {
         prog.attendance[row.session_date].push({
           name:    row.participant_name,
           type:    row.participant_type,
           attended:row.attended,
-          hours:   row.volunteer_hours || null
+          hours:   row.volunteer_hours != null ? parseFloat(row.volunteer_hours) : null
         });
       }
     });
   }
-  console.log('Garden data loaded — sessions with meta:', Object.keys(prog.session_meta).length,
-    '| attendance records:', attRows ? attRows.length : 0);
+  console.log('[loadGardenData] meta:', Object.keys(prog.session_meta).length,
+    'attendance rows:', attRows ? attRows.length : 0,
+    'cert_min:', prog.cert_rules.cert_min_sessions);
 }
 
 async function loadComplianceData() {

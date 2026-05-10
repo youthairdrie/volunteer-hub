@@ -232,6 +232,27 @@ select option[value=""]{
   width:8px; background:linear-gradient(to right,rgba(0,0,0,.18),transparent); pointer-events:none;
 }
 #garden-youth-att-table tr:hover td.grd-sticky{ background:#1a2d47; }
+
+/* ── Sticky Date column — program adult volunteer hours tables ────────────────
+   Reusable: apply class grd-date-sticky to any program's date th/td.
+   The date column freezes on the left while adult name columns scroll right.  */
+.grd-date-sticky {
+  position: sticky;
+  left: 0;
+  background: #131f30;
+  z-index: 2;
+  min-width: 100px;
+}
+thead .grd-date-sticky { z-index: 3; }
+tr:hover .grd-date-sticky { background: #1a2d47; }
+.grd-date-sticky::after {
+  content: '';
+  position: absolute;
+  top: 0; right: -8px; bottom: 0;
+  width: 8px;
+  background: linear-gradient(to right, rgba(0,0,0,.18), transparent);
+  pointer-events: none;
+}
 .tab-bar{display:flex;gap:4px;margin-bottom:18px;background:rgba(255,255,255,.04);padding:4px;border-radius:12px;width:fit-content;flex-wrap:wrap}
 .tab-btn{padding:6px 14px;border-radius:9px;border:none;background:transparent;color:var(--text-muted);font-size:.79rem;cursor:pointer;transition:all .2s;font-family:"DM Sans",sans-serif;font-weight:600}
 .tab-btn.active{background:var(--card-bg);color:var(--text-main);box-shadow:0 2px 8px rgba(0,0,0,.25)}
@@ -3852,7 +3873,7 @@ function renderImpactTab(){
     var now3=new Date();now3.setHours(0,0,0,0);
     var mo3={Jan:0,Feb:1,Mar:2,Apr:3,May:4,Jun:5,Jul:6,Aug:7,Sep:8,Oct:9,Nov:10,Dec:11};
     function pd3(s){var p=s.replace(',','').split(' ');return new Date(parseInt(p[2]),mo3[p[0]]||0,parseInt(p[1]));}
-    var pastHeld=(gardenP.dates||[]).filter(function(d){return pd3(d)<=now3&&(gardenP.cancellations||[]).indexOf(d)<0;});
+    var pastHeld = getActiveProgramSessions('garden_2026'); // excludes cancelled
     gardenSessionsHeld=pastHeld.length;
     gardenEnrolled=Object.keys(gardenP.youth_participants||{});
     var certMin=(gardenP.cert_rules||{}).cert_min_sessions||6;
@@ -4257,10 +4278,23 @@ function gardenCert() {
   return (p && p.cert_rules) || { cert_name:'Summer Garden Participant', cert_min_sessions:6, cert_notes:'' };
 }
 
-function gardenPastDates() {
-  var p = gardenProg(); if(!p) return [];
+// ── Reusable: active (non-cancelled) past sessions for any program ────────────
+// Used by all attendance grids, adult hour grids, certification calculations,
+// and impact metrics. Cancelled sessions are excluded from counts/grids but
+// remain visible in the Sessions & Cancellations management list.
+// Returns dates in chronological order.
+function getActiveProgramSessions(programId) {
+  var p = PROGRAMS_DATA[programId]; if (!p) return [];
   var now = new Date(); now.setHours(0,0,0,0);
-  return p.dates.filter(function(d){ return parseGardenDate(d) <= now; });
+  var cancelled = p.cancellations || [];
+  return (p.dates || []).filter(function(d) {
+    return parseGardenDate(d) <= now && cancelled.indexOf(d) < 0;
+  });
+}
+
+// Convenience wrapper for Garden 2026 — keeps call sites concise
+function gardenPastDates() {
+  return getActiveProgramSessions('garden_2026');
 }
 
 function parseGardenDate(str) {
@@ -4397,30 +4431,35 @@ async function saveProgramYouthEnrollment() {
   // Persist to Supabase — write a placeholder attendance row so the enrollment
   // survives a page refresh. We use program_attendance with attended=false
   // as the enrollment record; actual attendance is toggled separately.
-  // This uses the existing upsertProgramAttendance helper.
+  // Persist to Supabase. Any failure is surfaced visibly — never silent.
   if (newlyEnrolled.length > 0) {
-    var promises = newlyEnrolled.map(function(name) {
+    var results = await Promise.all(newlyEnrolled.map(function(name) {
       return upsertProgramAttendance({
         program_id:       _pemProgramId,
-        program_type:     (prog.type || 'garden'),
-        session_date:     '_enrolled',      // sentinel date — not a real session
+        program_type:     'garden',
+        session_date:     '_enrolled',
         participant_name: name,
         participant_type: 'youth',
         attended:         false,
         volunteer_hours:  null
       });
-    });
-    await Promise.all(promises);
+    }));
+    var failed = results.filter(function(ok){ return !ok; }).length;
+    btn.textContent = 'Enroll Selected →'; btn.style.opacity = ''; btn.disabled = false;
+    if (failed > 0) {
+      fb.style.color = 'var(--badge-red)';
+      fb.textContent = '⚠ '+failed+' enrolment(s) saved in memory but failed in Supabase. Check console. RLS may be blocking writes — run: ALTER TABLE public.program_attendance DISABLE ROW LEVEL SECURITY;';
+      return;
+    }
+  } else {
+    btn.textContent = 'Enroll Selected →'; btn.style.opacity = ''; btn.disabled = false;
   }
-
-  btn.textContent = 'Enroll Selected →'; btn.style.opacity = ''; btn.disabled = false;
 
   if (newlyEnrolled.length > 0) {
     fb.style.color = 'var(--ya-teal)';
     fb.textContent = '✔ Enrolled ' + newlyEnrolled.length + ' youth: ' + newlyEnrolled.join(', ');
     setTimeout(function() {
       document.getElementById('program-enroll-modal').style.display = 'none';
-      // Re-render the Garden admin (or whichever program is active)
       if (_pemProgramId === 'garden_2026') renderGardenAdmin();
     }, 1200);
   } else {
@@ -4499,15 +4538,13 @@ function renderGardenYouthGrid() {
     '<th class="grd-sticky grd-sticky-3">Status</th>'+
     pastDates.map(function(d){
       var short = d.replace(', 2026','').replace(', 2027','');
-      var isCan = (p.cancellations||[]).indexOf(d) >= 0;
       var meta  = (p.session_meta||{})[d] || {};
-      return '<th style="text-align:center;font-size:.6rem;min-width:42px;padding:5px 3px;'+(isCan?'opacity:.4':'')+'" title="'+(meta.theme||d)+'">'+short+'</th>';
+      return '<th style="text-align:center;font-size:.6rem;min-width:42px;padding:5px 3px" title="'+(meta.theme||d)+'">'+short+'</th>';
     }).join('')+
     '<th style="text-align:center;min-width:60px">Attended</th>';
 
-  // Body rows
+  // Body rows — pastDates already excludes cancelled sessions (via getActiveProgramSessions)
   tbody.innerHTML = enrolled.map(function(name) {
-    // Count attended sessions from attendance records
     var attCount = pastDates.filter(function(d){
       var rec = gardenAttRow(p, d, name);
       return rec && rec.attended;
@@ -4530,10 +4567,8 @@ function renderGardenYouthGrid() {
       }
     }
 
-    // Cells per session
+    // Cells per session — cancelled sessions excluded by gardenPastDates()
     var cells = pastDates.map(function(d) {
-      var isCan = (p.cancellations||[]).indexOf(d) >= 0;
-      if (isCan) return '<td class="ws-att-cell absent" style="opacity:.35">✕</td>';
       var rec = gardenAttRow(p, d, name);
       var isAtt = rec && rec.attended;
       var safeDate = d.replace(/'/g,"\\'"); var safeName = name.replace(/'/g,"\\'");
@@ -4556,6 +4591,7 @@ function renderGardenYouthGrid() {
   }).join('');
 }
 
+// toggleGardenYouthCell — cancelled sessions never reach here since gardenPastDates() excludes them
 async function toggleGardenYouthCell(dateStr, name, cell) {
   var p = gardenProg(); if (!p) return;
   p.attendance = p.attendance || {};
@@ -4575,12 +4611,12 @@ async function toggleGardenYouthCell(dateStr, name, cell) {
   var row = cell.parentNode;
   var tds = row.querySelectorAll('td');
   var p2 = gardenProg();
-  var pastDates = gardenPastDates();
-  var newCount = pastDates.filter(function(d){ var r2=gardenAttRow(p2,d,name); return r2&&r2.attended; }).length;
+  var activeDates = gardenPastDates(); // excludes cancelled sessions
+  var newCount = activeDates.filter(function(d){ var r2=gardenAttRow(p2,d,name); return r2&&r2.attended; }).length;
   var minS = gardenCert().cert_min_sessions;
   var prog = Math.min(100, Math.round(newCount/minS*100));
   tds[1].innerHTML = '<strong>'+newCount+'</strong><br><div class="prog-track" style="width:80px;margin-top:3px"><div class="prog-fill" style="width:'+prog+'%;background:linear-gradient(90deg,var(--ya-green),var(--ya-teal))"></div></div>';
-  tds[tds.length-1].textContent = newCount+' / '+pastDates.length;
+  tds[tds.length-1].textContent = newCount+' / '+activeDates.length;
   // Refresh status
   var cert = gardenCert();
   var st = newCount >= cert.cert_min_sessions
@@ -4614,7 +4650,7 @@ function toggleGardenHrsEdit() {
 
 async function saveGardenAdultHrsFromInputs() {
   var p = gardenProg(); if (!p) return;
-  var pastDates = gardenPastDates();
+  var pastDates = gardenPastDates(); // excludes cancelled sessions via getActiveProgramSessions()
   var adultNames = Object.keys(FAC_PROFILES).map(function(k){ return FAC_PROFILES[k].name; }).sort();
   var promises = [];
   pastDates.forEach(function(d) {
@@ -4660,17 +4696,17 @@ function renderGardenAdultHrsGrid() {
     thead.innerHTML=''; tbody.innerHTML='<tr><td style="color:var(--text-muted);font-size:.82rem;padding:12px">No past sessions yet.</td></tr>'; return;
   }
 
-  // Header: Date | adult names | Total
-  thead.innerHTML = '<th style="min-width:120px">Date</th>' +
+  // Header: Date (sticky) | adult names | Total
+  // pastDates already excludes cancelled sessions via getActiveProgramSessions()
+  thead.innerHTML = '<th class="grd-date-sticky">Date</th>' +
     adultNames.map(function(n){ return '<th style="font-size:.65rem;min-width:60px">'+n.split(' ')[0]+'</th>'; }).join('') +
     '<th style="min-width:60px">Total</th>';
 
-  // Body rows — one per past session
+  // Body rows — one per active (non-cancelled) past session
   var adultTotals = {}; adultNames.forEach(function(n){ adultTotals[n]=0; });
   var grandTotal = 0;
 
   var rows = pastDates.map(function(d) {
-    var isCan = (p.cancellations||[]).indexOf(d) >= 0;
     var meta  = (p.session_meta||{})[d] || {};
     var defaultHrs = parseSessionHours(meta.start_time||'4:30 PM', meta.end_time||'6:30 PM');
     var sessionTotal = 0;
@@ -4679,22 +4715,20 @@ function renderGardenAdultHrsGrid() {
       var rec = gardenAttRow(p, d, name);
       var hrs = rec && rec.attended ? (rec.hours || defaultHrs) : null;
       if (hrs) { sessionTotal += hrs; adultTotals[name] += hrs; grandTotal += hrs; }
-
-      if (isCan) return '<td style="text-align:center;opacity:.35;color:var(--text-muted)">—</td>';
       var cellId = 'ghrs_'+name.replace(/\s+/g,'_').replace(/[^\w]/g,'_')+'_'+d.replace(/\W/g,'_');
       if (_gardenHrsEdit) {
         return '<td style="padding:3px"><input id="'+cellId+'" type="number" min="0" max="12" step="0.5" value="'+(hrs||'')+'" placeholder="—" '+
           'style="width:52px;background:rgba(0,181,160,.1);border:1px solid rgba(0,181,160,.4);border-radius:5px;padding:3px 5px;color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.78rem;text-align:center"></td>';
       }
-      return '<td style="text-align:center;color:'+(hrs?'var(--ya-green)':'var(--text-muted)')+';font-weight:'+(hrs?'700':'400')+'">'+( hrs ? hrs.toFixed(1) : '—' )+'</td>';
+      return '<td style="text-align:center;color:'+(hrs?'var(--ya-green)':'var(--text-muted)')+';font-weight:'+(hrs?'700':'400')+'">'+( hrs ? hrs.toFixed(1) : '\u2014' )+'</td>';
     }).join('');
 
     var shortDate = d.replace(', 2026','').replace(', 2027','');
-    return '<tr'+(isCan?' style="opacity:.5" title="Cancelled"':'')+'><td style="font-weight:600;white-space:nowrap;font-size:.82rem">'+shortDate+(isCan?' ✕':'')+'</td>'+cells+'<td style="text-align:center;font-weight:700;color:var(--ya-green)">'+( sessionTotal ? sessionTotal.toFixed(1) : '—' )+'</td></tr>';
+    return '<tr><td class="grd-date-sticky" style="font-weight:600;white-space:nowrap;font-size:.82rem">'+shortDate+'</td>'+cells+'<td style="text-align:center;font-weight:700;color:var(--ya-green)">'+( sessionTotal ? sessionTotal.toFixed(1) : '\u2014' )+'</td></tr>';
   }).join('');
 
   // Totals row
-  var totalsRow = '<tr style="border-top:2px solid var(--card-border)"><td style="font-weight:800;font-size:.82rem">Total</td>'+
+  var totalsRow = '<tr style="border-top:2px solid var(--card-border)"><td class="grd-date-sticky" style="font-weight:800;font-size:.82rem">Total</td>'+
     adultNames.map(function(n){ return '<td style="text-align:center;font-weight:800;color:var(--ya-green)">'+( adultTotals[n] ? adultTotals[n].toFixed(1) : '—' )+'</td>'; }).join('')+
     '<td style="text-align:center;font-weight:800;color:var(--ya-green)">'+( grandTotal ? grandTotal.toFixed(1) : '—' )+'</td></tr>';
 
@@ -4832,10 +4866,11 @@ function renderGardenAdmin() {
   if (!p) { statsEl.innerHTML='<div style="color:var(--text-muted)">Garden data not loaded.</div>'; return; }
 
   var cert       = gardenCert();
-  var pastDates  = gardenPastDates();
+  var pastDates  = gardenPastDates(); // active (non-cancelled) past sessions only
+  var allDates   = (p.dates || []);
   var enrolled   = Object.keys(p.youth_participants || {});
   var cancelled  = p.cancellations || [];
-  var heldDates  = pastDates.filter(function(d){ return cancelled.indexOf(d)<0; });
+  var heldDates  = pastDates; // gardenPastDates() already excludes cancelled
 
   // Youth attendance totals
   var totalYouthAtt = 0;

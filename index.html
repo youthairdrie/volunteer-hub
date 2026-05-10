@@ -1209,17 +1209,7 @@ select option[value=""]{
             <div class="section-box" style="margin-bottom:10px">
               <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:10px">
                 <div style="font-size:.78rem;color:var(--text-muted)">Only enrolled Garden youth appear below. Youth attendance = participation only — not volunteer hours.</div>
-                <button id="garden-enroll-btn" onclick="toggleGardenEnrollPanel()" class="ws-btn" style="border-color:var(--ya-green);color:var(--ya-green);font-size:.75rem;white-space:nowrap">+ Enroll Youth</button>
-              </div>
-              <div id="garden-enroll-panel" style="display:none;border-top:1px solid rgba(255,255,255,.08);padding-top:10px;margin-top:4px">
-                <div style="font-size:.78rem;font-weight:700;color:var(--ya-green);margin-bottom:8px">Add youth to Garden Program:</div>
-                <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-                  <select id="garden-enroll-select" style="flex:1;min-width:160px;background:#0f1c2e;border:1px solid rgba(255,255,255,.15);border-radius:8px;padding:7px 10px;color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.83rem">
-                    <option value="">— Select youth —</option>
-                  </select>
-                  <button onclick="enrollGardenYouth()" style="padding:7px 16px;border-radius:8px;border:none;background:var(--ya-green);color:#fff;font-family:Nunito,sans-serif;font-weight:800;font-size:.82rem;cursor:pointer">Enroll</button>
-                </div>
-                <div id="garden-enroll-feedback" style="font-size:.78rem;margin-top:8px;min-height:16px"></div>
+                <button onclick="openProgramEnrollYouthModal('garden_2026')" class="ws-btn" style="border-color:var(--ya-green);color:var(--ya-green);font-size:.75rem;white-space:nowrap">+ Enroll Youth</button>
               </div>
             </div>
             <!-- Certification config -->
@@ -1291,6 +1281,38 @@ select option[value=""]{
           </summary>
           <div id="garden-sessions-list" style="margin-top:10px"></div>
         </details>
+
+        <!-- Generic multi-youth enroll modal (reusable for any program) -->
+        <div id="program-enroll-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:1100;align-items:flex-start;justify-content:center;padding:24px 16px;overflow-y:auto">
+          <div class="login-box" style="max-width:520px;width:100%;margin:auto">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+              <div style="font-family:Nunito,sans-serif;font-weight:900;font-size:1rem;color:var(--ya-green)" id="pem-title">Enroll Youth</div>
+              <button onclick="document.getElementById('program-enroll-modal').style.display='none'" style="background:none;border:none;color:var(--text-muted);font-size:1.3rem;cursor:pointer;line-height:1;padding:2px">×</button>
+            </div>
+            <div style="font-size:.76rem;color:var(--text-muted);margin-bottom:14px" id="pem-subtitle">Select youth to enroll. Already-enrolled youth are shown but cannot be re-selected.</div>
+
+            <!-- Search + select-all row -->
+            <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap">
+              <input id="pem-search" type="search" placeholder="Search by name…" oninput="pemFilter()"
+                style="flex:1;min-width:140px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.15);border-radius:8px;padding:7px 12px;color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem;outline:none">
+              <button onclick="pemSelectAll()" style="padding:6px 12px;border-radius:8px;border:1px solid rgba(255,255,255,.2);background:transparent;color:var(--text-muted);font-family:DM Sans,sans-serif;font-size:.78rem;cursor:pointer;white-space:nowrap">✔ Select All</button>
+              <button onclick="pemClear()" style="padding:6px 12px;border-radius:8px;border:1px solid rgba(255,255,255,.2);background:transparent;color:var(--text-muted);font-family:DM Sans,sans-serif;font-size:.78rem;cursor:pointer;white-space:nowrap">✕ Clear</button>
+            </div>
+
+            <!-- Youth list with checkboxes -->
+            <div id="pem-list" style="max-height:340px;overflow-y:auto;border:1px solid rgba(255,255,255,.1);border-radius:10px;background:rgba(0,0,0,.2)"></div>
+
+            <!-- Count + save row -->
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-top:12px;flex-wrap:wrap;gap:8px">
+              <div style="font-size:.8rem;color:var(--text-muted)"><span id="pem-count">0</span> selected</div>
+              <div style="display:flex;gap:8px">
+                <button onclick="document.getElementById('program-enroll-modal').style.display='none'" style="padding:8px 16px;border-radius:9px;border:1px solid rgba(255,255,255,.15);background:transparent;color:var(--text-muted);font-family:Nunito,sans-serif;font-weight:700;font-size:.85rem;cursor:pointer">Cancel</button>
+                <button id="pem-save-btn" onclick="saveProgramYouthEnrollment()" style="padding:8px 22px;border-radius:9px;border:none;background:var(--ya-green);color:#fff;font-family:Nunito,sans-serif;font-weight:800;font-size:.88rem;cursor:pointer">Enroll Selected →</button>
+              </div>
+            </div>
+            <div id="pem-feedback" style="font-size:.78rem;margin-top:8px;min-height:16px;text-align:center"></div>
+          </div>
+        </div>
 
         <!-- Session edit modal -->
         <div id="garden-session-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:1000;align-items:center;justify-content:center">
@@ -4269,45 +4291,151 @@ async function upsertProgramAttendance(row) {
   return true;
 }
 
-// ── Enroll Youth ──────────────────────────────────────────────────────────────
-function toggleGardenEnrollPanel() {
-  var panel = document.getElementById('garden-enroll-panel');
-  var btn   = document.getElementById('garden-enroll-btn');
-  if (!panel) return;
-  var open = panel.style.display !== 'none';
-  panel.style.display = open ? 'none' : 'block';
-  if (!open) {
-    // Populate dropdown with unenrolled youth
-    var p = gardenProg();
-    var enrolled = Object.keys((p && p.youth_participants) || {});
-    var sel = document.getElementById('garden-enroll-select');
-    sel.innerHTML = '<option value="">— Select youth —</option>';
-    ALL_YOUTH_NAMES.forEach(function(n) {
-      if (enrolled.indexOf(n) < 0)
-        sel.innerHTML += '<option value="'+n+'">'+n+'</option>';
-    });
-    document.getElementById('garden-enroll-feedback').textContent = '';
-  }
+// ══════════════════════════════════════════════════════════════════════════════
+// GENERIC MULTI-YOUTH ENROLLMENT MODAL
+// Works for any program that stores enrolled youth in
+// PROGRAMS_DATA[programId].youth_participants = { name: [] }
+// Usage: openProgramEnrollYouthModal('garden_2026')
+// ══════════════════════════════════════════════════════════════════════════════
+
+var _pemProgramId = ''; // programId currently open in the modal
+
+function openProgramEnrollYouthModal(programId) {
+  _pemProgramId = programId;
+  var prog = PROGRAMS_DATA[programId];
+  var progName = prog ? (prog.name || programId) : programId;
+  var enrolled = Object.keys((prog && prog.youth_participants) || {});
+
+  document.getElementById('pem-title').textContent    = '+ Enroll Youth — ' + progName;
+  document.getElementById('pem-subtitle').textContent = 'Select youth to add. Already-enrolled youth are shown with a ✔ and cannot be re-selected.';
+  document.getElementById('pem-search').value         = '';
+  document.getElementById('pem-feedback').textContent = '';
+  document.getElementById('pem-count').textContent    = '0';
+
+  // Build the list
+  pemBuildList(enrolled);
+
+  document.getElementById('program-enroll-modal').style.display = 'flex';
+  setTimeout(function(){ document.getElementById('pem-search').focus(); }, 80);
 }
 
-function enrollGardenYouth() {
-  var sel = document.getElementById('garden-enroll-select');
-  var fb  = document.getElementById('garden-enroll-feedback');
-  var name = sel.value;
-  if (!name) { fb.style.color='var(--badge-red)'; fb.textContent='⚠ Select a youth first.'; return; }
-  var p = gardenProg(); if (!p) return;
-  p.youth_participants = p.youth_participants || {};
-  if (p.youth_participants[name]) { fb.style.color='var(--badge-amber)'; fb.textContent=name+' is already enrolled.'; return; }
-  p.youth_participants[name] = [];
-  fb.style.color = 'var(--ya-teal)'; fb.textContent = '✔ '+name+' enrolled in Garden Program.';
-  sel.value = '';
-  renderGardenAdmin();
+function pemBuildList(enrolled) {
+  var list = document.getElementById('pem-list');
+  var filter = (document.getElementById('pem-search').value || '').toLowerCase().trim();
+
+  var html = '';
+  ALL_YOUTH_NAMES.forEach(function(name) {
+    if (filter && name.toLowerCase().indexOf(filter) < 0) return;
+    var isEnrolled = enrolled.indexOf(name) >= 0;
+    var age = YOUTH_AGES[name] ? ' · Age ' + YOUTH_AGES[name] : '';
+    var cbId = 'pem-cb-' + name.replace(/\s+/g,'_');
+    html +=
+      '<label for="'+cbId+'" style="display:flex;align-items:center;gap:10px;padding:8px 12px;cursor:'+(isEnrolled?'default':'pointer')+';border-bottom:1px solid rgba(255,255,255,.04);'+
+      (isEnrolled?'opacity:.5':'')+'">'+
+        '<input type="checkbox" id="'+cbId+'" value="'+name+'" '+(isEnrolled?'disabled checked':'')+
+          ' onchange="pemUpdateCount()" '+
+          'style="width:16px;height:16px;accent-color:var(--ya-green);cursor:'+(isEnrolled?'default':'pointer')+'">'+
+        '<div>'+
+          '<div style="font-size:.85rem;font-weight:'+(isEnrolled?'600':'400')+';color:var(--text-main)">'+name+(isEnrolled?' <span style="font-size:.7rem;color:var(--ya-green)">✔ enrolled</span>':'')+'</div>'+
+          '<div style="font-size:.7rem;color:var(--text-muted)">'+age+'</div>'+
+        '</div>'+
+      '</label>';
+  });
+
+  if (!html) html = '<div style="padding:16px 12px;font-size:.82rem;color:var(--text-muted)">No youth found' + (filter ? ' matching "'+filter+'"' : '') + '.</div>';
+  list.innerHTML = html;
+  pemUpdateCount();
+}
+
+function pemFilter() {
+  var prog = PROGRAMS_DATA[_pemProgramId];
+  var enrolled = Object.keys((prog && prog.youth_participants) || {});
+  pemBuildList(enrolled);
+}
+
+function pemUpdateCount() {
+  var checked = document.querySelectorAll('#pem-list input[type=checkbox]:not(:disabled):checked');
+  document.getElementById('pem-count').textContent = checked.length;
+}
+
+function pemSelectAll() {
+  // Select all visible, non-disabled checkboxes
+  document.querySelectorAll('#pem-list input[type=checkbox]:not(:disabled)').forEach(function(cb){ cb.checked = true; });
+  pemUpdateCount();
+}
+
+function pemClear() {
+  document.querySelectorAll('#pem-list input[type=checkbox]:not(:disabled)').forEach(function(cb){ cb.checked = false; });
+  pemUpdateCount();
+}
+
+async function saveProgramYouthEnrollment() {
+  var btn = document.getElementById('pem-save-btn');
+  var fb  = document.getElementById('pem-feedback');
+  var checked = Array.from(document.querySelectorAll('#pem-list input[type=checkbox]:not(:disabled):checked'))
+    .map(function(cb){ return cb.value; });
+
+  if (checked.length === 0) {
+    fb.style.color = 'var(--badge-amber)'; fb.textContent = '⚠ No youth selected.'; return;
+  }
+
+  btn.textContent = 'Enrolling…'; btn.style.opacity = '.6'; btn.disabled = true;
+  fb.textContent = '';
+
+  var prog = PROGRAMS_DATA[_pemProgramId];
+  if (!prog) { btn.textContent='Enroll Selected →'; btn.style.opacity=''; btn.disabled=false; return; }
+  prog.youth_participants = prog.youth_participants || {};
+
+  var newlyEnrolled = [];
+  checked.forEach(function(name) {
+    if (!prog.youth_participants[name]) {
+      prog.youth_participants[name] = [];
+      newlyEnrolled.push(name);
+    }
+  });
+
+  // Persist to Supabase — write a placeholder attendance row so the enrollment
+  // survives a page refresh. We use program_attendance with attended=false
+  // as the enrollment record; actual attendance is toggled separately.
+  // This uses the existing upsertProgramAttendance helper.
+  if (newlyEnrolled.length > 0) {
+    var promises = newlyEnrolled.map(function(name) {
+      return upsertProgramAttendance({
+        program_id:       _pemProgramId,
+        program_type:     (prog.type || 'garden'),
+        session_date:     '_enrolled',      // sentinel date — not a real session
+        participant_name: name,
+        participant_type: 'youth',
+        attended:         false,
+        volunteer_hours:  null
+      });
+    });
+    await Promise.all(promises);
+  }
+
+  btn.textContent = 'Enroll Selected →'; btn.style.opacity = ''; btn.disabled = false;
+
+  if (newlyEnrolled.length > 0) {
+    fb.style.color = 'var(--ya-teal)';
+    fb.textContent = '✔ Enrolled ' + newlyEnrolled.length + ' youth: ' + newlyEnrolled.join(', ');
+    setTimeout(function() {
+      document.getElementById('program-enroll-modal').style.display = 'none';
+      // Re-render the Garden admin (or whichever program is active)
+      if (_pemProgramId === 'garden_2026') renderGardenAdmin();
+    }, 1200);
+  } else {
+    fb.style.color = 'var(--badge-amber)';
+    fb.textContent = 'All selected youth were already enrolled.';
+  }
 }
 
 function removeGardenYouth(name) {
   if (!confirm('Remove '+name+' from the Garden Program?\n\nTheir attendance records will be preserved.')) return;
   var p = gardenProg(); if (!p) return;
   delete p.youth_participants[name];
+  // Remove the _enrolled sentinel row so they don't re-appear on next load
+  dbDel('program_attendance',
+    'program_id=eq.garden_2026&session_date=eq._enrolled&participant_name=eq.'+encodeURIComponent(name));
   renderGardenAdmin();
 }
 
@@ -7777,6 +7905,14 @@ async function loadGardenData() {
     'select=session_date,participant_name,participant_type,attended,volunteer_hours&program_id=eq.garden_2026&order=session_date.asc');
   if (attRows) {
     attRows.forEach(function(row) {
+      // _enrolled sentinel rows restore the youth_participants list across page loads
+      if (row.session_date === '_enrolled' && row.participant_type === 'youth') {
+        prog.youth_participants = prog.youth_participants || {};
+        if (!prog.youth_participants[row.participant_name]) {
+          prog.youth_participants[row.participant_name] = [];
+        }
+        return;
+      }
       prog.attendance[row.session_date] = prog.attendance[row.session_date] || [];
       var exists = prog.attendance[row.session_date].find(function(r){ return r.name === row.participant_name; });
       if (!exists) {

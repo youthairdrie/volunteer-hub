@@ -526,6 +526,10 @@ tr:hover .grd-date-sticky { background: #1a2d47; }
 /* Back link on login screen */
 .back-to-landing{display:inline-flex;align-items:center;gap:7px;font-size:.82rem;color:var(--text-muted);cursor:pointer;padding:7px 14px;border-radius:9px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.03);transition:all .2s;font-family:"DM Sans",sans-serif;font-weight:600}
 .back-to-landing:hover{color:var(--text-main);border-color:rgba(255,255,255,.18)}
+/* Stats Audit — top-alignment, prevent layout issues */
+#tab-stats-diagnostic { width:100%; box-sizing:border-box; }
+#sa-grid { align-items:start; }
+#sa-grid button { vertical-align:top; }
 </style>
 </head>
 <body>
@@ -1725,7 +1729,7 @@ tr:hover .grd-date-sticky { background: #1a2d47; }
     </div>
 
       <!-- STATS AUDIT v3 - compact card grid + inline accordion -->
-      <div id="tab-stats-diagnostic" style="display:none">
+      <div id="tab-stats-diagnostic" style="display:none;align-self:flex-start;width:100%;box-sizing:border-box;min-height:0">
         <div class="section-box" style="margin-bottom:14px;padding:14px 18px">
           <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:4px">
             <div style="font-family:Nunito,sans-serif;font-size:1rem;font-weight:900;color:var(--ya-blue)">🔬 Stats Audit</div>
@@ -1733,7 +1737,7 @@ tr:hover .grd-date-sticky { background: #1a2d47; }
           </div>
           <div style="font-size:.73rem;color:var(--text-muted)">Click any card to expand its full audit detail. Read-only.</div>
         </div>
-        <div id="sa-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px;margin-bottom:14px"></div>
+        <div id="sa-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px;margin-bottom:14px;align-items:start"></div>
         <div id="sa-detail" style="display:none;margin-bottom:14px"></div>
       </div>
 
@@ -3288,13 +3292,17 @@ function saOpenCard(id){
   detail.innerHTML='<div class="section-box" style="border-color:rgba(29,127,212,.3);overflow:hidden">'
     +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">'
     +'<div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em">Audit Detail</div>'
-    +'<button onclick="saOpenCard(\''+id+'\')" style="background:transparent;border:none;color:var(--text-muted);cursor:pointer;font-size:.9rem;padding:2px 6px;border-radius:5px;line-height:1" title="Close">✕</button>'
+    +'<button id="sa-close-btn" style="background:transparent;border:none;color:var(--text-muted);cursor:pointer;font-size:.9rem;padding:2px 6px;border-radius:5px;line-height:1" title="Close">&#x2715;</button>'
     +'</div>'
     +fn()
     +'</div>';
+  // Wire close button imperatively (avoids invalid inline-onclick quoting)
+  var closeBtn=detail.querySelector('#sa-close-btn');
+  if(closeBtn){ closeBtn.onclick=function(){ saOpenCard(id); }; }
   detail.style.display='block';
   window._saOpenId=id;
-  setTimeout(function(){detail.scrollIntoView({behavior:'smooth',block:'nearest'});},60);
+  // Scroll detail into view — only within parent, no page-level jump
+  try{ detail.scrollIntoView({block:'nearest'}); }catch(e){}
 }
 function updateLandingStats() {
   // ── Youth Members ──

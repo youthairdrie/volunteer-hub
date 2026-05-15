@@ -2986,7 +2986,7 @@ function renderStatsDiagnostic() {
     var condV=(p.volunteered||[]).filter(function(id){var w=(WORKSHOPS||[]).find(function(w){return w.id===id;});return w&&w.conducted&&!w.cancelled;});
     if(condF.length)addAdult(p.name,'Workshops (Facilitated)',condF.length+' conducted');
     if(condV.length)addAdult(p.name,'Workshops (Volunteered)',condV.length+' conducted');
-    if(!condF.length&&!condV.length&&p.hours>0)addAdult(p.name,'Hours Logged',p.hours+'h');
+    // Note: FAC_PROFILES.hours is a legacy/prior-years annotation only — never used as a live source
   });
   Object.keys(ADULT_SCRABBLE||{}).forEach(function(n){var cnt=Object.keys(ADULT_SCRABBLE[n]||{}).length;if(cnt)addAdult(n,'Scrabble Club',cnt+' sessions');});
   Object.keys(PROGRAMS_DATA||{}).forEach(function(pid){
@@ -3002,24 +3002,78 @@ function renderStatsDiagnostic() {
   var adultCount=Object.keys(adultMap).length;
 
   // adult hours map
+  // Sources (in priority order, no double-counting):
+  //   1. Workshops — 2h per conducted workshop (facilitated or volunteered), from FAC_PROFILES + WORKSHOPS
+  //   2. Scrabble Club — actual session hours from ADULT_SCRABBLE (loaded from adult_scrabble_sessions DB)
+  //      NOTE: PROGRAMS_DATA.scrabble_*.adult_volunteers covers the SAME sessions as ADULT_SCRABBLE,
+  //      so we skip PROGRAMS_DATA for any program that has a dedicated hours table (ADULT_SCRABBLE).
+  //   3. Garden / attendance-based programs — actual hours from prog.attendance (program_attendance DB),
+  //      falling back to prog.adult_volunteers with a 2h/session estimate for programmes without
+  //      a dedicated attendance table. Cancelled and future sessions excluded.
+  //   4. Events — bucket hours from EVENTS_DATA (adult_5hrs / adult_4hrs / adult_2hrs).
+  //   FAC_PROFILES.hours is a legacy/prior-years annotation field — intentionally excluded here.
   var adultHrsMap={};
   function addAdultHrs(rawName,src,h){
     var k=rawName.toLowerCase().trim();
     if(!adultHrsMap[k])adultHrsMap[k]={display:rawName.trim(),items:[]};
     adultHrsMap[k].items.push({src:src,h:parseFloat(h)||0});
   }
-  Object.values(FAC_PROFILES).forEach(function(p){if(p&&p.name&&p.hours>0)addAdultHrs(p.name,'Workshop/Program hours',p.hours);});
-  Object.keys(ADULT_SCRABBLE||{}).forEach(function(n){var t=Object.values(ADULT_SCRABBLE[n]||{}).reduce(function(a,v){return a+(parseFloat(v)||0);},0);if(t>0)addAdultHrs(n,'Scrabble Club',t);});
-  (EVENTS_DATA||[]).forEach(function(ev){if(ev.status!=='completed')return;['adult_5hrs','adult_4hrs','adult_2hrs'].forEach(function(b){var h=parseInt(b.replace(/\D/g,''));(ev[b]||[]).forEach(function(n){addAdultHrs(n,'Event: '+ev.name,h);});});});
+
+  // 1. Workshop hours (2h per conducted workshop)
+  Object.values(FAC_PROFILES).forEach(function(p){
+    if(!p||!p.name)return;
+    var condF=(p.facilitated||[]).filter(function(id){var w=(WORKSHOPS||[]).find(function(w){return w.id===id;});return w&&w.conducted&&!w.cancelled;});
+    var condV=(p.volunteered||[]).filter(function(id){var w=(WORKSHOPS||[]).find(function(w){return w.id===id;});return w&&w.conducted&&!w.cancelled;});
+    var wsHrs=(condF.length+condV.length)*2;
+    if(wsHrs>0)addAdultHrs(p.name,'Workshops',wsHrs);
+  });
+
+  // 2. Scrabble Club — use ADULT_SCRABBLE (actual measured hours, not PROGRAMS_DATA estimate)
+  Object.keys(ADULT_SCRABBLE||{}).forEach(function(n){
+    var t=Object.values(ADULT_SCRABBLE[n]||{}).reduce(function(a,v){return a+(parseFloat(v)||0);},0);
+    if(t>0)addAdultHrs(n,'Scrabble Club',t);
+  });
+
+  // 3. Other programs (Garden and any future programs that use program_attendance)
+  //    Skip programs that have a dedicated hours table (identified by having entries in ADULT_SCRABBLE).
+  //    ADULT_SCRABBLE keys are the canonical scrabble volunteers — if a program's volunteers
+  //    are tracked there, skip PROGRAMS_DATA for that program to avoid double-counting.
+  var scrabblePids=new Set(['scrabble_2026','scrabble_2026_27']); // programmes tracked via ADULT_SCRABBLE
   Object.keys(PROGRAMS_DATA||{}).forEach(function(pid){
+    if(scrabblePids.has(pid))return; // hours already captured via ADULT_SCRABBLE above
     var prog=PROGRAMS_DATA[pid];if(!prog)return;
     var cancelled=prog.cancellations||[];
+    // Prefer prog.attendance (actual hours from program_attendance DB table)
+    var seenInAtt=new Set();
+    Object.keys(prog.attendance||{}).forEach(function(d){
+      if(cancelled.indexOf(d)>=0)return;
+      var dt=new Date(d);if(isNaN(dt)||dt.getTime()>now.getTime())return;
+      (prog.attendance[d]||[]).forEach(function(r){
+        if(r.type==='adult'&&r.attended){
+          seenInAtt.add(r.name);
+          addAdultHrs(r.name,prog.name+' session',r.hours||2);
+        }
+      });
+    });
+    // Fall back to adult_volunteers for sessions not yet in program_attendance
     Object.keys(prog.adult_volunteers||{}).forEach(function(d){
       if(cancelled.indexOf(d)>=0)return;
       var dt=new Date(d);if(isNaN(dt)||dt.getTime()>now.getTime())return;
-      (prog.adult_volunteers[d]||[]).forEach(function(n){addAdultHrs(n,prog.name+' session',2);});
+      (prog.adult_volunteers[d]||[]).forEach(function(n){
+        if(!seenInAtt.has(n))addAdultHrs(n,prog.name+' session',2);
+      });
     });
   });
+
+  // 4. Event hours
+  (EVENTS_DATA||[]).forEach(function(ev){
+    if(ev.status!=='completed')return;
+    ['adult_5hrs','adult_4hrs','adult_2hrs'].forEach(function(b){
+      var h=parseInt(b.replace(/\D/g,''));
+      (ev[b]||[]).forEach(function(n){addAdultHrs(n,'Event: '+ev.name,h);});
+    });
+  });
+
   var totalAdultHrs=Object.values(adultHrsMap).reduce(function(a,e){return a+e.items.reduce(function(b,i){return b+i.h;},0);},0);
 
   // events
@@ -3038,10 +3092,22 @@ function renderStatsDiagnostic() {
     var ySet=new Set();
     Object.keys(prog.youth_participants||{}).forEach(function(d){(prog.youth_participants[d]||[]).forEach(function(n){ySet.add(n.toLowerCase().trim());});});
     var aSet=new Set(); var aHrs=0;
+    // Prefer prog.attendance (program_attendance DB — actual check-in records)
+    Object.keys(prog.attendance||{}).forEach(function(d){
+      if(cancelled.indexOf(d)>=0)return;
+      var dt=new Date(d);if(isNaN(dt)||dt.getTime()>now.getTime())return;
+      (prog.attendance[d]||[]).forEach(function(r){
+        if(r.type==='adult'&&r.attended){aSet.add(r.name.toLowerCase().trim());aHrs+=(r.hours||2);}
+      });
+    });
+    // Also read adult_volunteers for sessions not recorded in prog.attendance (Scrabble + fallback)
     Object.keys(prog.adult_volunteers||{}).forEach(function(d){
       if(cancelled.indexOf(d)>=0)return;
       var dt=new Date(d);if(isNaN(dt)||dt.getTime()>now.getTime())return;
-      (prog.adult_volunteers[d]||[]).forEach(function(n){aSet.add(n.toLowerCase().trim());aHrs+=2;});
+      (prog.adult_volunteers[d]||[]).forEach(function(n){
+        var k=n.toLowerCase().trim();
+        if(!aSet.has(k)){aSet.add(k);aHrs+=2;}
+      });
     });
     progStats[pid]={name:prog.name,color:prog.color||'var(--ya-teal)',scheduled:allDates.length,completed:completedDates.length,cancelled:cancelled.length,upcoming:upcomingDates.length,youthCount:ySet.size,adultCount:aSet.size,adultHrs:aHrs,prog:prog};
   });
@@ -3157,9 +3223,9 @@ function renderStatsDiagnostic() {
     {id:'adult-hrs',icon:'⏱',label:'Est. Adult Volunteer Hrs',value:totalAdultHrs.toFixed(0)+'h',color:'var(--ya-orange)',sub:'all sources combined',
       detail:function(){
         return heading('What counts','var(--ya-orange)')
-          +'<p style="font-size:.82rem;color:var(--text-muted);margin:0 0 8px">FAC_PROFILES.hours + Scrabble adult session hours + program session hours (2h/session estimate) + event bucket hours.</p>'
-          +sourcesLine(['FAC_PROFILES (hours)','ADULT_SCRABBLE','PROGRAMS_DATA (adult_volunteers)','EVENTS_DATA (adult_Nhrs)','program_volunteers'])
-          +warnBox('Program session hours estimated at 2h/session. Cancelled and future sessions excluded.')
+          +'<p style="font-size:.82rem;color:var(--text-muted);margin:0 0 8px">Workshop hours (2h/conducted workshop) + Scrabble actual session hours + Garden/program session hours (from program_attendance, else 2h/session estimate) + event bucket hours. FAC_PROFILES legacy hours are excluded to avoid double-counting.</p>'
+          +sourcesLine(['FAC_PROFILES (facilitated/volunteered)','ADULT_SCRABBLE','program_attendance','PROGRAMS_DATA (adult_volunteers fallback)','EVENTS_DATA (adult_Nhrs)'])
+          +warnBox('Cancelled and future sessions excluded. program_attendance actual hours take priority over 2h/session estimate.')
           +heading('Per-adult ('+Object.keys(adultHrsMap).length+')', 'var(--ya-orange)')
           +(function(){
             var rows='';
@@ -3228,9 +3294,9 @@ function renderStatsDiagnostic() {
     {id:'prog-adults',icon:'🙌',label:'Adult Volunteers Per Program',value:totalProgAdults,color:'var(--ya-blue)',sub:'across all PROGRAMS_DATA',
       detail:function(){
         return heading('What counts','var(--ya-blue)')
-          +'<p style="font-size:.82rem;color:var(--text-muted);margin:0 0 8px">Unique adults per program from PROGRAMS_DATA.adult_volunteers — past, non-cancelled sessions only.</p>'
-          +sourcesLine(['PROGRAMS_DATA (adult_volunteers)','program_volunteers','program_cancellations'])
-          +warnBox('Future sessions and cancelled session dates excluded.')
+          +'<p style="font-size:.82rem;color:var(--text-muted);margin:0 0 8px">Unique adults per program from program_attendance (actual check-ins) and adult_volunteers — past, non-cancelled sessions only.</p>'
+          +sourcesLine(['PROGRAMS_DATA (adult_volunteers)','program_attendance','program_volunteers','program_cancellations'])
+          +warnBox('Future sessions and cancelled session dates excluded. program_attendance takes priority over adult_volunteers for the same session.')
           +heading('Per-program adult volunteers','var(--ya-blue)')
           +(function(){
             var rows='';
@@ -3238,10 +3304,25 @@ function renderStatsDiagnostic() {
               var p=progStats[pid]; var prog=p.prog;
               var cancelled=prog.cancellations||[];
               var aMap={};
+              // Prefer prog.attendance (actual check-in records)
+              Object.keys(prog.attendance||{}).forEach(function(d){
+                if(cancelled.indexOf(d)>=0)return;
+                var dt=new Date(d);if(isNaN(dt)||dt.getTime()>now.getTime())return;
+                (prog.attendance[d]||[]).forEach(function(r){
+                  if(r.type==='adult'&&r.attended)aMap[r.name]=(aMap[r.name]||0)+1;
+                });
+              });
+              // Fall back to adult_volunteers for sessions not in prog.attendance
               Object.keys(prog.adult_volunteers||{}).forEach(function(d){
                 if(cancelled.indexOf(d)>=0)return;
                 var dt=new Date(d);if(isNaN(dt)||dt.getTime()>now.getTime())return;
-                (prog.adult_volunteers[d]||[]).forEach(function(n){aMap[n]=(aMap[n]||0)+1;});
+                (prog.adult_volunteers[d]||[]).forEach(function(n){
+                  // Only add if not already counted via prog.attendance
+                  var alreadyCounted=Object.keys(prog.attendance||{}).some(function(ad){
+                    return (prog.attendance[ad]||[]).some(function(r){return r.type==='adult'&&r.name===n;});
+                  });
+                  if(!alreadyCounted)aMap[n]=(aMap[n]||0)+1;
+                });
               });
               var names=Object.keys(aMap).sort();
               var chips=names.length

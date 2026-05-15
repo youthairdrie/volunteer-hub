@@ -526,10 +526,10 @@ tr:hover .grd-date-sticky { background: #1a2d47; }
 /* Back link on login screen */
 .back-to-landing{display:inline-flex;align-items:center;gap:7px;font-size:.82rem;color:var(--text-muted);cursor:pointer;padding:7px 14px;border-radius:9px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.03);transition:all .2s;font-family:"DM Sans",sans-serif;font-weight:600}
 .back-to-landing:hover{color:var(--text-main);border-color:rgba(255,255,255,.18)}
-/* Stats Audit — top-alignment, prevent layout issues */
-#tab-stats-diagnostic { width:100%; box-sizing:border-box; }
-#sa-grid { align-items:start; }
-#sa-grid button { vertical-align:top; }
+/* Stats Audit diagnostic outlines — remove after visual verification */
+.main-content { outline: 2px solid red !important; }
+#tab-stats-diagnostic { outline: 2px solid blue !important; }
+#sa-grid { outline: 2px solid green !important; }
 </style>
 </head>
 <body>
@@ -1729,7 +1729,7 @@ tr:hover .grd-date-sticky { background: #1a2d47; }
     </div>
 
       <!-- STATS AUDIT v3 - compact card grid + inline accordion -->
-      <div id="tab-stats-diagnostic" style="display:none;align-self:flex-start;width:100%;box-sizing:border-box;min-height:0">
+      <div id="tab-stats-diagnostic" style="display:none">
         <div class="section-box" style="margin-bottom:14px;padding:14px 18px">
           <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:4px">
             <div style="font-family:Nunito,sans-serif;font-size:1rem;font-weight:900;color:var(--ya-blue)">🔬 Stats Audit</div>
@@ -1737,7 +1737,7 @@ tr:hover .grd-date-sticky { background: #1a2d47; }
           </div>
           <div style="font-size:.73rem;color:var(--text-muted)">Click any card to expand its full audit detail. Read-only.</div>
         </div>
-        <div id="sa-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px;margin-bottom:14px;align-items:start"></div>
+        <div id="sa-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px;margin-bottom:14px"></div>
         <div id="sa-detail" style="display:none;margin-bottom:14px"></div>
       </div>
 
@@ -2881,6 +2881,35 @@ function renderStatsDiagnostic() {
   var grid   = document.getElementById('sa-grid');
   var detail = document.getElementById('sa-detail');
   if (!grid) return;
+
+  // ── DIAGNOSTIC LOGGING — remove after visual verification ────────────────
+  (function() {
+    var mc  = document.querySelector('.main-content');
+    var tab = document.getElementById('tab-stats-diagnostic');
+    var sg  = document.getElementById('sa-grid');
+    var sidebar = document.querySelector('.sidebar');
+    console.group('[Stats Audit] Layout Diagnostic');
+    console.log('window.innerWidth      :', window.innerWidth);
+    console.log('sidebar width          :', sidebar ? sidebar.getBoundingClientRect().width : 'no sidebar');
+    if (mc)  { var r=mc.getBoundingClientRect();  console.log('.main-content bbox     :', JSON.stringify({top:Math.round(r.top),left:Math.round(r.left),width:Math.round(r.width),height:Math.round(r.height)})); }
+    if (tab) { var r=tab.getBoundingClientRect(); console.log('#tab-stats-diagnostic  :', JSON.stringify({top:Math.round(r.top),left:Math.round(r.left),width:Math.round(r.width),height:Math.round(r.height)})); }
+    if (sg)  { var r=sg.getBoundingClientRect();  console.log('#sa-grid bbox          :', JSON.stringify({top:Math.round(r.top),left:Math.round(r.left),width:Math.round(r.width),height:Math.round(r.height)})); }
+    // Compare with a working tab
+    var gardenTab = document.getElementById('tab-garden-admin');
+    if (gardenTab) { var r=gardenTab.getBoundingClientRect(); console.log('#tab-garden-admin bbox :', JSON.stringify({top:Math.round(r.top),left:Math.round(r.left),width:Math.round(r.width)})); }
+    // Log computed styles of tab
+    if (tab) {
+      var cs = window.getComputedStyle(tab);
+      console.log('#tab-stats-diagnostic computed:', JSON.stringify({
+        display:cs.display, position:cs.position,
+        marginLeft:cs.marginLeft, marginTop:cs.marginTop,
+        width:cs.width, maxWidth:cs.maxWidth,
+        alignSelf:cs.alignSelf, minHeight:cs.minHeight
+      }));
+    }
+    console.groupEnd();
+  })();
+  // ── END DIAGNOSTIC ────────────────────────────────────────────────────────
 
   var now = new Date(); now.setHours(0,0,0,0);
   var _mog = {Jan:0,Feb:1,Mar:2,Apr:3,May:4,Jun:5,Jul:6,Aug:7,Sep:8,Oct:9,Nov:10,Dec:11};

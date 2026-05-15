@@ -1737,7 +1737,7 @@ tr:hover .grd-date-sticky { background: #1a2d47; }
         </div>
 
         <!-- Summary row -->
-        <div id="diag-summary" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px"></div>
+        <div id="diag-summary" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:18px"></div>
 
         <!-- Detail panels -->
         <div style="display:flex;flex-direction:column;gap:14px">
@@ -2143,7 +2143,7 @@ function renderYouthAchievements(){
 function renderAdult(){
   renderNextWorkshopAlerts();
   var prof=adultState,fac=prof.facilitated,vol=prof.volunteered;
-  var cnt=fac.length,lvl=getFacLevel(cnt,prof.grandfathered);
+  var cnt=conductedFac.length,lvl=getFacLevel(cnt,prof.grandfathered); // cert level based on completed workshops only
   var t=document.getElementById('adult-dash-title');
   if(t)t.innerHTML='Welcome, '+prof.name+'! <span class="hl">🙌</span>';
   var cb1=document.getElementById('adult-cert-banner-dash');
@@ -2152,15 +2152,48 @@ function renderAdult(){
   if(cb2)cb2.innerHTML=facCertBannerHTML(cnt,prof.grandfathered);
 
   // ── Calculate total volunteer hours dynamically ──
-  var wsHrs = (fac.length + vol.length) * 2; // 2 hrs per workshop facilitated or volunteered
-  var scrHrs = ADULT_SCRABBLE_TOTALS[prof.name] || 0; // scrabble volunteer hours
-  // Program volunteer sessions (scrabble club dates volunteered for)
+  // RULE: only CONDUCTED (completed) workshops count toward hours.
+  // Upcoming workshops that are signed up for do NOT count.
+  var conductedFac = fac.filter(function(id){
+    var w = WORKSHOPS.find(function(w){ return w.id === id; });
+    return w && w.conducted && !w.cancelled;
+  });
+  var conductedVol = vol.filter(function(id){
+    var w = WORKSHOPS.find(function(w){ return w.id === id; });
+    return w && w.conducted && !w.cancelled;
+  });
+  var wsHrs = (conductedFac.length + conductedVol.length) * 2; // 2 hrs per completed workshop
+
+  var scrHrs = ADULT_SCRABBLE_TOTALS[prof.name] || 0; // scrabble volunteer hours (already historical)
+
+  // Program sessions: only count PAST (already-occurred) sessions that are NOT cancelled.
+  // Signups for future sessions are intentional but must not count as completed hours.
   var progHrs = 0;
+  var _nowMs = Date.now();
+  var _months = {Jan:0,Feb:1,Mar:2,Apr:3,May:4,Jun:5,Jul:6,Aug:7,Sep:8,Oct:9,Nov:10,Dec:11};
+  function _parseProgramDate(s){
+    var p = (s||'').replace(',','').split(' ');
+    if(p.length < 3) return null;
+    var d = new Date(parseInt(p[2]), _months[p[0]], parseInt(p[1]));
+    return isNaN(d.getTime()) ? null : d;
+  }
   Object.values(PROGRAMS_DATA).forEach(function(prog){
+    var cancelled = prog.cancellations || [];
     var myDates = Object.keys(prog.adult_volunteers||{}).filter(function(d){
-      return (prog.adult_volunteers[d]||[]).indexOf(prof.name) >= 0;
+      if((prog.adult_volunteers[d]||[]).indexOf(prof.name) < 0) return false; // not signed up
+      if(cancelled.indexOf(d) >= 0) return false;                             // session cancelled
+      var dt = _parseProgramDate(d);
+      if(!dt) return false;
+      return dt.getTime() <= _nowMs;                                           // session already past
     });
-    progHrs += myDates.length * 2; // 2 hrs per session
+    // Prefer actual hours from program_attendance if available, else default 2h/session
+    var myProgHrs = 0;
+    myDates.forEach(function(d){
+      var recs = (prog.attendance || {})[d] || [];
+      var myRec = recs.find(function(r){ return r.type === 'adult' && r.name === prof.name && r.attended; });
+      myProgHrs += myRec ? (myRec.hours || 2) : 2;
+    });
+    progHrs += myProgHrs;
   });
   var totalHrs = Math.round((wsHrs + scrHrs + progHrs) * 10) / 10;
   // Show base (pre-2026) hours separately if set
@@ -2168,12 +2201,12 @@ function renderAdult(){
   var hrsDisplay = baseHrs > 0 ? baseHrs + totalHrs : totalHrs;
   var hrsMeta = baseHrs > 0
     ? baseHrs+' prior · '+wsHrs+' workshops · '+scrHrs.toFixed(1)+' scrabble'
-    : wsHrs+' workshops · '+scrHrs.toFixed(1)+' scrabble · '+progHrs+' program';
+    : conductedFac.length+' facilitated + '+conductedVol.length+' volunteered workshops · '+scrHrs.toFixed(1)+'h scrabble · '+progHrs.toFixed(1)+'h programs';
 
   var sc=document.getElementById('adult-stat-cards');
   if(sc)sc.innerHTML=
-    '<div class="stat-card" style="--accent-color:var(--ya-orange)"><div class="stat-label">Workshops Facilitated</div><div class="stat-value">'+cnt+'</div><div class="stat-meta">2026 series</div><div class="stat-icon">🎤</div></div>'+
-    '<div class="stat-card" style="--accent-color:var(--ya-blue)"><div class="stat-label">Workshops Volunteered</div><div class="stat-value">'+vol.length+'</div><div class="stat-meta">Support roles</div><div class="stat-icon">🤝</div></div>'+
+    '<div class="stat-card" style="--accent-color:var(--ya-orange)"><div class="stat-label">Workshops Facilitated</div><div class="stat-value">'+conductedFac.length+'</div><div class="stat-meta">'+(fac.length > conductedFac.length ? conductedFac.length+' done · '+(fac.length-conductedFac.length)+' upcoming' : 'Completed 2026')+'</div><div class="stat-icon">🎤</div></div>'+
+    '<div class="stat-card" style="--accent-color:var(--ya-blue)"><div class="stat-label">Workshops Volunteered</div><div class="stat-value">'+conductedVol.length+'</div><div class="stat-meta">'+(vol.length > conductedVol.length ? conductedVol.length+' done · '+(vol.length-conductedVol.length)+' upcoming' : 'Support roles')+'</div><div class="stat-icon">🤝</div></div>'+
     '<div class="stat-card" style="--accent-color:var(--ya-teal)"><div class="stat-label">Volunteer Hours</div><div class="stat-value">'+hrsDisplay+'</div><div class="stat-meta">'+hrsMeta+'</div><div class="stat-icon">⏱</div></div>'+
     '<div class="stat-card" style="--accent-color:#22c55e"><div class="stat-label">Facilitator Level</div><div class="stat-value" style="font-size:'+(lvl>0?'1.8rem':'1.1rem')+';padding-top:'+(lvl>0?'3px':'6px')+'">'+(prof.grandfathered?'Level 3 ⭐':lvl>0?'Level '+lvl:'In Progress')+'</div><div class="stat-meta">EL Certified</div><div class="stat-icon">🏅</div></div>';
   var ul=document.getElementById('adult-upcoming-list');
@@ -2769,13 +2802,21 @@ function showLanding(){
 function getActiveAdultVolunteers() {
   var adultSet = new Set();
 
-  // Workshop facilitation or volunteering (FAC_PROFILES)
+  // Workshop facilitation or volunteering — only count CONDUCTED (completed) workshops
+  // and prior hours. Upcoming signups do not make someone an "active volunteer" yet.
   Object.values(FAC_PROFILES).forEach(function(p) {
     if (!p || !p.name) return;
-    var hasFac = p.facilitated && p.facilitated.length > 0;
-    var hasVol = p.volunteered && p.volunteered.length > 0;
+    var conductedF = (p.facilitated||[]).filter(function(id){
+      var w=WORKSHOPS.find(function(w){return w.id===id;});
+      return w && w.conducted && !w.cancelled;
+    });
+    var conductedV = (p.volunteered||[]).filter(function(id){
+      var w=WORKSHOPS.find(function(w){return w.id===id;});
+      return w && w.conducted && !w.cancelled;
+    });
     var hasHrs = p.hours && p.hours > 0;
-    if (hasFac || hasVol || hasHrs) adultSet.add(p.name.toLowerCase().trim());
+    if (conductedF.length > 0 || conductedV.length > 0 || hasHrs)
+      adultSet.add(p.name.toLowerCase().trim());
   });
 
   // Scrabble Club adult volunteering
@@ -2791,9 +2832,16 @@ function getActiveAdultVolunteers() {
     Object.values(gardenP.attendance || {}).forEach(function(recs) {
       (recs||[]).forEach(function(r){ if(r.type==='adult'&&r.attended) adultSet.add(r.name.toLowerCase().trim()); });
     });
-    // Also include adult_volunteers for backwards compat
-    Object.values(gardenP.adult_volunteers || {}).forEach(function(vols){
-      (vols||[]).forEach(function(n){ adultSet.add(n.toLowerCase().trim()); });
+    // Also include adult_volunteers for backwards compat (past, non-cancelled only)
+    var _nowForGarden = Date.now();
+    var _mog={Jan:0,Feb:1,Mar:2,Apr:3,May:4,Jun:5,Jul:6,Aug:7,Sep:8,Oct:9,Nov:10,Dec:11};
+    var _cancelled = gardenP.cancellations || [];
+    Object.keys(gardenP.adult_volunteers || {}).forEach(function(d){
+      if(_cancelled.indexOf(d) >= 0) return;
+      var p2=d.replace(',','').split(' ');
+      var dt2=new Date(parseInt(p2[2]),_mog[p2[0]]||0,parseInt(p2[1]));
+      if(isNaN(dt2)||dt2.getTime()>_nowForGarden) return;
+      (gardenP.adult_volunteers[d]||[]).forEach(function(n){ adultSet.add(n.toLowerCase().trim()); });
     });
   }
 
@@ -3889,7 +3937,12 @@ function renderImpactTab(){
       return cnt>=certMin;
     }).length;
     // Backwards compat: also count from adult_volunteers if not in program_attendance
+    // Only past, non-cancelled sessions count (same rule as renderAdult)
+    // Only past, non-cancelled sessions count (same rule as renderAdult)
+    var gardenCancelled = gardenP.cancellations || [];
     Object.keys(gardenP.adult_volunteers||{}).forEach(function(d){
+      if(gardenCancelled.indexOf(d) >= 0) return; // skip cancelled sessions
+      try { var dt3b=pd3(d); if(isNaN(dt3b)||dt3b>=now3) return; } catch(e){ return; }
       var meta=(gardenP.session_meta||{})[d]||{};
       var hrs=parseSessionHours(meta.start_time||'4:30 PM',meta.end_time||'6:30 PM');
       (gardenP.adult_volunteers[d]||[]).forEach(function(n){ if(!gardenAdultSet.has(n)){gardenAdultHrs+=hrs;gardenAdultSet.add(n);} });
@@ -5439,14 +5492,28 @@ function renderProgramPanel(tabId){
   var myVolDates=Object.keys(prog.adult_volunteers||{}).filter(function(d){
     return (prog.adult_volunteers[d]||[]).indexOf(myName)>=0;
   });
-  var totalMyHrs=myVolDates.length*2;
+  // Only past, non-cancelled sessions count as completed hours
+  var myCompletedDates=myVolDates.filter(function(d){
+    return cancelled.indexOf(d)<0 && isBefore(d,today);
+  });
+  var myUpcomingDates=myVolDates.filter(function(d){
+    return !isBefore(d,today);
+  });
+  // Prefer actual hours from attendance records, fall back to 2h default
+  var totalMyHrs=0;
+  myCompletedDates.forEach(function(d){
+    var recs=(prog.attendance||{})[d]||[];
+    var myRec=recs.find(function(r){return r.type==='adult'&&r.name===myName&&r.attended;});
+    totalMyHrs+=myRec?(myRec.hours||2):2;
+  });
+  var myHrsMeta=myCompletedDates.length+' completed'+(myUpcomingDates.length>0?' · '+myUpcomingDates.length+' upcoming (not counted)':'');
 
   panel.innerHTML=
     '<div class="cards-grid" style="margin-bottom:16px">'+
       '<div class="stat-card" style="--accent-color:'+prog.color+'"><div class="stat-label">Total Sessions</div><div class="stat-value">'+prog.dates.length+'</div><div class="stat-meta">'+prog.dates[0]+' – '+prog.dates[prog.dates.length-1]+'</div><div class="stat-icon">📅</div></div>'+
       '<div class="stat-card" style="--accent-color:var(--ya-teal)"><div class="stat-label">Completed</div><div class="stat-value">'+pastDates.length+'</div><div class="stat-meta">Sessions held</div><div class="stat-icon">✅</div></div>'+
       '<div class="stat-card" style="--accent-color:var(--ya-blue)"><div class="stat-label">Upcoming</div><div class="stat-value">'+upcomingDates.length+'</div><div class="stat-meta">Sessions remaining</div><div class="stat-icon">⏭</div></div>'+
-      (myName?'<div class="stat-card" style="--accent-color:var(--ya-orange)"><div class="stat-label">My Hours</div><div class="stat-value">'+totalMyHrs+'</div><div class="stat-meta">'+myVolDates.length+' sessions volunteered</div><div class="stat-icon">⏱</div></div>':'')+
+      (myName?'<div class="stat-card" style="--accent-color:var(--ya-orange)"><div class="stat-label">My Hours</div><div class="stat-value">'+totalMyHrs.toFixed(1).replace(/\.0$/,'')+'</div><div class="stat-meta">'+myHrsMeta+'</div><div class="stat-icon">⏱</div></div>':'')+
     '</div>'+
     '<div id="prog-sessions-'+tabId+'"></div>';
 
@@ -5530,10 +5597,16 @@ function renderProgramSessions(tabId){
       }
     } else {
       // Past session — show status pill + allow marking volunteered retroactively
-      if(imVol){
+      // Cancelled past sessions cannot be volunteered for (they didn't happen)
+      if(isCancelled){
+        var cp=document.createElement('span');
+        cp.className='pill pill-red';
+        cp.textContent='Cancelled';
+        btns.appendChild(cp);
+      } else if(imVol){
         var pp=document.createElement('span');
         pp.className='pill pill-green';
-        pp.textContent='Volunteered';
+        pp.textContent='Volunteered ✓';
         btns.appendChild(pp);
       } else {
         var retroBtn=document.createElement('button');

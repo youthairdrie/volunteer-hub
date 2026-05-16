@@ -1779,7 +1779,7 @@ var Q1_CLOSED = false; // loaded from DB on startup — do not edit manually
 var KNOWN_CREDENTIALS={};
 
 var RECURRING_PROGRAMS=[{"id":"rec_scrabble","name":"Scrabble & Games Club","day":"Wednesday","location":"Youth Airdrie","season":"Sep-Apr","note":"Every Wednesday, September through end of April","active":true,"cancellations":[]},{"id":"rec_garden","name":"Summer Garden Program","day":"Wednesday","location":"Youth Airdrie","season":"May-Sep","note":"Every Wednesday, May through end of September","active":true,"cancellations":[]}];
-var PROGRAMS_DATA={"scrabble_2026":{"id":"prog_scrabble_2026","name":"Scrabble & Games Club","season":"Winter/Spring 2026","time":"4:30 PM \u2013 6:30 PM","location":"Youth Airdrie","type":"weekly","day":"Wednesday","dates":["Jan 7, 2026","Jan 14, 2026","Jan 21, 2026","Jan 28, 2026","Feb 4, 2026","Feb 11, 2026","Feb 18, 2026","Feb 25, 2026","Mar 4, 2026","Mar 11, 2026","Mar 18, 2026","Mar 25, 2026","Apr 1, 2026","Apr 8, 2026","Apr 15, 2026","Apr 22, 2026","Apr 29, 2026"],"cancellations":[],"adult_volunteers":{"Jan 14, 2026":["Julie Robertson","BJ (Bolaji) Hammed","Kim Sundset"],"Jan 21, 2026":["Julie Robertson","BJ (Bolaji) Hammed","Kim Sundset"],"Jan 28, 2026":["Julie Robertson","Olga Korcheva","BJ (Bolaji) Hammed","Kim Sundset"],"Feb 4, 2026":["Julie Robertson","BJ (Bolaji) Hammed","Chloe Nayoung Kim"],"Feb 11, 2026":["Julie Robertson","BJ (Bolaji) Hammed","Kim Sundset"],"Feb 18, 2026":["Julie Robertson","Kim Sundset"],"Feb 25, 2026":["Julie Robertson","BJ (Bolaji) Hammed","Kim Sundset"],"Mar 4, 2026":["Julie Robertson","BJ (Bolaji) Hammed","Kim Sundset"],"Mar 11, 2026":["Julie Robertson","Kim Sundset"],"Mar 18, 2026":["Julie Robertson","BJ (Bolaji) Hammed","Kim Sundset"],"Jan 7, 2026":["BJ (Bolaji) Hammed","Kim Sundset"]},"youth_participants":{},"color":"var(--ya-gold)"},"garden_2026":{"id":"prog_garden_2026","name":"Summer Garden Program","season":"Summer 2026","time":"4:30 PM \u2013 6:30 PM","location":"Youth Airdrie","type":"weekly","day":"Wednesday","dates":["May 6, 2026","May 13, 2026","May 20, 2026","May 27, 2026","Jun 3, 2026","Jun 10, 2026","Jun 17, 2026","Jun 24, 2026","Jul 1, 2026","Jul 8, 2026","Jul 15, 2026","Jul 22, 2026","Jul 29, 2026","Aug 5, 2026","Aug 12, 2026","Aug 19, 2026","Aug 26, 2026","Sep 2, 2026","Sep 9, 2026","Sep 16, 2026","Sep 23, 2026","Sep 30, 2026"],"cancellations":[],"adult_volunteers":{},"youth_participants":{},"color":"var(--ya-green)"},"scrabble_2026_27":{"id":"prog_scrabble_2026_27","name":"Scrabble & Games Club","season":"Fall/Winter 2026-27","time":"4:30 PM \u2013 6:30 PM","location":"Youth Airdrie","type":"weekly","day":"Wednesday","dates":["Oct 7, 2026","Oct 14, 2026","Oct 21, 2026","Oct 28, 2026","Nov 4, 2026","Nov 11, 2026","Nov 18, 2026","Nov 25, 2026","Dec 2, 2026","Dec 9, 2026","Dec 16, 2026","Dec 23, 2026","Dec 30, 2026","Jan 6, 2027","Jan 13, 2027","Jan 20, 2027","Jan 27, 2027","Feb 3, 2027","Feb 10, 2027","Feb 17, 2027","Feb 24, 2027","Mar 3, 2027","Mar 10, 2027","Mar 17, 2027","Mar 24, 2027","Mar 31, 2027","Apr 7, 2027","Apr 14, 2027","Apr 21, 2027","Apr 28, 2027"],"cancellations":[],"adult_volunteers":{},"youth_participants":{},"color":"var(--ya-gold)"}};
+var PROGRAMS_DATA={"scrabble_2026":{"id":"prog_scrabble_2026","name":"Scrabble \u0026 Games Club","season":"Winter/Spring 2026","time":"4:30 PM \u2013 6:30 PM","location":"Youth Airdrie","type":"weekly","day":"Wednesday","youth_source":"scrabble_sessions","dates":["Jan 7, 2026","Jan 14, 2026","Jan 21, 2026","Jan 28, 2026","Feb 4, 2026","Feb 11, 2026","Feb 18, 2026","Feb 25, 2026","Mar 4, 2026","Mar 11, 2026","Mar 18, 2026","Mar 25, 2026","Apr 1, 2026","Apr 8, 2026","Apr 15, 2026","Apr 22, 2026","Apr 29, 2026"],"cancellations":[],"adult_volunteers":{"Jan 14, 2026":["Julie Robertson","BJ (Bolaji) Hammed","Kim Sundset"],"Jan 21, 2026":["Julie Robertson","BJ (Bolaji) Hammed","Kim Sundset"],"Jan 28, 2026":["Julie Robertson","Olga Korcheva","BJ (Bolaji) Hammed","Kim Sundset"],"Feb 4, 2026":["Julie Robertson","BJ (Bolaji) Hammed","Chloe Nayoung Kim"],"Feb 11, 2026":["Julie Robertson","BJ (Bolaji) Hammed","Kim Sundset"],"Feb 18, 2026":["Julie Robertson","Kim Sundset"],"Feb 25, 2026":["Julie Robertson","BJ (Bolaji) Hammed","Kim Sundset"],"Mar 4, 2026":["Julie Robertson","BJ (Bolaji) Hammed","Kim Sundset"],"Mar 11, 2026":["Julie Robertson","Kim Sundset"],"Mar 18, 2026":["Julie Robertson","BJ (Bolaji) Hammed","Kim Sundset"],"Jan 7, 2026":["BJ (Bolaji) Hammed","Kim Sundset"]},"youth_participants":{},"color":"var(--ya-gold)"},"garden_2026":{"id":"prog_garden_2026","name":"Summer Garden Program","season":"Summer 2026","time":"4:30 PM \u2013 6:30 PM","location":"Youth Airdrie","type":"weekly","day":"Wednesday","dates":["May 6, 2026","May 13, 2026","May 20, 2026","May 27, 2026","Jun 3, 2026","Jun 10, 2026","Jun 17, 2026","Jun 24, 2026","Jul 1, 2026","Jul 8, 2026","Jul 15, 2026","Jul 22, 2026","Jul 29, 2026","Aug 5, 2026","Aug 12, 2026","Aug 19, 2026","Aug 26, 2026","Sep 2, 2026","Sep 9, 2026","Sep 16, 2026","Sep 23, 2026","Sep 30, 2026"],"cancellations":[],"adult_volunteers":{},"youth_participants":{},"color":"var(--ya-green)"},"scrabble_2026_27":{"id":"prog_scrabble_2026_27","name":"Scrabble \u0026 Games Club","season":"Fall/Winter 2026-27","time":"4:30 PM \u2013 6:30 PM","location":"Youth Airdrie","type":"weekly","day":"Wednesday","youth_source":"scrabble_sessions","dates":["Oct 7, 2026","Oct 14, 2026","Oct 21, 2026","Oct 28, 2026","Nov 4, 2026","Nov 11, 2026","Nov 18, 2026","Nov 25, 2026","Dec 2, 2026","Dec 9, 2026","Dec 16, 2026","Dec 23, 2026","Dec 30, 2026","Jan 6, 2027","Jan 13, 2027","Jan 20, 2027","Jan 27, 2027","Feb 3, 2027","Feb 10, 2027","Feb 17, 2027","Feb 24, 2027","Mar 3, 2027","Mar 10, 2027","Mar 17, 2027","Mar 24, 2027","Mar 31, 2027","Apr 7, 2027","Apr 14, 2027","Apr 21, 2027","Apr 28, 2027"],"cancellations":[],"adult_volunteers":{},"youth_participants":{},"color":"var(--ya-gold)"}};
 var ADULT_COMPLIANCE={"Kim Sundset":{"vsc_issued":"2026-01-16","vsc_expiry":"2030-01-16","vsc_on_file":true,"waiver_date":"2024-09-01","waiver_on_file":true},"Olga Korcheva":{"vsc_issued":"","vsc_expiry":"","vsc_on_file":true,"waiver_date":"2024-09-01","waiver_on_file":true},"Connie Wu":{"vsc_issued":"","vsc_expiry":"","vsc_on_file":true,"waiver_date":"2024-09-01","waiver_on_file":true},"Chloe Nayoung Kim":{"vsc_issued":"","vsc_expiry":"","vsc_on_file":false,"waiver_date":"","waiver_on_file":false},"BJ (Bolaji) Hammed":{"vsc_issued":"","vsc_expiry":"","vsc_on_file":true,"waiver_date":"2024-09-01","waiver_on_file":true},"Roberta Ehigiator":{"vsc_issued":"","vsc_expiry":"","vsc_on_file":true,"waiver_date":"2024-09-01","waiver_on_file":true},"Julie Robertson":{"vsc_issued":"2024-01-30","vsc_expiry":"2029-01-30","vsc_on_file":true,"waiver_date":"2024-09-01","waiver_on_file":true},"Tina Petrow":{"vsc_issued":"","vsc_expiry":"","vsc_on_file":true,"waiver_date":"2024-09-01","waiver_on_file":true},"Mary-Beth Finney (Ursa)":{"vsc_issued":"","vsc_expiry":"","vsc_on_file":true,"waiver_date":"","waiver_on_file":false},"Simisola Obasan (Simi)":{"vsc_issued":"","vsc_expiry":"","vsc_on_file":true,"waiver_date":"2024-09-01","waiver_on_file":true},"Tamanna Kaur":{"vsc_issued":"","vsc_expiry":"","vsc_on_file":false,"waiver_date":"","waiver_on_file":false},"Bolaji Ajoke Hammed":{"vsc_issued":"","vsc_expiry":"","vsc_on_file":false,"waiver_date":"","waiver_on_file":false},"Jollean Chapiel":{"vsc_issued":"2020-12-10","vsc_expiry":"2025-12-10","vsc_on_file":true,"waiver_date":"","waiver_on_file":false},"Mimi Omoare":{"vsc_issued":"","vsc_expiry":"","vsc_on_file":false,"waiver_date":"","waiver_on_file":false},"Alex Strokova":{"vsc_issued":"","vsc_expiry":"","vsc_on_file":false,"waiver_date":"","waiver_on_file":false},"Sudi Hedley":{"vsc_issued":"","vsc_expiry":"","vsc_on_file":false,"waiver_date":"","waiver_on_file":false},"Shameen":{"vsc_issued":"","vsc_expiry":"","vsc_on_file":false,"waiver_date":"","waiver_on_file":false},"Carol Brosoto":{"vsc_issued":"","vsc_expiry":"","vsc_on_file":false,"waiver_date":"","waiver_on_file":false},"Kathy March":{"vsc_issued":"2022-06-06","vsc_expiry":"2027-06-06","vsc_on_file":true,"waiver_date":"","waiver_on_file":false}};
 // Workshop IDs that have been saved via the Edit Staff modal (Supabase is source of truth)
 // Once a workshop ID is in this Set, hardcoded ws.facilitators/ws.volunteers are ignored.
@@ -2964,10 +2964,18 @@ function renderStatsDiagnostic() {
   Object.keys(EL_YOUTH).forEach(function(n){var ids=EL_YOUTH[n]||[];if(ids.length)addYouth(n,'EL Workshops',ids.length+' sessions');});
   Object.keys(SCRABBLE_SESSIONS||{}).forEach(function(n){var cnt=Object.keys(SCRABBLE_SESSIONS[n]||{}).length;if(cnt)addYouth(n,'Scrabble Club',cnt+' sessions');});
   Object.keys(PROGRAMS_DATA||{}).forEach(function(pid){var prog=PROGRAMS_DATA[pid];if(!prog)return;
-    // youth_participants is NAME-keyed: { "Youth Name": [sessionDates] }
-    Object.keys(prog.youth_participants||{}).forEach(function(name){ addYouth(name,prog.name,Object.keys(prog.youth_participants[name]||{}).length+' sessions'); });
-    // Also include youth from prog.attendance actual check-ins
-    Object.keys(prog.attendance||{}).forEach(function(d){ (prog.attendance[d]||[]).forEach(function(r){ if(r.type==='youth'&&r.attended) addYouth(r.name,prog.name,d); }); });
+    if(prog.youth_source==='scrabble_sessions'){
+      // Scrabble programs: youth live in Q1_SESSIONS (archived) + SCRABBLE_SESSIONS (active quarter)
+      var scrYouth=new Set();
+      Object.keys(Q1_SESSIONS||{}).forEach(function(n){if(Object.keys(Q1_SESSIONS[n]||{}).length)scrYouth.add(n);});
+      Object.keys(SCRABBLE_SESSIONS||{}).forEach(function(n){if(Object.keys(SCRABBLE_SESSIONS[n]||{}).length)scrYouth.add(n);});
+      scrYouth.forEach(function(n){addYouth(n,prog.name+' ('+prog.season+')',Object.keys((Q1_SESSIONS[n]||{})).length+Object.keys((SCRABBLE_SESSIONS[n]||{})).length+' sessions');});
+    } else {
+      // Attendance-based programs (Garden, etc.): youth_participants + prog.attendance
+      // youth_participants is NAME-keyed: { "Youth Name": [sessionDates] }
+      Object.keys(prog.youth_participants||{}).forEach(function(name){ addYouth(name,prog.name,Object.keys(prog.youth_participants[name]||{}).length+' sessions'); });
+      Object.keys(prog.attendance||{}).forEach(function(d){ (prog.attendance[d]||[]).forEach(function(r){ if(r.type==='youth'&&r.attended) addYouth(r.name,prog.name,d); }); });
+    }
   });
   (EVENTS_DATA||[]).forEach(function(ev){if(ev.status!=='completed')return;['youth_5hrs','youth_4hrs','youth_2hrs'].forEach(function(b){var h=parseInt(b.replace(/\D/g,''));(ev[b]||[]).forEach(function(n){addYouth(n,'Events',ev.name+' ('+h+'h)');});});});
   var youthCount=Object.keys(youthMap).length;
@@ -3121,8 +3129,10 @@ function renderStatsDiagnostic() {
   var evUpcoming=evAll.filter(function(e){return e.status!=='completed';});
 
   // per-program stats (dynamic — works for any PROGRAMS_DATA entry)
-  // youth_participants structure: { "Youth Name": [sessionDate, ...] }  (name-keyed)
-  // prog.attendance structure:    { "sessionDate": [{name, type, attended, hours}] } (date-keyed)
+  // Programs declare their youth data source via the youth_source field:
+  //   youth_source: "scrabble_sessions"  -> read Q1_SESSIONS (archived) + SCRABBLE_SESSIONS (active)
+  //   (no youth_source)                  -> read youth_participants (name-keyed) + prog.attendance
+  // Adult sources: prog.attendance (actual check-ins) merged with adult_volunteers (signup list)
   var progStats={};
   Object.keys(PROGRAMS_DATA||{}).forEach(function(pid){
     var prog=PROGRAMS_DATA[pid];if(!prog)return;
@@ -3131,13 +3141,19 @@ function renderStatsDiagnostic() {
     var completedDates=allDates.filter(function(d){if(cancelled.indexOf(d)>=0)return false;var dt=new Date(d);return !isNaN(dt)&&dt<=now;});
     var upcomingDates=allDates.filter(function(d){if(cancelled.indexOf(d)>=0)return false;var dt=new Date(d);return !isNaN(dt)&&dt>now;});
 
-    // Youth: youth_participants is NAME-keyed {name:[sessionDates]}
-    // Also read prog.attendance for youth check-ins not yet in youth_participants
+    // Youth count — routed by youth_source
     var ySet=new Set();
-    Object.keys(prog.youth_participants||{}).forEach(function(name){ ySet.add(name.toLowerCase().trim()); });
-    Object.keys(prog.attendance||{}).forEach(function(d){
-      (prog.attendance[d]||[]).forEach(function(r){ if(r.type==='youth'&&r.attended) ySet.add(r.name.toLowerCase().trim()); });
-    });
+    if(prog.youth_source==='scrabble_sessions'){
+      // Scrabble: merge Q1_SESSIONS (archived quarter) + SCRABBLE_SESSIONS (active quarter)
+      Object.keys(Q1_SESSIONS||{}).forEach(function(n){if(Object.keys(Q1_SESSIONS[n]||{}).length)ySet.add(n.toLowerCase().trim());});
+      Object.keys(SCRABBLE_SESSIONS||{}).forEach(function(n){if(Object.keys(SCRABBLE_SESSIONS[n]||{}).length)ySet.add(n.toLowerCase().trim());});
+    } else {
+      // Attendance-based programs (Garden etc.): youth_participants (NAME-keyed) + prog.attendance
+      Object.keys(prog.youth_participants||{}).forEach(function(name){ ySet.add(name.toLowerCase().trim()); });
+      Object.keys(prog.attendance||{}).forEach(function(d){
+        (prog.attendance[d]||[]).forEach(function(r){ if(r.type==='youth'&&r.attended) ySet.add(r.name.toLowerCase().trim()); });
+      });
+    }
 
     // Adults: prefer prog.attendance actual check-ins, fall back to adult_volunteers signup list
     var aSet=new Set(); var aHrs=0;
@@ -3371,28 +3387,39 @@ function renderStatsDiagnostic() {
     {id:'prog-youth',icon:'🌱',label:'Youth Participants Per Program',value:totalProgYouth,color:'var(--ya-teal)',sub:'across all PROGRAMS_DATA',
       detail:function(){
         return heading('What counts','var(--ya-teal)')
-          +'<p style="font-size:.82rem;color:var(--text-muted);margin:0 0 8px">Unique youth per program from PROGRAMS_DATA.youth_participants.</p>'
-          +sourcesLine(['PROGRAMS_DATA (youth_participants)','program_attendance'])
-          +warnBox('youth_participants tracks enrolled youth by name. prog.attendance tracks actual session check-ins. Both sources are merged.')
+          +'<p style="font-size:.82rem;color:var(--text-muted);margin:0 0 8px">Unique youth per program. Scrabble programs read from Q1_SESSIONS (archived) + SCRABBLE_SESSIONS (active). Attendance-based programs (Garden etc.) read from youth_participants + prog.attendance.</p>'
+          +sourcesLine(['PROGRAMS_DATA (youth_source)','Q1_SESSIONS + SCRABBLE_SESSIONS (Scrabble)','youth_participants + program_attendance (Garden/other)'])
+          +infoBox('youth_source = "scrabble_sessions": uses the Scrabble session store. No youth_source: uses enrollment list + attendance check-ins. Add youth_source to any new Scrabble-style program.')
           +heading('Per-program youth participants','var(--ya-teal)')
           +(function(){
             var rows='';
             Object.keys(progStats).forEach(function(pid){
               var p=progStats[pid]; var prog=p.prog;
-              // youth_participants is NAME-keyed: { "Youth Name": [sessionDates] }
-              // Count session attendances per youth from both sources
-              var yMap={};
-              // From youth_participants enrollment list (name → session dates array)
-              Object.keys(prog.youth_participants||{}).forEach(function(name){
-                var sessions=prog.youth_participants[name]||[];
-                yMap[name]=(yMap[name]||0)+sessions.length;
-              });
-              // From prog.attendance actual check-ins (date → [{name,type,attended}])
-              Object.keys(prog.attendance||{}).forEach(function(d){
-                (prog.attendance[d]||[]).forEach(function(r){
-                  if(r.type==='youth'&&r.attended) yMap[r.name]=(yMap[r.name]||0)+1;
+              var yMap={}; // name -> session count
+
+              if(prog.youth_source==='scrabble_sessions'){
+                // Scrabble: merge Q1_SESSIONS + SCRABBLE_SESSIONS, count sessions per youth
+                Object.keys(Q1_SESSIONS||{}).forEach(function(n){
+                  var cnt=Object.keys(Q1_SESSIONS[n]||{}).length;
+                  if(cnt) yMap[n]=(yMap[n]||0)+cnt;
                 });
-              });
+                Object.keys(SCRABBLE_SESSIONS||{}).forEach(function(n){
+                  var cnt=Object.keys(SCRABBLE_SESSIONS[n]||{}).length;
+                  if(cnt) yMap[n]=(yMap[n]||0)+cnt;
+                });
+              } else {
+                // Attendance-based: youth_participants (NAME-keyed) + prog.attendance check-ins
+                Object.keys(prog.youth_participants||{}).forEach(function(name){
+                  var sessions=prog.youth_participants[name]||[];
+                  yMap[name]=(yMap[name]||0)+sessions.length;
+                });
+                Object.keys(prog.attendance||{}).forEach(function(d){
+                  (prog.attendance[d]||[]).forEach(function(r){
+                    if(r.type==='youth'&&r.attended) yMap[r.name]=(yMap[r.name]||0)+1;
+                  });
+                });
+              }
+
               var names=Object.keys(yMap).sort();
               var chips=names.length
                 ?names.map(function(n){
@@ -3400,7 +3427,7 @@ function renderStatsDiagnostic() {
                     return chip(n+(cnt?' ('+cnt+' session'+(cnt!==1?'s':'')+')':''),'#fff','rgba(0,181,160,.3)');
                   }).join('')
                 :chip('None recorded','var(--text-muted)','rgba(255,255,255,.06)');
-              rows+=auditRow(p.name+' ('+p.youthCount+')',chips);
+              rows+=auditRow(p.name+' — '+p.prog.season+' ('+p.youthCount+')',chips);
             });
             return rows||'<div style="color:var(--text-muted);font-size:.82rem;padding:8px 0">No programs found.</div>';
           })();

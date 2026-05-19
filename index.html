@@ -747,45 +747,52 @@ tr:hover .grd-date-sticky { background: #1a2d47; }
   </nav>
   <main class="main-content">
     <!-- YOUTH DASHBOARD -->
+    <!-- YOUTH MY ACTIVITY — consolidated single page -->
     <div class="page" id="page-youth-dashboard">
       <div class="ya-stripe"></div>
       <!-- 18th birthday notification banner -->
       <div id="youth-18-banner" style="display:none;background:linear-gradient(135deg,rgba(232,98,10,.15),rgba(245,166,35,.1));border:1px solid rgba(245,166,35,.3);border-radius:12px;padding:14px 18px;margin:14px 14px 0;gap:14px;align-items:flex-start"></div>
       <div class="page-header">
-        <div class="page-title" id="youth-dash-title">My Dashboard</div>
-        <div class="page-sub" id="youth-dash-sub">Today is March 22, 2026</div>
+        <div class="page-title" id="youth-dash-title">My Activity</div>
+        <div class="page-sub" id="youth-dash-sub">Your participation, progress, and upcoming events</div>
       </div>
       <div id="youth-cert-banner-dash"></div>
       <div class="cards-grid" id="youth-stat-cards"></div>
-      <div class="two-col" id="youth-dash-cols">
+      <!-- EL Workshop section (EL members only, hidden for scrabble-only) -->
+      <div id="youth-workshops-section">
         <div class="section-box">
-          <div class="section-title" id="youth-prog-title">⏳ My Progress</div>
+          <div class="section-title" id="youth-prog-title">📚 Emerging Leaders Workshops</div>
           <div id="youth-progress-bars"></div>
-          <div id="youth-hours-section" style="margin-top:12px;border-top:1px solid rgba(255,255,255,.06);padding-top:12px">
-            <div style="font-size:.77rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:7px">Log Volunteer Hours</div>
-            <div class="hours-input"><input type="number" id="youth-hours-input" min="0.5" step="0.5" placeholder="hrs"><button class="hours-btn" onclick="addYouthHours()">+ Add</button></div>
-          </div>
+          <div id="youth-cert-section" style="margin-top:12px;border-top:1px solid rgba(255,255,255,.06);padding-top:12px"></div>
+          <div class="workshop-grid" id="youth-workshop-grid" style="margin-top:12px"></div>
         </div>
-        <div class="section-box" id="youth-right-col">
-          <div class="section-title">🗓 Upcoming</div>
-          <div id="youth-upcoming-list"></div>
-          <div id="youth-recurring-programs" style="margin-top:8px;border-top:1px solid rgba(255,255,255,.06);padding-top:8px"></div>
+      </div>
+      <!-- Volunteer events (admin-verified, read-only) -->
+      <div id="youth-vol-section">
+        <div class="section-box">
+          <div class="section-title">&#128588; Volunteer Events</div>
+          <div id="youth-vol-history"></div>
+        </div>
+      </div>
+      <!-- Achievements (EL members only) -->
+      <div id="youth-achievements-section">
+        <div class="section-box">
+          <div class="section-title">&#127885; Achievements &amp; Certificates</div>
+          <div class="badges-grid" id="youth-badges-grid"></div>
+          <div style="margin-top:14px;border-top:1px solid rgba(255,255,255,.06);padding-top:12px">
+            <div class="section-title" style="margin-bottom:8px">&#128220; Emerging Leaders Certificates</div>
+            <div id="youth-certs-list"></div>
+          </div>
         </div>
       </div>
       <div id="youth-scrabble-dash"></div>
       <div id="youth-pending-entries" style="margin-top:8px"></div>
       <div id="youth-invite-cards"></div>
     </div>
-    <!-- YOUTH WORKSHOPS -->
-    <div class="page" id="page-youth-workshops">
-      <div class="ya-stripe"></div>
-      <div class="page-header">
-        <div class="page-title">My Workshops <span class="hl">📚</span></div>
-        <div class="page-sub">Click a past workshop to mark your attendance</div>
-      </div>
-      <div id="youth-cert-banner-ws"></div>
-      <div class="workshop-grid" id="youth-workshop-grid"></div>
-    </div>
+    <!-- stub so old page ID still resolves (nav redirect handled in JS) -->
+    <div id="page-youth-workshops" style="display:none"></div>
+    <!-- stub for cert banner referenced elsewhere -->
+    <div id="youth-cert-banner-ws" style="display:none"></div>
     <!-- YOUTH SCRABBLE -->
     <div class="page" id="page-youth-scrabble">
       <!-- ENTRY FORM (shown when logging activity) -->
@@ -841,30 +848,11 @@ tr:hover .grd-date-sticky { background: #1a2d47; }
       <div id="scrabble-youth-content"></div>
     </div>
 
-    <!-- YOUTH VOLUNTEERING PAGE -->
-    <div class="page" id="page-youth-events-log">
-      <div class="ya-stripe"></div>
-      <div class="page-header">
-        <div class="page-title">My Volunteering <span class="hl">🙌</span></div>
-        <div class="page-sub">Your volunteer event history and upcoming opportunities</div>
-      </div>
-      <div class="cards-grid" id="youth-vol-stat-cards"></div>
-      <div class="section-box">
-        <div class="section-title">📋 Event History &amp; Upcoming</div>
-        <div id="youth-vol-history"></div>
-      </div>
-    </div>
-
-    <!-- YOUTH ACHIEVEMENTS -->
-    <div class="page" id="page-youth-achievements">
-      <div class="ya-stripe"></div>
-      <div class="page-header">
-        <div class="page-title">Achievements <span class="hl">🏅</span></div>
-        <div class="page-sub">Badges and Emerging Leaders certificates</div>
-      </div>
-      <div class="section-box"><div class="section-title">🎖 Leadership Badges</div><div class="badges-grid" id="youth-badges-grid"></div></div>
-      <div class="section-box"><div class="section-title">📜 Emerging Leaders Certificates</div><div id="youth-certs-list"></div></div>
-    </div>
+    <!-- YOUTH VOLUNTEERING + ACHIEVEMENTS merged into My Activity above -->
+    <!-- stubs so old IDs still resolve -->
+    <div id="page-youth-events-log" style="display:none"></div>
+    <div id="page-youth-achievements" style="display:none"></div>
+    <div id="youth-vol-stat-cards" style="display:none"></div>
     <!-- YOUTH EVENTS -->
     <div class="page" id="page-youth-events">
       <div class="ya-stripe"></div>
@@ -915,52 +903,44 @@ tr:hover .grd-date-sticky { background: #1a2d47; }
       <div id="prog-panel-scrabble-2026-27" style="display:none"></div>
     </div>
 
+    <!-- ADULT MY ACTIVITY — consolidated single page -->
     <div class="page" id="page-adult-dashboard">
       <div class="ya-stripe"></div>
       <div class="page-header">
-        <div class="page-title" id="adult-dash-title">My Dashboard</div>
-        <div class="page-sub">Semester: Jan 12 – May 25, 2026 · 10 of 17 workshops completed</div>
+        <div class="page-title" id="adult-dash-title">My Activity</div>
+        <div class="page-sub">Your volunteer record, workshops, and compliance for 2026</div>
       </div>
       <div class="alert-row info" id="adult-next-workshop-alert" style="margin-bottom:14px"></div>
       <div id="adult-cert-banner-dash"></div>
       <div class="cards-grid" id="adult-stat-cards"></div>
-      <div class="two-col">
-        <div class="section-box" id="adult-self-compliance-box">
-          <div class="section-title">🛡 My Compliance</div>
-          <div id="adult-self-compliance-content"></div>
+      <!-- Workshops section -->
+      <div class="section-box">
+        <div class="section-title">&#128218; Emerging Leaders Workshops</div>
+        <div style="display:flex;gap:16px;flex-wrap:wrap;font-size:.8rem;color:var(--text-muted);margin-bottom:12px">
+          <span><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:var(--ya-orange);vertical-align:middle;margin-right:5px"></span>&#127908; Facilitated — you led this</span>
+          <span><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:var(--ya-blue);vertical-align:middle;margin-right:5px"></span>&#129309; Volunteered — you supported</span>
         </div>
-        <div class="section-box">
-          <div class="section-title">🛡 Compliance Status</div>
-          <div class="status-row"><div><div class="status-label">Vulnerable Sector Check</div><div class="status-date">Valid on file</div></div><span class="pill pill-green">✔ Valid</span></div>
-          <div class="status-row"><div><div class="status-label">Volunteer Waiver</div><div class="status-date">Current season</div></div><span class="pill pill-green">✔ Signed</span></div>
-          <div class="status-row"><div><div class="status-label">Safeguarding Training</div><div class="status-date">Completed 2025</div></div><span class="pill pill-green">✔ Done</span></div>
-          <div style="margin-top:12px;border-top:1px solid rgba(255,255,255,.06);padding-top:12px">
-            <div style="font-size:.77rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:7px">Log Volunteer Hours</div>
-            <div class="hours-input"><input type="number" id="adult-hours-input" min="0.5" step="0.5" placeholder="hrs"><button class="hours-btn" onclick="addAdultHours()">+ Add</button></div>
-          </div>
-        </div>
-        <div class="section-box">
-          <div class="section-title">📅 Upcoming Workshops</div>
-          <div id="adult-upcoming-list"></div>
-        </div>
+        <div id="adult-cert-banner-ws"></div>
+        <div class="workshop-grid" id="adult-workshop-grid"></div>
+      </div>
+      <!-- Volunteer hours (admin-recorded, read-only) -->
+      <div class="section-box">
+        <div class="section-title">&#9201; My Volunteer Hours</div>
+        <div id="adult-vol-history-content"></div>
+      </div>
+      <!-- Upcoming workshops -->
+      <div class="section-box">
+        <div class="section-title">&#128197; Upcoming Workshops</div>
+        <div id="adult-upcoming-list"></div>
+      </div>
+      <!-- Compliance -->
+      <div class="section-box" id="adult-self-compliance-box">
+        <div class="section-title">&#128737; My Compliance</div>
+        <div id="adult-self-compliance-content"></div>
       </div>
     </div>
-    <!-- ADULT WORKSHOPS -->
-    <div class="page" id="page-adult-workshops">
-      <div class="ya-stripe"></div>
-      <div class="page-header">
-        <div class="page-title">Emerging Leaders Workshops <span class="hl">📚</span></div>
-        <div class="page-sub">Your facilitation and volunteering record for 2026</div>
-      </div>
-      <div id="adult-cert-banner-ws"></div>
-      <div class="section-box" style="margin-bottom:14px">
-        <div style="display:flex;gap:16px;flex-wrap:wrap;font-size:.8rem;color:var(--text-muted)">
-          <span><span style="display:inline-block;width:13px;height:13px;border-radius:4px;background:var(--ya-orange);vertical-align:middle;margin-right:5px"></span>🎤 Facilitated — you led this workshop</span>
-          <span><span style="display:inline-block;width:13px;height:13px;border-radius:4px;background:var(--ya-blue);vertical-align:middle;margin-right:5px"></span>🤝 Volunteered — you supported</span>
-        </div>
-      </div>
-      <div class="workshop-grid" id="adult-workshop-grid"></div>
-    </div>
+    <!-- stubs so old IDs still resolve -->
+    <div id="page-adult-workshops" style="display:none"></div>
     <!-- ADMIN DASHBOARD -->
     <div class="page" id="page-admin-dashboard">
       <div class="ya-stripe"></div>
@@ -2010,22 +1990,32 @@ function renderScrabbleYouthPage(name){
 
 function renderYouth(){
   if(!youthState||!youthState.name) return;
-  // Check if youth has turned 18
   checkYouth18thBirthday();
-  var ws=youthState.workshops,hrs=youthState.hours,name=youthState.name;
-  var cnt=ws.size,lvl=getYouthLevel(cnt,hrs);
+  var name=youthState.name;
+  var ws=youthState.workshops; // Set of workshop IDs attended
   var isEL=name in EL_YOUTH;
   var isScrOnly=!isEL&&isScrabbleMember(name);
+
+  // ── Hours: admin-verified only (from YOUTH_HOURS, not self-reported) ──
+  var hrs=YOUTH_HOURS[name]||0;
+  var cnt=ws.size;
+  var lvl=getYouthLevel(cnt,hrs);
+
+  // Page title
   var t=document.getElementById('youth-dash-title');
   if(t)t.innerHTML='Welcome, '+name+'! <span class="hl">'+(isScrOnly?'🎲':'🌱')+'</span>';
+
+  // Cert banner (EL only)
   var cb1=document.getElementById('youth-cert-banner-dash');
-  var cb2=document.getElementById('youth-cert-banner-ws');
   if(cb1)cb1.innerHTML=isEL?certBannerHTML(cnt,hrs):'';
-  if(cb2)cb2.innerHTML=isEL?certBannerHTML(cnt,hrs):'';
-  document.querySelectorAll('.nav-item').forEach(function(n){
-    var txt=n.textContent.trim();
-    if(txt==='My Workshops'||txt==='Achievements'){n.style.display=isEL?'':'none';}
-  });
+
+  // Show/hide EL-only sections
+  var wsSection=document.getElementById('youth-workshops-section');
+  var achSection=document.getElementById('youth-achievements-section');
+  if(wsSection)wsSection.style.display=isEL?'':'none';
+  if(achSection)achSection.style.display=isEL?'':'none';
+
+  // ── Stat cards ──────────────────────────────────────────────────────────
   var sc=document.getElementById('youth-stat-cards');
   if(sc){
     if(isScrOnly){
@@ -2035,38 +2025,36 @@ function renderYouth(){
       sc.innerHTML=
         '<div class="stat-card" style="--accent-color:var(--ya-gold)"><div class="stat-label">Scrabble Points</div><div class="stat-value">'+myPts+'</div><div class="stat-meta">'+CURRENT_QUARTER+'</div><div class="stat-icon">🎲</div></div>'+
         '<div class="stat-card" style="--accent-color:var(--ya-orange)"><div class="stat-label">My Rank</div><div class="stat-value">#'+myRank+'</div><div class="stat-meta">of '+lb.length+' players</div><div class="stat-icon">🏅</div></div>'+
-        '<div class="stat-card" style="--accent-color:var(--ya-teal)"><div class="stat-label">Sessions Attended</div><div class="stat-value">'+Object.keys(SCRABBLE_SESSIONS[name]||{}).length+'</div><div class="stat-meta">out of '+SCRABBLE_DATES.length+' held</div><div class="stat-icon">📅</div></div>'+
-        '<div class="stat-card" style="--accent-color:var(--ya-green)"><div class="stat-label">'+CURRENT_QUARTER+' Trophy</div><div class="stat-value" style="font-size:'+(myRank===1?'1.4rem':'1rem')+';padding-top:6px">'+(myRank===1?'You lead! 🏆':lb[0][0].split(' ')[0]+' leads')+'</div><div class="stat-meta">'+lb[0][1]+' pts · ends '+QUARTER_END_DATE+'</div><div class="stat-icon">🏆</div></div>';
+        '<div class="stat-card" style="--accent-color:var(--ya-teal)"><div class="stat-label">Sessions Attended</div><div class="stat-value">'+Object.keys(SCRABBLE_SESSIONS[name]||{}).length+'</div><div class="stat-meta">out of '+SCRABBLE_DATES.length+' held</div><div class="stat-icon">📅</div></div>';
     }else{
+      var verifiedHrs=YOUTH_HOURS[name]||0; // admin-recorded only
       var hasSc=isScrabbleMember(name);
       var lb2=Object.entries(SCRABBLE_TOTALS).sort(function(a,b){return b[1]-a[1];});
       var scCard=hasSc?
-        '<div class="stat-card" style="--accent-color:var(--ya-gold)"><div class="stat-label">Scrabble Points</div><div class="stat-value">'+getScrabbleTotal(name)+'</div><div class="stat-meta">Rank #'+(lb2.findIndex(function(x){return x[0]===name;})+1)+' of '+Object.keys(SCRABBLE_TOTALS).length+'</div><div class="stat-icon">🎲</div></div>':
-        '<div class="stat-card" style="--accent-color:var(--ya-green)"><div class="stat-label">Waiver Status</div><div class="stat-value" style="font-size:1.1rem;padding-top:6px">Signed ✔</div><div class="stat-meta">Valid 2026</div><div class="stat-icon">📋</div></div>';
+        '<div class="stat-card" style="--accent-color:var(--ya-gold)"><div class="stat-label">Scrabble Points</div><div class="stat-value">'+getScrabbleTotal(name)+'</div><div class="stat-meta">Rank #'+(lb2.findIndex(function(x){return x[0]===name;})+1)+'</div><div class="stat-icon">🎲</div></div>':
+        '';
       sc.innerHTML=
-        '<div class="stat-card" style="--accent-color:var(--ya-teal)"><div class="stat-label">Workshops Attended</div><div class="stat-value">'+cnt+'</div><div class="stat-meta">of 17 active workshops</div><div class="stat-icon">📚</div></div>'+
-        '<div class="stat-card" style="--accent-color:var(--ya-orange)"><div class="stat-label">Volunteer Hours</div><div class="stat-value">'+hrs+'</div><div class="stat-meta">Goal: 6 hrs for Level 3</div><div class="stat-icon">⏱</div></div>'+
+        '<div class="stat-card" style="--accent-color:var(--ya-teal)"><div class="stat-label">Workshops Attended</div><div class="stat-value">'+cnt+'</div><div class="stat-meta">of '+calcWorkshopStats().scheduled.length+' scheduled</div><div class="stat-icon">📚</div></div>'+
+        '<div class="stat-card" style="--accent-color:var(--ya-orange)"><div class="stat-label">Volunteer Hours</div><div class="stat-value">'+verifiedHrs+'</div><div class="stat-meta">Admin-verified · Goal: '+(lvl<1?2:lvl<2?4:6)+'h for Level '+(Math.min(lvl+1,3))+'</div><div class="stat-icon">⏱</div></div>'+
         '<div class="stat-card" style="--accent-color:var(--ya-blue)"><div class="stat-label">EL Level</div><div class="stat-value" style="font-size:'+(lvl>0?'1.8rem':'1.1rem')+';padding-top:'+(lvl>0?'3px':'6px')+'">'+(lvl>0?'Level '+lvl:'In Progress')+'</div><div class="stat-meta">EL Certificate</div><div class="stat-icon">🎓</div></div>'+
         scCard;
     }
   }
+
+  // ── Workshop progress bars (EL only) ────────────────────────────────────
   var pb=document.getElementById('youth-progress-bars');
   if(pb){
-    if(isScrOnly){
-      pb.innerHTML='<p style="color:var(--text-muted);font-size:.84rem;line-height:1.6">You\'re enrolled in <strong style="color:var(--text-main)">Scrabble & Games Club</strong>! 🎲</p>';
+    if(!isEL){
+      pb.innerHTML='';
     }else{
       var cGW=lvl<1?6:lvl<2?12:18,cGH=lvl<1?2:lvl<2?4:6;
       pb.innerHTML=
         '<div class="prog-bar-wrap"><div class="prog-label"><span>Workshops (Level '+Math.min(lvl+1,3)+')</span><span>'+cnt+' / '+cGW+'</span></div><div class="prog-track"><div class="prog-fill" style="width:'+Math.min(100,cnt/cGW*100)+'%;background:linear-gradient(90deg,var(--ya-teal),var(--ya-blue))"></div></div></div>'+
-        '<div class="prog-bar-wrap"><div class="prog-label"><span>Volunteer Hours</span><span>'+hrs+' / '+cGH+'</span></div><div class="prog-track"><div class="prog-fill" style="width:'+Math.min(100,hrs/cGH*100)+'%;background:linear-gradient(90deg,var(--ya-orange),var(--ya-gold))"></div></div></div>';
+        '<div class="prog-bar-wrap"><div class="prog-label"><span>Volunteer Hours (admin-verified)</span><span>'+hrs+' / '+cGH+'</span></div><div class="prog-track"><div class="prog-fill" style="width:'+Math.min(100,hrs/cGH*100)+'%;background:linear-gradient(90deg,var(--ya-orange),var(--ya-gold))"></div></div></div>';
     }
   }
-  var hs=document.getElementById('youth-hours-section');
-  if(hs)hs.style.display=isScrOnly?'none':'';
-  var rc=document.getElementById('youth-right-col');
-  if(rc)rc.style.display=isScrOnly?'none':'';
-  renderScrabbleDash(name);
-  renderInviteCards(name,isEL,isScrOnly);
+
+  // ── Workshop grid (EL only — attendance marking, no hour logging) ───────
   var grid=document.getElementById('youth-workshop-grid');
   if(grid&&isEL){
     grid.innerHTML='';
@@ -2074,52 +2062,23 @@ function renderYouth(){
       var att=ws.has(w.id);
       var el2=document.createElement('div');
       el2.className='ws-card'+(att?' attended':'')+(w.cancelled?' cancelled':'')+(w.upcoming?' upcoming-ws':'');
-      el2.innerHTML='<div class="ws-num">#'+w.id+'</div><div class="ws-name">'+w.name+'</div><div class="ws-fac">'+w.facilitators.join(' & ')+'</div>'+wsDateChip(w)+'<div class="ws-actions">'+(w.cancelled?'<span style="font-size:.72rem;color:var(--badge-red)">Cancelled</span>':'<button class="ws-btn '+(att?'active-att':'')+'" onclick="toggleYouthWs('+w.id+',this)">'+(att?'✔ Attended':w.conducted?'Mark Attended':w.upcoming?'📅 Tomorrow':'Upcoming')+'</button>')+'</div>';
+      // Cancelled: label only. Upcoming (not yet conducted): label only. Conducted: mark attended.
+      var action='';
+      if(w.cancelled){
+        action='<span style="font-size:.72rem;color:var(--badge-red)">Cancelled</span>';
+      }else if(w.conducted){
+        action='<button class="ws-btn '+(att?'active-att':'')+'" onclick="toggleYouthWs('+w.id+',this)">'+(att?'✔ Attended':'Mark Attended')+'</button>';
+      }else if(w.upcoming){
+        action='<span style="font-size:.72rem;color:var(--ya-gold)">📅 Tomorrow</span>';
+      }else{
+        action='<span style="font-size:.72rem;color:var(--text-muted)">Upcoming</span>';
+      }
+      el2.innerHTML='<div class="ws-num">#'+w.id+'</div><div class="ws-name">'+w.name+'</div><div class="ws-fac">'+w.facilitators.join(' & ')+'</div>'+wsDateChip(w)+'<div class="ws-actions">'+action+'</div>';
       grid.appendChild(el2);
     });
   }
-  renderScrabbleYouthPage(name);
-  renderYouthAchievements();
 
-  // My Volunteering page - stat cards + history
-  var vsc=document.getElementById('youth-vol-stat-cards');
-  var evData=getMyEventHours(name);
-  if(vsc){
-    var totalHrs=evData.total||0;
-    var lvlNeeded=lvl<1?2:lvl<2?4:6;
-    var upcomingCount=EVENTS_DATA.filter(function(e){return e.status==='upcoming'&&e.eligible==='all_youth';}).length;
-    vsc.innerHTML=
-      '<div class="stat-card" style="--accent-color:var(--ya-teal)"><div class="stat-label">Volunteer Hours</div><div class="stat-value">'+totalHrs+'</div><div class="stat-meta">Need '+lvlNeeded+' for Level '+(Math.min(lvl+1,3))+'</div><div class="stat-icon">&#9201;</div></div>'+
-      '<div class="stat-card" style="--accent-color:var(--ya-orange)"><div class="stat-label">Past Events</div><div class="stat-value">'+evData.log.length+'</div><div class="stat-meta">on record</div><div class="stat-icon">&#128197;</div></div>'+
-      '<div class="stat-card" style="--accent-color:var(--ya-blue)"><div class="stat-label">Upcoming</div><div class="stat-value">'+upcomingCount+'</div><div class="stat-meta">Events to register for</div><div class="stat-icon">&#9193;</div></div>';
-  }
-  renderVolunteerHistory('youth-vol-history', name);
-  renderYouthPendingEntries(name);
-}
-
-function toggleYouthWs(id,btn){
-  var w=WORKSHOPS.find(function(x){return x.id===id;});
-  if(!w||w.cancelled) return;
-  var attended;
-  if(youthState.workshops.has(id)){youthState.workshops.delete(id);attended=false;}
-  else{youthState.workshops.add(id);attended=true;}
-  saveWorkshopAttendance(youthState.name, id, attended);
-  renderYouth();
-}
-
-function addYouthHours(){
-  var inp=document.getElementById('youth-hours-input');
-  var v=parseFloat(inp.value);
-  if(!v||v<=0)return;
-  youthState.hours=Math.round((youthState.hours+v)*10)/10;
-  YOUTH_HOURS[youthState.name] = youthState.hours;
-  inp.value='';renderYouth();
-  // Persist updated hours to DB
-  saveYouthToDB(youthState.name, YOUTH_AGES[youthState.name]||null, EL_YOUTH[youthState.name]||[]);
-}
-
-function renderYouthAchievements(){
-  var cnt=youthState.workshops.size,hrs=youthState.hours;
+  // ── Achievements & certs (EL only) ──────────────────────────────────────
   var bg=document.getElementById('youth-badges-grid');
   var badges=[{e:'🌟',n:'First Steps',req:1},{e:'🤝',n:'Team Player',req:3},{e:'🌿',n:'Community',req:6},{e:'🎤',n:'Public Voice',req:9},{e:'🦁',n:'Leader',req:12},{e:'💎',n:'100 Hours',hrReq:100}];
   if(bg)bg.innerHTML=badges.map(function(b){
@@ -2130,24 +2089,122 @@ function renderYouthAchievements(){
   if(cl)cl.innerHTML=[{l:1,w:6,h:2},{l:2,w:12,h:4},{l:3,w:18,h:6}].map(function(c){
     var earned=cnt>=c.w&&hrs>=c.h;
     var p=cnt>=c.w&&hrs<c.h?'pill-amber':cnt<c.w?'pill-grey':'pill-green';
-    return '<div class="activity-item"><div class="activity-dot" style="background:'+(earned?'var(--ya-teal)':'rgba(255,255,255,.15)')+'"></div><div style="flex:1"><div class="activity-name">Emerging Leaders Certificate — Level '+c.l+'</div><div class="activity-meta">Requires '+c.w+' workshops + '+c.h+' hrs volunteering</div></div><span class="pill '+p+'">'+(earned?'✔ Earned':cnt>=c.w?'Need '+Math.max(0,c.h-hrs).toFixed(1)+' more hrs':cnt+'/'+c.w+' workshops')+'</span></div>';
+    return '<div class="activity-item"><div class="activity-dot" style="background:'+(earned?'var(--ya-teal)':'rgba(255,255,255,.15)')+'"></div><div style="flex:1"><div class="activity-name">Emerging Leaders Certificate — Level '+c.l+'</div><div class="activity-meta">Requires '+c.w+' workshops + '+c.h+' hrs (admin-verified)</div></div><span class="pill '+p+'">'+(earned?'✔ Earned':cnt>=c.w?'Need '+Math.max(0,c.h-hrs).toFixed(1)+' more hrs':cnt+'/'+c.w+' workshops')+'</span></div>';
   }).join('');
+
+  // ── Volunteer event history (admin-verified hours, read-only) ───────────
+  renderVolunteerHistoryYouth('youth-vol-history', name);
+
+  // ── Scrabble mini-dash & full page ──────────────────────────────────────
+  renderScrabbleDash(name);
+  renderInviteCards(name,isEL,isScrOnly);
+  renderScrabbleYouthPage(name);
+
+  // ── Pending entries ──────────────────────────────────────────────────────
+  renderYouthPendingEntries(name);
+}
+
+function toggleYouthWs(id,btn){
+  // Marks workshop attendance only — does NOT log volunteer hours
+  var w=WORKSHOPS.find(function(x){return x.id===id;});
+  if(!w||w.cancelled||!w.conducted) return; // only past conducted workshops can be marked
+  var attended;
+  if(youthState.workshops.has(id)){youthState.workshops.delete(id);attended=false;}
+  else{youthState.workshops.add(id);attended=true;}
+  saveWorkshopAttendance(youthState.name, id, attended);
+  renderYouth();
+}
+
+// addYouthHours REMOVED — hours are admin-recorded only
+// renderYouthAchievements inlined into renderYouth above
+
+// ── renderVolunteerHistoryYouth — read-only view of admin-verified event hours ──
+// No self-logging buttons. Upcoming events show register/unregister only.
+function renderVolunteerHistoryYouth(containerId, personName){
+  var el=document.getElementById(containerId);
+  if(!el) return;
+  var pastEvents=[];
+  var upcomingEvents=[];
+
+  // Completed events: show hours if admin-recorded (status=completed + in bucket)
+  EVENTS_DATA.forEach(function(ev){
+    if(ev.status!=='completed') return;
+    var hrs=0;
+    if((ev.youth_5hrs||[]).indexOf(personName)>=0) hrs=5;
+    else if((ev.youth_4hrs||[]).indexOf(personName)>=0) hrs=4;
+    else if((ev.youth_2hrs||[]).indexOf(personName)>=0) hrs=2;
+    pastEvents.push({name:ev.name,date:ev.date,host:ev.host||'Youth Airdrie',hrs:hrs,id:ev.id,verified:hrs>0});
+  });
+
+  // Upcoming events (all_youth eligible, truly in the future)
+  EVENTS_DATA.forEach(function(ev){
+    if(ev.status!=='upcoming') return;
+    if(ev.eligible!=='all_youth') return;
+    var evDate=new Date(ev.date);
+    if(!isNaN(evDate.getTime())&&evDate<new Date()) return; // skip past-dated upcoming
+    var isReg=(ev.youth_registered||[]).indexOf(personName)>=0;
+    upcomingEvents.push({name:ev.name,date:ev.date,time:ev.time||'—',location:ev.location||'TBD',hrs:ev.hours_on_completion||2,id:ev.id,isReg:isReg});
+  });
+
+  pastEvents.sort(function(a,b){return new Date(a.date)-new Date(b.date);});
+
+  var html2='';
+  // Summary
+  var totalVerified=pastEvents.reduce(function(s,e){return s+(e.verified?e.hrs:0);},0);
+  var verifiedCount=pastEvents.filter(function(e){return e.verified;}).length;
+  if(totalVerified>0){
+    html2+='<div style="font-size:.78rem;color:var(--ya-teal);font-weight:700;margin-bottom:12px">'+
+      totalVerified+' verified volunteer hour'+(totalVerified!==1?'s':'')+' across '+verifiedCount+' event'+(verifiedCount!==1?'s':'')+'</div>';
+  }
+
+  // Past events (read-only)
+  if(pastEvents.length>0){
+    html2+='<div style="font-size:.75rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Past Events</div>';
+    html2+=pastEvents.map(function(e){
+      var pill=e.verified?'<span class="pill pill-green">+'+e.hrs+' hrs ✔</span>':
+        '<span class="pill pill-grey" style="font-size:.7rem">No hours recorded</span>';
+      return '<div class="activity-item" style="flex-wrap:wrap;align-items:center">'+
+        '<div class="activity-dot" style="background:'+(e.verified?'var(--ya-teal)':'rgba(255,255,255,.15)')+'"></div>'+
+        '<div style="flex:1;min-width:0"><div class="activity-name">'+e.name+'</div>'+
+        '<div class="activity-meta">'+e.host+' · '+e.date+'</div></div>'+
+        pill+'</div>';
+    }).join('');
+  } else {
+    html2+='<div style="color:var(--text-muted);font-size:.83rem;padding:8px 0 14px">No past volunteer events on record.</div>';
+  }
+
+  // Upcoming (registration only — no hour logging)
+  if(upcomingEvents.length>0){
+    html2+='<div style="font-size:.75rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin:16px 0 8px">Upcoming Events</div>';
+    html2+=upcomingEvents.map(function(uev){
+      var dot=uev.isReg?'var(--ya-green)':'var(--ya-gold)';
+      var actions=uev.isReg?
+        '<div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:8px">'+
+          '<span class="pill pill-green">✔ Going!</span>'+
+          '<button class="ws-btn" data-eid="'+uev.id+'" data-pname="'+personName+'" onclick="unregisterYouthFromEvent(this)" style="border-color:var(--badge-red);color:var(--badge-red)">✕ Not Going</button>'+
+        '</div>':
+        '<button class="ws-btn" data-eid="'+uev.id+'" data-pname="'+personName+'" onclick="registerYouthForEvent(this)" style="margin-top:8px">Volunteer →</button>';
+      return '<div class="activity-item" style="flex-wrap:wrap">'+
+        '<div class="activity-dot" style="background:'+dot+'"></div>'+
+        '<div style="flex:1;min-width:0">'+
+          '<div class="activity-name">'+uev.name+'</div>'+
+          '<div class="activity-meta">'+uev.date+(uev.time!=='—'?' · '+uev.time:'')+' · '+uev.location+'</div>'+
+          '<div class="activity-meta" style="color:var(--ya-gold)">~'+uev.hrs+' volunteer hrs on completion (admin-recorded)</div>'+
+          actions+
+        '</div></div>';
+    }).join('');
+  }
+
+  if(!html2) html2='<div style="color:var(--text-muted);font-size:.83rem">No events recorded yet.</div>';
+  el.innerHTML=html2;
 }
 
 function renderAdult(){
   renderNextWorkshopAlerts();
+  if(!adultState) return;
   var prof=adultState,fac=prof.facilitated,vol=prof.volunteered;
-  var cnt=conductedFac.length,lvl=getFacLevel(cnt,prof.grandfathered); // cert level based on completed workshops only
-  var t=document.getElementById('adult-dash-title');
-  if(t)t.innerHTML='Welcome, '+prof.name+'! <span class="hl">🙌</span>';
-  var cb1=document.getElementById('adult-cert-banner-dash');
-  var cb2=document.getElementById('adult-cert-banner-ws');
-  if(cb1)cb1.innerHTML=facCertBannerHTML(cnt,prof.grandfathered);
-  if(cb2)cb2.innerHTML=facCertBannerHTML(cnt,prof.grandfathered);
 
-  // ── Calculate total volunteer hours dynamically ──
-  // RULE: only CONDUCTED (completed) workshops count toward hours.
-  // Upcoming workshops that are signed up for do NOT count.
+  // ── Hours via shared layer (same rules as Stats Audit) ──────────────────
   var conductedFac = fac.filter(function(id){
     var w = WORKSHOPS.find(function(w){ return w.id === id; });
     return w && w.conducted && !w.cancelled;
@@ -2156,63 +2213,55 @@ function renderAdult(){
     var w = WORKSHOPS.find(function(w){ return w.id === id; });
     return w && w.conducted && !w.cancelled;
   });
-  var wsHrs = (conductedFac.length + conductedVol.length) * 2; // 2 hrs per completed workshop
+  var cnt=conductedFac.length, lvl=getFacLevel(cnt,prof.grandfathered);
 
-  // Scrabble hours: merge Q1 archived + current quarter (same rule as shared layer)
+  // Total hours from shared layer (matches Stats Audit exactly)
+  var totalAdultHrsAll = calcAdultVolunteerHours();
+  // Per-person hours: workshops + scrabble (Q1+Q2 merged) + programs
+  var wsHrs = (conductedFac.length + conductedVol.length) * 2;
   var _scrQ1  = (Q1_ADULT_SCRABBLE  || {})[prof.name] || {};
   var _scrCur = (ADULT_SCRABBLE || {})[prof.name] || {};
   var _scrMerged = Object.assign({}, _scrQ1);
   Object.keys(_scrCur).forEach(function(d){ if(!(_scrMerged[d] !== undefined)) _scrMerged[d] = _scrCur[d]; });
-  var scrHrs = Object.values(_scrMerged).reduce(function(a,v){ return a + (parseFloat(v)||0); }, 0);
-
-  // Program sessions: only count PAST (already-occurred) sessions that are NOT cancelled.
-  // Signups for future sessions are intentional but must not count as completed hours.
+  var scrHrs = Object.values(_scrMerged).reduce(function(a,v){ return a+(parseFloat(v)||0); }, 0);
   var progHrs = 0;
-  var _nowMs = Date.now();
-  var _months = {Jan:0,Feb:1,Mar:2,Apr:3,May:4,Jun:5,Jul:6,Aug:7,Sep:8,Oct:9,Nov:10,Dec:11};
-  function _parseProgramDate(s){
-    var p = (s||'').replace(',','').split(' ');
-    if(p.length < 3) return null;
-    var d = new Date(parseInt(p[2]), _months[p[0]], parseInt(p[1]));
-    return isNaN(d.getTime()) ? null : d;
-  }
+  var _nowMs2 = Date.now();
   Object.values(PROGRAMS_DATA).forEach(function(prog){
     var cancelled = prog.cancellations || [];
     var myDates = Object.keys(prog.adult_volunteers||{}).filter(function(d){
-      if((prog.adult_volunteers[d]||[]).indexOf(prof.name) < 0) return false; // not signed up
-      if(cancelled.indexOf(d) >= 0) return false;                             // session cancelled
-      var dt = _parseProgramDate(d);
-      if(!dt) return false;
-      return dt.getTime() <= _nowMs;                                           // session already past
+      if((prog.adult_volunteers[d]||[]).indexOf(prof.name) < 0) return false;
+      if(cancelled.indexOf(d) >= 0) return false;
+      var p2=(d||'').replace(',','').split(' '); if(p2.length<3) return false;
+      var mo2={Jan:0,Feb:1,Mar:2,Apr:3,May:4,Jun:5,Jul:6,Aug:7,Sep:8,Oct:9,Nov:10,Dec:11};
+      var dt2=new Date(parseInt(p2[2]),mo2[p2[0]],parseInt(p2[1]));
+      return !isNaN(dt2.getTime()) && dt2.getTime()<=_nowMs2;
     });
-    // Prefer actual hours from program_attendance if available, else default 2h/session
-    var myProgHrs = 0;
     myDates.forEach(function(d){
-      var recs = (prog.attendance || {})[d] || [];
-      var myRec = recs.find(function(r){ return r.type === 'adult' && r.name === prof.name && r.attended; });
-      myProgHrs += myRec ? (myRec.hours || 2) : 2;
+      var recs=(prog.attendance||{})[d]||[];
+      var myRec=recs.find(function(r){return r.type==='adult'&&r.name===prof.name&&r.attended;});
+      progHrs+=myRec?(myRec.hours||2):2;
     });
-    progHrs += myProgHrs;
   });
-  var totalHrs = Math.round((wsHrs + scrHrs + progHrs) * 10) / 10;
-  // Show base (pre-2026) hours separately if set
-  var baseHrs = prof.hours || 0;
-  var hrsDisplay = baseHrs > 0 ? baseHrs + totalHrs : totalHrs;
-  var hrsMeta = baseHrs > 0
-    ? baseHrs+' prior · '+wsHrs+' workshops · '+scrHrs.toFixed(1)+' scrabble'
-    : conductedFac.length+' facilitated + '+conductedVol.length+' volunteered workshops · '+scrHrs.toFixed(1)+'h scrabble · '+progHrs.toFixed(1)+'h programs';
+  var myTotalHrs=Math.round((wsHrs+scrHrs+progHrs)*10)/10;
+  var hrsMeta=conductedFac.length+' facilitated + '+conductedVol.length+' volunteered · '+scrHrs.toFixed(1)+'h scrabble · '+progHrs.toFixed(1)+'h programs';
 
+  // ── Page header ──────────────────────────────────────────────────────────
+  var t=document.getElementById('adult-dash-title');
+  if(t)t.innerHTML='Welcome, '+prof.name+'! <span class="hl">🙌</span>';
+  var cb1=document.getElementById('adult-cert-banner-dash');
+  var cb2=document.getElementById('adult-cert-banner-ws');
+  if(cb1)cb1.innerHTML=facCertBannerHTML(cnt,prof.grandfathered);
+  if(cb2)cb2.innerHTML=facCertBannerHTML(cnt,prof.grandfathered);
+
+  // ── Stat cards ───────────────────────────────────────────────────────────
   var sc=document.getElementById('adult-stat-cards');
   if(sc)sc.innerHTML=
-    '<div class="stat-card" style="--accent-color:var(--ya-orange)"><div class="stat-label">Workshops Facilitated</div><div class="stat-value">'+conductedFac.length+'</div><div class="stat-meta">'+(fac.length > conductedFac.length ? conductedFac.length+' done · '+(fac.length-conductedFac.length)+' upcoming' : 'Completed 2026')+'</div><div class="stat-icon">🎤</div></div>'+
-    '<div class="stat-card" style="--accent-color:var(--ya-blue)"><div class="stat-label">Workshops Volunteered</div><div class="stat-value">'+conductedVol.length+'</div><div class="stat-meta">'+(vol.length > conductedVol.length ? conductedVol.length+' done · '+(vol.length-conductedVol.length)+' upcoming' : 'Support roles')+'</div><div class="stat-icon">🤝</div></div>'+
-    '<div class="stat-card" style="--accent-color:var(--ya-teal)"><div class="stat-label">Volunteer Hours</div><div class="stat-value">'+hrsDisplay+'</div><div class="stat-meta">'+hrsMeta+'</div><div class="stat-icon">⏱</div></div>'+
+    '<div class="stat-card" style="--accent-color:var(--ya-orange)"><div class="stat-label">Workshops Facilitated</div><div class="stat-value">'+conductedFac.length+'</div><div class="stat-meta">'+(fac.length>conductedFac.length?conductedFac.length+' done · '+(fac.length-conductedFac.length)+' upcoming':'Completed 2026')+'</div><div class="stat-icon">🎤</div></div>'+
+    '<div class="stat-card" style="--accent-color:var(--ya-blue)"><div class="stat-label">Workshops Volunteered</div><div class="stat-value">'+conductedVol.length+'</div><div class="stat-meta">'+(vol.length>conductedVol.length?conductedVol.length+' done · '+(vol.length-conductedVol.length)+' upcoming':'Support roles')+'</div><div class="stat-icon">🤝</div></div>'+
+    '<div class="stat-card" style="--accent-color:var(--ya-teal)"><div class="stat-label">My Volunteer Hours</div><div class="stat-value">'+myTotalHrs+'</div><div class="stat-meta">'+hrsMeta+'</div><div class="stat-icon">⏱</div></div>'+
     '<div class="stat-card" style="--accent-color:#22c55e"><div class="stat-label">Facilitator Level</div><div class="stat-value" style="font-size:'+(lvl>0?'1.8rem':'1.1rem')+';padding-top:'+(lvl>0?'3px':'6px')+'">'+(prof.grandfathered?'Level 3 ⭐':lvl>0?'Level '+lvl:'In Progress')+'</div><div class="stat-meta">EL Certified</div><div class="stat-icon">🏅</div></div>';
-  var ul=document.getElementById('adult-upcoming-list');
-  if(ul)ul.innerHTML=WORKSHOPS.filter(function(w){return !w.cancelled&&!w.conducted;}).slice(0,8).map(function(w){
-    var iF=fac.includes(w.id),iV=vol.includes(w.id);
-    return '<div class="activity-item"><div class="activity-dot" style="background:'+(w.cancelled?'var(--badge-red)':w.upcoming?'var(--ya-gold)':w.conducted?'var(--ya-teal)':'rgba(255,255,255,.2)')+'"></div><div style="flex:1"><div class="activity-name">#'+w.id+' '+w.name+(w.upcoming?' 📅':'')+'</div><div class="activity-meta">'+w.date+(iF?' · <strong style="color:var(--ya-orange)">You facilitated</strong>':iV?' · <strong style="color:var(--ya-blue)">You volunteered</strong>':'')+'</div></div></div>';
-  }).join('');
+
+  // ── Workshop grid (facilitation/volunteering — admin-managed) ────────────
   var grid=document.getElementById('adult-workshop-grid');
   if(grid){
     grid.innerHTML='';
@@ -2228,8 +2277,61 @@ function renderAdult(){
       grid.appendChild(el2);
     });
   }
-}
 
+  // ── My volunteer hours breakdown (read-only) ─────────────────────────────
+  var volHist=document.getElementById('adult-vol-history-content');
+  if(volHist){
+    var rows=[];
+    conductedFac.forEach(function(id){var w=WORKSHOPS.find(function(w){return w.id===id;});if(w)rows.push({label:'Facilitated: '+w.name,date:w.date,hrs:2,color:'var(--ya-orange)'});});
+    conductedVol.forEach(function(id){var w=WORKSHOPS.find(function(w){return w.id===id;});if(w)rows.push({label:'Volunteered: '+w.name,date:w.date,hrs:2,color:'var(--ya-blue)'});});
+    if(Object.keys(_scrMerged).length>0) rows.push({label:'Scrabble & Games Club ('+Object.keys(_scrMerged).length+' sessions)',date:'2026',hrs:scrHrs,color:'var(--ya-gold)'});
+    // Program sessions
+    Object.keys(PROGRAMS_DATA).forEach(function(pid){
+      var prog=PROGRAMS_DATA[pid]; var cancelled=prog.cancellations||[];
+      var sessCount=0;
+      Object.keys(prog.adult_volunteers||{}).forEach(function(d){
+        if(cancelled.indexOf(d)>=0) return;
+        if((prog.adult_volunteers[d]||[]).indexOf(prof.name)<0) return;
+        var p2=(d||'').replace(',','').split(' '); var mo2={Jan:0,Feb:1,Mar:2,Apr:3,May:4,Jun:5,Jul:6,Aug:7,Sep:8,Oct:9,Nov:10,Dec:11};
+        var dt2=new Date(parseInt(p2[2]||0),mo2[p2[0]]||0,parseInt(p2[1]||0));
+        if(!isNaN(dt2.getTime())&&dt2.getTime()<=_nowMs2) sessCount++;
+      });
+      if(sessCount>0) rows.push({label:prog.name+' ('+sessCount+' sessions)',date:'2026',hrs:sessCount*2,color:'var(--ya-green)'});
+    });
+    // Completed events
+    EVENTS_DATA.forEach(function(ev){
+      if(ev.status!=='completed') return;
+      var hrs=0;
+      if((ev.adult_5hrs||[]).indexOf(prof.name)>=0) hrs=5;
+      else if((ev.adult_4hrs||[]).indexOf(prof.name)>=0) hrs=4;
+      else if((ev.adult_2hrs||[]).indexOf(prof.name)>=0) hrs=2;
+      if(hrs>0) rows.push({label:'Event: '+ev.name,date:ev.date,hrs:hrs,color:'var(--ya-teal)'});
+    });
+    if(rows.length===0){
+      volHist.innerHTML='<div style="color:var(--text-muted);font-size:.83rem">No volunteer hours recorded yet. Hours are recorded by the admin after each activity.</div>';
+    } else {
+      var total=rows.reduce(function(s,r){return s+r.hrs;},0);
+      volHist.innerHTML=rows.map(function(r){
+        return '<div class="activity-item"><div class="activity-dot" style="background:'+r.color+'"></div>'+
+          '<div style="flex:1"><div class="activity-name">'+r.label+'</div><div class="activity-meta">'+r.date+'</div></div>'+
+          '<span class="pill pill-teal">'+r.hrs+' hrs</span></div>';
+      }).join('')+
+      '<div style="border-top:1px solid rgba(255,255,255,.08);margin-top:10px;padding-top:10px;display:flex;justify-content:space-between;font-size:.82rem">'+
+        '<span style="color:var(--text-muted)">Total recorded hours</span>'+
+        '<span class="pill pill-orange">'+Math.round(total*10)/10+' hrs</span></div>';
+    }
+  }
+
+  // ── Upcoming workshops ────────────────────────────────────────────────────
+  var ul=document.getElementById('adult-upcoming-list');
+  if(ul)ul.innerHTML=WORKSHOPS.filter(function(w){return !w.cancelled&&!w.conducted;}).slice(0,8).map(function(w){
+    var iF=fac.includes(w.id),iV=vol.includes(w.id);
+    return '<div class="activity-item"><div class="activity-dot" style="background:'+(w.upcoming?'var(--ya-gold)':'rgba(255,255,255,.2)')+'"></div><div style="flex:1"><div class="activity-name">#'+w.id+' '+w.name+(w.upcoming?' 📅':'')+'</div><div class="activity-meta">'+w.date+(iF?' · <strong style="color:var(--ya-orange)">You facilitating</strong>':iV?' · <strong style="color:var(--ya-blue)">You volunteering</strong>':'')+'</div></div></div>';
+  }).join('');
+
+  // ── Self-compliance ───────────────────────────────────────────────────────
+  renderAdultSelfCompliance(prof.name);
+}
 function toggleAdultFac(id,btn){
   var w=WORKSHOPS.find(function(x){return x.id===id;});if(w&&w.cancelled)return;
   var fac=adultState.facilitated,vol=adultState.volunteered,card=btn.closest('.ws-card');
@@ -2266,15 +2368,7 @@ function toggleAdultVol(id,btn){
   renderAdult();
 }
 
-function addAdultHours(){
-  var inp=document.getElementById('adult-hours-input');
-  var v=parseFloat(inp.value);
-  if(!v||v<=0)return;
-  adultState.hours=Math.round((adultState.hours+v)*10)/10;
-  inp.value='';
-  saveAdultProfile();
-  renderAdult();
-}
+// addAdultHours REMOVED — hours are admin-recorded only
 
 async function saveAdultProfile(){
   if(!adultState) return;
@@ -2710,9 +2804,8 @@ function enterApp(role){
     document.getElementById('user-role-badge').textContent='Administrator';
   }
   var navs={
-    youth:[{id:'youth-dashboard',icon:'🏠',label:'Dashboard'},{id:'youth-workshops',icon:'📚',label:'My Workshops'},{id:'youth-scrabble',icon:'🎲',label:'Scrabble Club'},
-      {id:'youth-events-log',icon:'🙌',label:'My Volunteering'},{id:'youth-achievements',icon:'🏅',label:'Achievements'},{id:'youth-events',icon:'📋',label:'Programs & Events'}],
-    adult:[{id:'adult-dashboard',icon:'🏠',label:'Dashboard'},{id:'adult-workshops',icon:'📚',label:'Workshops'},{id:'adult-programs',icon:'📅',label:'Programs'}],
+    youth:[{id:'youth-dashboard',icon:'🏠',label:'My Activity'},{id:'youth-scrabble',icon:'🎲',label:'Scrabble Club'},{id:'youth-events',icon:'📋',label:'Programs & Events'}],
+    adult:[{id:'adult-dashboard',icon:'🏠',label:'My Activity'},{id:'adult-programs',icon:'📅',label:'Programs'}],
     admin:[{id:'admin-dashboard',icon:'⚡',label:'Overview'}]
   };
   var navEl=document.getElementById('nav-links');
@@ -3924,14 +4017,12 @@ function buildMobileTabBar() {
 
   var navs = {
     youth:[
-      {id:'youth-dashboard', icon:'🏠', label:'Home'},
-      {id:'youth-workshops', icon:'📚', label:'Workshops'},
+      {id:'youth-dashboard', icon:'🏠', label:'My Activity'},
       {id:'youth-scrabble', icon:'🎲', label:'Scrabble'},
       {id:'youth-events', icon:'📋', label:'Programs'},
     ],
     adult:[
-      {id:'adult-dashboard', icon:'🏠', label:'Home'},
-      {id:'adult-workshops', icon:'📚', label:'Workshops'},
+      {id:'adult-dashboard', icon:'🏠', label:'My Activity'},
       {id:'adult-programs', icon:'📅', label:'Programs'},
     ]
   };
@@ -4161,7 +4252,7 @@ function registerYouthForEvent(btn){
   ev.youth_registered=ev.youth_registered||[];
   if(ev.youth_registered.indexOf(personName)<0) ev.youth_registered.push(personName);
   saveEventRegistration(eventId, personName); // persist to Supabase
-  renderVolunteerHistory('youth-vol-history', personName);
+  renderVolunteerHistoryYouth('youth-vol-history', personName);
   renderAdmin();
 }
 
@@ -4172,7 +4263,7 @@ function regEvent(btn){
   if(!ev) return;
   ev.youth_registered=ev.youth_registered||[];
   if(ev.youth_registered.indexOf(personName)<0) ev.youth_registered.push(personName);
-  renderVolunteerHistory('youth-vol-history', personName);
+  renderVolunteerHistoryYouth('youth-vol-history', personName);
 }
 
 function unregisterYouthFromEvent(btn){
@@ -4183,50 +4274,11 @@ function unregisterYouthFromEvent(btn){
   ev.youth_registered=(ev.youth_registered||[]).filter(function(n){return n!==personName;});
   // Remove from DB
   dbDel('event_registrations','event_id=eq.'+eventId+'&youth_name=eq.'+encodeURIComponent(personName));
-  renderVolunteerHistory('youth-vol-history', personName);
+  renderVolunteerHistoryYouth('youth-vol-history', personName);
   renderAdmin && renderAdmin();
 }
 
-function logEventHours(btn){
-  var eventId=btn.getAttribute('data-eid');
-  var personName=btn.getAttribute('data-pname');
-  var hrs=parseFloat(btn.getAttribute('data-hrs'))||0;
-  var evName=btn.getAttribute('data-evname')||'Event';
-  var ev=EVENTS_DATA.find(function(e){return e.id===eventId;});
-  if(!ev) return;
-
-  // If there's already a pending entry for this event, withdraw it first
-  PENDING_ENTRIES.forEach(function(e){
-    if(e.youth_name===personName && e.type==='event_hours' && e.session_date===ev.date && e.status==='pending'){
-      e.status='withdrawn';
-      dbDel('pending_entries','id=eq.'+encodeURIComponent(e.id));
-    }
-  });
-
-  // Disable button to prevent double submission
-  btn.disabled=true;
-  btn.textContent='⏳ Submitted — pending verification';
-  btn.style.opacity='0.6';
-
-  // Submit as a pending entry for admin verification
-  var now=new Date().toISOString();
-  var entry={
-    id:'pe_'+Date.now()+'_evt',
-    youth_name:personName,
-    session_date:ev.date,
-    type:'event_hours',
-    value:hrs,
-    pts:hrs,
-    status:'pending',
-    submitted_at:now,
-    note:evName
-  };
-  PENDING_ENTRIES.push(entry);
-  savePendingEntry(entry);
-  // Re-render so the "Pending verification" pill appears immediately
-  setTimeout(function(){ renderVolunteerHistory('youth-vol-history', personName); }, 400);
-  renderYouthPendingEntries && renderYouthPendingEntries(personName);
-}
+// logEventHours REMOVED — youth cannot self-report volunteer hours. Hours are admin-recorded only.
 
 
 function renderScheduleTab(){
@@ -10350,16 +10402,12 @@ function doLogin(id, role) {
   // Build nav and render
   var navs = {
     youth:[
-      {id:'youth-dashboard',icon:'🏠',label:'Dashboard'},
-      {id:'youth-workshops',icon:'📚',label:'My Workshops'},
+      {id:'youth-dashboard',icon:'🏠',label:'My Activity'},
       {id:'youth-scrabble',icon:'🎲',label:'Scrabble Club'},
-      {id:'youth-events-log',icon:'🙌',label:'My Volunteering'},
-      {id:'youth-achievements',icon:'🏅',label:'Achievements'},
       {id:'youth-events',icon:'📋',label:'Programs & Events'}
     ],
     adult:[
-      {id:'adult-dashboard',icon:'🏠',label:'Dashboard'},
-      {id:'adult-workshops',icon:'📚',label:'Workshops'},
+      {id:'adult-dashboard',icon:'🏠',label:'My Activity'},
       {id:'adult-programs',icon:'📅',label:'Programs'}
     ],
     admin:[{id:'admin-dashboard',icon:'⚡',label:'Overview'}]
@@ -11099,8 +11147,7 @@ function toggleAdminVolunteerView(){
     var navEl = document.getElementById('nav-links');
     navEl.innerHTML = '';
     var volunteerNavs = [
-      {id:'adult-dashboard',  icon:'🏠', label:'Dashboard'},
-      {id:'adult-workshops',  icon:'📚', label:'Workshops'},
+      {id:'adult-dashboard',  icon:'🏠', label:'My Activity'},
       {id:'adult-programs',   icon:'📅', label:'Programs'},
     ];
     volunteerNavs.forEach(function(n){

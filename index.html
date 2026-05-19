@@ -1414,7 +1414,7 @@ tr:hover .grd-date-sticky { background: #1a2d47; }
           <div class="stat-card" style="--accent-color:var(--ya-orange)"><div class="stat-label">Events Recorded</div><div class="stat-value" id="el-stat-count">—</div><div class="stat-meta">All time</div><div class="stat-icon">📅</div></div>
           <div class="stat-card" style="--accent-color:var(--ya-teal)"><div class="stat-label">Youth Volunteers</div><div class="stat-value" id="el-stat-youth">—</div><div class="stat-meta">Across all events</div><div class="stat-icon">🌱</div></div>
           <div class="stat-card" style="--accent-color:var(--ya-blue)"><div class="stat-label">Adult Volunteers</div><div class="stat-value" id="el-stat-adult">—</div><div class="stat-meta">Across all events</div><div class="stat-icon">🙌</div></div>
-          <div class="stat-card" style="--accent-color:var(--ya-gold)"><div class="stat-label">Total Hours</div><div class="stat-value" id="admin-total-vol-hrs">—</div><div class="stat-meta">All volunteers combined</div><div class="stat-icon">⏱</div></div>
+          <div class="stat-card" style="--accent-color:var(--ya-gold)"><div class="stat-label">Event Hours</div><div class="stat-value" id="admin-total-vol-hrs">—</div><div class="stat-meta">Youth + adult at events</div><div class="stat-icon">⏱</div></div>
         </div>
         <div id="events-log-list"></div>
         <div class="section-box"><div class="section-title">📅 Upcoming Volunteer Events</div><div id="admin-upcoming-events"></div></div>
@@ -2158,7 +2158,12 @@ function renderAdult(){
   });
   var wsHrs = (conductedFac.length + conductedVol.length) * 2; // 2 hrs per completed workshop
 
-  var scrHrs = ADULT_SCRABBLE_TOTALS[prof.name] || 0; // scrabble volunteer hours (already historical)
+  // Scrabble hours: merge Q1 archived + current quarter (same rule as shared layer)
+  var _scrQ1  = (Q1_ADULT_SCRABBLE  || {})[prof.name] || {};
+  var _scrCur = (ADULT_SCRABBLE || {})[prof.name] || {};
+  var _scrMerged = Object.assign({}, _scrQ1);
+  Object.keys(_scrCur).forEach(function(d){ if(!(_scrMerged[d] !== undefined)) _scrMerged[d] = _scrCur[d]; });
+  var scrHrs = Object.values(_scrMerged).reduce(function(a,v){ return a + (parseFloat(v)||0); }, 0);
 
   // Program sessions: only count PAST (already-occurred) sessions that are NOT cancelled.
   // Signups for future sessions are intentional but must not count as completed hours.
@@ -2785,6 +2790,322 @@ function showLanding(){
 }
 
 // ══════════════════════════════════════════════════════════════════════════
+// SHARED STATS CALCULATION LAYER
+// Single source-of-truth helpers used by ALL views:
+//   updateLandingStats, renderImpactTab, renderStatsDiagnostic,
+//   renderEventsLog, renderAdult, renderYouth, and any future callers.
+//
+// Counting rules (applied consistently everywhere):
+//   • Upcoming signups do NOT count as completed volunteering
+//   • Cancelled sessions/events are excluded from all totals
+//   • Youth attendance = participation, NOT volunteer hours
+//   • Adult completed participation = volunteer hours
+//   • Program enrollment ≠ attendance
+//   • Adult assignment/enrollment ≠ hours
+//   • Only past, non-cancelled sessions count as completed program participation
+//   • Workshops count only if conducted=true AND cancelled≠true
+//   • Sentinel rows (_enrolled, _adult_enrolled) never count as attendance
+//   • FAC_PROFILES.hours is a legacy/prior-years field — excluded from totals
+//     to avoid double-counting (workshop hours are derived from facilitated/
+//     volunteered lists instead)
+//   • Scrabble hours = Q1_ADULT_SCRABBLE (archived) + ADULT_SCRABBLE (current)
+// ══════════════════════════════════════════════════════════════════════════
+
+// ── Internal: resolve "now" at midnight for date comparisons ─────────────
+function _statsNow() {
+  var d = new Date(); d.setHours(0,0,0,0); return d;
+}
+
+// ── calcWorkshopStats() ──────────────────────────────────────────────────
+// Returns { scheduled, delivered, cancelled }  (arrays of workshop objects)
+function calcWorkshopStats() {
+  var all = WORKSHOPS || [];
+  return {
+    all:       all,
+    scheduled: all.filter(function(w){ return !w.cancelled; }),
+    delivered: all.filter(function(w){ return w.conducted && !w.cancelled; }),
+    cancelled: all.filter(function(w){ return w.cancelled; })
+  };
+}
+
+// ── calcEventStats() ─────────────────────────────────────────────────────
+// Returns { all, completed, upcoming, community, communityCompleted }
+function calcEventStats() {
+  var all = EVENTS_DATA || [];
+  var completed  = all.filter(function(e){ return e.status === 'completed'; });
+  var upcoming   = all.filter(function(e){ return e.status !== 'completed'; });
+  var community  = all.filter(function(e){ return e.type !== 'Meeting'; });
+  var commComp   = community.filter(function(e){ return e.status === 'completed'; });
+  return { all: all, completed: completed, upcoming: upcoming,
+           community: community, communityCompleted: commComp };
+}
+
+// ── calcYouthParticipants() ──────────────────────────────────────────────
+// Returns a Set of lowercase-trimmed unique youth names with ANY recorded
+// activity across: EL workshops, Scrabble, PROGRAMS_DATA programs, Events.
+// Does NOT count upcoming-only signups.
+function calcYouthParticipants() {
+  var ySet = new Set();
+  // EL workshops
+  Object.keys(EL_YOUTH || {}).forEach(function(n){
+    if ((EL_YOUTH[n] || []).length > 0) ySet.add(n.toLowerCase().trim());
+  });
+  // Scrabble (both quarters)
+  Object.keys(Q1_SESSIONS || {}).forEach(function(n){
+    if (Object.keys(Q1_SESSIONS[n] || {}).length > 0) ySet.add(n.toLowerCase().trim());
+  });
+  Object.keys(SCRABBLE_SESSIONS || {}).forEach(function(n){
+    if (Object.keys(SCRABBLE_SESSIONS[n] || {}).length > 0) ySet.add(n.toLowerCase().trim());
+  });
+  // PROGRAMS_DATA (Garden, etc.)
+  Object.keys(PROGRAMS_DATA || {}).forEach(function(pid){
+    var prog = PROGRAMS_DATA[pid]; if (!prog) return;
+    if (prog.youth_source === 'scrabble_sessions') return; // already counted above
+    // youth_participants name-keyed
+    Object.keys(prog.youth_participants || {}).forEach(function(name){
+      ySet.add(name.toLowerCase().trim());
+    });
+    // attendance actual check-ins
+    Object.values(prog.attendance || {}).forEach(function(recs){
+      (recs || []).forEach(function(r){
+        if (r.type === 'youth' && r.attended && r.name !== '_enrolled')
+          ySet.add(r.name.toLowerCase().trim());
+      });
+    });
+  });
+  // Events (completed only — youth who actually volunteered)
+  (EVENTS_DATA || []).forEach(function(ev){
+    if (ev.status !== 'completed') return;
+    ['youth_5hrs','youth_4hrs','youth_2hrs'].forEach(function(b){
+      (ev[b] || []).forEach(function(n){ ySet.add(n.toLowerCase().trim()); });
+    });
+  });
+  return ySet;
+}
+
+// ── calcAdultVolunteers() ────────────────────────────────────────────────
+// Returns a Set of lowercase-trimmed unique adult volunteer names with ANY
+// completed activity. Delegates to getActiveAdultVolunteers() (defined below).
+// Alias kept here so all callers use the same name from the shared layer.
+function calcAdultVolunteers() {
+  return getActiveAdultVolunteers();
+}
+
+// ── calcAdultVolunteerHours() ────────────────────────────────────────────
+// Returns total adult volunteer hours (number) from all sources.
+// Sources:
+//   1. Workshops — 2h per conducted (not cancelled) workshop per person
+//   2. Scrabble  — actual hours from Q1_ADULT_SCRABBLE + ADULT_SCRABBLE (merged, no double-count)
+//   3. Programs  — actual hours from prog.attendance; fallback 2h/session from adult_volunteers
+//      (Scrabble pids skipped — already covered by source 2)
+//   4. Events    — bucket hours from completed events only
+// FAC_PROFILES.hours excluded (legacy/prior-years field).
+function calcAdultVolunteerHours() {
+  var now = _statsNow();
+  var hrsMap = {}; // name.lower -> total hours
+  function add(rawName, h) {
+    var k = (rawName || '').toLowerCase().trim();
+    if (!k) return;
+    hrsMap[k] = (hrsMap[k] || 0) + (parseFloat(h) || 0);
+  }
+
+  // 1. Workshops
+  Object.values(FAC_PROFILES || {}).forEach(function(p){
+    if (!p || !p.name) return;
+    var condF = (p.facilitated || []).filter(function(id){
+      var w = (WORKSHOPS || []).find(function(w){ return w.id === id; });
+      return w && w.conducted && !w.cancelled;
+    });
+    var condV = (p.volunteered || []).filter(function(id){
+      var w = (WORKSHOPS || []).find(function(w){ return w.id === id; });
+      return w && w.conducted && !w.cancelled;
+    });
+    var h = (condF.length + condV.length) * 2;
+    if (h > 0) add(p.name, h);
+  });
+
+  // 2. Scrabble — merge Q1 archive + current quarter
+  var allScr = {};
+  function mergeScr(src) {
+    Object.keys(src || {}).forEach(function(n){
+      allScr[n] = allScr[n] || {};
+      Object.keys(src[n] || {}).forEach(function(d){
+        if (!allScr[n][d]) allScr[n][d] = src[n][d];
+      });
+    });
+  }
+  mergeScr(Q1_ADULT_SCRABBLE); mergeScr(ADULT_SCRABBLE);
+  Object.keys(allScr).forEach(function(n){
+    var t = Object.values(allScr[n]).reduce(function(a,v){ return a + (parseFloat(v)||0); }, 0);
+    if (t > 0) add(n, t);
+  });
+
+  // 3. Programs (skip Scrabble pids — covered by source 2)
+  var scrabblePids = new Set(['scrabble_2026','scrabble_2026_27']);
+  Object.keys(PROGRAMS_DATA || {}).forEach(function(pid){
+    if (scrabblePids.has(pid)) return;
+    var prog = PROGRAMS_DATA[pid]; if (!prog) return;
+    var cancelled = prog.cancellations || [];
+    var seenInAtt = new Set();
+    // Prefer actual hours from attendance records
+    Object.keys(prog.attendance || {}).forEach(function(d){
+      if (cancelled.indexOf(d) >= 0) return;
+      var dt = new Date(d); if (isNaN(dt) || dt.getTime() > now.getTime()) return;
+      (prog.attendance[d] || []).forEach(function(r){
+        if (r.type === 'adult' && r.attended && r.name !== '_adult_enrolled') {
+          seenInAtt.add(r.name);
+          add(r.name, r.hours || 2);
+        }
+      });
+    });
+    // Fallback: adult_volunteers signup list (2h/session estimate)
+    Object.keys(prog.adult_volunteers || {}).forEach(function(d){
+      if (cancelled.indexOf(d) >= 0) return;
+      var dt = new Date(d); if (isNaN(dt) || dt.getTime() > now.getTime()) return;
+      (prog.adult_volunteers[d] || []).forEach(function(n){
+        if (!seenInAtt.has(n)) add(n, 2);
+      });
+    });
+  });
+
+  // 4. Events (completed only)
+  (EVENTS_DATA || []).forEach(function(ev){
+    if (ev.status !== 'completed') return;
+    ['adult_5hrs','adult_4hrs','adult_2hrs'].forEach(function(b){
+      var h = parseInt(b.replace(/\D/g,''));
+      (ev[b] || []).forEach(function(n){ add(n, h); });
+    });
+  });
+
+  return Object.values(hrsMap).reduce(function(a,v){ return a + v; }, 0);
+}
+
+// ── calcYouthVolunteerHours() ────────────────────────────────────────────
+// Returns total youth volunteer hours (number) from YOUTH_HOURS +
+// any event-bucket hours not yet in YOUTH_HOURS.
+// Youth Scrabble/Garden attendance does NOT count as volunteer hours.
+function calcYouthVolunteerHours() {
+  var yMap = {}; // name.lower -> hours
+  // Primary: YOUTH_HOURS (admin-logged, verified)
+  Object.keys(YOUTH_HOURS || {}).forEach(function(n){
+    var k = n.toLowerCase().trim();
+    yMap[k] = (yMap[k] || 0) + (parseFloat(YOUTH_HOURS[n]) || 0);
+  });
+  // Supplement: event buckets (for any youth not yet in YOUTH_HOURS)
+  (EVENTS_DATA || []).forEach(function(ev){
+    if (ev.status !== 'completed') return;
+    ['youth_5hrs','youth_4hrs','youth_2hrs'].forEach(function(b){
+      var h = parseInt(b.replace(/\D/g,''));
+      (ev[b] || []).forEach(function(n){
+        var k = n.toLowerCase().trim();
+        if (!(k in yMap)) yMap[k] = h;
+      });
+    });
+  });
+  return Object.values(yMap).reduce(function(a,v){ return a + v; }, 0);
+}
+
+// ── calcTotalVolunteerHours() ────────────────────────────────────────────
+// Returns adult hours + youth hours combined.
+function calcTotalVolunteerHours() {
+  return calcAdultVolunteerHours() + calcYouthVolunteerHours();
+}
+
+// ── calcProgramStats() ───────────────────────────────────────────────────
+// Returns an object keyed by pid with per-program stats.
+// Each entry: { name, scheduled, completed, cancelled, upcoming,
+//               youthCount, adultCount, adultHrs, prog }
+function calcProgramStats() {
+  var now = _statsNow();
+  var result = {};
+  Object.keys(PROGRAMS_DATA || {}).forEach(function(pid){
+    var prog = PROGRAMS_DATA[pid]; if (!prog) return;
+    var cancelled = prog.cancellations || [];
+    var allDates  = prog.dates || [];
+    var completedDates = allDates.filter(function(d){
+      if (cancelled.indexOf(d) >= 0) return false;
+      var dt = new Date(d); return !isNaN(dt) && dt <= now;
+    });
+    var upcomingDates = allDates.filter(function(d){
+      if (cancelled.indexOf(d) >= 0) return false;
+      var dt = new Date(d); return !isNaN(dt) && dt > now;
+    });
+
+    // Youth
+    var ySet = new Set();
+    if (prog.youth_source === 'scrabble_sessions') {
+      Object.keys(Q1_SESSIONS || {}).forEach(function(n){
+        if (Object.keys(Q1_SESSIONS[n]||{}).length) ySet.add(n.toLowerCase().trim());
+      });
+      Object.keys(SCRABBLE_SESSIONS || {}).forEach(function(n){
+        if (Object.keys(SCRABBLE_SESSIONS[n]||{}).length) ySet.add(n.toLowerCase().trim());
+      });
+    } else {
+      Object.keys(prog.youth_participants || {}).forEach(function(name){
+        ySet.add(name.toLowerCase().trim());
+      });
+      Object.keys(prog.attendance || {}).forEach(function(d){
+        (prog.attendance[d] || []).forEach(function(r){
+          if (r.type === 'youth' && r.attended && r.name !== '_enrolled')
+            ySet.add(r.name.toLowerCase().trim());
+        });
+      });
+    }
+
+    // Adults + hours
+    var aSet = new Set(); var aHrs = 0;
+    var seenInAtt = new Set();
+    Object.keys(prog.attendance || {}).forEach(function(d){
+      if (cancelled.indexOf(d) >= 0) return;
+      var dt = new Date(d); if (isNaN(dt) || dt.getTime() > now.getTime()) return;
+      (prog.attendance[d] || []).forEach(function(r){
+        if (r.type === 'adult' && r.attended && r.name !== '_adult_enrolled') {
+          aSet.add(r.name.toLowerCase().trim());
+          seenInAtt.add(r.name);
+          aHrs += (r.hours || 2);
+        }
+      });
+    });
+    Object.keys(prog.adult_volunteers || {}).forEach(function(d){
+      if (cancelled.indexOf(d) >= 0) return;
+      var dt = new Date(d); if (isNaN(dt) || dt.getTime() > now.getTime()) return;
+      (prog.adult_volunteers[d] || []).forEach(function(n){
+        if (!seenInAtt.has(n)) { aSet.add(n.toLowerCase().trim()); aHrs += 2; }
+      });
+    });
+
+    result[pid] = {
+      name: prog.name, color: prog.color || 'var(--ya-teal)',
+      scheduled: allDates.length, completed: completedDates.length,
+      cancelled: cancelled.length, upcoming: upcomingDates.length,
+      youthCount: ySet.size, adultCount: aSet.size, adultHrs: aHrs,
+      prog: prog
+    };
+  });
+  return result;
+}
+
+// ── calcEventHours() ─────────────────────────────────────────────────────
+// Returns { youthHrs, adultHrs, totalHrs } for completed events only.
+function calcEventHours() {
+  var yHrs = 0, aHrs = 0;
+  (EVENTS_DATA || []).forEach(function(ev){
+    if (ev.status !== 'completed') return;
+    ['youth_5hrs','youth_4hrs','youth_2hrs'].forEach(function(b){
+      var h = parseInt(b.replace(/\D/g,'')); (ev[b]||[]).forEach(function(){ yHrs += h; });
+    });
+    ['adult_5hrs','adult_4hrs','adult_2hrs'].forEach(function(b){
+      var h = parseInt(b.replace(/\D/g,'')); (ev[b]||[]).forEach(function(){ aHrs += h; });
+    });
+  });
+  return { youthHrs: yHrs, adultHrs: aHrs, totalHrs: yHrs + aHrs };
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// END SHARED STATS CALCULATION LAYER
+// ══════════════════════════════════════════════════════════════════════════
+
+// ══════════════════════════════════════════════════════════════════════════
 // ══════════════════════════════════════════════════════════════════
 // getActiveAdultVolunteers — single source-of-truth for adult volunteer count
 //
@@ -2946,12 +3267,16 @@ function renderStatsDiagnostic() {
   }
 
   // ── compute all stats ────────────────────────────────────────────────────
+  // Top-level card values come from the shared layer so they match all other views.
+  // Detail maps (youthMap, adultMap, adultHrsMap, youthHrsMap) are built locally
+  // for the drill-down accordion panels only.
 
-  // workshops
-  var wsAll       = WORKSHOPS||[];
-  var wsScheduled = wsAll.filter(function(w){return !w.cancelled;});
-  var wsDelivered = wsAll.filter(function(w){return w.conducted&&!w.cancelled;});
-  var wsCancelled = wsAll.filter(function(w){return w.cancelled;});
+  // workshops — from shared layer
+  var wsShared    = calcWorkshopStats();
+  var wsAll       = wsShared.all;
+  var wsScheduled = wsShared.scheduled;
+  var wsDelivered = wsShared.delivered;
+  var wsCancelled = wsShared.cancelled;
 
   // youth map
   var youthMap = {};
@@ -2978,7 +3303,7 @@ function renderStatsDiagnostic() {
     }
   });
   (EVENTS_DATA||[]).forEach(function(ev){if(ev.status!=='completed')return;['youth_5hrs','youth_4hrs','youth_2hrs'].forEach(function(b){var h=parseInt(b.replace(/\D/g,''));(ev[b]||[]).forEach(function(n){addYouth(n,'Events',ev.name+' ('+h+'h)');});});});
-  var youthCount=Object.keys(youthMap).length;
+  var youthCount=calcYouthParticipants().size; // from shared layer — matches all other views
 
   // ── adult map (Active Adult Volunteers) ──────────────────────────────────
   var adultMap={};
@@ -3022,7 +3347,7 @@ function renderStatsDiagnostic() {
   });
   // Events
   (EVENTS_DATA||[]).forEach(function(ev){if(ev.status!=='completed')return;['adult_5hrs','adult_4hrs','adult_2hrs'].forEach(function(b){var h=parseInt(b.replace(/\D/g,''));(ev[b]||[]).forEach(function(n){addAdult(n,'Events',ev.name+' ('+h+'h)');});});});
-  var adultCount=Object.keys(adultMap).length;
+  var adultCount=calcAdultVolunteers().size; // from shared layer — matches all other views
 
   // ── adult hours map ───────────────────────────────────────────────────────
   // Sources (no double-counting):
@@ -3084,7 +3409,7 @@ function renderStatsDiagnostic() {
       (ev[b]||[]).forEach(function(n){addAdultHrs(n,'Event: '+ev.name,h);});
     });
   });
-  var totalAdultHrs=Object.values(adultHrsMap).reduce(function(a,e){return a+e.items.reduce(function(b,i){return b+i.h;},0);},0);
+  var totalAdultHrs=calcAdultVolunteerHours(); // from shared layer — matches all other views
 
   // ── youth hours map — keyed by name, with per-event breakdown ────────────
   // Build from YOUTH_HOURS (master total) cross-referenced against EVENTS_DATA buckets
@@ -3121,59 +3446,16 @@ function renderStatsDiagnostic() {
       }
     });
   })();
-  var totalYouthHrs=Object.values(youthHrsMap).reduce(function(a,v){return a+v.hrs;},0);
+  var totalYouthHrs=calcYouthVolunteerHours(); // from shared layer — matches all other views
 
-  // events
-  var evAll=EVENTS_DATA||[];
-  var evCompleted=evAll.filter(function(e){return e.status==='completed';});
-  var evUpcoming=evAll.filter(function(e){return e.status!=='completed';});
+  // events — from shared layer
+  var evShared  = calcEventStats();
+  var evAll     = evShared.all;
+  var evCompleted = evShared.completed;
+  var evUpcoming  = evShared.upcoming;
 
-  // per-program stats (dynamic — works for any PROGRAMS_DATA entry)
-  // Programs declare their youth data source via the youth_source field:
-  //   youth_source: "scrabble_sessions"  -> read Q1_SESSIONS (archived) + SCRABBLE_SESSIONS (active)
-  //   (no youth_source)                  -> read youth_participants (name-keyed) + prog.attendance
-  // Adult sources: prog.attendance (actual check-ins) merged with adult_volunteers (signup list)
-  var progStats={};
-  Object.keys(PROGRAMS_DATA||{}).forEach(function(pid){
-    var prog=PROGRAMS_DATA[pid];if(!prog)return;
-    var cancelled=prog.cancellations||[];
-    var allDates=prog.dates||[];
-    var completedDates=allDates.filter(function(d){if(cancelled.indexOf(d)>=0)return false;var dt=new Date(d);return !isNaN(dt)&&dt<=now;});
-    var upcomingDates=allDates.filter(function(d){if(cancelled.indexOf(d)>=0)return false;var dt=new Date(d);return !isNaN(dt)&&dt>now;});
-
-    // Youth count — routed by youth_source
-    var ySet=new Set();
-    if(prog.youth_source==='scrabble_sessions'){
-      // Scrabble: merge Q1_SESSIONS (archived quarter) + SCRABBLE_SESSIONS (active quarter)
-      Object.keys(Q1_SESSIONS||{}).forEach(function(n){if(Object.keys(Q1_SESSIONS[n]||{}).length)ySet.add(n.toLowerCase().trim());});
-      Object.keys(SCRABBLE_SESSIONS||{}).forEach(function(n){if(Object.keys(SCRABBLE_SESSIONS[n]||{}).length)ySet.add(n.toLowerCase().trim());});
-    } else {
-      // Attendance-based programs (Garden etc.): youth_participants (NAME-keyed) + prog.attendance
-      Object.keys(prog.youth_participants||{}).forEach(function(name){ ySet.add(name.toLowerCase().trim()); });
-      Object.keys(prog.attendance||{}).forEach(function(d){
-        (prog.attendance[d]||[]).forEach(function(r){ if(r.type==='youth'&&r.attended) ySet.add(r.name.toLowerCase().trim()); });
-      });
-    }
-
-    // Adults: prefer prog.attendance actual check-ins, fall back to adult_volunteers signup list
-    var aSet=new Set(); var aHrs=0;
-    Object.keys(prog.attendance||{}).forEach(function(d){
-      if(cancelled.indexOf(d)>=0)return;
-      var dt=new Date(d);if(isNaN(dt)||dt.getTime()>now.getTime())return;
-      (prog.attendance[d]||[]).forEach(function(r){
-        if(r.type==='adult'&&r.attended){aSet.add(r.name.toLowerCase().trim());aHrs+=(r.hours||2);}
-      });
-    });
-    Object.keys(prog.adult_volunteers||{}).forEach(function(d){
-      if(cancelled.indexOf(d)>=0)return;
-      var dt=new Date(d);if(isNaN(dt)||dt.getTime()>now.getTime())return;
-      (prog.adult_volunteers[d]||[]).forEach(function(n){
-        var k=n.toLowerCase().trim();
-        if(!aSet.has(k)){aSet.add(k);aHrs+=2;}
-      });
-    });
-    progStats[pid]={name:prog.name,color:prog.color||'var(--ya-teal)',scheduled:allDates.length,completed:completedDates.length,cancelled:cancelled.length,upcoming:upcomingDates.length,youthCount:ySet.size,adultCount:aSet.size,adultHrs:aHrs,prog:prog};
-  });
+  // per-program stats — from shared layer (same rules as all other views)
+  var progStats = calcProgramStats();
 
   var totalProgSessionsScheduled=Object.values(progStats).reduce(function(a,p){return a+p.scheduled;},0);
   var totalProgSessionsCompleted=Object.values(progStats).reduce(function(a,p){return a+p.completed;},0);
@@ -3492,41 +3774,12 @@ function saOpenCard(id){
   try{ detail.scrollIntoView({block:'nearest'}); }catch(e){}
 }
 function updateLandingStats() {
-  // ── Youth Members ──
-  var youthSet = new Set();
+  // All calculations via shared layer — matches Stats Audit exactly
+  var youthSet  = calcYouthParticipants();   // EL + Scrabble(both qtrs) + Programs + Events
+  var adultSet  = calcAdultVolunteers();     // workshops + scrabble + programs + events
+  var wsStats   = calcWorkshopStats();
+  var evStats   = calcEventStats();
 
-  // EL workshop attendance
-  Object.keys(EL_YOUTH).forEach(function(name) {
-    if ((EL_YOUTH[name] || []).length > 0) youthSet.add(name.toLowerCase().trim());
-  });
-
-  // Scrabble participation
-  Object.keys(SCRABBLE_SESSIONS || {}).forEach(function(name) {
-    var sessions = SCRABBLE_SESSIONS[name];
-    if (sessions && Object.keys(sessions).length > 0) youthSet.add(name.toLowerCase().trim());
-  });
-
-  // Event volunteering (any youth_Nhrs bucket across all events)
-  EVENTS_DATA.forEach(function(ev) {
-    ['youth_5hrs','youth_4hrs','youth_2hrs'].forEach(function(bucket) {
-      (ev[bucket] || []).forEach(function(name) {
-        youthSet.add(name.toLowerCase().trim());
-      });
-    });
-  });
-
-  // ── Adult Volunteers — use unified helper ──
-  var adultSet = getActiveAdultVolunteers();
-
-  // ── Workshops Scheduled This Year ──
-  var wsCount = (WORKSHOPS || []).filter(function(w) { return !w.cancelled; }).length;
-
-  // ── Community Events ──
-  // Count all events in EVENTS_DATA (both hardcoded and DB-loaded via loadEventStatus)
-  // Exclude internal-only meeting types if desired; currently count all.
-  var evCount = EVENTS_DATA.length;
-
-  // ── Update DOM ──
   var elYouth = document.getElementById('ls-youth');
   var elAdult = document.getElementById('ls-adult');
   var elWs    = document.getElementById('ls-workshops');
@@ -3534,11 +3787,11 @@ function updateLandingStats() {
 
   if (elYouth) elYouth.textContent = youthSet.size;
   if (elAdult) elAdult.textContent = adultSet.size;
-  if (elWs)    elWs.textContent    = wsCount;
-  if (elEv)    elEv.textContent    = evCount;
+  if (elWs)    elWs.textContent    = wsStats.scheduled.length;
+  if (elEv)    elEv.textContent    = evStats.all.length;
 
   console.log('[Stats] Youth:', youthSet.size, '| Adults:', adultSet.size,
-              '| Workshops:', wsCount, '| Events:', evCount);
+              '| Workshops:', wsStats.scheduled.length, '| Events:', evStats.all.length);
 }
 
 function renderLandingCalendar(){
@@ -4169,13 +4422,14 @@ function renderImpactTab(){
   }
 
   // ══════════════════════════════════════════════════════════════════════════
-  // DATA CALCULATIONS — all from live app data, zero hardcoded counts
+  // DATA CALCULATIONS — via shared stats layer (matches Stats Audit exactly)
   // ══════════════════════════════════════════════════════════════════════════
 
-  // ── Workshops ──────────────────────────────────────────────────────────────
-  var conducted      = WORKSHOPS.filter(function(w){ return w.conducted && !w.cancelled; });
-  var scheduledWs    = WORKSHOPS.filter(function(w){ return !w.cancelled; });
-  var allYouthNames  = Object.keys(EL_YOUTH);
+  // ── Workshops ─────────────────────────────────────────────────────────────
+  var wsStats      = calcWorkshopStats();
+  var conducted    = wsStats.delivered;
+  var scheduledWs  = wsStats.scheduled;
+  var allYouthNames = Object.keys(EL_YOUTH);
 
   var totalAttendances = 0;
   allYouthNames.forEach(function(n){
@@ -4184,29 +4438,17 @@ function renderImpactTab(){
     });
   });
 
-  // ── Youth counts ──────────────────────────────────────────────────────────
-  // EL workshop participants (those with at least one attendance)
+  // ── Youth counts ─────────────────────────────────────────────────────────
   var elParticipants = allYouthNames.filter(function(n){ return (EL_YOUTH[n]||[]).length > 0; });
-
-  // Unique youth across ALL programs (matches updateLandingStats logic)
-  var allYouthSet = new Set();
-  allYouthNames.forEach(function(n){ if((EL_YOUTH[n]||[]).length>0) allYouthSet.add(n.toLowerCase().trim()); });
-  Object.keys(SCRABBLE_SESSIONS||{}).forEach(function(n){
-    if(Object.keys(SCRABBLE_SESSIONS[n]||{}).length>0) allYouthSet.add(n.toLowerCase().trim());
-  });
-  (EVENTS_DATA||[]).forEach(function(ev){
-    ['youth_5hrs','youth_4hrs','youth_2hrs'].forEach(function(b){
-      (ev[b]||[]).forEach(function(n){ allYouthSet.add(n.toLowerCase().trim()); });
-    });
-  });
+  var allYouthSet    = calcYouthParticipants(); // shared: EL + Scrabble(both qtrs) + Programs + Events
 
   // ── Leadership pipeline ───────────────────────────────────────────────────
-  var lvl1Eligible    = allYouthNames.filter(function(n){ var c=(EL_YOUTH[n]||[]).length,h=YOUTH_HOURS[n]||0; return getYouthLevel(c,h)>=1; });
-  var lvl2Eligible    = allYouthNames.filter(function(n){ var c=(EL_YOUTH[n]||[]).length,h=YOUTH_HOURS[n]||0; return getYouthLevel(c,h)>=2; });
-  var lvl3Eligible    = allYouthNames.filter(function(n){ var c=(EL_YOUTH[n]||[]).length,h=YOUTH_HOURS[n]||0; return getYouthLevel(c,h)>=3; });
-  var nearLvl1        = allYouthNames.filter(function(n){ var c=(EL_YOUTH[n]||[]).length; return c>=4 && getYouthLevel(c,YOUTH_HOURS[n]||0)<1; });
-  var tenPlusWs       = allYouthNames.filter(function(n){ return (EL_YOUTH[n]||[]).length>=10; });
-  var multiProgram    = allYouthNames.filter(function(n){
+  var lvl1Eligible = allYouthNames.filter(function(n){ var c=(EL_YOUTH[n]||[]).length,h=YOUTH_HOURS[n]||0; return getYouthLevel(c,h)>=1; });
+  var lvl2Eligible = allYouthNames.filter(function(n){ var c=(EL_YOUTH[n]||[]).length,h=YOUTH_HOURS[n]||0; return getYouthLevel(c,h)>=2; });
+  var lvl3Eligible = allYouthNames.filter(function(n){ var c=(EL_YOUTH[n]||[]).length,h=YOUTH_HOURS[n]||0; return getYouthLevel(c,h)>=3; });
+  var nearLvl1     = allYouthNames.filter(function(n){ var c=(EL_YOUTH[n]||[]).length; return c>=4 && getYouthLevel(c,YOUTH_HOURS[n]||0)<1; });
+  var tenPlusWs    = allYouthNames.filter(function(n){ return (EL_YOUTH[n]||[]).length>=10; });
+  var multiProgram = allYouthNames.filter(function(n){
     var inWs = (EL_YOUTH[n]||[]).length > 0;
     var inScr = Object.keys(SCRABBLE_SESSIONS||{}).some(function(k){ return k.toLowerCase().trim()===n.toLowerCase().trim() && Object.keys(SCRABBLE_SESSIONS[k]||{}).length>0; });
     var inEv  = (EVENTS_DATA||[]).some(function(ev){ return ['youth_5hrs','youth_4hrs','youth_2hrs'].some(function(b){ return (ev[b]||[]).some(function(k){ return k.toLowerCase().trim()===n.toLowerCase().trim(); }); }); });
@@ -4214,34 +4456,49 @@ function renderImpactTab(){
   });
 
   // ── Adult volunteers ──────────────────────────────────────────────────────
-  var activeAdultSet = getActiveAdultVolunteers();
+  var activeAdultSet = calcAdultVolunteers();  // shared helper
   var facilitators   = Object.values(FAC_PROFILES).filter(function(p){ return p.facilitated && p.facilitated.length > 0; });
-  var totalFacHours  = Object.values(FAC_PROFILES).reduce(function(s,p){ return s+(p.hours||0); }, 0);
   var returningFacs  = facilitators.filter(function(p){ return p.facilitated.length >= 3; });
 
-  // ── Volunteer hours ───────────────────────────────────────────────────────
-  var eventYouthHrs=0, eventAdultHrs=0;
-  var youthVolSlots=0, adultVolSlots=0;
+  // ── Volunteer hours — via shared layer ───────────────────────────────────
+  // Adult hours: workshops (2h/conducted) + scrabble (Q1+current) + programs + events
+  // Youth hours: YOUTH_HOURS + event buckets (NO program attendance — participation only)
+  var totalAdultHrs  = calcAdultVolunteerHours();
+  var totalYouthHrs  = calcYouthVolunteerHours();
+  var totalVolHours  = totalAdultHrs + totalYouthHrs;
+
+  // Event-specific hour breakdowns (for display rows)
+  var evHrs = calcEventHours();
+  var eventYouthHrs = evHrs.youthHrs;
+  var eventAdultHrs = evHrs.adultHrs;
+
+  // Volunteer slot counts (how many individual roles filled at events)
+  var youthVolSlots = 0, adultVolSlots = 0;
   (EVENTS_DATA||[]).forEach(function(ev){
-    ['youth_5hrs','youth_4hrs','youth_2hrs'].forEach(function(b){
-      var hrs=parseInt(b.replace(/\D/g,''));
-      (ev[b]||[]).forEach(function(){ youthVolSlots++; eventYouthHrs+=hrs; });
-    });
-    ['adult_5hrs','adult_4hrs','adult_2hrs'].forEach(function(b){
-      var hrs=parseInt(b.replace(/\D/g,''));
-      (ev[b]||[]).forEach(function(){ adultVolSlots++; eventAdultHrs+=hrs; });
-    });
+    if (ev.status !== 'completed') return;
+    ['youth_5hrs','youth_4hrs','youth_2hrs'].forEach(function(b){ youthVolSlots += (ev[b]||[]).length; });
+    ['adult_5hrs','adult_4hrs','adult_2hrs'].forEach(function(b){ adultVolSlots += (ev[b]||[]).length; });
   });
-  var scrAdultHrs = Object.values(ADULT_SCRABBLE_TOTALS||{}).reduce(function(s,v){return s+v;},0);
-  // Garden adult hours (calculated below with gardenAdultHrs — compute here for total)
-  var gardenHrsForTotal = (function(){
-    var gp=PROGRAMS_DATA&&PROGRAMS_DATA['garden_2026']; if(!gp) return 0;
-    var t=0; var seen=new Set();
-    Object.values(gp.attendance||{}).forEach(function(recs){ (recs||[]).forEach(function(r){ if(r.type==='adult'&&r.attended&&r.hours){ t+=r.hours; seen.add(r.name); } }); });
-    Object.keys(gp.adult_volunteers||{}).forEach(function(d){ var meta=(gp.session_meta||{})[d]||{}; var h=parseSessionHours(meta.start_time||'4:30 PM',meta.end_time||'6:30 PM'); (gp.adult_volunteers[d]||[]).forEach(function(n){ if(!seen.has(n)){t+=h;seen.add(n);} }); });
+
+  // Workshop facilitator hours (2h per conducted workshop per person — for display row)
+  var totalWsFacHours = (function(){
+    var t = 0;
+    Object.values(FAC_PROFILES||{}).forEach(function(p){
+      if (!p||!p.name) return;
+      var condF = (p.facilitated||[]).filter(function(id){ var w=(WORKSHOPS||[]).find(function(w){return w.id===id;}); return w&&w.conducted&&!w.cancelled; });
+      var condV = (p.volunteered||[]).filter(function(id){ var w=(WORKSHOPS||[]).find(function(w){return w.id===id;}); return w&&w.conducted&&!w.cancelled; });
+      t += (condF.length + condV.length) * 2;
+    });
     return t;
   })();
-  var totalVolHours = eventYouthHrs + eventAdultHrs + scrAdultHrs + Math.round(totalFacHours) + Math.round(gardenHrsForTotal);
+
+  // Scrabble adult hours display (merge Q1 + current quarter)
+  var scrAdultHrs = (function(){
+    var all = {};
+    function merge(src){ Object.keys(src||{}).forEach(function(n){ all[n]=all[n]||{}; Object.keys(src[n]||{}).forEach(function(d){ if(!all[n][d]) all[n][d]=src[n][d]; }); }); }
+    merge(Q1_ADULT_SCRABBLE); merge(ADULT_SCRABBLE);
+    return Object.values(all).reduce(function(a,sessions){ return a+Object.values(sessions).reduce(function(b,v){return b+(parseFloat(v)||0);},0); }, 0);
+  })();
 
   // ── Scrabble ──────────────────────────────────────────────────────────────
   var scrPlayers = Object.keys(SCRABBLE_TOTALS||{}).length;
@@ -4254,10 +4511,10 @@ function renderImpactTab(){
   Object.entries(SCRABBLE_TOTALS||{}).forEach(function(e){ if(e[1]>scrMax){scrMax=e[1];scrLeader=e[0];} });
 
   // ── Events ────────────────────────────────────────────────────────────────
-  var evData         = EVENTS_DATA||[];
-  var completedEvs   = evData.filter(function(e){ return e.status==='completed'; });
-  var communityEvs   = evData.filter(function(e){ return e.type!=='Meeting'; });
-  var completedComm  = communityEvs.filter(function(e){ return e.status==='completed'; });
+  var evStats      = calcEventStats();
+  var completedEvs = evStats.completed;
+  var communityEvs = evStats.community;
+  var completedComm = evStats.communityCompleted;
 
   // ── Workshop themes ───────────────────────────────────────────────────────
   var THEMES = [
@@ -4334,13 +4591,15 @@ function renderImpactTab(){
   html += '<div class="two-col">';
   html += '<div class="section-box" style="margin-bottom:0">';
   html += '<div class="section-title" style="margin-bottom:10px">🙌 Volunteer Contribution</div>';
-  html += statRow('Active adult volunteers',       activeAdultSet.size,  'pill-blue');
-  html += statRow('Workshop facilitators',         facilitators.length,  'pill-teal');
-  html += statRow('Returning facilitators (3+ ws)',returningFacs.length, 'pill-green');
-  html += statRow('Adult facilitator hours',       Math.round(totalFacHours), 'pill-orange');
-  html += statRow('Youth volunteer roles filled',  youthVolSlots,        'pill-teal');
-  html += statRow('Adult volunteer roles filled',  adultVolSlots,        'pill-blue');
-  html += statRow('Adult Scrabble volunteer hrs',  Math.round(scrAdultHrs), 'pill-gold');
+  html += statRow('Active adult volunteers',       activeAdultSet.size,    'pill-blue');
+  html += statRow('Workshop facilitators',         facilitators.length,    'pill-teal');
+  html += statRow('Returning facilitators (3+ ws)',returningFacs.length,   'pill-green');
+  html += statRow('Adult workshop hours',          Math.round(totalWsFacHours), 'pill-orange');
+  html += statRow('Youth volunteer roles filled',  youthVolSlots,          'pill-teal');
+  html += statRow('Adult volunteer roles filled',  adultVolSlots,          'pill-blue');
+  html += statRow('Adult Scrabble volunteer hrs',  Math.round(scrAdultHrs),'pill-gold');
+  html += statRow('Adult volunteer hours (total)', Math.round(totalAdultHrs),'pill-orange');
+  html += statRow('Youth volunteer hours (total)', Math.round(totalYouthHrs),'pill-teal');
   html += statRow('Total volunteer hours',         Math.round(totalVolHours),'pill-green');
   html += '</div>';
   html += '<div class="section-box" style="margin-bottom:0">';
@@ -4373,39 +4632,40 @@ function renderImpactTab(){
   html += '<div style="font-size:.72rem;font-weight:700;color:var(--ya-gold);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;margin-top:4px">Scrabble & Games Club</div>';
   html += statRow('Participants', scrPlayers, 'pill-gold');
   html += statRow('Sessions held (2026)', scrSessions, 'pill-teal');
-  // Garden — data-driven from program_attendance + adult_volunteers
+  // Garden — data-driven via shared layer
   var gardenP = PROGRAMS_DATA['garden_2026'];
   var gardenSessionsHeld=0, gardenYouthAtt=0, gardenAdultHrs=0, gardenCertElig=0;
   var gardenAdultSet=new Set(), gardenYouthSet=new Set(), gardenEnrolled=[];
   if(gardenP){
-    var now3=new Date();now3.setHours(0,0,0,0);
-    var mo3={Jan:0,Feb:1,Mar:2,Apr:3,May:4,Jun:5,Jul:6,Aug:7,Sep:8,Oct:9,Nov:10,Dec:11};
-    function pd3(s){var p=s.replace(',','').split(' ');return new Date(parseInt(p[2]),mo3[p[0]]||0,parseInt(p[1]));}
+    var _gardenPS = calcProgramStats()['garden_2026'] || {};
     var pastHeld = getActiveProgramSessions('garden_2026'); // excludes cancelled
-    gardenSessionsHeld=pastHeld.length;
-    gardenEnrolled=Object.keys(gardenP.youth_participants||{});
-    var certMin=(gardenP.cert_rules||{}).cert_min_sessions||6;
+    gardenSessionsHeld = pastHeld.length;
+    gardenEnrolled = Object.keys(gardenP.youth_participants||{});
+    var certMin = (gardenP.cert_rules||{}).cert_min_sessions||6;
+    // Youth attendance counts (participation display only — not volunteer hours)
     Object.entries(gardenP.attendance||{}).forEach(function(e){
       (e[1]||[]).forEach(function(r){
-        if(r.type==='youth'&&r.attended){gardenYouthAtt++;gardenYouthSet.add(r.name);}
-        if(r.type==='adult'&&r.attended){gardenAdultHrs+=(r.hours||2);gardenAdultSet.add(r.name);}
+        if(r.type==='youth'&&r.attended&&r.name!=='_enrolled'){gardenYouthAtt++;gardenYouthSet.add(r.name);}
       });
     });
-    // Cert eligible — count attended sessions per enrolled youth
-    gardenCertElig=gardenEnrolled.filter(function(name){
+    // Cert eligible
+    gardenCertElig = gardenEnrolled.filter(function(name){
       var cnt=pastHeld.filter(function(d){var r=gardenAttRow(gardenP,d,name);return r&&r.attended;}).length;
       return cnt>=certMin;
     }).length;
-    // Backwards compat: also count from adult_volunteers if not in program_attendance
-    // Only past, non-cancelled sessions count (same rule as renderAdult)
-    // Only past, non-cancelled sessions count (same rule as renderAdult)
-    var gardenCancelled = gardenP.cancellations || [];
+    // Adult hours + set — use shared prog stats for the hour total (correct rules)
+    gardenAdultHrs = _gardenPS.adultHrs || 0;
+    // Rebuild adultSet for display count
+    var _gCan = gardenP.cancellations||[], _gNow2=new Date(); _gNow2.setHours(0,0,0,0);
+    Object.keys(gardenP.attendance||{}).forEach(function(d){
+      if(_gCan.indexOf(d)>=0) return;
+      var dt=new Date(d); if(isNaN(dt)||dt>_gNow2) return;
+      (gardenP.attendance[d]||[]).forEach(function(r){ if(r.type==='adult'&&r.attended&&r.name!=='_adult_enrolled') gardenAdultSet.add(r.name); });
+    });
     Object.keys(gardenP.adult_volunteers||{}).forEach(function(d){
-      if(gardenCancelled.indexOf(d) >= 0) return; // skip cancelled sessions
-      try { var dt3b=pd3(d); if(isNaN(dt3b)||dt3b>=now3) return; } catch(e){ return; }
-      var meta=(gardenP.session_meta||{})[d]||{};
-      var hrs=parseSessionHours(meta.start_time||'4:30 PM',meta.end_time||'6:30 PM');
-      (gardenP.adult_volunteers[d]||[]).forEach(function(n){ if(!gardenAdultSet.has(n)){gardenAdultHrs+=hrs;gardenAdultSet.add(n);} });
+      if(_gCan.indexOf(d)>=0) return;
+      var dt=new Date(d); if(isNaN(dt)||dt>_gNow2) return;
+      (gardenP.adult_volunteers[d]||[]).forEach(function(n){ gardenAdultSet.add(n); });
     });
   }
   html += '<div style="font-size:.72rem;font-weight:700;color:var(--ya-green);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;margin-top:12px">Summer Garden Program 🌱</div>';
@@ -5395,16 +5655,22 @@ function renderGardenAdmin() {
     return cnt >= cert.cert_min_sessions;
   }).length;
 
-  // Adult hours totals
-  var totalAdultHrs = 0; var adultSet = new Set();
-  Object.values(p.attendance || {}).forEach(function(recs){
-    (recs||[]).forEach(function(r){ if(r.type==='adult'&&r.attended&&r.hours){ totalAdultHrs+=r.hours; adultSet.add(r.name); } });
+  // Adult hours — via shared layer (same rules: past, non-cancelled, no sentinel rows)
+  var _gardenProgStats = calcProgramStats()['garden_2026'] || {};
+  var totalAdultHrs = _gardenProgStats.adultHrs || 0;
+  var adultSet = new Set();
+  // Rebuild adultSet for the volunteer count display
+  var _gCancelled = (p.cancellations || []);
+  var _gNow = new Date(); _gNow.setHours(0,0,0,0);
+  Object.keys(p.attendance || {}).forEach(function(d){
+    if (_gCancelled.indexOf(d) >= 0) return;
+    var dt = new Date(d); if (isNaN(dt) || dt > _gNow) return;
+    (p.attendance[d] || []).forEach(function(r){ if (r.type==='adult'&&r.attended&&r.name!=='_adult_enrolled') adultSet.add(r.name); });
   });
-  // Also count from adult_volunteers for sessions not yet in program_attendance
-  Object.keys(p.adult_volunteers||{}).forEach(function(d){
-    var meta=(p.session_meta||{})[d]||{};
-    var hrs=parseSessionHours(meta.start_time||'4:30 PM',meta.end_time||'6:30 PM');
-    (p.adult_volunteers[d]||[]).forEach(function(n){ if(!adultSet.has(n)){ totalAdultHrs+=hrs; adultSet.add(n); } });
+  Object.keys(p.adult_volunteers || {}).forEach(function(d){
+    if (_gCancelled.indexOf(d) >= 0) return;
+    var dt = new Date(d); if (isNaN(dt) || dt > _gNow) return;
+    (p.adult_volunteers[d] || []).forEach(function(n){ adultSet.add(n); });
   });
 
   statsEl.innerHTML =
@@ -5668,17 +5934,21 @@ function renderAdultEventHistory(name){
     });
   }
 
-  // Scrabble volunteering
-  var scrSessions=ADULT_SCRABBLE[name];
-  if(scrSessions){
-    var scrTotal=ADULT_SCRABBLE_TOTALS[name]||0;
-    rows.push({type:'scrabble',name:'Scrabble & Games Club',date:'Jan–Mar 2026 ('+Object.keys(scrSessions).length+' sessions)',hrs:scrTotal,color:'var(--ya-gold)'});
+  // Scrabble volunteering — merge Q1 archived + current quarter for correct total
+  var scrSessionsCur = ADULT_SCRABBLE[name] || {};
+  var scrSessionsQ1  = Q1_ADULT_SCRABBLE[name] || {};
+  var scrSessionsAll = Object.assign({}, scrSessionsQ1, scrSessionsCur);
+  if(Object.keys(scrSessionsAll).length > 0){
+    var scrTotal = Object.values(scrSessionsAll).reduce(function(a,v){ return a+(parseFloat(v)||0); }, 0);
+    var sessionCount = Object.keys(scrSessionsAll).length;
+    rows.push({type:'scrabble',name:'Scrabble & Games Club',date:'2026 ('+sessionCount+' sessions)',hrs:scrTotal,color:'var(--ya-gold)'});
   }
 
-  // Other events (Taste of Nations, Board Meeting)
+  // Events (all completed buckets including 5hr)
   EVENTS_DATA.forEach(function(ev){
     var hrs=0;
-    if((ev.adult_4hrs||[]).indexOf(name)>=0) hrs=4;
+    if((ev.adult_5hrs||[]).indexOf(name)>=0) hrs=5;
+    else if((ev.adult_4hrs||[]).indexOf(name)>=0) hrs=4;
     else if((ev.adult_2hrs||[]).indexOf(name)>=0) hrs=2;
     if(hrs>0) rows.push({type:'event',name:ev.name,date:ev.date,hrs:hrs,color:'var(--ya-teal)'});
   });
@@ -5711,16 +5981,18 @@ function renderAdultRecurring(name){
   if(!el) return;
   var prog=getCurrentRecurring();
   var nextWed=getNextWednesday();
-  var scrSessions=ADULT_SCRABBLE[name];
-  var sessionCount=scrSessions?Object.keys(scrSessions).length:0;
-  var scrHrs=ADULT_SCRABBLE_TOTALS[name]||0;
+  var scrSessionsCurR = ADULT_SCRABBLE[name] || {};
+  var scrSessionsQ1R  = Q1_ADULT_SCRABBLE[name] || {};
+  var scrSessionsAllR = Object.assign({}, scrSessionsQ1R, scrSessionsCurR);
+  var sessionCount = Object.keys(scrSessionsAllR).length;
+  var scrHrs = Object.values(scrSessionsAllR).reduce(function(a,v){ return a+(parseFloat(v)||0); }, 0);
   el.innerHTML=
     '<div class="activity-item">'+
       '<div class="activity-dot" style="background:var(--ya-gold)"></div>'+
       '<div style="flex:1">'+
         '<div class="activity-name">'+prog.name+'</div>'+
         '<div class="activity-meta">Every Wednesday · Next: '+nextWed+' · '+prog.note+'</div>'+
-        (scrSessions?'<div class="activity-meta" style="color:var(--ya-teal)">You volunteered '+sessionCount+' sessions ('+scrHrs+' hrs) in 2026</div>':'')+
+        (sessionCount > 0 ?'<div class="activity-meta" style="color:var(--ya-teal)">You volunteered '+sessionCount+' sessions ('+scrHrs+' hrs) in 2026</div>':'')+
       '</div>'+
       '<span class="pill pill-amber">📅 Wed</span>'+
     '</div>';
@@ -9337,71 +9609,48 @@ function renderEventsLog(){
   var eid2 = function(id){ return document.getElementById(id); };
   function nameChip(n){return '<span class="pill pill-teal" style="margin:2px">'+n+'</span>';}
 
-  var completedEvs = EVENTS_DATA.filter(function(e){ return e.status==='completed'; });
+  // ── Use shared layer for all stats ──
+  var evStats      = calcEventStats();
+  var completedEvs = evStats.completed;
+  var evHrs        = calcEventHours(); // events-only hours
 
-  // ── Stat cards ──
-  var totalHrs=0, uniqueYouth=new Set(), uniqueAdult=new Set();
-  var byYear={};
+  var uniqueYouth = new Set(), uniqueAdult = new Set(), byYear = {};
   completedEvs.forEach(function(ev){
-    (ev.youth_5hrs||[]).forEach(function(n){ uniqueYouth.add(n); totalHrs+=5; });
-    (ev.youth_4hrs||[]).forEach(function(n){ uniqueYouth.add(n); totalHrs+=4; });
-    (ev.youth_2hrs||[]).forEach(function(n){ uniqueYouth.add(n); totalHrs+=2; });
-    (ev.adult_5hrs||[]).forEach(function(n){ uniqueAdult.add(n); totalHrs+=5; });
-    (ev.adult_4hrs||[]).forEach(function(n){ uniqueAdult.add(n); totalHrs+=4; });
-    (ev.adult_2hrs||[]).forEach(function(n){ uniqueAdult.add(n); totalHrs+=2; });
-    // Group by year
+    ['youth_5hrs','youth_4hrs','youth_2hrs'].forEach(function(b){ (ev[b]||[]).forEach(function(n){ uniqueYouth.add(n); }); });
+    ['adult_5hrs','adult_4hrs','adult_2hrs'].forEach(function(b){ (ev[b]||[]).forEach(function(n){ uniqueAdult.add(n); }); });
     var yr = (ev.date||'').match(/\b(20\d\d)\b/);
     var y = yr ? yr[1] : 'Other';
     byYear[y] = (byYear[y]||0)+1;
   });
 
-  // Events recorded card — show count + breakdown by year
-  var yearBreakdown = Object.keys(byYear).sort().map(function(y){
-    return byYear[y]+' in '+y;
-  }).join(' · ');
+  // Events recorded card
+  var yearBreakdown = Object.keys(byYear).sort().map(function(y){ return byYear[y]+' in '+y; }).join(' · ');
   var elCount=eid2('el-stat-count');
   if(elCount){
     elCount.textContent = completedEvs.length;
     var meta = elCount.closest('.stat-card');
-    if(meta){
-      var metaEl = meta.querySelector('.stat-meta');
-      if(metaEl) metaEl.textContent = yearBreakdown || 'All time';
-    }
+    if(meta){ var metaEl = meta.querySelector('.stat-meta'); if(metaEl) metaEl.textContent = yearBreakdown || 'All time'; }
   }
 
-  // Youth volunteers card — unique count + total hours
+  // Youth volunteers card
   var elYouth=eid2('el-stat-youth');
   if(elYouth){
     elYouth.textContent = uniqueYouth.size;
     var yCard = elYouth.closest('.stat-card');
-    if(yCard){
-      var yMeta = yCard.querySelector('.stat-meta');
-      var yHrs = 0;
-      completedEvs.forEach(function(ev){
-        yHrs += (ev.youth_5hrs||[]).length*5 + (ev.youth_4hrs||[]).length*4 + (ev.youth_2hrs||[]).length*2;
-      });
-      if(yMeta) yMeta.textContent = 'Unique volunteers · '+yHrs+' hrs total';
-    }
+    if(yCard){ var yMeta = yCard.querySelector('.stat-meta'); if(yMeta) yMeta.textContent = 'Unique volunteers · '+evHrs.youthHrs+' hrs at events'; }
   }
 
-  // Adult volunteers card — unique count + total hours
+  // Adult volunteers card
   var elAdult=eid2('el-stat-adult');
   if(elAdult){
     elAdult.textContent = uniqueAdult.size;
     var aCard = elAdult.closest('.stat-card');
-    if(aCard){
-      var aMeta = aCard.querySelector('.stat-meta');
-      var aHrs = 0;
-      completedEvs.forEach(function(ev){
-        aHrs += (ev.adult_5hrs||[]).length*5 + (ev.adult_4hrs||[]).length*4 + (ev.adult_2hrs||[]).length*2;
-      });
-      if(aMeta) aMeta.textContent = 'Unique volunteers · '+aHrs+' hrs total';
-    }
+    if(aCard){ var aMeta = aCard.querySelector('.stat-meta'); if(aMeta) aMeta.textContent = 'Unique volunteers · '+evHrs.adultHrs+' hrs at events'; }
   }
 
-  // Total hours card
+  // Event Hours card (youth + adult at events only — not grand total)
   var tvh=eid2('admin-total-vol-hrs');
-  if(tvh) tvh.textContent = totalHrs;
+  if(tvh) tvh.textContent = evHrs.totalHrs;
 
   // ── Event cards (collapsed by default) ──
   var evLogEl = eid2('events-log-list');

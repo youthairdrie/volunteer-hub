@@ -979,7 +979,7 @@ tr:hover .grd-date-sticky { background: #1a2d47; }
           <div class="stat-card" style="--accent-color:var(--ya-teal)"><div class="stat-label">EL Youth Members</div><div class="stat-value">39</div><div class="stat-meta">Emerging Leaders 2026</div><div class="stat-icon">👥</div></div>
           <div class="stat-card" style="--accent-color:var(--ya-blue)"><div class="stat-label">Total Attendances</div><div class="stat-value">174</div><div class="stat-meta">Across 9 workshops</div><div class="stat-icon">✅</div></div>
           <div class="stat-card" style="--accent-color:var(--ya-orange)"><div class="stat-label">Level 1 Eligible</div><div class="stat-value" id="a-lvl1">—</div><div class="stat-meta">6+ workshops done</div><div class="stat-icon">🎓</div></div>
-          <div class="stat-card" style="--accent-color:var(--ya-green)"><div class="stat-label">Workshops Done</div><div class="stat-value">10</div><div class="stat-meta">of 17 active in series</div><div class="stat-icon">📚</div></div>
+          <div class="stat-card" style="--accent-color:var(--ya-green)"><div class="stat-label">Workshops Done</div><div class="stat-value" id="admin-ws-done-count">—</div><div class="stat-meta" id="admin-ws-done-meta">of 17 scheduled</div><div class="stat-icon">📚</div></div>
         </div>
         <div class="section-box"><div class="section-title">📈 Attendance by Workshop</div><div id="admin-ws-bars"></div></div>
         <div class="section-box">
@@ -1729,7 +1729,7 @@ var WORKSHOPS=[{"id":1,"name":"Becoming a Leader","facilitators":["Roberta Ehigi
 var FUTURE_WORKSHOPS=[{"id":101,"semester":"Fall 2026","name":"Becoming a Leader","facilitators":["TBD"],"volunteers":[],"date":"Sep 14, 2026","conducted":false},{"id":102,"semester":"Fall 2026","name":"Junior Finance","facilitators":["TBD"],"volunteers":[],"date":"Sep 21, 2026","conducted":false},{"id":103,"semester":"Fall 2026","name":"Effective Communication","facilitators":["TBD"],"volunteers":[],"date":"Sep 28, 2026","conducted":false},{"id":104,"semester":"Fall 2026","name":"Conflict Management","facilitators":["TBD"],"volunteers":[],"date":"Oct 5, 2026","conducted":false},{"id":105,"semester":"Fall 2026","name":"Planning and Organizing","facilitators":["TBD"],"volunteers":[],"date":"Oct 19, 2026","conducted":false,"skipped_before":"Oct 12 \u2014 Thanksgiving"},{"id":106,"semester":"Fall 2026","name":"Learn to Belong","facilitators":["TBD"],"volunteers":[],"date":"Oct 26, 2026","conducted":false},{"id":107,"semester":"Fall 2026","name":"Building Connections","facilitators":["TBD"],"volunteers":[],"date":"Nov 2, 2026","conducted":false},{"id":108,"semester":"Fall 2026","name":"Building Social Capacity","facilitators":["TBD"],"volunteers":[],"date":"Nov 9, 2026","conducted":false},{"id":109,"semester":"Fall 2026","name":"Seeing Differently","facilitators":["TBD"],"volunteers":[],"date":"Nov 16, 2026","conducted":false},{"id":110,"semester":"Fall 2026","name":"Tools for Resilience","facilitators":["TBD"],"volunteers":[],"date":"Nov 23, 2026","conducted":false},{"id":111,"semester":"Fall 2026","name":"Digital Detoxing","facilitators":["TBD"],"volunteers":[],"date":"Nov 30, 2026","conducted":false},{"id":112,"semester":"Fall 2026","name":"Bullying Prevention","facilitators":["TBD"],"volunteers":[],"date":"Dec 7, 2026","conducted":false},{"id":201,"semester":"Winter/Spring 2027","name":"Healthy Debating","facilitators":["TBD"],"volunteers":[],"date":"Jan 11, 2027","conducted":false},{"id":202,"semester":"Winter/Spring 2027","name":"Health & Fitness","facilitators":["TBD"],"volunteers":[],"date":"Jan 18, 2027","conducted":false},{"id":203,"semester":"Winter/Spring 2027","name":"Healthy Spending","facilitators":["TBD"],"volunteers":[],"date":"Jan 25, 2027","conducted":false},{"id":204,"semester":"Winter/Spring 2027","name":"Leveraging Differences","facilitators":["TBD"],"volunteers":[],"date":"Feb 1, 2027","conducted":false},{"id":205,"semester":"Winter/Spring 2027","name":"Joy of Accomplishment","facilitators":["TBD"],"volunteers":[],"date":"Feb 8, 2027","conducted":false},{"id":206,"semester":"Winter/Spring 2027","name":"Public Speaking","facilitators":["TBD"],"volunteers":[],"date":"Feb 22, 2027","conducted":false,"skipped_before":"Feb 15 \u2014 Family Day"}];
 
 var EL_YOUTH={"Aaliyah": [6], "Abegail Jbbo-Rustrian": [7, 8, 9], "Abigail Robinson": [2], "Adam Choe": [2, 3, 5, 7, 8, 4], "Aiden Bruce": [1, 4], "Anisim Rashid": [2, 1, 3, 5, 6, 7, 8, 4, 9], "Anna Choi": [2, 1, 3, 5, 6, 4], "Ariel Young": [2, 3, 5, 6], "Avery Sengsavang": [2, 1, 3, 5, 6, 7, 8, 4, 9], "Caitlen": [2], "Claire Choe": [2, 1, 3, 5, 6, 7, 8, 4, 9], "Connor Sengsavang": [2, 1, 3, 5, 6, 7, 8, 4, 9], "David": [6, 7, 8, 9], "Devira": [6, 7, 8, 9], "Eilleen Shin": [2, 1, 5, 6, 4], "Elijah butler": [7, 8, 9], "Elisa Choi": [3, 6, 4], "Emma Memedovski": [9], "Everett Rempel": [2, 1, 3, 5, 4], "Greyson Riley": [9], "Haytham": [2, 3, 5, 4], "Ji Hoon": [2, 1, 3, 5, 6, 7, 8, 4, 9], "Ji Woo": [2, 1, 3, 5, 6, 7, 8, 4, 9], "Jude Effah": [8], "Kinsey Ehigiator": [2, 1, 3, 5, 6, 7, 8, 4, 9], "Kristen Robinson": [2], "Lee (Karlee)": [7, 8, 9], "Mackensie": [7, 8, 9], "Mason Guise": [1, 6], "Mason Seo": [2, 3, 5, 6, 4], "Oliver": [7, 8, 9], "Preston": [1], "Reed Bieganski": [2, 1, 3, 5, 6, 7, 8, 4, 9], "Roza": [1], "Sebastian Baitson": [7, 8, 9], "Sophia Tong": [2, 3, 5, 6, 7, 8, 4, 9], "Taya Allen": [2], "Theodore Bourdeau": [2, 3, 5, 7, 8, 4, 9], "Zoya Rashid": [2, 1, 3, 5, 6, 7, 8, 4, 9]};
-var FAC_PROFILES={"kim":{"name":"Kim Sundset","avatar":"KS","bg":"#1a0d05","role":"Level 3 Certified Facilitator","facilitated":[1,2,3,4,5,6,7,8],"volunteered":[9,10],"hours":159,"fac_level":3,"grandfathered":true,"isAdmin":true},"olga":{"name":"Olga Korcheva","avatar":"OK","bg":"#0c1f38","role":"Adult Volunteer","facilitated":[3,4,10],"volunteered":[1,2,4,5,6,7,8],"hours":72,"fac_level":0},"connie":{"name":"Connie Wu","avatar":"CW","bg":"#12243a","role":"Adult Volunteer","facilitated":[2],"volunteered":[],"hours":42,"fac_level":0},"chloe":{"name":"Chloe Nayoung Kim","avatar":"CK","bg":"#0f1f30","role":"Adult Volunteer","facilitated":[],"volunteered":[],"hours":28,"fac_level":0},"bj":{"name":"BJ (Bolaji) Hammed","avatar":"BH","bg":"#1a1605","role":"Adult Volunteer","facilitated":[],"volunteered":[3],"hours":50.5,"fac_level":0,"isAdmin":true},"roberta":{"name":"Roberta Ehigiator","avatar":"RE","bg":"#12200f","role":"Adult Volunteer","facilitated":[1,9],"volunteered":[2,3,4,5,6,7,8,10],"hours":80,"fac_level":0,"isAdmin":true},"julie":{"name":"Julie Robertson","avatar":"JR","bg":"#1f1230","role":"Adult Volunteer","facilitated":[],"volunteered":[3,9],"hours":40,"fac_level":0,"isAdmin":true},"tina":{"name":"Tina Petrow","avatar":"TP","bg":"#1a0d18","role":"Adult Volunteer","facilitated":[5],"volunteered":[],"hours":66,"fac_level":0},"marybeth":{"name":"Mary-Beth Finney (Ursa)","avatar":"MF","bg":"#0d1a1a","role":"Adult Volunteer","facilitated":[9],"volunteered":[],"hours":30,"fac_level":0},"simi":{"name":"Simisola Obasan (Simi)","avatar":"SO","bg":"#1f1a0d","role":"Adult Volunteer","facilitated":[6],"volunteered":[],"hours":43,"fac_level":0},"tamanna":{"name":"Tamanna Kaur","avatar":"TK","bg":"#1a1240","role":"Adult Volunteer","facilitated":[],"volunteered":[],"hours":2,"fac_level":0,"grandfathered":false},"bolaji_a":{"name":"Bolaji Ajoke Hammed","avatar":"BA","bg":"#0d1f2d","role":"Adult Volunteer","facilitated":[],"volunteered":[],"hours":4,"fac_level":0,"grandfathered":false},"jollean":{"name":"Jollean Chapiel","avatar":"JC","bg":"#1a2010","role":"Adult Volunteer","facilitated":[],"volunteered":[3],"hours":2,"fac_level":0,"grandfathered":false},"mimi":{"name":"Mimi Omoare","avatar":"MO","bg":"#201020","role":"Adult Volunteer","facilitated":[],"volunteered":[6,7,8,9],"hours":8,"fac_level":0,"grandfathered":false},"alex":{"name":"Alex Strokova","avatar":"AS","bg":"#0d1f30","role":"Adult Volunteer","facilitated":[],"volunteered":[],"hours":5,"fac_level":0,"grandfathered":false,"isAdmin":false},"sudi":{"name":"Sudi Hedley","avatar":"SH","bg":"#1a1a0a","role":"JYSEP Animator","facilitated":[],"volunteered":[],"hours":4,"fac_level":0,"grandfathered":false,"isAdmin":false},"shameen":{"name":"Shameen","avatar":"SM","bg":"#0a1a1a","role":"JYSEP Animator","facilitated":[],"volunteered":[],"hours":4,"fac_level":0,"grandfathered":false,"isAdmin":false},"carol":{"name":"Carol Brosoto","avatar":"CB","bg":"#1a0d1a","role":"Adult Volunteer","facilitated":[],"volunteered":[],"hours":2,"fac_level":0,"grandfathered":false,"isAdmin":false},"kathy":{"name":"Kathy March","avatar":"KM","bg":"#0d1a2a","role":"Adult Volunteer","facilitated":[],"volunteered":[],"hours":0,"fac_level":0,"grandfathered":false,"isAdmin":false}};
+var FAC_PROFILES={"kim":{"name":"Kim Sundset","avatar":"KS","bg":"#1a0d05","role":"Level 3 Certified Facilitator","facilitated":[1,2,3,4,5,6,7,8],"volunteered":[9,10],"hours":159,"fac_level":3,"grandfathered":true,"isAdmin":true},"olga":{"name":"Olga Korcheva","avatar":"OK","bg":"#0c1f38","role":"Adult Volunteer","facilitated":[3,4,10],"volunteered":[1,2,4,5,6,7,8],"hours":72,"fac_level":0},"connie":{"name":"Connie Wu","avatar":"CW","bg":"#12243a","role":"Adult Volunteer","facilitated":[2],"volunteered":[],"hours":42,"fac_level":0},"chloe":{"name":"Chloe Nayoung Kim","avatar":"CK","bg":"#0f1f30","role":"Adult Volunteer","facilitated":[],"volunteered":[],"hours":28,"fac_level":0},"bj":{"name":"BJ (Bolaji) Hammed","avatar":"BH","bg":"#1a1605","role":"Adult Volunteer","facilitated":[],"volunteered":[3],"hours":50.5,"fac_level":0,"isAdmin":true},"roberta":{"name":"Roberta Ehigiator","avatar":"RE","bg":"#12200f","role":"Adult Volunteer","facilitated":[1,9],"volunteered":[2,3,4,5,6,7,8,10],"hours":80,"fac_level":0,"isAdmin":true},"julie":{"name":"Julie Robertson","avatar":"JR","bg":"#1f1230","role":"Adult Volunteer","facilitated":[],"volunteered":[3,9],"hours":40,"fac_level":0,"isAdmin":true},"tina":{"name":"Tina Petrow","avatar":"TP","bg":"#1a0d18","role":"Adult Volunteer","facilitated":[5,11],"volunteered":[],"hours":66,"fac_level":0},"marybeth":{"name":"Mary-Beth Finney (Ursa)","avatar":"MF","bg":"#0d1a1a","role":"Adult Volunteer","facilitated":[9],"volunteered":[],"hours":30,"fac_level":0},"simi":{"name":"Simisola Obasan (Simi)","avatar":"SO","bg":"#1f1a0d","role":"Adult Volunteer","facilitated":[6],"volunteered":[],"hours":43,"fac_level":0},"tamanna":{"name":"Tamanna Kaur","avatar":"TK","bg":"#1a1240","role":"Adult Volunteer","facilitated":[],"volunteered":[],"hours":2,"fac_level":0,"grandfathered":false},"bolaji_a":{"name":"Bolaji Ajoke Hammed","avatar":"BA","bg":"#0d1f2d","role":"Adult Volunteer","facilitated":[],"volunteered":[],"hours":4,"fac_level":0,"grandfathered":false},"jollean":{"name":"Jollean Chapiel","avatar":"JC","bg":"#1a2010","role":"Adult Volunteer","facilitated":[],"volunteered":[3],"hours":2,"fac_level":0,"grandfathered":false},"mimi":{"name":"Mimi Omoare","avatar":"MO","bg":"#201020","role":"Adult Volunteer","facilitated":[],"volunteered":[6,7,8,9],"hours":8,"fac_level":0,"grandfathered":false},"alex":{"name":"Alex Strokova","avatar":"AS","bg":"#0d1f30","role":"Adult Volunteer","facilitated":[],"volunteered":[],"hours":5,"fac_level":0,"grandfathered":false,"isAdmin":false},"sudi":{"name":"Sudi Hedley","avatar":"SH","bg":"#1a1a0a","role":"JYSEP Animator","facilitated":[],"volunteered":[],"hours":4,"fac_level":0,"grandfathered":false,"isAdmin":false},"shameen":{"name":"Shameen","avatar":"SM","bg":"#0a1a1a","role":"JYSEP Animator","facilitated":[],"volunteered":[],"hours":4,"fac_level":0,"grandfathered":false,"isAdmin":false},"carol":{"name":"Carol Brosoto","avatar":"CB","bg":"#1a0d1a","role":"Adult Volunteer","facilitated":[],"volunteered":[],"hours":2,"fac_level":0,"grandfathered":false,"isAdmin":false},"kathy":{"name":"Kathy March","avatar":"KM","bg":"#0d1a2a","role":"Adult Volunteer","facilitated":[],"volunteered":[],"hours":0,"fac_level":0,"grandfathered":false,"isAdmin":false}};
 var SCRABBLE_SESSIONS={"Reed Bieganski": {"14-Jan": 1, "21-Jan": 1, "28-Jan": 1, "4-Feb": 1, "11-Feb": 1, "18-Feb": 1, "25-Feb": 1, "4-Mar": 1, "11-Mar": 1, "18-Mar": 1}, "Anisim Rashid": {"28-Jan": 1}, "Koby Bolton": {"7-Jan": 5, "14-Jan": 1, "4-Feb": 1, "11-Feb": 1, "25-Feb": 1, "4-Mar": 1, "11-Mar": 1}, "Sasha Tumak": {"7-Jan": 6, "14-Jan": 1, "25-Feb": 1, "4-Mar": 1, "11-Mar": 1}, "Emma Tumak": {"7-Jan": 1, "14-Jan": 2, "11-Feb": 5, "25-Feb": 5, "4-Mar": 19, "11-Mar": 2}, "Alleem Hammed": {"11-Feb": 6, "4-Mar": 3, "11-Mar": 2, "18-Mar": 1}, "Ameerah Hammed": {"7-Jan": 2, "14-Jan": 11, "21-Jan": 22, "28-Jan": 8, "4-Feb": 2, "11-Feb": 1, "4-Mar": 1, "18-Mar": 1}, "Azeem Hammed": {"7-Jan": 3, "14-Jan": 4, "21-Jan": 10, "28-Jan": 7, "4-Feb": 2, "25-Feb": 2, "18-Mar": 1}, "Juanna Shin": {"14-Jan": 12, "21-Jan": 25, "28-Jan": 1, "4-Feb": 8, "11-Feb": 1, "18-Feb": 5, "25-Feb": 6, "4-Mar": 4, "18-Mar": 1}, "Serena Shin": {"7-Jan": 2, "14-Jan": 14, "21-Jan": 23, "28-Jan": 4, "4-Feb": 11, "11-Feb": 2, "18-Feb": 1, "25-Feb": 1, "4-Mar": 2, "18-Mar": 1}, "Cindy Hwang": {"7-Jan": 1, "14-Jan": 15, "21-Jan": 25, "28-Jan": 1, "4-Feb": 9, "11-Feb": 2, "18-Feb": 1, "25-Feb": 7, "4-Mar": 2, "18-Mar": 1}, "Sophie Hwang": {"7-Jan": 2, "14-Jan": 15, "21-Jan": 24, "28-Jan": 3, "4-Feb": 14, "18-Feb": 3, "25-Feb": 7, "4-Mar": 5, "18-Mar": 1}, "Chaey Moon": {"4-Feb": 6, "11-Feb": 2, "25-Feb": 6, "4-Mar": 2, "18-Mar": 1}, "Khanishka Kaur": {"14-Jan": 13, "21-Jan": 21, "28-Jan": 14, "4-Feb": 2, "11-Feb": 2, "25-Feb": 15, "11-Mar": 2, "18-Mar": 1}, "Navkar Sing": {"4-Feb": 1, "25-Feb": 7, "18-Mar": 1}, "Teni Olaniyan": {"18-Mar": 1}, "Tobi Olaniyan": {"18-Mar": 1}};
 var SCRABBLE_TOTALS={"Reed Bieganski": 10, "Anisim Rashid": 1, "Koby Bolton": 11, "Sasha Tumak": 10, "Emma Tumak": 34, "Alleem Hammed": 12, "Ameerah Hammed": 48, "Azeem Hammed": 29, "Juanna Shin": 63, "Serena Shin": 61, "Cindy Hwang": 64, "Sophie Hwang": 74, "Chaey Moon": 17, "Khanishka Kaur": 70, "Navkar Sing": 9, "Teni Olaniyan": 1, "Tobi Olaniyan": 1};
 var SCRABBLE_SCORES={"Ameerah Hammed":{"4-Feb":127,"11-Feb":147},"Azeem Hammed":{"4-Feb":91,"11-Feb":54},"Juanna Shin":{"11-Feb":226},"Sophie Hwang":{"11-Feb":145},"Khanishka Kaur":{"11-Feb":236}};
@@ -2204,19 +2204,26 @@ function renderAdult(){
   if(!adultState) return;
   var prof=adultState,fac=prof.facilitated,vol=prof.volunteered;
 
-  // ── Hours via shared layer (same rules as Stats Audit) ──────────────────
-  var conductedFac = fac.filter(function(id){
-    var w = WORKSHOPS.find(function(w){ return w.id === id; });
-    return w && w.conducted && !w.cancelled;
-  });
-  var conductedVol = vol.filter(function(id){
-    var w = WORKSHOPS.find(function(w){ return w.id === id; });
-    return w && w.conducted && !w.cancelled;
-  });
-  var cnt=conductedFac.length, lvl=getFacLevel(cnt,prof.grandfathered);
+  // ── Workshop counts — canonical source: WORKSHOPS array (+ FAC_PROFILES merge) ──
+  // getFacilitatedWorkshopCount reads from delivered WORKSHOPS.facilitators + FAC_PROFILES
+  var cnt = getFacilitatedWorkshopCount(prof.name);
+  var deliveredFacIds = getFacilitatedWorkshopIds(prof.name);
+  var lvl = getFacLevel(cnt, prof.grandfathered);
 
-  // Total hours from shared layer (matches Stats Audit exactly)
-  var totalAdultHrsAll = calcAdultVolunteerHours();
+  // conductedVol: from FAC_PROFILES.volunteered, filter to delivered workshops only
+  var conductedVolIds = (vol || []).filter(function(id){
+    var w = WORKSHOPS.find(function(w){ return w.id === id; });
+    return w && w.conducted && !w.cancelled;
+  });
+  // conductedFac for hours calc — same as deliveredFacIds
+  var conductedFac = deliveredFacIds;
+  var conductedVol = conductedVolIds;
+  // Upcoming assignments from FAC_PROFILES only (not yet delivered)
+  var upcomingFacIds = (fac||[]).filter(function(id){
+    var w = WORKSHOPS.find(function(w){ return w.id===id; });
+    return w && !w.conducted && !w.cancelled;
+  });
+
   // Per-person hours: workshops + scrabble (Q1+Q2 merged) + programs
   var wsHrs = (conductedFac.length + conductedVol.length) * 2;
   var _scrQ1  = (Q1_ADULT_SCRABBLE  || {})[prof.name] || {};
@@ -2256,8 +2263,8 @@ function renderAdult(){
   // ── Stat cards ───────────────────────────────────────────────────────────
   var sc=document.getElementById('adult-stat-cards');
   if(sc)sc.innerHTML=
-    '<div class="stat-card" style="--accent-color:var(--ya-orange)"><div class="stat-label">Workshops Facilitated</div><div class="stat-value">'+conductedFac.length+'</div><div class="stat-meta">'+(fac.length>conductedFac.length?conductedFac.length+' done · '+(fac.length-conductedFac.length)+' upcoming':'Completed 2026')+'</div><div class="stat-icon">🎤</div></div>'+
-    '<div class="stat-card" style="--accent-color:var(--ya-blue)"><div class="stat-label">Workshops Volunteered</div><div class="stat-value">'+conductedVol.length+'</div><div class="stat-meta">'+(vol.length>conductedVol.length?conductedVol.length+' done · '+(vol.length-conductedVol.length)+' upcoming':'Support roles')+'</div><div class="stat-icon">🤝</div></div>'+
+    '<div class="stat-card" style="--accent-color:var(--ya-orange)"><div class="stat-label">Workshops Facilitated</div><div class="stat-value">'+cnt+'</div><div class="stat-meta">'+(upcomingFacIds.length>0?cnt+' delivered · '+upcomingFacIds.length+' upcoming':'All delivered 2026')+'</div><div class="stat-icon">🎤</div></div>'+
+    '<div class="stat-card" style="--accent-color:var(--ya-blue)"><div class="stat-label">Workshops Volunteered</div><div class="stat-value">'+conductedVol.length+'</div><div class="stat-meta">'+(conductedVol.length>0?conductedVol.length+' delivered':'Support roles')+'</div><div class="stat-icon">🤝</div></div>'+
     '<div class="stat-card" style="--accent-color:var(--ya-teal)"><div class="stat-label">My Volunteer Hours</div><div class="stat-value">'+myTotalHrs+'</div><div class="stat-meta">'+hrsMeta+'</div><div class="stat-icon">⏱</div></div>'+
     '<div class="stat-card" style="--accent-color:#22c55e"><div class="stat-label">Facilitator Level</div><div class="stat-value" style="font-size:'+(lvl>0?'1.8rem':'1.1rem')+';padding-top:'+(lvl>0?'3px':'6px')+'">'+(prof.grandfathered?'Level 3 ⭐':lvl>0?'Level '+lvl:'In Progress')+'</div><div class="stat-meta">EL Certified</div><div class="stat-icon">🏅</div></div>';
 
@@ -2282,8 +2289,8 @@ function renderAdult(){
   var volHist=document.getElementById('adult-vol-history-content');
   if(volHist){
     var rows=[];
-    conductedFac.forEach(function(id){var w=WORKSHOPS.find(function(w){return w.id===id;});if(w)rows.push({label:'Facilitated: '+w.name,date:w.date,hrs:2,color:'var(--ya-orange)'});});
-    conductedVol.forEach(function(id){var w=WORKSHOPS.find(function(w){return w.id===id;});if(w)rows.push({label:'Volunteered: '+w.name,date:w.date,hrs:2,color:'var(--ya-blue)'});});
+    deliveredFacIds.forEach(function(id){var w=WORKSHOPS.find(function(w){return w.id===id;});if(w)rows.push({label:'Facilitated: '+w.name,date:w.date,hrs:2,color:'var(--ya-orange)'});});
+    conductedVolIds.forEach(function(id){var w=WORKSHOPS.find(function(w){return w.id===id;});if(w)rows.push({label:'Volunteered: '+w.name,date:w.date,hrs:2,color:'var(--ya-blue)'});});
     if(Object.keys(_scrMerged).length>0) rows.push({label:'Scrabble & Games Club ('+Object.keys(_scrMerged).length+' sessions)',date:'2026',hrs:scrHrs,color:'var(--ya-gold)'});
     // Program sessions
     Object.keys(PROGRAMS_DATA).forEach(function(pid){
@@ -2346,8 +2353,10 @@ function toggleAdultFac(id,btn){
   }
   var cb1=document.getElementById('adult-cert-banner-dash');
   var cb2=document.getElementById('adult-cert-banner-ws');
-  if(cb1)cb1.innerHTML=facCertBannerHTML(adultState.facilitated.length,adultState.grandfathered);
-  if(cb2)cb2.innerHTML=facCertBannerHTML(adultState.facilitated.length,adultState.grandfathered);
+  // Use delivered-only count (same source as renderAdult) so cert banner stays consistent
+  var _facDone=getFacilitatedWorkshopCount(adultState.name);
+  if(cb1)cb1.innerHTML=facCertBannerHTML(_facDone,adultState.grandfathered);
+  if(cb2)cb2.innerHTML=facCertBannerHTML(_facDone,adultState.grandfathered);
   saveAdultProfile();
   renderAdult();
 }
@@ -2492,21 +2501,52 @@ function renderAdmin(){
       '<td><button onclick="openWsStaffEdit('+w.id+')" style="padding:3px 10px;border-radius:6px;border:1px solid rgba(29,127,212,.4);background:rgba(29,127,212,.08);color:var(--ya-blue);font-size:.72rem;cursor:pointer;font-family:DM Sans,sans-serif">✏️ Edit</button></td>'+
       '</tr>';
   }).join('');
+  // ── Dynamic "Workshops Done" stat card (replaces hardcoded 10/17) ──────
+  var wsStats = calcWorkshopStats();
+  var wsDoneEl = eid('admin-ws-done-count');
+  var wsMetaEl = eid('admin-ws-done-meta');
+  if(wsDoneEl) wsDoneEl.textContent = wsStats.delivered.length;
+  if(wsMetaEl) wsMetaEl.textContent = 'of ' + wsStats.scheduled.length + ' scheduled · ' + wsStats.cancelled.length + ' cancelled';
+
+  // ── Facilitator table (uses canonical getFacilitatedWorkshopIds/Count) ──
   var ftb=eid('admin-fac-tbody');
   if(ftb){
     var rows=Object.values(FAC_PROFILES).map(function(p){
-      return {name:p.name,cnt:p.facilitated.length,lvl:getFacLevel(p.facilitated.length,p.grandfathered),gf:p.grandfathered,fac:p.facilitated};
-    }).sort(function(a,b){return b.cnt-a.cnt;});
+      // Delivered facilitations only — uses merged WORKSHOPS+FAC_PROFILES source
+      var deliveredIds = getFacilitatedWorkshopIds(p.name);
+      var cnt = deliveredIds.length;
+      var lvl = getFacLevel(cnt, p.grandfathered);
+      // Also show upcoming assignments from FAC_PROFILES (not yet delivered)
+      var allFacIds = p.facilitated || [];
+      var upcomingIds = allFacIds.filter(function(id){
+        var w = WORKSHOPS.find(function(w){ return w.id===id; });
+        return w && !w.conducted && !w.cancelled;
+      });
+      return {name:p.name,cnt:cnt,lvl:lvl,gf:p.grandfathered,deliveredIds:deliveredIds,upcomingIds:upcomingIds};
+    }).sort(function(a,b){ return b.cnt-a.cnt || a.name.localeCompare(b.name); });
     ftb.innerHTML=rows.map(function(r){
-      return '<tr><td>'+r.name+'</td><td style="font-size:.75rem">'+(r.fac.length>0?r.fac.map(function(id){return '#'+id;}).join(', '):'—')+'</td><td><strong>'+r.cnt+'</strong></td><td><span class="pill '+(r.gf?'pill-gold':r.lvl>0?'pill-teal':'pill-grey')+'">'+(r.gf?'⭐ L3 (grandfathered)':r.lvl>0?'Level '+r.lvl:'In progress')+'</span></td></tr>';
+      var facStr = r.deliveredIds.length > 0
+        ? r.deliveredIds.map(function(id){ return '#'+id; }).join(', ')
+        : '—';
+      var upStr = r.upcomingIds.length > 0
+        ? ' <span style="color:var(--text-muted);font-size:.7rem">(+'+r.upcomingIds.map(function(id){ return '#'+id; }).join(', ')+' upcoming)</span>'
+        : '';
+      return '<tr><td>'+r.name+'</td>'+
+        '<td style="font-size:.75rem">'+facStr+upStr+'</td>'+
+        '<td><strong>'+r.cnt+'</strong></td>'+
+        '<td><span class="pill '+(r.gf?'pill-gold':r.lvl>0?'pill-teal':'pill-grey')+'">'+(r.gf?'⭐ L3 (grandfathered)':r.lvl>0?'Level '+r.lvl:'In progress')+'</span></td></tr>';
     }).join('');
   }
+  // ── Facilitator leaderboard (delivered count only) ────────────────────
   var lbel=eid('admin-fac-leaderboard');
   if(lbel){
-    var sorted=Object.values(FAC_PROFILES).sort(function(a,b){return b.facilitated.length-a.facilitated.length;});
-    lbel.innerHTML=sorted.map(function(p){
-      var c=p.facilitated.length;
-      return '<div class="prog-bar-wrap"><div class="prog-label"><span>'+p.name+(p.grandfathered?' ⭐':'')+'</span><span>'+c+' workshop'+(c!==1?'s':'')+'</span></div><div class="prog-track"><div class="prog-fill" style="width:'+Math.min(100,c/9*100)+'%;background:linear-gradient(90deg,var(--ya-orange),var(--ya-gold))"></div></div></div>';
+    var sorted=Object.values(FAC_PROFILES).map(function(p){
+      return {name:p.name,cnt:getFacilitatedWorkshopCount(p.name),gf:p.grandfathered};
+    }).sort(function(a,b){ return b.cnt-a.cnt || a.name.localeCompare(b.name); });
+    var maxFac = sorted.length > 0 ? Math.max(sorted[0].cnt, 1) : 1;
+    lbel.innerHTML=sorted.filter(function(p){ return p.cnt > 0; }).map(function(p){
+      var c=p.cnt;
+      return '<div class="prog-bar-wrap"><div class="prog-label"><span>'+p.name+(p.gf?' ⭐':'')+'</span><span>'+c+' delivered workshop'+(c!==1?'s':'')+'</span></div><div class="prog-track"><div class="prog-fill" style="width:'+Math.min(100,c/maxFac*100)+'%;background:linear-gradient(90deg,var(--ya-orange),var(--ya-gold))"></div></div></div>';
     }).join('');
   }
   var ctb=eid('admin-comp-tbody');
@@ -2921,6 +2961,78 @@ function calcWorkshopStats() {
   };
 }
 
+// ── Workshop / Facilitator shared helpers ────────────────────────────────
+// Single source of truth for all views (Admin, Impact, Stats Audit, User View)
+
+// Returns array of delivered (conducted + not cancelled) WORKSHOPS
+function getDeliveredWorkshops() {
+  return (WORKSHOPS || []).filter(function(w){ return w.conducted && !w.cancelled; });
+}
+
+// Returns array of scheduled (not cancelled) WORKSHOPS
+function getScheduledWorkshops() {
+  return (WORKSHOPS || []).filter(function(w){ return !w.cancelled; });
+}
+
+// Returns the canonical status string for a workshop
+function getWorkshopStatus(w) {
+  if (w.cancelled) return 'cancelled';
+  if (w.conducted) return 'delivered';
+  return 'upcoming';
+}
+
+// Returns the list of facilitator names for a workshop.
+// Priority: if workshop has been saved via DB staff editor (WS_STAFFED_BY_DB),
+// use FAC_PROFILES as the authoritative source (merged with ws.facilitators for display).
+// Otherwise merge ws.facilitators + FAC_PROFILES additions.
+// This is the same logic as getWsFacilitators() — use that for display.
+// For COUNTING purposes we always use WORKSHOPS.facilitators as ground truth,
+// supplemented by FAC_PROFILES where a person's facilitated[] covers that wsId.
+function getWorkshopFacilitatorNames(w) {
+  // Merges WORKSHOPS.facilitators with FAC_PROFILES.facilitated for this workshop
+  var names = (w.facilitators || []).filter(function(n){ return n !== 'TBD'; });
+  Object.values(FAC_PROFILES).forEach(function(p) {
+    if (p.facilitated && p.facilitated.indexOf(w.id) >= 0 && names.indexOf(p.name) < 0) {
+      names.push(p.name);
+    }
+  });
+  return names;
+}
+
+// Returns the number of DELIVERED workshops facilitated by adultName.
+// Source of truth: WORKSHOPS.facilitators for delivered workshops,
+// supplemented by FAC_PROFILES.facilitated (in case of DB-managed assignments).
+// This is the canonical count used everywhere: Admin, leaderboard, cert level, user view.
+function getFacilitatedWorkshopCount(adultName) {
+  return getDeliveredWorkshops().filter(function(w) {
+    var facNames = getWorkshopFacilitatorNames(w);
+    return facNames.indexOf(adultName) >= 0;
+  }).length;
+}
+
+// Returns list of delivered workshop IDs facilitated by adultName
+function getFacilitatedWorkshopIds(adultName) {
+  return getDeliveredWorkshops().filter(function(w) {
+    var facNames = getWorkshopFacilitatorNames(w);
+    return facNames.indexOf(adultName) >= 0;
+  }).map(function(w){ return w.id; });
+}
+
+// Returns number of DELIVERED workshops volunteered by adultName
+function getVolunteeredWorkshopCount(adultName) {
+  return getDeliveredWorkshops().filter(function(w) {
+    var volNames = (w.volunteers || []);
+    // Also check FAC_PROFILES.volunteered
+    Object.values(FAC_PROFILES).forEach(function(p) {
+      if (p.name === adultName && p.volunteered && p.volunteered.indexOf(w.id) >= 0 && volNames.indexOf(adultName) < 0) {
+        volNames = volNames.concat([adultName]);
+      }
+    });
+    return volNames.indexOf(adultName) >= 0;
+  }).length;
+}
+// ────────────────────────────────────────────────────────────────────────────
+
 // ── calcEventStats() ─────────────────────────────────────────────────────
 // Returns { all, completed, upcoming, community, communityCompleted }
 function calcEventStats() {
@@ -3002,18 +3114,15 @@ function calcAdultVolunteerHours() {
     hrsMap[k] = (hrsMap[k] || 0) + (parseFloat(h) || 0);
   }
 
-  // 1. Workshops
+  // 1. Workshops — uses shared getFacilitatedWorkshopCount so all views agree
   Object.values(FAC_PROFILES || {}).forEach(function(p){
     if (!p || !p.name) return;
-    var condF = (p.facilitated || []).filter(function(id){
-      var w = (WORKSHOPS || []).find(function(w){ return w.id === id; });
-      return w && w.conducted && !w.cancelled;
-    });
+    var condFCount = getFacilitatedWorkshopCount(p.name);
     var condV = (p.volunteered || []).filter(function(id){
       var w = (WORKSHOPS || []).find(function(w){ return w.id === id; });
       return w && w.conducted && !w.cancelled;
     });
-    var h = (condF.length + condV.length) * 2;
+    var h = (condFCount + condV.length) * 2;
     if (h > 0) add(p.name, h);
   });
 
@@ -3214,10 +3323,8 @@ function getActiveAdultVolunteers() {
   // and prior hours. Upcoming signups do not make someone an "active volunteer" yet.
   Object.values(FAC_PROFILES).forEach(function(p) {
     if (!p || !p.name) return;
-    var conductedF = (p.facilitated||[]).filter(function(id){
-      var w=WORKSHOPS.find(function(w){return w.id===id;});
-      return w && w.conducted && !w.cancelled;
-    });
+    var conductedFCount = getFacilitatedWorkshopCount(p.name);
+    var conductedF = {length: conductedFCount}; // proxy for .length check
     var conductedV = (p.volunteered||[]).filter(function(id){
       var w=WORKSHOPS.find(function(w){return w.id===id;});
       return w && w.conducted && !w.cancelled;
@@ -3407,11 +3514,12 @@ function renderStatsDiagnostic() {
     if(detail&&adultMap[k].sources[src].indexOf(detail)<0) adultMap[k].sources[src].push(detail);
   }
   // Workshops (facilitated/volunteered — conducted only)
+  // Uses shared helpers so counts match Admin, Impact, and User View
   Object.values(FAC_PROFILES).forEach(function(p){
     if(!p||!p.name)return;
-    var condF=(p.facilitated||[]).filter(function(id){var w=(WORKSHOPS||[]).find(function(w){return w.id===id;});return w&&w.conducted&&!w.cancelled;});
+    var condFCount = getFacilitatedWorkshopCount(p.name);
     var condV=(p.volunteered||[]).filter(function(id){var w=(WORKSHOPS||[]).find(function(w){return w.id===id;});return w&&w.conducted&&!w.cancelled;});
-    if(condF.length)addAdult(p.name,'Workshops (Facilitated)',condF.length+' conducted');
+    if(condFCount)addAdult(p.name,'Workshops (Facilitated)',condFCount+' conducted');
     if(condV.length)addAdult(p.name,'Workshops (Volunteered)',condV.length+' conducted');
     // FAC_PROFILES.hours is legacy annotation only — not used as an activity source
   });
@@ -3456,12 +3564,12 @@ function renderStatsDiagnostic() {
     if(!adultHrsMap[k])adultHrsMap[k]={display:rawName.trim(),items:[]};
     adultHrsMap[k].items.push({src:src,h:parseFloat(h)||0});
   }
-  // 1. Workshop hours (2h per conducted workshop)
+  // 1. Workshop hours (2h per conducted workshop) — uses shared helpers for consistency
   Object.values(FAC_PROFILES).forEach(function(p){
     if(!p||!p.name)return;
-    var condF=(p.facilitated||[]).filter(function(id){var w=(WORKSHOPS||[]).find(function(w){return w.id===id;});return w&&w.conducted&&!w.cancelled;});
+    var condFCount = getFacilitatedWorkshopCount(p.name);
     var condV=(p.volunteered||[]).filter(function(id){var w=(WORKSHOPS||[]).find(function(w){return w.id===id;});return w&&w.conducted&&!w.cancelled;});
-    var wsHrs=(condF.length+condV.length)*2;
+    var wsHrs=(condFCount+condV.length)*2;
     if(wsHrs>0)addAdultHrs(p.name,'Workshops',wsHrs);
   });
   // 2. Scrabble hours — merge Q1 archived + current quarter to get full-season total
@@ -4509,8 +4617,9 @@ function renderImpactTab(){
 
   // ── Adult volunteers ──────────────────────────────────────────────────────
   var activeAdultSet = calcAdultVolunteers();  // shared helper
-  var facilitators   = Object.values(FAC_PROFILES).filter(function(p){ return p.facilitated && p.facilitated.length > 0; });
-  var returningFacs  = facilitators.filter(function(p){ return p.facilitated.length >= 3; });
+  // Facilitator counts use delivered workshops only (shared helper, matches Admin + Stats Audit)
+  var facilitators   = Object.values(FAC_PROFILES).filter(function(p){ return getFacilitatedWorkshopCount(p.name) > 0; });
+  var returningFacs  = facilitators.filter(function(p){ return getFacilitatedWorkshopCount(p.name) >= 3; });
 
   // ── Volunteer hours — via shared layer ───────────────────────────────────
   // Adult hours: workshops (2h/conducted) + scrabble (Q1+current) + programs + events
@@ -4535,11 +4644,12 @@ function renderImpactTab(){
   // Workshop facilitator hours (2h per conducted workshop per person — for display row)
   var totalWsFacHours = (function(){
     var t = 0;
+    // Uses shared helpers for consistency with Admin, Stats Audit, and User View
     Object.values(FAC_PROFILES||{}).forEach(function(p){
       if (!p||!p.name) return;
-      var condF = (p.facilitated||[]).filter(function(id){ var w=(WORKSHOPS||[]).find(function(w){return w.id===id;}); return w&&w.conducted&&!w.cancelled; });
+      var condFCount = getFacilitatedWorkshopCount(p.name);
       var condV = (p.volunteered||[]).filter(function(id){ var w=(WORKSHOPS||[]).find(function(w){return w.id===id;}); return w&&w.conducted&&!w.cancelled; });
-      t += (condF.length + condV.length) * 2;
+      t += (condFCount + condV.length) * 2;
     });
     return t;
   })();

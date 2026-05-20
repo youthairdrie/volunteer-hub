@@ -949,14 +949,14 @@ tr:hover .grd-date-sticky { background: #1a2d47; }
         <div class="page-sub">Youth Airdrie · Semester Jan 12 – May 25, 2026 · Kim Sundset, Level 3 Certified Facilitator</div>
       </div>
       <div class="alert-row success" id="adult-ws-next-alert" style="margin-bottom:14px"></div>
-      <div class="fac-cert-card">
+      <div id="admin-kim-cert-card" class="fac-cert-card">
         <div style="font-size:2.6rem;flex-shrink:0">🏅</div>
         <div>
           <div class="fac-cert-title">Kim Sundset — Level 3 Certified Facilitator</div>
-          <div class="fac-cert-sub">40 prior to 2026 · at Level 3 · Co-facilitated workshops #1–8 in 2026 · Program Administrator</div>
-          <div style="margin-top:7px;display:flex;gap:7px;flex-wrap:wrap">
+          <div class="fac-cert-sub" id="admin-kim-cert-sub">Loading…</div>
+          <div style="margin-top:7px;display:flex;gap:7px;flex-wrap:wrap" id="admin-kim-cert-pills">
             <span class="pill pill-gold">⭐ Level 3 Facilitator</span>
-            <span class="pill pill-teal">8 Workshops (2026)</span>
+            <span class="pill pill-teal" id="admin-kim-ws-pill">— Workshops (2026)</span>
             <span class="pill pill-blue">Administrator</span>
           </div>
         </div>
@@ -979,7 +979,7 @@ tr:hover .grd-date-sticky { background: #1a2d47; }
           <div class="stat-card" style="--accent-color:var(--ya-teal)"><div class="stat-label">EL Youth Members</div><div class="stat-value">39</div><div class="stat-meta">Emerging Leaders 2026</div><div class="stat-icon">👥</div></div>
           <div class="stat-card" style="--accent-color:var(--ya-blue)"><div class="stat-label">Total Attendances</div><div class="stat-value">174</div><div class="stat-meta">Across 9 workshops</div><div class="stat-icon">✅</div></div>
           <div class="stat-card" style="--accent-color:var(--ya-orange)"><div class="stat-label">Level 1 Eligible</div><div class="stat-value" id="a-lvl1">—</div><div class="stat-meta">6+ workshops done</div><div class="stat-icon">🎓</div></div>
-          <div class="stat-card" style="--accent-color:var(--ya-green)"><div class="stat-label">Workshops Done</div><div class="stat-value" id="admin-ws-done-count">—</div><div class="stat-meta" id="admin-ws-done-meta">of 17 scheduled</div><div class="stat-icon">📚</div></div>
+          <div class="stat-card" style="--accent-color:var(--ya-green)"><div class="stat-label">Workshops Done</div><div class="stat-value" id="admin-ws-done-count">—</div><div class="stat-meta" id="admin-ws-done-meta">of — scheduled</div><div class="stat-icon">📚</div></div>
         </div>
         <div class="section-box"><div class="section-title">📈 Attendance by Workshop</div><div id="admin-ws-bars"></div></div>
         <div class="section-box">
@@ -2548,6 +2548,29 @@ function renderAdmin(){
   if(wsDoneEl) wsDoneEl.textContent = wsStats.delivered.length;
   if(wsMetaEl) wsMetaEl.textContent = 'of ' + wsStats.scheduled.length + ' scheduled · ' + wsStats.cancelled.length + ' cancelled';
 
+  // ── Dynamic Kim Sundset cert card (replaces hardcoded "8 Workshops (2026)") ──
+  // Uses the same getFacilitatedWorkshopCount/getFacilitatedWorkshopIds helpers
+  // so this card always matches the facilitator table and leaderboard below.
+  var kimProf = FAC_PROFILES['kim'];
+  if(kimProf) {
+    var kimCount = getFacilitatedWorkshopCount(kimProf.name);
+    var kimIds   = getFacilitatedWorkshopIds(kimProf.name);
+    var kimUpcoming = (kimProf.facilitated || []).filter(function(id){
+      var w = WORKSHOPS.find(function(w){ return w.id === id; });
+      return w && !w.conducted && !w.cancelled;
+    });
+    var kimSubEl  = eid('admin-kim-cert-sub');
+    var kimPillEl = eid('admin-kim-ws-pill');
+    if(kimSubEl) {
+      var wsListStr = kimIds.length ? 'Workshops #'+kimIds.join(', #')+' in 2026' : 'No workshops facilitated yet in 2026';
+      var upStr = kimUpcoming.length ? ' · #'+kimUpcoming.join(', #')+' upcoming' : '';
+      kimSubEl.textContent = '40 prior to 2026 · at Level 3 · '+wsListStr+upStr+' · Program Administrator';
+    }
+    if(kimPillEl) {
+      kimPillEl.textContent = kimCount + ' Workshop' + (kimCount !== 1 ? 's' : '') + ' (2026)';
+    }
+  }
+
   // ── Facilitator table (uses canonical getFacilitatedWorkshopIds/Count) ──
   var ftb=eid('admin-fac-tbody');
   if(ftb){
@@ -3029,8 +3052,20 @@ function getWorkshopStatus(w) {
 // This is the same logic as getWsFacilitators() — use that for display.
 // For COUNTING purposes we always use WORKSHOPS.facilitators as ground truth,
 // supplemented by FAC_PROFILES where a person's facilitated[] covers that wsId.
+// Returns the canonical list of facilitator names for a workshop for COUNTING purposes.
+// Must exactly mirror getWsFacilitators() so count and display always agree.
+// - If WS_STAFFED_BY_DB.has(w.id): FAC_PROFILES is sole source (DB overrides hardcoded)
+// - Otherwise: merge ws.facilitators with FAC_PROFILES additions
 function getWorkshopFacilitatorNames(w) {
-  // Merges WORKSHOPS.facilitators with FAC_PROFILES.facilitated for this workshop
+  if (WS_STAFFED_BY_DB.has(w.id)) {
+    // DB is source of truth — read only from FAC_PROFILES, ignore hardcoded ws.facilitators
+    var names = [];
+    Object.values(FAC_PROFILES).forEach(function(p) {
+      if (p.facilitated && p.facilitated.indexOf(w.id) >= 0) names.push(p.name);
+    });
+    return names;
+  }
+  // Not DB-staffed: merge hardcoded defaults with any FAC_PROFILES additions
   var names = (w.facilitators || []).filter(function(n){ return n !== 'TBD'; });
   Object.values(FAC_PROFILES).forEach(function(p) {
     if (p.facilitated && p.facilitated.indexOf(w.id) >= 0 && names.indexOf(p.name) < 0) {
@@ -3060,13 +3095,22 @@ function getFacilitatedWorkshopIds(adultName) {
 }
 
 // Returns number of DELIVERED workshops volunteered by adultName
+// Returns number of DELIVERED workshops volunteered by adultName.
+// Mirrors getWsVolunteers() logic so count and display agree.
 function getVolunteeredWorkshopCount(adultName) {
   return getDeliveredWorkshops().filter(function(w) {
-    var volNames = (w.volunteers || []);
-    // Also check FAC_PROFILES.volunteered
+    // Use same WS_STAFFED_BY_DB logic as getWsVolunteers for consistency
+    if (WS_STAFFED_BY_DB.has(w.id)) {
+      // DB-staffed: read only from FAC_PROFILES.volunteered
+      return Object.values(FAC_PROFILES).some(function(p) {
+        return p.name === adultName && p.volunteered && p.volunteered.indexOf(w.id) >= 0;
+      });
+    }
+    // Not DB-staffed: check ws.volunteers array + FAC_PROFILES additions
+    var volNames = (w.volunteers || []).slice();
     Object.values(FAC_PROFILES).forEach(function(p) {
       if (p.name === adultName && p.volunteered && p.volunteered.indexOf(w.id) >= 0 && volNames.indexOf(adultName) < 0) {
-        volNames = volNames.concat([adultName]);
+        volNames.push(adultName);
       }
     });
     return volNames.indexOf(adultName) >= 0;

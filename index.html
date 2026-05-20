@@ -1403,10 +1403,10 @@ tr:hover .grd-date-sticky { background: #1a2d47; }
       <div id="tab-compliance" style="display:none">
 
         <!-- COMPLIANCE SUMMARY CARDS -->
-        <div class="cards-grid" id="comp-summary-cards"></div>
+        <div class="cards-grid" id="comp-summary-cards" style="margin-bottom:16px"></div>
 
         <!-- LOG NEW COMPLIANCE (Julie / Admins only) -->
-        <div class="section-box" style="border-color:rgba(0,181,160,.25)">
+        <div class="section-box" style="border-color:rgba(0,181,160,.25);margin-bottom:16px">
           <div class="section-title">📝 Log Compliance Record</div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
             <div>
@@ -1415,6 +1415,7 @@ tr:hover .grd-date-sticky { background: #1a2d47; }
                 <option value="">— Select type —</option>
                 <option value="adult_vsc">Adult VSC</option>
                 <option value="adult_waiver">Adult Waiver</option>
+                <option value="adult_photo">Adult Photo Release</option>
                 <option value="youth_waiver">Youth Waiver (parent-signed)</option>
                 <option value="youth_photo">Youth Photo Release (parent-signed)</option>
               </select>
@@ -1433,6 +1434,8 @@ tr:hover .grd-date-sticky { background: #1a2d47; }
                 <input type="date" id="comp-expiry" style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:8px;padding:8px 12px;color:var(--text-muted);font-family:DM Sans,sans-serif;font-size:.85rem;width:100%;margin-bottom:8px" readonly>
                 <div id="vsc-expiry-preview" style="font-size:.78rem;color:var(--ya-teal);margin-bottom:8px"></div>
               </div>
+              <div style="font-size:.78rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Notes <span style="color:var(--text-muted);font-weight:400;text-transform:none">(optional)</span></div>
+              <input type="text" id="comp-notes" placeholder="e.g. Hard copy in binder" style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:8px;padding:8px 12px;color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem;width:100%;margin-bottom:10px">
               <button class="login-btn" style="padding:10px;margin-top:4px" onclick="logComplianceRecord()">✔ Mark as Received</button>
             </div>
           </div>
@@ -1441,23 +1444,34 @@ tr:hover .grd-date-sticky { background: #1a2d47; }
 
         <!-- TABS for Adult vs Youth -->
         <div class="tab-bar" id="comp-subtab-bar" style="margin-bottom:16px">
-          <button class="tab-btn active" onclick="switchCompTab('adults',this)">🙌 Adults (VSC + Waiver)</button>
+          <button class="tab-btn active" onclick="switchCompTab('adults',this)">🙌 Adults (VSC + Waiver + Photo)</button>
           <button class="tab-btn" onclick="switchCompTab('youth',this)">🌱 Youth (Waiver + Photo)</button>
         </div>
 
         <!-- ADULT COMPLIANCE TABLE -->
         <div id="comp-panel-adults">
           <div class="section-box">
-            <div class="section-title">🛡 Adult Compliance — VSC &amp; Waivers</div>
-            <div style="overflow-x:auto">
-              <table class="data-table" id="adult-comp-table">
+            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px">
+              <div class="section-title" style="margin:0">🛡 Adult Compliance</div>
+              <input type="text" id="comp-adult-search" oninput="renderAdultCompTable()" placeholder="Search by name…" style="flex:1;min-width:160px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:8px;padding:6px 12px;color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.82rem">
+              <select id="comp-adult-filter" onchange="renderAdultCompTable()" style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:8px;padding:6px 10px;color:var(--text-muted);font-family:DM Sans,sans-serif;font-size:.8rem;cursor:pointer">
+                <option value="all">All statuses</option>
+                <option value="complete">Complete</option>
+                <option value="action">Action needed</option>
+                <option value="expiring">VSC expiring soon</option>
+              </select>
+            </div>
+            <div style="overflow-x:auto;-webkit-overflow-scrolling:touch">
+              <table class="data-table" id="adult-comp-table" style="min-width:600px">
                 <thead><tr>
                   <th>Name</th>
-                  <th>VSC on File</th>
-                  <th>VSC Issued</th>
-                  <th>VSC Expiry</th>
+                  <th>VSC</th>
+                  <th style="white-space:nowrap">VSC Expiry</th>
                   <th>Waiver</th>
+                  <th>Photo Release</th>
                   <th>Status</th>
+                  <th>Notes</th>
+                  <th></th>
                 </tr></thead>
                 <tbody id="adult-comp-tbody"></tbody>
               </table>
@@ -1468,21 +1482,47 @@ tr:hover .grd-date-sticky { background: #1a2d47; }
         <!-- YOUTH COMPLIANCE TABLE -->
         <div id="comp-panel-youth" style="display:none">
           <div class="section-box">
-            <div class="section-title">🌱 Youth Compliance — Waiver &amp; Photo Release</div>
+            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px">
+              <div class="section-title" style="margin:0">🌱 Youth Compliance</div>
+              <input type="text" id="comp-youth-search" oninput="renderYouthCompTable()" placeholder="Search by name…" style="flex:1;min-width:160px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:8px;padding:6px 12px;color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.82rem">
+              <select id="comp-youth-filter" onchange="renderYouthCompTable()" style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:8px;padding:6px 10px;color:var(--text-muted);font-family:DM Sans,sans-serif;font-size:.8rem;cursor:pointer">
+                <option value="all">All statuses</option>
+                <option value="complete">Complete</option>
+                <option value="action">Action needed</option>
+              </select>
+            </div>
             <div class="alert-row info" style="margin-bottom:12px">ℹ️ <div>Both waiver and photo release must be signed by a parent/guardian and stored on Google Drive.</div></div>
-            <div style="overflow-x:auto">
-              <table class="data-table" id="youth-comp-table">
+            <div style="overflow-x:auto;-webkit-overflow-scrolling:touch">
+              <table class="data-table" id="youth-comp-table" style="min-width:480px">
                 <thead><tr>
                   <th>Name</th>
                   <th>Age</th>
                   <th>Waiver</th>
                   <th>Photo Release</th>
                   <th>Status</th>
+                  <th>Notes</th>
+                  <th></th>
                 </tr></thead>
                 <tbody id="youth-comp-tbody"></tbody>
               </table>
             </div>
           </div>
+        </div>
+      </div>
+
+      <!-- COMPLIANCE EDIT MODAL -->
+      <div id="comp-edit-modal" style="display:none;position:fixed;inset:0;z-index:2000;background:rgba(0,0,0,.7);align-items:center;justify-content:center;padding:16px">
+        <div style="background:var(--sidebar-bg);border:1px solid var(--card-border);border-radius:18px;padding:24px;width:100%;max-width:480px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.5)">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px">
+            <div style="font-family:Nunito,sans-serif;font-size:1rem;font-weight:900;color:var(--ya-teal)" id="comp-edit-modal-title">Edit Compliance</div>
+            <button onclick="closeCompEditModal()" style="background:none;border:none;color:var(--text-muted);font-size:1.3rem;cursor:pointer;padding:2px 6px;border-radius:6px">✕</button>
+          </div>
+          <div id="comp-edit-modal-body"></div>
+          <div style="display:flex;gap:10px;margin-top:18px">
+            <button onclick="saveCompEditModal()" class="login-btn" style="flex:1;padding:11px">💾 Save Changes</button>
+            <button onclick="closeCompEditModal()" style="padding:11px 18px;border-radius:10px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.05);color:var(--text-muted);font-family:DM Sans,sans-serif;cursor:pointer">Cancel</button>
+          </div>
+          <div id="comp-edit-feedback" style="margin-top:10px"></div>
         </div>
       </div>
       <div id="tab-impact" style="display:none">
@@ -2894,6 +2934,7 @@ function switchTab(tabId,btn){
   if(tabId==='users-admin') renderUsersTab();
   if(tabId==='events-log') renderEventsLog();
   if(tabId==='impact') renderImpactTab();
+  if(tabId==='compliance'){ renderComplianceSummary(); renderAdultCompTable(); }
 }
 
 function filterEvents(type,btn){
@@ -3914,6 +3955,61 @@ function renderStatsDiagnostic() {
             });
             return rows||'<div style="color:var(--text-muted);font-size:.82rem;padding:8px 0">No programs found.</div>';
           })();
+      }},
+    // ── COMPLIANCE AUDIT CARD ────────────────────────────────────────────────
+    {id:'compliance',icon:'🛡',label:'Compliance Summary',value:'↗',color:'var(--ya-teal)',sub:'adult_compliance · youth_compliance',
+      detail:function(){
+        var as=getAdultComplianceSummary();
+        var ys=getYouthComplianceSummary();
+        var today=new Date(); today.setHours(0,0,0,0);
+
+        // Build expiring-soon list
+        var expNames=[];
+        Object.keys(ADULT_COMPLIANCE).forEach(function(n){
+          var r=ADULT_COMPLIANCE[n]||{};
+          if(r.vsc_expiry){
+            var d=new Date(r.vsc_expiry);
+            var diff=(d-today)/(864e5);
+            if(diff>=0&&diff<=90) expNames.push({name:n,date:r.vsc_expiry,diff:Math.round(diff)});
+          }
+        });
+        expNames.sort(function(a,b){return a.diff-b.diff;});
+
+        var html=heading('Tables used','var(--ya-teal)')
+          +sourcesLine(['adult_compliance','youth_compliance'])
+          +infoBox('Counts only — no personal VSC or waiver documents are stored in this app. All numbers reflect the on-file flags in the compliance tables.')
+
+          +heading('Adult Compliance ('+as.total+' adults)','var(--ya-blue)')
+          +auditRow('VSC on File',
+            chip(as.vscOk+' on file','#22c55e','rgba(34,197,94,.15)')+chip(as.vscMiss+' missing','#ef4444','rgba(239,68,68,.12)'),
+            'Source: adult_compliance.vsc_on_file')
+          +auditRow('VSC Expiring ≤90 days',
+            chip(as.expiringSoon>0?as.expiringSoon+' expiring soon':'None expiring',as.expiringSoon>0?'#f5a623':'#22c55e',as.expiringSoon>0?'rgba(245,162,35,.18)':'rgba(34,197,94,.15)'),
+            'Source: adult_compliance.vsc_expiry')
+          +auditRow('Adult Waivers',
+            chip(as.waiverOk+' signed','#22c55e','rgba(34,197,94,.15)')+chip(as.waiverMiss+' missing','#ef4444','rgba(239,68,68,.12)'),
+            'Source: adult_compliance.waiver_on_file')
+          +auditRow('Adult Photo Releases',
+            chip(as.photoOk+' signed','#22c55e','rgba(34,197,94,.15)')+chip(as.photoMiss+' missing','#f5a623','rgba(245,162,35,.15)'),
+            'Source: adult_compliance.photo_release_on_file')
+
+          +heading('Youth Compliance ('+ys.total+' youth)','var(--ya-teal)')
+          +auditRow('Youth Waivers',
+            chip(ys.waiverOk+' signed','#22c55e','rgba(34,197,94,.15)')+chip(ys.waiverMiss+' missing','#ef4444','rgba(239,68,68,.12)'),
+            'Source: youth_compliance.waiver_on_file')
+          +auditRow('Youth Photo Releases',
+            chip(ys.photoOk+' signed','#22c55e','rgba(34,197,94,.15)')+chip(ys.photoMiss+' missing','#f5a623','rgba(245,162,35,.15)'),
+            'Source: youth_compliance.photo_on_file');
+
+        if(expNames.length){
+          html+=heading('VSC Expiring Within 90 Days ('+expNames.length+')','#f5a623');
+          expNames.forEach(function(e){
+            html+=auditRow(e.name,chip(e.diff+'d remaining','#f5a623','rgba(245,162,35,.2)'),formatDate(e.date));
+          });
+        }
+
+        html+=warnBox('This audit shows counts only. Personal compliance documents are stored offline. Admin can edit any record in the Compliance tab.');
+        return html;
       }}
   ];
 
@@ -6577,125 +6673,221 @@ function resumeProgramSession(tabId, dateStr, btn){
 
 // ── COMPLIANCE SYSTEM ──
 
+// ══════════════════════════════════════════════════════════════════════════════
+// ── COMPLIANCE SHARED HELPERS ─────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * getAdultComplianceSummary()
+ * Returns { total, vscOk, vscMiss, waiverOk, waiverMiss, photoOk, photoMiss, expiringSoon }
+ * Uses ADULT_COMPLIANCE as single source of truth.
+ */
+function getAdultComplianceSummary(){
+  var today=new Date(); today.setHours(0,0,0,0);
+  var names=Object.keys(ADULT_COMPLIANCE);
+  var vscOk=0,waiverOk=0,photoOk=0,expiringSoon=0;
+  names.forEach(function(n){
+    var r=ADULT_COMPLIANCE[n]||{};
+    if(r.vsc_on_file) vscOk++;
+    if(r.waiver_on_file) waiverOk++;
+    if(r.photo_release_on_file) photoOk++;
+    if(r.vsc_expiry){
+      var d=new Date(r.vsc_expiry); var diff=(d-today)/(864e5);
+      if(diff>=0&&diff<=90) expiringSoon++;
+    }
+  });
+  return {total:names.length,vscOk:vscOk,vscMiss:names.length-vscOk,
+    waiverOk:waiverOk,waiverMiss:names.length-waiverOk,
+    photoOk:photoOk,photoMiss:names.length-photoOk,expiringSoon:expiringSoon};
+}
+
+/**
+ * getYouthComplianceSummary()
+ * Returns { total, waiverOk, waiverMiss, photoOk, photoMiss }
+ * Uses YOUTH_COMPLIANCE as single source of truth.
+ */
+function getYouthComplianceSummary(){
+  var names=Object.keys(YOUTH_COMPLIANCE);
+  var waiverOk=0,photoOk=0;
+  names.forEach(function(n){
+    var r=YOUTH_COMPLIANCE[n]||{};
+    if(r.waiver_on_file) waiverOk++;
+    if(r.photo_on_file) photoOk++;
+  });
+  return {total:names.length,waiverOk:waiverOk,waiverMiss:names.length-waiverOk,
+    photoOk:photoOk,photoMiss:names.length-photoOk};
+}
+
+/**
+ * isAdultCompliant(name)
+ * Returns true if VSC on file AND waiver on file.
+ */
+function isAdultCompliant(name){
+  var r=ADULT_COMPLIANCE[name]||{};
+  return !!(r.vsc_on_file&&r.waiver_on_file);
+}
+
+/**
+ * isYouthCompliant(name)
+ * Returns true if waiver on file AND photo release on file.
+ */
+function isYouthCompliant(name){
+  var r=YOUTH_COMPLIANCE[name]||{};
+  return !!(r.waiver_on_file&&r.photo_on_file);
+}
+
+// ── COMPLIANCE SUMMARY CARDS (top of compliance tab + stats audit) ────────────
 function renderComplianceSummary(){
   var el=document.getElementById('comp-summary-cards');
   if(!el) return;
-
-  var adults=Object.keys(ADULT_COMPLIANCE);
-  var vscOk=adults.filter(function(n){return ADULT_COMPLIANCE[n].vsc_on_file;}).length;
-  var vscMiss=adults.length-vscOk;
-  var waiverOk=adults.filter(function(n){return ADULT_COMPLIANCE[n].waiver_on_file;}).length;
-  var waiverMissA=adults.length-waiverOk;
-
-  var youth=Object.keys(YOUTH_COMPLIANCE);
-  var ywOk=youth.filter(function(n){return YOUTH_COMPLIANCE[n].waiver_on_file;}).length;
-  var ypOk=youth.filter(function(n){return YOUTH_COMPLIANCE[n].photo_on_file;}).length;
-  var ywMiss=youth.length-ywOk;
-  var ypMiss=youth.length-ypOk;
-
-  // Check VSC expiring within 90 days (from today Mar 22 2026)
-  var today=new Date('2026-03-22');
-  var expiringSoon=adults.filter(function(n){
-    var exp=ADULT_COMPLIANCE[n].vsc_expiry;
-    if(!exp) return false;
-    var d=new Date(exp);
-    var diff=(d-today)/(1000*60*60*24);
-    return diff>=0&&diff<=90;
-  }).length;
+  var as=getAdultComplianceSummary();
+  var ys=getYouthComplianceSummary();
 
   el.innerHTML=
-    '<div class="stat-card" style="--accent-color:'+(vscMiss>0?'var(--badge-red)':'var(--badge-green)')+'">'+
+    '<div class="stat-card" style="--accent-color:'+(as.vscMiss>0?'var(--badge-red)':'var(--badge-green)')+'">'+
       '<div class="stat-label">VSC on File</div>'+
-      '<div class="stat-value">'+vscOk+' / '+adults.length+'</div>'+
-      '<div class="stat-meta">'+(vscMiss>0?vscMiss+' missing':'All on file')+'</div>'+
+      '<div class="stat-value">'+as.vscOk+' / '+as.total+'</div>'+
+      '<div class="stat-meta">'+(as.vscMiss>0?as.vscMiss+' missing':'All on file')+'</div>'+
       '<div class="stat-icon">🛡</div></div>'+
-    '<div class="stat-card" style="--accent-color:'+(expiringSoon>0?'var(--badge-amber)':'var(--badge-green)')+'">'+
+    '<div class="stat-card" style="--accent-color:'+(as.expiringSoon>0?'var(--badge-amber)':'var(--badge-green)')+'">'+
       '<div class="stat-label">VSC Expiring Soon</div>'+
-      '<div class="stat-value">'+expiringSoon+'</div>'+
+      '<div class="stat-value">'+as.expiringSoon+'</div>'+
       '<div class="stat-meta">Within 90 days</div>'+
       '<div class="stat-icon">⏳</div></div>'+
-    '<div class="stat-card" style="--accent-color:'+(waiverMissA>0?'var(--badge-red)':'var(--badge-green)')+'">'+
+    '<div class="stat-card" style="--accent-color:'+(as.waiverMiss>0?'var(--badge-red)':'var(--badge-green)')+'">'+
       '<div class="stat-label">Adult Waivers</div>'+
-      '<div class="stat-value">'+waiverOk+' / '+adults.length+'</div>'+
-      '<div class="stat-meta">'+(waiverMissA>0?waiverMissA+' missing':'All signed')+'</div>'+
+      '<div class="stat-value">'+as.waiverOk+' / '+as.total+'</div>'+
+      '<div class="stat-meta">'+(as.waiverMiss>0?as.waiverMiss+' missing':'All signed')+'</div>'+
       '<div class="stat-icon">📋</div></div>'+
-    '<div class="stat-card" style="--accent-color:'+(ywMiss>0?'var(--badge-amber)':'var(--badge-green)')+'">'+
+    '<div class="stat-card" style="--accent-color:'+(as.photoMiss>0?'var(--badge-amber)':'var(--badge-green)')+'">'+
+      '<div class="stat-label">Adult Photo Release</div>'+
+      '<div class="stat-value">'+as.photoOk+' / '+as.total+'</div>'+
+      '<div class="stat-meta">'+(as.photoMiss>0?as.photoMiss+' missing':'All signed')+'</div>'+
+      '<div class="stat-icon">📸</div></div>'+
+    '<div class="stat-card" style="--accent-color:'+(ys.waiverMiss>0?'var(--badge-amber)':'var(--badge-green)')+'">'+
       '<div class="stat-label">Youth Waivers</div>'+
-      '<div class="stat-value">'+ywOk+' / '+youth.length+'</div>'+
-      '<div class="stat-meta">'+(ywMiss>0?ywMiss+' missing':'All signed')+'</div>'+
+      '<div class="stat-value">'+ys.waiverOk+' / '+ys.total+'</div>'+
+      '<div class="stat-meta">'+(ys.waiverMiss>0?ys.waiverMiss+' missing':'All signed')+'</div>'+
       '<div class="stat-icon">🌱</div></div>'+
-    '<div class="stat-card" style="--accent-color:'+(ypMiss>0?'var(--badge-amber)':'var(--badge-green)')+'">'+
-      '<div class="stat-label">Photo Releases</div>'+
-      '<div class="stat-value">'+ypOk+' / '+youth.length+'</div>'+
-      '<div class="stat-meta">'+(ypMiss>0?ypMiss+' missing':'All signed')+'</div>'+
+    '<div class="stat-card" style="--accent-color:'+(ys.photoMiss>0?'var(--badge-amber)':'var(--badge-green)')+'">'+
+      '<div class="stat-label">Youth Photo Releases</div>'+
+      '<div class="stat-value">'+ys.photoOk+' / '+ys.total+'</div>'+
+      '<div class="stat-meta">'+(ys.photoMiss>0?ys.photoMiss+' missing':'All signed')+'</div>'+
       '<div class="stat-icon">📸</div></div>';
 }
 
+// ── ADULT COMPLIANCE TABLE (with search/filter + edit button) ─────────────────
 function renderAdultCompTable(){
   var tbody=document.getElementById('adult-comp-tbody');
   if(!tbody) return;
-  var today=new Date('2026-03-22');
+  var today=new Date(); today.setHours(0,0,0,0);
+  var search=(document.getElementById('comp-adult-search')||{}).value||'';
+  var filter=(document.getElementById('comp-adult-filter')||{}).value||'all';
+  var sl=search.toLowerCase();
 
-  tbody.innerHTML=Object.keys(ADULT_COMPLIANCE).sort().map(function(name){
-    var r=ADULT_COMPLIANCE[name];
-    var vscStatus='';
-    var rowStyle='';
+  var names=Object.keys(ADULT_COMPLIANCE).sort();
+  var rows='';
+  names.forEach(function(name){
+    if(sl&&name.toLowerCase().indexOf(sl)<0) return;
+    var r=ADULT_COMPLIANCE[name]||{};
+
+    // VSC
+    var vscStatus,expDiff=null;
     if(!r.vsc_on_file){
       vscStatus='<span class="pill pill-red">Missing</span>';
-      rowStyle='background:rgba(239,68,68,.04)';
     } else if(r.vsc_expiry){
-      var exp=new Date(r.vsc_expiry);
-      var diff=(exp-today)/(1000*60*60*24);
-      if(diff<0) vscStatus='<span class="pill pill-red">Expired</span>';
-      else if(diff<=90) vscStatus='<span class="pill pill-amber">Exp. soon</span>';
+      var exp=new Date(r.vsc_expiry); expDiff=(exp-today)/(864e5);
+      if(expDiff<0) vscStatus='<span class="pill pill-red">Expired</span>';
+      else if(expDiff<=90) vscStatus='<span class="pill pill-amber">Exp. soon</span>';
       else vscStatus='<span class="pill pill-green">Valid</span>';
     } else {
       vscStatus='<span class="pill pill-teal">On file</span>';
     }
+
+    // Waiver
     var wStatus=r.waiver_on_file?
-      '<span class="pill pill-green">'+( r.waiver_date?formatDate(r.waiver_date):'On file')+'</span>':
+      '<span class="pill pill-green">'+(r.waiver_date?formatDate(r.waiver_date):'On file')+'</span>':
       '<span class="pill pill-red">Missing</span>';
 
-    var overall=(!r.vsc_on_file||!r.waiver_on_file)?
-      '<span class="pill pill-red">Action needed</span>':
+    // Photo release
+    var pStatus=r.photo_release_on_file?
+      '<span class="pill pill-green">'+(r.photo_release_date?formatDate(r.photo_release_date):'On file')+'</span>':
+      '<span class="pill pill-amber">Missing</span>';
+
+    // Overall
+    var isComplete=r.vsc_on_file&&r.waiver_on_file;
+    var isExpiring=expDiff!==null&&expDiff>=0&&expDiff<=90;
+    var overall=!isComplete?'<span class="pill pill-red">Action needed</span>':
       '<span class="pill pill-green">Complete</span>';
 
-    return '<tr style="'+rowStyle+'">'+
+    // Filter
+    if(filter==='complete'&&!isComplete) return;
+    if(filter==='action'&&isComplete) return;
+    if(filter==='expiring'&&!isExpiring) return;
+
+    var rowStyle=!isComplete?'background:rgba(239,68,68,.04)':
+      isExpiring?'background:rgba(245,162,35,.04)':'';
+
+    var expCell='<span style="font-size:.78rem;color:var(--text-muted)">'+(r.vsc_expiry?formatDate(r.vsc_expiry):'—')+'</span>';
+    var notesCell='<span style="font-size:.75rem;color:var(--text-muted);max-width:120px;display:inline-block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="'+(r.notes||'')+'">'+(r.notes||'—')+'</span>';
+
+    rows+='<tr style="'+rowStyle+'">'+
       '<td><strong>'+name+'</strong></td>'+
       '<td>'+vscStatus+'</td>'+
-      '<td style="font-size:.78rem;color:var(--text-muted)">'+(r.vsc_issued?formatDate(r.vsc_issued):'—')+'</td>'+
-      '<td style="font-size:.78rem;color:var(--text-muted)">'+(r.vsc_expiry?formatDate(r.vsc_expiry):'—')+'</td>'+
+      '<td>'+expCell+'</td>'+
       '<td>'+wStatus+'</td>'+
+      '<td>'+pStatus+'</td>'+
       '<td>'+overall+'</td>'+
+      '<td>'+notesCell+'</td>'+
+      '<td><button onclick="openCompEditModal(\'adult\',\''+name.replace(/'/g,"\\'")+'\')" style="padding:4px 10px;border-radius:7px;border:1px solid rgba(0,181,160,.35);background:rgba(0,181,160,.08);color:var(--ya-teal);font-family:DM Sans,sans-serif;font-size:.74rem;cursor:pointer;white-space:nowrap">✏ Edit</button></td>'+
       '</tr>';
-  }).join('');
+  });
+  tbody.innerHTML=rows||'<tr><td colspan="8" style="color:var(--text-muted);text-align:center;padding:18px">No records match your filter.</td></tr>';
 }
 
+// ── YOUTH COMPLIANCE TABLE (with search/filter + edit button) ─────────────────
 function renderYouthCompTable(){
   var tbody=document.getElementById('youth-comp-tbody');
   if(!tbody) return;
+  var search=(document.getElementById('comp-youth-search')||{}).value||'';
+  var filter=(document.getElementById('comp-youth-filter')||{}).value||'all';
+  var sl=search.toLowerCase();
 
-  tbody.innerHTML=Object.keys(YOUTH_COMPLIANCE).sort().map(function(name){
-    var r=YOUTH_COMPLIANCE[name];
+  var names=Object.keys(YOUTH_COMPLIANCE).sort();
+  var rows='';
+  names.forEach(function(name){
+    if(sl&&name.toLowerCase().indexOf(sl)<0) return;
+    var r=YOUTH_COMPLIANCE[name]||{};
     var age=YOUTH_AGES[name]||'—';
+
     var wStatus=r.waiver_on_file?
       '<span class="pill pill-green">'+(r.waiver_date?formatDate(r.waiver_date):'On file')+'</span>':
       '<span class="pill pill-red">Missing</span>';
     var pStatus=r.photo_on_file?
       '<span class="pill pill-green">'+(r.photo_date?formatDate(r.photo_date):'On file')+'</span>':
       '<span class="pill pill-amber">Missing</span>';
-    var overall=(!r.waiver_on_file||!r.photo_on_file)?
-      (r.waiver_on_file?'<span class="pill pill-amber">Photo needed</span>':'<span class="pill pill-red">Action needed</span>'):
+
+    var isComplete=r.waiver_on_file&&r.photo_on_file;
+    var overall=!r.waiver_on_file?'<span class="pill pill-red">Action needed</span>':
+      !r.photo_on_file?'<span class="pill pill-amber">Photo needed</span>':
       '<span class="pill pill-green">Complete</span>';
 
-    return '<tr>'+
+    if(filter==='complete'&&!isComplete) return;
+    if(filter==='action'&&isComplete) return;
+
+    var notesCell='<span style="font-size:.75rem;color:var(--text-muted);max-width:120px;display:inline-block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="'+(r.notes||'')+'">'+(r.notes||'—')+'</span>';
+
+    rows+='<tr>'+
       '<td><strong>'+name+'</strong></td>'+
       '<td><span class="pill pill-grey">'+age+'</span></td>'+
       '<td>'+wStatus+'</td>'+
       '<td>'+pStatus+'</td>'+
       '<td>'+overall+'</td>'+
+      '<td>'+notesCell+'</td>'+
+      '<td><button onclick="openCompEditModal(\'youth\',\''+name.replace(/'/g,"\\'")+'\')" style="padding:4px 10px;border-radius:7px;border:1px solid rgba(0,181,160,.35);background:rgba(0,181,160,.08);color:var(--ya-teal);font-family:DM Sans,sans-serif;font-size:.74rem;cursor:pointer;white-space:nowrap">✏ Edit</button></td>'+
       '</tr>';
-  }).join('');
+  });
+  tbody.innerHTML=rows||'<tr><td colspan="7" style="color:var(--text-muted);text-align:center;padding:18px">No records match your filter.</td></tr>';
 }
 
 function formatDate(dateStr){
@@ -6721,16 +6913,14 @@ function populateCompPersonDropdown(){
   if(!sel) return;
   expRow.style.display=(type==='adult_vsc')?'block':'none';
   var names=[];
-  if(type==='adult_vsc'||type==='adult_waiver'){
-    // Use FAC_PROFILES as source of truth — includes all adults even if no compliance record yet
-    var fromFac = Object.values(FAC_PROFILES).map(function(p){return p.name;});
-    var fromComp = Object.keys(ADULT_COMPLIANCE);
-    names = fromFac.concat(fromComp.filter(function(n){return fromFac.indexOf(n)<0;})).sort();
+  if(type==='adult_vsc'||type==='adult_waiver'||type==='adult_photo'){
+    var fromFac=Object.values(FAC_PROFILES).map(function(p){return p.name;});
+    var fromComp=Object.keys(ADULT_COMPLIANCE);
+    names=fromFac.concat(fromComp.filter(function(n){return fromFac.indexOf(n)<0;})).sort();
   } else {
-    // Use ALL_YOUTH_NAMES as source of truth — includes all youth even if no compliance record yet
-    var fromYouth = ALL_YOUTH_NAMES.slice();
-    var fromYComp = Object.keys(YOUTH_COMPLIANCE);
-    names = fromYouth.concat(fromYComp.filter(function(n){return fromYouth.indexOf(n)<0;})).sort();
+    var fromYouth=ALL_YOUTH_NAMES.slice();
+    var fromYComp=Object.keys(YOUTH_COMPLIANCE);
+    names=fromYouth.concat(fromYComp.filter(function(n){return fromYouth.indexOf(n)<0;})).sort();
   }
   sel.innerHTML='<option value="">— Select person —</option>'+
     names.map(function(n){return '<option value="'+n+'">'+n+'</option>';}).join('');
@@ -6741,6 +6931,7 @@ function logComplianceRecord(){
   var person=document.getElementById('comp-person').value;
   var dateVal=document.getElementById('comp-date').value;
   var expiry=document.getElementById('comp-expiry').value;
+  var notes=(document.getElementById('comp-notes')||{}).value||'';
   var fb=document.getElementById('comp-log-feedback');
 
   if(!type||!person||!dateVal){
@@ -6748,7 +6939,6 @@ function logComplianceRecord(){
     return;
   }
 
-  // Calculate VSC expiry automatically (5 years)
   if(type==='adult_vsc'&&!expiry){
     var d=new Date(dateVal);
     d.setFullYear(d.getFullYear()+5);
@@ -6761,53 +6951,58 @@ function logComplianceRecord(){
     ADULT_COMPLIANCE[person].vsc_on_file=true;
     ADULT_COMPLIANCE[person].vsc_issued=dateVal;
     ADULT_COMPLIANCE[person].vsc_expiry=expiry;
+    if(notes) ADULT_COMPLIANCE[person].notes=notes;
   } else if(type==='adult_waiver'){
     ADULT_COMPLIANCE[person]=ADULT_COMPLIANCE[person]||{};
     ADULT_COMPLIANCE[person].waiver_on_file=true;
     ADULT_COMPLIANCE[person].waiver_date=dateVal;
+    if(notes) ADULT_COMPLIANCE[person].notes=notes;
+  } else if(type==='adult_photo'){
+    ADULT_COMPLIANCE[person]=ADULT_COMPLIANCE[person]||{};
+    ADULT_COMPLIANCE[person].photo_release_on_file=true;
+    ADULT_COMPLIANCE[person].photo_release_date=dateVal;
+    if(notes) ADULT_COMPLIANCE[person].notes=notes;
   } else if(type==='youth_waiver'){
     YOUTH_COMPLIANCE[person]=YOUTH_COMPLIANCE[person]||{};
     YOUTH_COMPLIANCE[person].waiver_on_file=true;
     YOUTH_COMPLIANCE[person].waiver_date=dateVal;
+    if(notes) YOUTH_COMPLIANCE[person].notes=notes;
   } else if(type==='youth_photo'){
     YOUTH_COMPLIANCE[person]=YOUTH_COMPLIANCE[person]||{};
     YOUTH_COMPLIANCE[person].photo_on_file=true;
     YOUTH_COMPLIANCE[person].photo_date=dateVal;
+    if(notes) YOUTH_COMPLIANCE[person].notes=notes;
   }
 
-  saveComplianceRecord(type, person, dateVal, expiry); // persist to Supabase
-  fb.innerHTML='<div class="alert-row success" style="margin:0">✔ Logged: '+person+' — '+type.replace('_',' ')+' received '+formatDate(dateVal)+(expiry?' (expires '+formatDate(expiry)+')':'')+'</div>';
+  saveComplianceRecord(type, person, dateVal, expiry, notes);
+  fb.innerHTML='<div class="alert-row success" style="margin:0">✔ Logged: '+person+' — '+type.replace(/_/g,' ')+' received '+formatDate(dateVal)+(expiry?' (expires '+formatDate(expiry)+')':'')+'</div>';
 
-  // Refresh tables and summary
   renderComplianceSummary();
   renderAdultCompTable();
   renderYouthCompTable();
 
-  // Reset form
   setTimeout(function(){
     document.getElementById('comp-type').value='';
     document.getElementById('comp-person').value='';
     document.getElementById('comp-date').value='';
     document.getElementById('comp-expiry').value='';
-    expRow=document.getElementById('comp-vsc-expiry-row');
+    if(document.getElementById('comp-notes')) document.getElementById('comp-notes').value='';
+    var expRow=document.getElementById('comp-vsc-expiry-row');
     if(expRow) expRow.style.display='none';
     setTimeout(function(){fb.innerHTML='';},3000);
   },1500);
 }
 
-// Hook type change to update person dropdown
-document.addEventListener('change', function(e){
-  if(e.target && e.target.id==='comp-type') populateCompPersonDropdown();
+document.addEventListener('change',function(e){
+  if(e.target&&e.target.id==='comp-type') populateCompPersonDropdown();
 });
 
-
-// ── VSC AUTO-EXPIRY CALC ──
+// ── VSC AUTO-EXPIRY CALC ──────────────────────────────────────────────────────
 function autoCalcVscExpiry(){
   var issued=document.getElementById('comp-vsc-issued');
   var expiry=document.getElementById('comp-expiry');
   var preview=document.getElementById('vsc-expiry-preview');
   if(!issued||!issued.value) return;
-  // Also sync to comp-date field
   var compDate=document.getElementById('comp-date');
   if(compDate) compDate.value=issued.value;
   var d=new Date(issued.value+'T00:00:00');
@@ -6817,26 +7012,128 @@ function autoCalcVscExpiry(){
   if(preview) preview.textContent='Auto-calculated: expires '+formatDate(exp)+' (5 years from issue)';
 }
 
-// ── ADULT SELF-SERVE COMPLIANCE ──
+// ── COMPLIANCE EDIT MODAL ─────────────────────────────────────────────────────
+var _compEditCtx=null; // {type:'adult'|'youth', name:String}
+
+function openCompEditModal(type, name){
+  _compEditCtx={type:type,name:name};
+  var modal=document.getElementById('comp-edit-modal');
+  var title=document.getElementById('comp-edit-modal-title');
+  var body=document.getElementById('comp-edit-modal-body');
+  var fb=document.getElementById('comp-edit-feedback');
+  if(!modal||!body) return;
+  fb.innerHTML='';
+
+  if(type==='adult'){
+    var r=ADULT_COMPLIANCE[name]||{};
+    title.textContent='✏ Edit — '+name;
+    body.innerHTML=
+      _editField('VSC on File','edit-vsc-on-file','checkbox',r.vsc_on_file)+
+      _editField('VSC Issued Date','edit-vsc-issued','date',r.vsc_issued)+
+      _editField('VSC Expiry Date','edit-vsc-expiry','date',r.vsc_expiry)+
+      _editField('Waiver on File','edit-waiver-on-file','checkbox',r.waiver_on_file)+
+      _editField('Waiver Date','edit-waiver-date','date',r.waiver_date)+
+      _editField('Photo Release on File','edit-photo-on-file','checkbox',r.photo_release_on_file)+
+      _editField('Photo Release Date','edit-photo-date','date',r.photo_release_date)+
+      _editField('Notes','edit-notes','text',r.notes);
+  } else {
+    var r=YOUTH_COMPLIANCE[name]||{};
+    title.textContent='✏ Edit — '+name;
+    body.innerHTML=
+      _editField('Waiver on File','edit-waiver-on-file','checkbox',r.waiver_on_file)+
+      _editField('Waiver Date','edit-waiver-date','date',r.waiver_date)+
+      _editField('Photo Release on File','edit-photo-on-file','checkbox',r.photo_on_file)+
+      _editField('Photo Release Date','edit-photo-date','date',r.photo_date)+
+      _editField('Notes','edit-notes','text',r.notes);
+  }
+
+  modal.style.display='flex';
+}
+
+function _editField(label, id, type, val){
+  var inp='';
+  if(type==='checkbox'){
+    inp='<label style="display:flex;align-items:center;gap:8px;cursor:pointer">'+
+      '<input type="checkbox" id="'+id+'" '+(val?'checked':'')+' style="width:16px;height:16px">'+
+      '<span style="font-size:.82rem;color:var(--text-main)">'+label+'</span></label>';
+  } else {
+    inp='<div style="font-size:.75rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">'+label+'</div>'+
+      '<input type="'+type+'" id="'+id+'" value="'+(val||'')+'" placeholder="'+(type==='date'?'YYYY-MM-DD':'')+'…" '+
+      'style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:8px;padding:7px 11px;color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.83rem;width:100%;box-sizing:border-box">';
+  }
+  return '<div style="margin-bottom:12px">'+inp+'</div>';
+}
+
+function closeCompEditModal(){
+  var modal=document.getElementById('comp-edit-modal');
+  if(modal) modal.style.display='none';
+  _compEditCtx=null;
+}
+
+function saveCompEditModal(){
+  if(!_compEditCtx) return;
+  var fb=document.getElementById('comp-edit-feedback');
+  var ctx=_compEditCtx;
+  var name=ctx.name;
+
+  function gv(id){ var el=document.getElementById(id); return el?el.value.trim():''; }
+  function gc(id){ var el=document.getElementById(id); return el?el.checked:false; }
+
+  if(ctx.type==='adult'){
+    ADULT_COMPLIANCE[name]=ADULT_COMPLIANCE[name]||{};
+    var rec=ADULT_COMPLIANCE[name];
+    rec.vsc_on_file=gc('edit-vsc-on-file');
+    rec.vsc_issued=gv('edit-vsc-issued');
+    rec.vsc_expiry=gv('edit-vsc-expiry');
+    rec.waiver_on_file=gc('edit-waiver-on-file');
+    rec.waiver_date=gv('edit-waiver-date');
+    rec.photo_release_on_file=gc('edit-photo-on-file');
+    rec.photo_release_date=gv('edit-photo-date');
+    rec.notes=gv('edit-notes');
+    // Persist full adult record to Supabase
+    saveAdultComplianceFull(name, rec);
+  } else {
+    YOUTH_COMPLIANCE[name]=YOUTH_COMPLIANCE[name]||{};
+    var rec=YOUTH_COMPLIANCE[name];
+    rec.waiver_on_file=gc('edit-waiver-on-file');
+    rec.waiver_date=gv('edit-waiver-date');
+    rec.photo_on_file=gc('edit-photo-on-file');
+    rec.photo_date=gv('edit-photo-date');
+    rec.notes=gv('edit-notes');
+    // Persist full youth record to Supabase
+    saveYouthComplianceFull(name, rec);
+  }
+
+  fb.innerHTML='<div class="alert-row success" style="margin:0">✔ Saved for '+name+'</div>';
+  renderComplianceSummary();
+  renderAdultCompTable();
+  renderYouthCompTable();
+  if(document.getElementById('adult-self-compliance-content')&&ctx.type==='adult') renderAdultSelfCompliance(name);
+
+  setTimeout(function(){
+    closeCompEditModal();
+  },1200);
+}
+
+// ── ADULT SELF-SERVE COMPLIANCE VIEW ─────────────────────────────────────────
 function renderAdultSelfCompliance(name){
   var el=document.getElementById('adult-self-compliance-content');
   if(!el) return;
   var comp=ADULT_COMPLIANCE[name]||{};
-  var today='2026-03-22';
+  var today=new Date(); today.setHours(0,0,0,0);
 
   // VSC status
   var vscHtml='';
   if(comp.vsc_on_file&&comp.vsc_expiry){
     var exp=new Date(comp.vsc_expiry+'T00:00:00');
-    var now=new Date(today);
-    var diff=Math.round((exp-now)/(1000*60*60*24));
+    var diff=Math.round((exp-today)/(864e5));
     var pill=diff<0?'pill-red':diff<=90?'pill-amber':'pill-green';
     var msg=diff<0?'Expired '+formatDate(comp.vsc_expiry):diff<=90?'Expires soon: '+formatDate(comp.vsc_expiry):'Valid until '+formatDate(comp.vsc_expiry);
     vscHtml='<div class="status-row"><div class="status-label">Vulnerable Sector Check</div>'+
       '<span class="pill '+pill+'">'+msg+'</span></div>';
     if(diff<0||diff<=90){
-      vscHtml+='<div class="alert-row warn" style="margin-bottom:8px">⚠ <div>Your VSC '+
-        (diff<0?'expired':'is expiring soon')+'. Please renew and provide the new document to Julie Robertson (H&amp;S Officer).</div></div>';
+      vscHtml+='<div class="alert-row warn" style="margin-bottom:8px">⚠ <div>Your VSC '+(diff<0?'expired':'is expiring soon')+
+        '. Please renew and provide the new document to Julie Robertson (H&amp;S Officer).</div></div>';
     }
   } else {
     vscHtml='<div class="status-row"><div class="status-label">Vulnerable Sector Check</div>'+
@@ -6844,25 +7141,26 @@ function renderAdultSelfCompliance(name){
       '<div class="alert-row warn" style="margin-bottom:8px">⚠ <div>Please provide your VSC to Julie Robertson (H&amp;S Officer).</div></div>';
   }
 
-  // Waiver self-attestation
+  // Waiver
   var waiverChecked=comp.waiver_on_file||false;
+  var todayStr=new Date().toISOString().split('T')[0];
   var waiverHtml='<div class="status-row" style="align-items:flex-start;flex-direction:column;gap:8px">'+
     '<div class="status-label">Adult Volunteer Waiver</div>'+
     (waiverChecked?'<span class="pill pill-green">Signed ✔ '+formatDate(comp.waiver_date)+'</span>':
     '<label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:.83rem;color:var(--text-main)">'+
     '<input type="checkbox" id="adult-waiver-check" data-name="'+name+'" onchange="adultSignWaiver(this)" style="width:16px;height:16px;cursor:pointer">'+
-    '<span>I confirm I have read and agree to the Youth Airdrie Volunteer Waiver <span style="color:var(--text-muted)">(document will be provided by Julie Robertson)</span></span>'+
+    '<span>I confirm I have read and agree to the Youth Airdrie Volunteer Waiver</span>'+
     '</label>')+
     '</div>';
 
-  // Photo release self-attestation  
+  // Photo release
   var photoChecked=comp.photo_release_on_file||false;
   var photoHtml='<div class="status-row" style="align-items:flex-start;flex-direction:column;gap:8px">'+
     '<div class="status-label">Photo Release</div>'+
     (photoChecked?'<span class="pill pill-green">Signed ✔ '+formatDate(comp.photo_release_date)+'</span>':
     '<label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:.83rem;color:var(--text-main)">'+
     '<input type="checkbox" id="adult-photo-check" data-name="'+name+'" onchange="adultSignPhoto(this)" style="width:16px;height:16px;cursor:pointer">'+
-    '<span>I consent to Youth Airdrie using photos/videos in which I appear for program promotion purposes</span>'+
+    '<span>I consent to Youth Airdrie using photos/videos in which I appear for program promotion</span>'+
     '</label>')+
     '</div>';
 
@@ -6872,10 +7170,11 @@ function renderAdultSelfCompliance(name){
 function adultSignWaiver(checkbox){
   var name=checkbox.getAttribute('data-name');
   if(!checkbox||!checkbox.checked) return;
-  var today='2026-03-22';
+  var today=new Date().toISOString().split('T')[0];
   ADULT_COMPLIANCE[name]=ADULT_COMPLIANCE[name]||{};
   ADULT_COMPLIANCE[name].waiver_on_file=true;
   ADULT_COMPLIANCE[name].waiver_date=today;
+  saveComplianceRecord('adult_waiver', name, today, '', '');
   renderAdultSelfCompliance(name);
   renderComplianceSummary();
   renderAdultCompTable();
@@ -6884,11 +7183,14 @@ function adultSignWaiver(checkbox){
 function adultSignPhoto(checkbox){
   var name=checkbox.getAttribute('data-name');
   if(!checkbox.checked) return;
-  var today='2026-03-22';
+  var today=new Date().toISOString().split('T')[0];
   ADULT_COMPLIANCE[name]=ADULT_COMPLIANCE[name]||{};
   ADULT_COMPLIANCE[name].photo_release_on_file=true;
   ADULT_COMPLIANCE[name].photo_release_date=today;
+  saveComplianceRecord('adult_photo', name, today, '', '');
   renderAdultSelfCompliance(name);
+  renderComplianceSummary();
+  renderAdultCompTable();
 }
 
 
@@ -7967,12 +8269,14 @@ async function initDB() {
       vsc_issued date, vsc_expiry date, vsc_on_file boolean default false,
       waiver_date date, waiver_on_file boolean default false,
       photo_release_date date, photo_release_on_file boolean default false,
+      notes text,
       updated_at timestamptz default now()
     );
     create table if not exists youth_compliance (
       id bigserial primary key, name text not null unique,
       waiver_date date, waiver_on_file boolean default false,
       photo_date date, photo_on_file boolean default false,
+      notes text,
       updated_at timestamptz default now()
     );
     create table if not exists scrabble_scores (
@@ -8452,24 +8756,62 @@ async function saveProgramCancellation(programId, sessionDate, reason) {
   await dbPost('program_cancellations', { program_id: programId, session_date: sessionDate, reason: reason || '' });
 }
 
-async function saveComplianceRecord(type, name, date, expiry) {
+async function saveComplianceRecord(type, name, date, expiry, notes) {
+  var ts = new Date().toISOString();
   if (type === 'adult_vsc') {
     await dbPatch('adult_compliance',
-      { vsc_on_file: true, vsc_issued: date, vsc_expiry: expiry, updated_at: new Date().toISOString() },
+      { vsc_on_file: true, vsc_issued: date, vsc_expiry: expiry, updated_at: ts },
       'name=eq.' + encodeURIComponent(name));
   } else if (type === 'adult_waiver') {
     await dbPatch('adult_compliance',
-      { waiver_on_file: true, waiver_date: date, updated_at: new Date().toISOString() },
+      { waiver_on_file: true, waiver_date: date, updated_at: ts },
+      'name=eq.' + encodeURIComponent(name));
+  } else if (type === 'adult_photo') {
+    await dbPatch('adult_compliance',
+      { photo_release_on_file: true, photo_release_date: date, updated_at: ts },
       'name=eq.' + encodeURIComponent(name));
   } else if (type === 'youth_waiver') {
     await dbPatch('youth_compliance',
-      { waiver_on_file: true, waiver_date: date, updated_at: new Date().toISOString() },
+      { waiver_on_file: true, waiver_date: date, updated_at: ts },
       'name=eq.' + encodeURIComponent(name));
   } else if (type === 'youth_photo') {
     await dbPatch('youth_compliance',
-      { photo_on_file: true, photo_date: date, updated_at: new Date().toISOString() },
+      { photo_on_file: true, photo_date: date, updated_at: ts },
       'name=eq.' + encodeURIComponent(name));
   }
+  if (notes) {
+    var tbl = (type.startsWith('adult')) ? 'adult_compliance' : 'youth_compliance';
+    await dbPatch(tbl, { notes: notes, updated_at: ts }, 'name=eq.' + encodeURIComponent(name));
+  }
+}
+
+// Save a full adult compliance record (from edit modal)
+async function saveAdultComplianceFull(name, rec) {
+  var ts = new Date().toISOString();
+  await dbPatch('adult_compliance', {
+    vsc_on_file: rec.vsc_on_file || false,
+    vsc_issued: rec.vsc_issued || null,
+    vsc_expiry: rec.vsc_expiry || null,
+    waiver_on_file: rec.waiver_on_file || false,
+    waiver_date: rec.waiver_date || null,
+    photo_release_on_file: rec.photo_release_on_file || false,
+    photo_release_date: rec.photo_release_date || null,
+    notes: rec.notes || null,
+    updated_at: ts
+  }, 'name=eq.' + encodeURIComponent(name));
+}
+
+// Save a full youth compliance record (from edit modal)
+async function saveYouthComplianceFull(name, rec) {
+  var ts = new Date().toISOString();
+  await dbPatch('youth_compliance', {
+    waiver_on_file: rec.waiver_on_file || false,
+    waiver_date: rec.waiver_date || null,
+    photo_on_file: rec.photo_on_file || false,
+    photo_date: rec.photo_date || null,
+    notes: rec.notes || null,
+    updated_at: ts
+  }, 'name=eq.' + encodeURIComponent(name));
 }
 
 // ── LOAD SCRABBLE DATA FROM SUPABASE ──
@@ -8943,7 +9285,8 @@ async function loadComplianceData() {
         waiver_date: row.waiver_date || '',
         waiver_on_file: row.waiver_on_file || false,
         photo_release_date: row.photo_release_date || '',
-        photo_release_on_file: row.photo_release_on_file || false
+        photo_release_on_file: row.photo_release_on_file || false,
+        notes: row.notes || ''
       };
     });
   }
@@ -8954,7 +9297,8 @@ async function loadComplianceData() {
         waiver_date: row.waiver_date || '',
         waiver_on_file: row.waiver_on_file || false,
         photo_date: row.photo_date || '',
-        photo_on_file: row.photo_on_file || false
+        photo_on_file: row.photo_on_file || false,
+        notes: row.notes || ''
       };
     });
   }
@@ -9487,7 +9831,7 @@ function addNewAdultUser(){
   }
 
   // Initialise compliance entry so new adult appears in compliance dropdown
-  if(!ADULT_COMPLIANCE[name]) ADULT_COMPLIANCE[name] = {vsc_issued:'',vsc_expiry:'',vsc_on_file:false,waiver_date:'',waiver_on_file:false,photo_release_date:'',photo_release_on_file:false};
+  if(!ADULT_COMPLIANCE[name]) ADULT_COMPLIANCE[name] = {vsc_issued:'',vsc_expiry:'',vsc_on_file:false,waiver_date:'',waiver_on_file:false,photo_release_date:'',photo_release_on_file:false,notes:''};
 
   // Persist to DB — must use on_conflict=id so Supabase treats this as an upsert
   var lvl = role.match(/Level (\d)/);

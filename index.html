@@ -8819,42 +8819,68 @@ async function _compUpsert(table, payload) {
   return true;
 }
 
-// Quick-log a single compliance field (Log Compliance Record form)
-async function saveComplianceRecord(type, name, date, expiry, notes) {
-  var ts = new Date().toISOString();
-  var payload = { name: name, updated_at: ts };
-
-  if (type === 'adult_vsc') {
-    Object.assign(payload, { vsc_on_file: true, vsc_issued: date || null, vsc_expiry: expiry || null });
-    if (notes) payload.notes = notes;
-    return _compUpsert('adult_compliance', payload);
-  }
-  if (type === 'adult_waiver') {
-    Object.assign(payload, { waiver_on_file: true, waiver_date: date || null });
-    if (notes) payload.notes = notes;
-    return _compUpsert('adult_compliance', payload);
-  }
-  if (type === 'adult_photo') {
-    Object.assign(payload, { photo_release_on_file: true, photo_release_date: date || null });
-    if (notes) payload.notes = notes;
-    return _compUpsert('adult_compliance', payload);
-  }
-  if (type === 'youth_waiver') {
-    Object.assign(payload, { waiver_on_file: true, waiver_date: date || null });
-    if (notes) payload.notes = notes;
-    return _compUpsert('youth_compliance', payload);
-  }
-  if (type === 'youth_photo') {
-    Object.assign(payload, { photo_on_file: true, photo_date: date || null });
-    if (notes) payload.notes = notes;
-    return _compUpsert('youth_compliance', payload);
+// Save notes separately — wrapped in its own try/catch so a missing column
+// never blocks the core compliance save. Silent failure is acceptable here
+// because notes is an optional annotation, not a compliance field.
+async function _compSaveNotes(table, name, notes) {
+  if (!notes && notes !== '') return; // nothing to save
+  try {
+    var r = await fetch(SUPA_URL + '/rest/v1/' + table + '?name=eq.' + encodeURIComponent(name), {
+      method: 'PATCH',
+      headers: {
+        'apikey': SUPA_KEY,
+        'Authorization': 'Bearer ' + SUPA_KEY,
+        'Content-Type': 'application/json',
+        'Prefer': 'return=minimal'
+      },
+      body: JSON.stringify({ notes: notes, updated_at: new Date().toISOString() })
+    });
+    if (!r.ok) {
+      var e = await r.text();
+      console.warn('[compSaveNotes] non-fatal — could not save notes (column may not exist yet):', r.status, e);
+    }
+  } catch(e) {
+    console.warn('[compSaveNotes] non-fatal fetch error:', e);
   }
 }
 
-// Save a full adult compliance record (from edit modal) — upserts all fields
+// Quick-log a single compliance field (Log Compliance Record form)
+async function saveComplianceRecord(type, name, date, expiry, notes) {
+  var ts = new Date().toISOString();
+
+  // Core payload — never includes notes so a missing column can't block saves
+  if (type === 'adult_vsc') {
+    await _compUpsert('adult_compliance', { name: name, vsc_on_file: true, vsc_issued: date || null, vsc_expiry: expiry || null, updated_at: ts });
+    if (notes) await _compSaveNotes('adult_compliance', name, notes);
+    return;
+  }
+  if (type === 'adult_waiver') {
+    await _compUpsert('adult_compliance', { name: name, waiver_on_file: true, waiver_date: date || null, updated_at: ts });
+    if (notes) await _compSaveNotes('adult_compliance', name, notes);
+    return;
+  }
+  if (type === 'adult_photo') {
+    await _compUpsert('adult_compliance', { name: name, photo_release_on_file: true, photo_release_date: date || null, updated_at: ts });
+    if (notes) await _compSaveNotes('adult_compliance', name, notes);
+    return;
+  }
+  if (type === 'youth_waiver') {
+    await _compUpsert('youth_compliance', { name: name, waiver_on_file: true, waiver_date: date || null, updated_at: ts });
+    if (notes) await _compSaveNotes('youth_compliance', name, notes);
+    return;
+  }
+  if (type === 'youth_photo') {
+    await _compUpsert('youth_compliance', { name: name, photo_on_file: true, photo_date: date || null, updated_at: ts });
+    if (notes) await _compSaveNotes('youth_compliance', name, notes);
+    return;
+  }
+}
+
+// Save a full adult compliance record (from edit modal) — core fields only in upsert
 async function saveAdultComplianceFull(name, rec) {
-  return _compUpsert('adult_compliance', {
-    name: name,
+  // Core compliance fields — no notes in this payload
+  await _compUpsert('adult_compliance', {
+    name:                   name,
     vsc_on_file:            rec.vsc_on_file            || false,
     vsc_issued:             rec.vsc_issued             || null,
     vsc_expiry:             rec.vsc_expiry             || null,
@@ -8862,22 +8888,25 @@ async function saveAdultComplianceFull(name, rec) {
     waiver_date:            rec.waiver_date            || null,
     photo_release_on_file:  rec.photo_release_on_file  || false,
     photo_release_date:     rec.photo_release_date     || null,
-    notes:                  rec.notes                  || null,
     updated_at:             new Date().toISOString()
   });
+  // Notes saved separately — won't block if column missing
+  await _compSaveNotes('adult_compliance', name, rec.notes || null);
 }
 
-// Save a full youth compliance record (from edit modal) — upserts all fields
+// Save a full youth compliance record (from edit modal) — core fields only in upsert
 async function saveYouthComplianceFull(name, rec) {
-  return _compUpsert('youth_compliance', {
+  // Core compliance fields — no notes in this payload
+  await _compUpsert('youth_compliance', {
     name:           name,
     waiver_on_file: rec.waiver_on_file || false,
     waiver_date:    rec.waiver_date    || null,
     photo_on_file:  rec.photo_on_file  || false,
     photo_date:     rec.photo_date     || null,
-    notes:          rec.notes          || null,
     updated_at:     new Date().toISOString()
   });
+  // Notes saved separately — won't block if column missing
+  await _compSaveNotes('youth_compliance', name, rec.notes || null);
 }
 
 // ── LOAD SCRABBLE DATA FROM SUPABASE ──

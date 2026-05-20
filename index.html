@@ -6926,7 +6926,7 @@ function populateCompPersonDropdown(){
     names.map(function(n){return '<option value="'+n+'">'+n+'</option>';}).join('');
 }
 
-function logComplianceRecord(){
+async function logComplianceRecord(){
   var type=document.getElementById('comp-type').value;
   var person=document.getElementById('comp-person').value;
   var dateVal=document.getElementById('comp-date').value;
@@ -6946,6 +6946,7 @@ function logComplianceRecord(){
     document.getElementById('comp-expiry').value=expiry;
   }
 
+  // Update in-memory state immediately so UI feels responsive
   if(type==='adult_vsc'){
     ADULT_COMPLIANCE[person]=ADULT_COMPLIANCE[person]||{};
     ADULT_COMPLIANCE[person].vsc_on_file=true;
@@ -6974,9 +6975,20 @@ function logComplianceRecord(){
     if(notes) YOUTH_COMPLIANCE[person].notes=notes;
   }
 
-  saveComplianceRecord(type, person, dateVal, expiry, notes);
-  fb.innerHTML='<div class="alert-row success" style="margin:0">✔ Logged: '+person+' — '+type.replace(/_/g,' ')+' received '+formatDate(dateVal)+(expiry?' (expires '+formatDate(expiry)+')':'')+'</div>';
+  fb.innerHTML='<div class="alert-row info" style="margin:0">⏳ Saving to Supabase…</div>';
 
+  try {
+    await saveComplianceRecord(type, person, dateVal, expiry, notes);
+  } catch(err) {
+    fb.innerHTML='<div class="alert-row warn" style="margin:0">⚠ Save failed: '+(err.message||String(err))+'</div>';
+    console.error('[logComplianceRecord] failed:', err);
+    return;
+  }
+
+  // Reload from Supabase to confirm round-trip persistence
+  await loadComplianceData();
+
+  fb.innerHTML='<div class="alert-row success" style="margin:0">✔ Saved: '+person+' — '+type.replace(/_/g,' ')+' '+formatDate(dateVal)+(expiry?' (exp. '+formatDate(expiry)+')':'')+'</div>';
   renderComplianceSummary();
   renderAdultCompTable();
   renderYouthCompTable();
@@ -7070,7 +7082,7 @@ function closeCompEditModal(){
   _compEditCtx=null;
 }
 
-function saveCompEditModal(){
+async function saveCompEditModal(){
   if(!_compEditCtx) return;
   var fb=document.getElementById('comp-edit-feedback');
   var ctx=_compEditCtx;
@@ -7079,32 +7091,45 @@ function saveCompEditModal(){
   function gv(id){ var el=document.getElementById(id); return el?el.value.trim():''; }
   function gc(id){ var el=document.getElementById(id); return el?el.checked:false; }
 
-  if(ctx.type==='adult'){
-    ADULT_COMPLIANCE[name]=ADULT_COMPLIANCE[name]||{};
-    var rec=ADULT_COMPLIANCE[name];
-    rec.vsc_on_file=gc('edit-vsc-on-file');
-    rec.vsc_issued=gv('edit-vsc-issued');
-    rec.vsc_expiry=gv('edit-vsc-expiry');
-    rec.waiver_on_file=gc('edit-waiver-on-file');
-    rec.waiver_date=gv('edit-waiver-date');
-    rec.photo_release_on_file=gc('edit-photo-on-file');
-    rec.photo_release_date=gv('edit-photo-date');
-    rec.notes=gv('edit-notes');
-    // Persist full adult record to Supabase
-    saveAdultComplianceFull(name, rec);
-  } else {
-    YOUTH_COMPLIANCE[name]=YOUTH_COMPLIANCE[name]||{};
-    var rec=YOUTH_COMPLIANCE[name];
-    rec.waiver_on_file=gc('edit-waiver-on-file');
-    rec.waiver_date=gv('edit-waiver-date');
-    rec.photo_on_file=gc('edit-photo-on-file');
-    rec.photo_date=gv('edit-photo-date');
-    rec.notes=gv('edit-notes');
-    // Persist full youth record to Supabase
-    saveYouthComplianceFull(name, rec);
+  // Show saving state
+  fb.innerHTML='<div class="alert-row info" style="margin:0">⏳ Saving…</div>';
+
+  try {
+    if(ctx.type==='adult'){
+      ADULT_COMPLIANCE[name]=ADULT_COMPLIANCE[name]||{};
+      var rec=ADULT_COMPLIANCE[name];
+      rec.vsc_on_file=gc('edit-vsc-on-file');
+      rec.vsc_issued=gv('edit-vsc-issued');
+      rec.vsc_expiry=gv('edit-vsc-expiry');
+      rec.waiver_on_file=gc('edit-waiver-on-file');
+      rec.waiver_date=gv('edit-waiver-date');
+      rec.photo_release_on_file=gc('edit-photo-on-file');
+      rec.photo_release_date=gv('edit-photo-date');
+      rec.notes=gv('edit-notes');
+      // Upsert to Supabase — throws on failure
+      await saveAdultComplianceFull(name, rec);
+    } else {
+      YOUTH_COMPLIANCE[name]=YOUTH_COMPLIANCE[name]||{};
+      var rec=YOUTH_COMPLIANCE[name];
+      rec.waiver_on_file=gc('edit-waiver-on-file');
+      rec.waiver_date=gv('edit-waiver-date');
+      rec.photo_on_file=gc('edit-photo-on-file');
+      rec.photo_date=gv('edit-photo-date');
+      rec.notes=gv('edit-notes');
+      // Upsert to Supabase — throws on failure
+      await saveYouthComplianceFull(name, rec);
+    }
+  } catch(err) {
+    // Save failed — show the real error, do NOT close modal
+    fb.innerHTML='<div class="alert-row warn" style="margin:0">⚠ Save failed: '+(err.message||String(err))+'</div>';
+    console.error('[saveCompEditModal] failed for', name, err);
+    return;
   }
 
-  fb.innerHTML='<div class="alert-row success" style="margin:0">✔ Saved for '+name+'</div>';
+  // Save confirmed — reload compliance data from Supabase so UI reflects DB truth
+  await loadComplianceData();
+
+  fb.innerHTML='<div class="alert-row success" style="margin:0">✔ Saved and confirmed for '+name+'</div>';
   renderComplianceSummary();
   renderAdultCompTable();
   renderYouthCompTable();
@@ -7112,7 +7137,7 @@ function saveCompEditModal(){
 
   setTimeout(function(){
     closeCompEditModal();
-  },1200);
+  },1000);
 }
 
 // ── ADULT SELF-SERVE COMPLIANCE VIEW ─────────────────────────────────────────
@@ -7167,27 +7192,33 @@ function renderAdultSelfCompliance(name){
   el.innerHTML=vscHtml+waiverHtml+photoHtml;
 }
 
-function adultSignWaiver(checkbox){
+async function adultSignWaiver(checkbox){
   var name=checkbox.getAttribute('data-name');
   if(!checkbox||!checkbox.checked) return;
   var today=new Date().toISOString().split('T')[0];
   ADULT_COMPLIANCE[name]=ADULT_COMPLIANCE[name]||{};
   ADULT_COMPLIANCE[name].waiver_on_file=true;
   ADULT_COMPLIANCE[name].waiver_date=today;
-  saveComplianceRecord('adult_waiver', name, today, '', '');
+  try {
+    await saveComplianceRecord('adult_waiver', name, today, '', '');
+    await loadComplianceData();
+  } catch(e) { console.error('[adultSignWaiver] failed:', e); }
   renderAdultSelfCompliance(name);
   renderComplianceSummary();
   renderAdultCompTable();
 }
 
-function adultSignPhoto(checkbox){
+async function adultSignPhoto(checkbox){
   var name=checkbox.getAttribute('data-name');
   if(!checkbox.checked) return;
   var today=new Date().toISOString().split('T')[0];
   ADULT_COMPLIANCE[name]=ADULT_COMPLIANCE[name]||{};
   ADULT_COMPLIANCE[name].photo_release_on_file=true;
   ADULT_COMPLIANCE[name].photo_release_date=today;
-  saveComplianceRecord('adult_photo', name, today, '', '');
+  try {
+    await saveComplianceRecord('adult_photo', name, today, '', '');
+    await loadComplianceData();
+  } catch(e) { console.error('[adultSignPhoto] failed:', e); }
   renderAdultSelfCompliance(name);
   renderComplianceSummary();
   renderAdultCompTable();
@@ -8326,6 +8357,15 @@ async function initDB() {
     alter table program_cancellations disable row level security;
     alter table adult_compliance disable row level security;
     alter table youth_compliance disable row level security;
+    -- Add notes column if it was added after initial deploy (idempotent via DO block)
+    do $$ begin
+      if not exists (select 1 from information_schema.columns where table_name='adult_compliance' and column_name='notes') then
+        alter table adult_compliance add column notes text;
+      end if;
+      if not exists (select 1 from information_schema.columns where table_name='youth_compliance' and column_name='notes') then
+        alter table youth_compliance add column notes text;
+      end if;
+    end $$;
     alter table credentials disable row level security;
     alter table pending_entries disable row level security;
     create table if not exists profiles (
@@ -8756,62 +8796,88 @@ async function saveProgramCancellation(programId, sessionDate, reason) {
   await dbPost('program_cancellations', { program_id: programId, session_date: sessionDate, reason: reason || '' });
 }
 
+// ── LOW-LEVEL COMPLIANCE UPSERT ───────────────────────────────────────────────
+// Uses POST + on_conflict=name + merge-duplicates so the row is created if it
+// doesn't exist yet, or updated in place if it does.  Returns true on success,
+// throws a descriptive Error on failure.
+async function _compUpsert(table, payload) {
+  var r = await fetch(SUPA_URL + '/rest/v1/' + table + '?on_conflict=name', {
+    method: 'POST',
+    headers: {
+      'apikey': SUPA_KEY,
+      'Authorization': 'Bearer ' + SUPA_KEY,
+      'Content-Type': 'application/json',
+      'Prefer': 'resolution=merge-duplicates,return=minimal'
+    },
+    body: JSON.stringify(payload)
+  });
+  if (!r.ok) {
+    var errText = await r.text();
+    console.error('[compUpsert] ' + table + ' HTTP ' + r.status + ':', errText);
+    throw new Error('Supabase error ' + r.status + ': ' + errText);
+  }
+  return true;
+}
+
+// Quick-log a single compliance field (Log Compliance Record form)
 async function saveComplianceRecord(type, name, date, expiry, notes) {
   var ts = new Date().toISOString();
+  var payload = { name: name, updated_at: ts };
+
   if (type === 'adult_vsc') {
-    await dbPatch('adult_compliance',
-      { vsc_on_file: true, vsc_issued: date, vsc_expiry: expiry, updated_at: ts },
-      'name=eq.' + encodeURIComponent(name));
-  } else if (type === 'adult_waiver') {
-    await dbPatch('adult_compliance',
-      { waiver_on_file: true, waiver_date: date, updated_at: ts },
-      'name=eq.' + encodeURIComponent(name));
-  } else if (type === 'adult_photo') {
-    await dbPatch('adult_compliance',
-      { photo_release_on_file: true, photo_release_date: date, updated_at: ts },
-      'name=eq.' + encodeURIComponent(name));
-  } else if (type === 'youth_waiver') {
-    await dbPatch('youth_compliance',
-      { waiver_on_file: true, waiver_date: date, updated_at: ts },
-      'name=eq.' + encodeURIComponent(name));
-  } else if (type === 'youth_photo') {
-    await dbPatch('youth_compliance',
-      { photo_on_file: true, photo_date: date, updated_at: ts },
-      'name=eq.' + encodeURIComponent(name));
+    Object.assign(payload, { vsc_on_file: true, vsc_issued: date || null, vsc_expiry: expiry || null });
+    if (notes) payload.notes = notes;
+    return _compUpsert('adult_compliance', payload);
   }
-  if (notes) {
-    var tbl = (type.startsWith('adult')) ? 'adult_compliance' : 'youth_compliance';
-    await dbPatch(tbl, { notes: notes, updated_at: ts }, 'name=eq.' + encodeURIComponent(name));
+  if (type === 'adult_waiver') {
+    Object.assign(payload, { waiver_on_file: true, waiver_date: date || null });
+    if (notes) payload.notes = notes;
+    return _compUpsert('adult_compliance', payload);
+  }
+  if (type === 'adult_photo') {
+    Object.assign(payload, { photo_release_on_file: true, photo_release_date: date || null });
+    if (notes) payload.notes = notes;
+    return _compUpsert('adult_compliance', payload);
+  }
+  if (type === 'youth_waiver') {
+    Object.assign(payload, { waiver_on_file: true, waiver_date: date || null });
+    if (notes) payload.notes = notes;
+    return _compUpsert('youth_compliance', payload);
+  }
+  if (type === 'youth_photo') {
+    Object.assign(payload, { photo_on_file: true, photo_date: date || null });
+    if (notes) payload.notes = notes;
+    return _compUpsert('youth_compliance', payload);
   }
 }
 
-// Save a full adult compliance record (from edit modal)
+// Save a full adult compliance record (from edit modal) — upserts all fields
 async function saveAdultComplianceFull(name, rec) {
-  var ts = new Date().toISOString();
-  await dbPatch('adult_compliance', {
-    vsc_on_file: rec.vsc_on_file || false,
-    vsc_issued: rec.vsc_issued || null,
-    vsc_expiry: rec.vsc_expiry || null,
-    waiver_on_file: rec.waiver_on_file || false,
-    waiver_date: rec.waiver_date || null,
-    photo_release_on_file: rec.photo_release_on_file || false,
-    photo_release_date: rec.photo_release_date || null,
-    notes: rec.notes || null,
-    updated_at: ts
-  }, 'name=eq.' + encodeURIComponent(name));
+  return _compUpsert('adult_compliance', {
+    name: name,
+    vsc_on_file:            rec.vsc_on_file            || false,
+    vsc_issued:             rec.vsc_issued             || null,
+    vsc_expiry:             rec.vsc_expiry             || null,
+    waiver_on_file:         rec.waiver_on_file         || false,
+    waiver_date:            rec.waiver_date            || null,
+    photo_release_on_file:  rec.photo_release_on_file  || false,
+    photo_release_date:     rec.photo_release_date     || null,
+    notes:                  rec.notes                  || null,
+    updated_at:             new Date().toISOString()
+  });
 }
 
-// Save a full youth compliance record (from edit modal)
+// Save a full youth compliance record (from edit modal) — upserts all fields
 async function saveYouthComplianceFull(name, rec) {
-  var ts = new Date().toISOString();
-  await dbPatch('youth_compliance', {
+  return _compUpsert('youth_compliance', {
+    name:           name,
     waiver_on_file: rec.waiver_on_file || false,
-    waiver_date: rec.waiver_date || null,
-    photo_on_file: rec.photo_on_file || false,
-    photo_date: rec.photo_date || null,
-    notes: rec.notes || null,
-    updated_at: ts
-  }, 'name=eq.' + encodeURIComponent(name));
+    waiver_date:    rec.waiver_date    || null,
+    photo_on_file:  rec.photo_on_file  || false,
+    photo_date:     rec.photo_date     || null,
+    notes:          rec.notes          || null,
+    updated_at:     new Date().toISOString()
+  });
 }
 
 // ── LOAD SCRABBLE DATA FROM SUPABASE ──

@@ -2113,7 +2113,7 @@ function renderYouth(){
       }else{
         action='<span style="font-size:.72rem;color:var(--text-muted)">Upcoming</span>';
       }
-      el2.innerHTML='<div class="ws-num">#'+w.id+'</div><div class="ws-name">'+w.name+'</div><div class="ws-fac">'+w.facilitators.join(' & ')+'</div>'+wsDateChip(w)+'<div class="ws-actions">'+action+'</div>';
+      el2.innerHTML='<div class="ws-num">#'+w.id+'</div><div class="ws-name">'+w.name+'</div><div class="ws-fac">'+(function(){var f=getWsFacilitators(w).filter(function(n){return n&&n!=='TBD';});return f.length?f.join(' & '):'TBD';})()+'</div>'+wsDateChip(w)+'<div class="ws-actions">'+action+'</div>';
       grid.appendChild(el2);
     });
   }
@@ -2320,7 +2320,7 @@ function renderAdult(){
       if(adultState&&adultState.isAdmin&&!w.cancelled){
         cancelBtn='<button class="ws-btn" style="border-color:'+(w.adminCancelled?'var(--ya-green)':'var(--badge-red)')+';color:'+(w.adminCancelled?'var(--ya-green)':'var(--badge-red)')+'" onclick="toggleWsCancel('+w.id+')">'+(w.adminCancelled?'↩ Resume':'⛔ Cancel')+'</button>';
       }
-      el2.innerHTML='<div class="ws-num">#'+w.id+'</div><div class="ws-name">'+w.name+'</div><div class="ws-fac">'+w.facilitators.join(' & ')+'</div>'+wsDateChip(w)+'<div class="ws-actions">'+(w.adminCancelled?'<span style="font-size:.72rem;color:var(--badge-red)">Admin Cancelled</span> '+cancelBtn:w.cancelled?'<span style="font-size:.72rem;color:var(--badge-red)">Cancelled</span>':'<button class="ws-btn '+(iF?'active-fac':'')+'" onclick="toggleAdultFac('+w.id+',this)">'+(iF?'🎤 Facilitated':'Facilitated')+'</button><button class="ws-btn '+(iV?'active-vol':'')+'" onclick="toggleAdultVol('+w.id+',this)">'+(iV?'🤝 Volunteered':'Volunteered')+'</button>'+cancelBtn)+'</div>';
+      el2.innerHTML='<div class="ws-num">#'+w.id+'</div><div class="ws-name">'+w.name+'</div><div class="ws-fac">'+(function(){var f=getWsFacilitators(w).filter(function(n){return n&&n!=='TBD';});return f.length?f.join(' & '):'TBD';})()+'</div>'+wsDateChip(w)+'<div class="ws-actions">'+(w.adminCancelled?'<span style="font-size:.72rem;color:var(--badge-red)">Admin Cancelled</span> '+cancelBtn:w.cancelled?'<span style="font-size:.72rem;color:var(--badge-red)">Cancelled</span>':'<button class="ws-btn '+(iF?'active-fac':'')+'" onclick="toggleAdultFac('+w.id+',this)">'+(iF?'🎤 Facilitated':'Facilitated')+'</button><button class="ws-btn '+(iV?'active-vol':'')+'" onclick="toggleAdultVol('+w.id+',this)">'+(iV?'🤝 Volunteered':'Volunteered')+'</button>'+cancelBtn)+'</div>';
       grid.appendChild(el2);
     });
   }
@@ -3765,7 +3765,7 @@ function renderStatsDiagnostic() {
           +heading('Scheduled ('+wsScheduled.length+')','var(--ya-orange)')
           +wsScheduled.map(function(w){
             var sc=w.conducted?chip('Delivered','#22c55e','rgba(34,197,94,.15)'):chip('Upcoming','#f5a623','rgba(245,162,35,.15)');
-            return auditRow(w.name,sc+chip(w.date,'var(--text-muted)','rgba(255,255,255,.06)'),(w.facilitators||[]).join(', ')||'TBD');
+            return auditRow(w.name,sc+chip(w.date,'var(--text-muted)','rgba(255,255,255,.06)'),(function(){var f=getWsFacilitators(w).filter(function(n){return n&&n!=='TBD';});return f.length?f.join(', '):'TBD';})());
           }).join('')
           +(wsCancelled.length?heading('Excluded — Cancelled ('+wsCancelled.length+')','#ef4444')
             +wsCancelled.map(function(w){return auditRow(w.name,chip('CANCELLED','#ef4444','rgba(239,68,68,.15)'));}).join(''):'');
@@ -3777,7 +3777,7 @@ function renderStatsDiagnostic() {
           +sourcesLine(['WORKSHOPS','workshop_conducted'])
           +warnBox('Future (conducted=false) and cancelled workshops excluded.')
           +heading('Delivered ('+wsDelivered.length+')','var(--ya-green)')
-          +wsDelivered.map(function(w){return auditRow(w.name,chip(w.date,'#22c55e','rgba(34,197,94,.12)'),(w.facilitators||[]).join(', ')||'TBD');}).join('');
+          +wsDelivered.map(function(w){return auditRow(w.name,chip(w.date,'#22c55e','rgba(34,197,94,.12)'),(function(){var f=getWsFacilitators(w).filter(function(n){return n&&n!=='TBD';});return f.length?f.join(', '):'TBD';})());}).join('');
       }},
     {id:'ev-plan',icon:'📅',label:'Events Planned',value:evAll.length,color:'var(--ya-gold)',sub:'all EVENTS_DATA',
       detail:function(){
@@ -4143,7 +4143,9 @@ function renderLandingCalendar(){
   upcomingWs.forEach(function(w){
     var d=parseDate(w.date);
     var soon=isSoon(d,14);
-    var facs=w.facilitators.join(' & ');
+    // Use getWsFacilitators so DB staffing overrides (WS_STAFFED_BY_DB) are respected
+    var facList=getWsFacilitators(w).filter(function(n){return n&&n!=='TBD';});
+    var facs=facList.length?facList.join(' & '):'TBD';
     cards.push({
       sort: d?d.getTime():9e12,
       html:'<div class="cal-card" style="--cc:var(--ya-teal)">'+
@@ -4504,11 +4506,14 @@ function renderScheduleTab(){
   // Workshops — Spring 2026
   WORKSHOPS.forEach(function(w){
     var d = parseDate(w.date);
+    // Use getWsFacilitators so DB staffing overrides (WS_STAFFED_BY_DB) are respected
+    var facList = getWsFacilitators(w).filter(function(n){ return n && n !== 'TBD'; });
+    var facStr = facList.length ? facList.join(', ') : 'TBD';
     items.push({
       date: d, dateStr: w.date,
       type: 'Workshop', sem: 'Spring 2026',
       title: '#'+w.id+' '+w.name,
-      detail: (w.facilitators||[]).join(', ')||'—',
+      detail: facStr,
       status: w.cancelled?'cancelled':w.conducted?'done':'upcoming',
       typeColor: 'var(--ya-teal)', typeIcon: '📚'
     });
@@ -7504,6 +7509,7 @@ function wsStaffSave(wsId) {
   });
   Promise.all(savePromises).then(function(){
     console.log('Workshop staff saved for ws', wsId);
+    renderLandingCalendar(); // re-render home page so facilitator change shows immediately
     updateLandingStats();
   });
 

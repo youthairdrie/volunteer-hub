@@ -1533,9 +1533,9 @@ tr:hover .grd-date-sticky { background: #1a2d47; }
               </div>
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
                 <div><div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Book Start Date</div>
-                  <input id="jgm-book-start" placeholder="e.g. Jan 10, 2026" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--card-border);background:rgba(255,255,255,.06);color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem;box-sizing:border-box"></div>
+                  <input type="date" id="jgm-book-start" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--card-border);background:rgba(20,32,48,1);color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem;box-sizing:border-box"></div>
                 <div><div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Book End Date</div>
-                  <input id="jgm-book-end" placeholder="e.g. Jun 28, 2026" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--card-border);background:rgba(255,255,255,.06);color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem;box-sizing:border-box"></div>
+                  <input type="date" id="jgm-book-end" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--card-border);background:rgba(20,32,48,1);color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem;box-sizing:border-box"></div>
               </div>
               <div><div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Age Range</div>
                 <input id="jgm-age" placeholder="e.g. Ages 11–12" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--card-border);background:rgba(255,255,255,.06);color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem;box-sizing:border-box"></div>
@@ -2060,6 +2060,32 @@ function buildSaturdayDates(startStr, endStr) {
   while(s<=e){ dates.push(mNames[s.getMonth()]+' '+s.getDate()+', '+s.getFullYear()); s.setDate(s.getDate()+7); }
   return dates;
 }
+
+// ── JYSEP book-date helpers ──────────────────────────────────────────────────
+// Convert the app's display format "Mon D, YYYY" → ISO "YYYY-MM-DD" for <input type="date">
+function bookDisplayToISO(str) {
+  if (!str) return '';
+  var months = {Jan:'01',Feb:'02',Mar:'03',Apr:'04',May:'05',Jun:'06',
+                Jul:'07',Aug:'08',Sep:'09',Oct:'10',Nov:'11',Dec:'12'};
+  var p = str.trim().replace(',','').split(/\s+/); // ["Jan","10","2026"]
+  if (p.length !== 3 || !months[p[0]]) return '';
+  var mm = months[p[0]];
+  var dd = ('0' + parseInt(p[1], 10)).slice(-2);
+  var yyyy = p[2];
+  if (isNaN(parseInt(yyyy,10)) || isNaN(parseInt(dd,10))) return '';
+  return yyyy + '-' + mm + '-' + dd;
+}
+// Convert ISO "YYYY-MM-DD" (from <input type="date">) → app display "Mon D, YYYY"
+function bookISOToDisplay(iso) {
+  if (!iso) return '';
+  var mNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  var p = iso.split('-');
+  if (p.length !== 3) return '';
+  var d = new Date(parseInt(p[0],10), parseInt(p[1],10)-1, parseInt(p[2],10));
+  if (isNaN(d.getTime())) return '';
+  return mNames[d.getMonth()] + ' ' + d.getDate() + ', ' + d.getFullYear();
+}
+// ────────────────────────────────────────────────────────────────────────────
 
 var ADULT_COMPLIANCE={"Kim Sundset":{"vsc_issued":"2026-01-16","vsc_expiry":"2030-01-16","vsc_on_file":true,"waiver_date":"2024-09-01","waiver_on_file":true},"Olga Korcheva":{"vsc_issued":"","vsc_expiry":"","vsc_on_file":true,"waiver_date":"2024-09-01","waiver_on_file":true},"Connie Wu":{"vsc_issued":"","vsc_expiry":"","vsc_on_file":true,"waiver_date":"2024-09-01","waiver_on_file":true},"Chloe Nayoung Kim":{"vsc_issued":"","vsc_expiry":"","vsc_on_file":false,"waiver_date":"","waiver_on_file":false},"BJ (Bolaji) Hammed":{"vsc_issued":"","vsc_expiry":"","vsc_on_file":true,"waiver_date":"2024-09-01","waiver_on_file":true},"Roberta Ehigiator":{"vsc_issued":"","vsc_expiry":"","vsc_on_file":true,"waiver_date":"2024-09-01","waiver_on_file":true},"Julie Robertson":{"vsc_issued":"2024-01-30","vsc_expiry":"2029-01-30","vsc_on_file":true,"waiver_date":"2024-09-01","waiver_on_file":true},"Tina Petrow":{"vsc_issued":"","vsc_expiry":"","vsc_on_file":true,"waiver_date":"2024-09-01","waiver_on_file":true},"Mary-Beth Finney (Ursa)":{"vsc_issued":"","vsc_expiry":"","vsc_on_file":true,"waiver_date":"","waiver_on_file":false},"Simisola Obasan (Simi)":{"vsc_issued":"","vsc_expiry":"","vsc_on_file":true,"waiver_date":"2024-09-01","waiver_on_file":true},"Tamanna Kaur":{"vsc_issued":"","vsc_expiry":"","vsc_on_file":false,"waiver_date":"","waiver_on_file":false},"Bolaji Ajoke Hammed":{"vsc_issued":"","vsc_expiry":"","vsc_on_file":false,"waiver_date":"","waiver_on_file":false},"Jollean Chapiel":{"vsc_issued":"2020-12-10","vsc_expiry":"2025-12-10","vsc_on_file":true,"waiver_date":"","waiver_on_file":false},"Mimi Omoare":{"vsc_issued":"","vsc_expiry":"","vsc_on_file":false,"waiver_date":"","waiver_on_file":false},"Alex Strokova":{"vsc_issued":"","vsc_expiry":"","vsc_on_file":false,"waiver_date":"","waiver_on_file":false},"Sudi Hedley":{"vsc_issued":"","vsc_expiry":"","vsc_on_file":false,"waiver_date":"","waiver_on_file":false},"Shameen":{"vsc_issued":"","vsc_expiry":"","vsc_on_file":false,"waiver_date":"","waiver_on_file":false},"Carol Brosoto":{"vsc_issued":"","vsc_expiry":"","vsc_on_file":false,"waiver_date":"","waiver_on_file":false},"Kathy March":{"vsc_issued":"2022-06-06","vsc_expiry":"2027-06-06","vsc_on_file":true,"waiver_date":"","waiver_on_file":false}};
 // Workshop IDs that have been saved via the Edit Staff modal (Supabase is source of truth)
@@ -6884,8 +6910,8 @@ function openEditJysepGroupModal(gid) {
   document.getElementById('jgm-start').value     = p.dates && p.dates.length ? p.dates[0] : 'Jan 10, 2026';
   document.getElementById('jgm-end').value       = p.dates && p.dates.length ? p.dates[p.dates.length-1] : 'Dec 25, 2027';
   document.getElementById('jgm-location').value  = p.location || 'Youth Airdrie';
-  document.getElementById('jgm-book-start').value= p.group_book_start || '';
-  document.getElementById('jgm-book-end').value  = p.group_book_end   || '';
+  document.getElementById('jgm-book-start').value= bookDisplayToISO(p.group_book_start || '');
+  document.getElementById('jgm-book-end').value  = bookDisplayToISO(p.group_book_end   || '');
   document.getElementById('jgm-notes').value     = p.group_notes || '';
   document.getElementById('jgm-feedback').textContent = '';
   populateBookSelect('jgm-book', p.group_book || '');
@@ -6909,8 +6935,24 @@ async function saveJysepGroupModal() {
   var name     = (document.getElementById('jgm-name').value || '').trim();
   if (!name) { fb.style.color = 'var(--badge-red)'; fb.textContent = '⚠ Group name is required.'; return; }
   var book     = document.getElementById('jgm-book').value || '';
-  var bookStart= (document.getElementById('jgm-book-start').value || '').trim();
-  var bookEnd  = (document.getElementById('jgm-book-end').value || '').trim();
+  var bookStartISO = (document.getElementById('jgm-book-start').value || '').trim();
+  var bookEndISO   = (document.getElementById('jgm-book-end').value || '').trim();
+
+  // Validate book dates: if either is provided, both must be valid and end >= start
+  if (bookStartISO || bookEndISO) {
+    if (bookStartISO && !bookStartISO.match(/^\d{4}-\d{2}-\d{2}$/)) {
+      fb.style.color = 'var(--badge-red)'; fb.textContent = '⚠ Book Start Date is not a valid date.'; return;
+    }
+    if (bookEndISO && !bookEndISO.match(/^\d{4}-\d{2}-\d{2}$/)) {
+      fb.style.color = 'var(--badge-red)'; fb.textContent = '⚠ Book End Date is not a valid date.'; return;
+    }
+    if (bookStartISO && bookEndISO && bookEndISO < bookStartISO) {
+      fb.style.color = 'var(--badge-red)'; fb.textContent = '⚠ Book End Date cannot be before Book Start Date.'; return;
+    }
+  }
+  // Convert to app display format for storage (e.g. "Jan 10, 2026"); empty stays empty
+  var bookStart = bookISOToDisplay(bookStartISO);
+  var bookEnd   = bookISOToDisplay(bookEndISO);
   var ageRange = (document.getElementById('jgm-age').value || '').trim() || 'Ages 10–14';
   var day      = (document.getElementById('jgm-day').value || 'Saturday').trim();
   var time     = (document.getElementById('jgm-time').value || '10:00 AM – 12:00 PM').trim();

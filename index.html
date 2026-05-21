@@ -1424,7 +1424,11 @@ tr:hover .grd-date-sticky { background: #1a2d47; }
                 <div id="jgd-group-name" style="font-family:Nunito,sans-serif;font-weight:900;font-size:1.05rem;color:var(--lavender)"></div>
                 <div id="jgd-group-meta" style="font-size:.78rem;color:var(--text-muted);margin-top:3px"></div>
               </div>
-              <button onclick="openEditJysepGroupModal(_jysepActiveGroup)" class="ws-btn" style="border-color:var(--lavender);color:var(--lavender);font-size:.72rem;white-space:nowrap">✏️ Edit Group</button>
+              <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+                <button onclick="openEditJysepGroupModal(_jysepActiveGroup)" class="ws-btn" style="border-color:var(--lavender);color:var(--lavender);font-size:.72rem;white-space:nowrap">✏️ Edit Group</button>
+                <button onclick="archiveJysepGroup(_jysepActiveGroup)" class="ws-btn" style="border-color:var(--ya-gold);color:var(--ya-gold);font-size:.72rem;white-space:nowrap" title="Hide this group from active views. All data is preserved.">📦 Archive</button>
+                <button onclick="deleteJysepGroup(_jysepActiveGroup)" class="ws-btn" style="border-color:var(--badge-red);color:var(--badge-red);font-size:.72rem;white-space:nowrap" title="Permanently delete this group and all its data.">🗑 Delete</button>
+              </div>
             </div>
             <!-- Book panel -->
             <div id="jgd-book-panel" style="margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,.08)">
@@ -2033,16 +2037,20 @@ var JYSEP_BOOKS = [
   { id:'spirit',     title:'Spirit of Faith',              focus:'Spiritual reality and purpose of life' },
   { id:'rays',       title:'Rays of Light',                focus:'Spiritual qualities and service' }
 ];
-// Helper: returns all JYSEP group program objects
-function getJysepGroups() {
+// Helper: returns all JYSEP group program objects (active only by default)
+function getJysepGroups(includeArchived) {
   return Object.keys(PROGRAMS_DATA || {})
-    .filter(function(k){ return (PROGRAMS_DATA[k].program_type === 'jysep'); })
+    .filter(function(k){
+      var p = PROGRAMS_DATA[k];
+      return p.program_type === 'jysep' && (includeArchived || !p.group_archived);
+    })
     .map(function(k){ return PROGRAMS_DATA[k]; })
     .sort(function(a,b){ return (a.name||'').localeCompare(b.name||''); });
 }
-function getJysepGroupIds() {
+function getJysepGroupIds(includeArchived) {
   return Object.keys(PROGRAMS_DATA || {}).filter(function(k){
-    return (PROGRAMS_DATA[k].program_type === 'jysep');
+    var p = PROGRAMS_DATA[k];
+    return p.program_type === 'jysep' && (includeArchived || !p.group_archived);
   });
 }
 // Generate a clean program_id slug from a group name
@@ -5868,10 +5876,11 @@ async function saveProgramYouthEnrollment() {
   // as the enrollment record; actual attendance is toggled separately.
   // Persist to Supabase. Any failure is surfaced visibly — never silent.
   if (newlyEnrolled.length > 0) {
+    var _pemProgType = (PROGRAMS_DATA[_pemProgramId] && PROGRAMS_DATA[_pemProgramId].program_type) || 'garden';
     var results = await Promise.all(newlyEnrolled.map(function(name) {
       return upsertProgramAttendance({
         program_id:       _pemProgramId,
-        program_type:     'garden',
+        program_type:     _pemProgType,
         session_date:     '_enrolled',
         participant_name: name,
         participant_type: 'youth',
@@ -6972,12 +6981,15 @@ async function saveJysepGroupModal() {
   btn.textContent = 'Saving…'; btn.style.opacity = '.6'; btn.disabled = true;
 
   // Persist group settings to Supabase
+  // Preserve archived flag — editing a group never un-archives it
+  var _existingArchived = (PROGRAMS_DATA[gid] && PROGRAMS_DATA[gid].group_archived) ? true : false;
   var settingsRow = {
     program_id: gid,
     group_name: name, group_book: book, group_book_start: bookStart,
     group_book_end: bookEnd, group_age_range: ageRange, group_time: time,
     group_day: day, group_location: location, group_notes: notes,
-    group_start: startD, group_end: endD
+    group_start: startD, group_end: endD,
+    group_archived: _existingArchived
   };
   var r = await fetch(SUPA_URL + '/rest/v1/program_settings?on_conflict=program_id', {
     method: 'POST',
@@ -7064,6 +7076,57 @@ function renderJysepAdmin() {
   if (gids.length > 0) renderJysepGroupDetail();
   else { var d = document.getElementById('jysep-group-detail'); if(d) d.style.display='none'; }
 }
+
+// ── Archive / Delete JYSEP group ─────────────────────────────────────────────
+/**
+ * Soft-archive a JYSEP group. Sets group_archived=true in program_settings and
+ * in memory. The group disappears from active UI but historical data is preserved.
+ */
+async function archiveJysepGroup(gid) {
+  var p = PROGRAMS_DATA[gid]; if (!p) return;
+  if (!confirm('Archive "' + p.name + '"?\n\nThe group will be hidden from active views but all attendance, hours, and session history will be preserved for reporting.')) return;
+  var r = await fetch(SUPA_URL + '/rest/v1/program_settings?on_conflict=program_id', {
+    method: 'POST',
+    headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY, 'Content-Type': 'application/json', 'Prefer': 'resolution=merge-duplicates,return=minimal' },
+    body: JSON.stringify({ program_id: gid, group_archived: true })
+  });
+  if (!r.ok) {
+    var err = await r.text(); alert('Archive failed: ' + r.status + ' ' + err); return;
+  }
+  p.group_archived = true;
+  // Select a different active group if this one was selected
+  var remaining = getJysepGroupIds(); // now excludes archived
+  _jysepActiveGroup = remaining.length ? remaining[0] : '';
+  renderJysepAdmin();
+}
+
+/**
+ * Hard-delete a JYSEP group after confirmation. Removes all related rows from
+ * program_settings, program_attendance, program_cancellations, program_session_meta.
+ * Does NOT affect other groups.
+ */
+async function deleteJysepGroup(gid) {
+  var p = PROGRAMS_DATA[gid]; if (!p) return;
+  var confirmed = confirm('PERMANENTLY DELETE "' + p.name + '"?\n\nThis will remove:\n  • Group settings\n  • All enrollment records\n  • All attendance rows\n  • All session metadata\n  • All cancellation records\n\nThis CANNOT be undone. Type the group name in the next prompt to confirm.');
+  if (!confirmed) return;
+  var typed = prompt('Type the group name exactly to confirm deletion:\n"' + p.name + '"');
+  if (!typed || typed.trim() !== p.name.trim()) {
+    alert('Name did not match. Deletion cancelled.'); return;
+  }
+  // Fire all deletes in parallel
+  var enc = encodeURIComponent(gid);
+  await Promise.all([
+    dbDel('program_settings',      'program_id=eq.' + enc),
+    dbDel('program_attendance',    'program_id=eq.' + enc),
+    dbDel('program_cancellations', 'program_id=eq.' + enc),
+    dbDel('program_session_meta',  'program_id=eq.' + enc)
+  ]);
+  delete PROGRAMS_DATA[gid];
+  var remaining = getJysepGroupIds();
+  _jysepActiveGroup = remaining.length ? remaining[0] : '';
+  renderJysepAdmin();
+}
+// ─────────────────────────────────────────────────────────────────────────────
 
 function getCurrentRecurring(){
   var month = new Date().getMonth() + 1; // 1=Jan…12=Dec
@@ -10519,7 +10582,8 @@ async function loadAllJysepData() {
           color: 'var(--lavender)', program_type: 'jysep', animator_label: 'Animator',
           group_book: s.group_book || '', group_book_start: s.group_book_start || '',
           group_book_end: s.group_book_end || '', group_age_range: s.group_age_range || 'Ages 10–14',
-          group_notes: s.group_notes || ''
+          group_notes: s.group_notes || '',
+          group_archived: s.group_archived === true || s.group_archived === 'true'
         };
       } else {
         // Update book/meta fields from settings
@@ -10530,6 +10594,7 @@ async function loadAllJysepData() {
         if (s.group_book_end !== undefined) p.group_book_end = s.group_book_end;
         if (s.group_age_range) p.group_age_range = s.group_age_range;
         if (s.group_notes !== undefined) p.group_notes = s.group_notes;
+        if (s.group_archived !== undefined) p.group_archived = (s.group_archived === true || s.group_archived === 'true');
         if (s.group_time) p.time = s.group_time;
         if (s.group_location) p.location = s.group_location;
       }
@@ -11403,7 +11468,7 @@ async function saveProgramAdultEnrollment(programId, adultNames) {
   var results = await Promise.all(newly.map(function(name) {
     return upsertProgramAttendance({
       program_id:       programId,
-      program_type:     prog.type || 'garden',
+      program_type:     prog.program_type || 'garden',
       session_date:     '_adult_enrolled',
       participant_name: name,
       participant_type: 'adult',
@@ -11620,7 +11685,7 @@ async function saveEditAdult(){
       if (!prog.adult_participants[newName]) {
         prog.adult_participants[newName] = true;
         upsertProgramAttendance({
-          program_id: pid, program_type: prog.type || 'garden',
+          program_id: pid, program_type: prog.program_type || 'garden',
           session_date: '_adult_enrolled', participant_name: newName,
           participant_type: 'adult', attended: false, volunteer_hours: null
         });

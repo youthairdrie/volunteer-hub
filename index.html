@@ -1268,7 +1268,10 @@ tr:hover .grd-date-sticky { background: #1a2d47; }
             <div class="section-box" style="margin-bottom:10px">
               <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
                 <div style="font-size:.78rem;color:var(--text-muted)">Hours per adult per session. Default = session duration. Adult Garden hours count toward volunteer totals.</div>
+              <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                <button onclick="openProgramEnrollAdultModal('garden_2026')" class="ws-btn" style="border-color:var(--ya-blue);color:var(--ya-blue);font-size:.75rem;white-space:nowrap">+ Enroll Adult</button>
                 <button id="garden-hrs-edit-btn" onclick="toggleGardenHrsEdit()" class="ws-btn" style="border-color:var(--ya-blue);color:var(--ya-blue);font-size:.75rem;white-space:nowrap">✏️ Edit Hours</button>
+              </div>
               </div>
             </div>
             <div style="overflow-x:auto">
@@ -1317,6 +1320,32 @@ tr:hover .grd-date-sticky { background: #1a2d47; }
               </div>
             </div>
             <div id="pem-feedback" style="font-size:.78rem;margin-top:8px;min-height:16px;text-align:center"></div>
+          </div>
+        </div>
+
+        <!-- Generic multi-adult enroll modal (reusable for any program) -->
+        <div id="program-enroll-adult-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:1100;align-items:flex-start;justify-content:center;padding:24px 16px;overflow-y:auto">
+          <div class="login-box" style="max-width:520px;width:100%;margin:auto">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+              <div style="font-family:Nunito,sans-serif;font-weight:900;font-size:1rem;color:var(--ya-blue)" id="peam-title">Enroll Adult Volunteer</div>
+              <button onclick="document.getElementById('program-enroll-adult-modal').style.display='none'" style="background:none;border:none;color:var(--text-muted);font-size:1.3rem;cursor:pointer;line-height:1;padding:2px">×</button>
+            </div>
+            <div style="font-size:.76rem;color:var(--text-muted);margin-bottom:14px">Select adults to enroll as volunteers. Already-enrolled adults are shown with a ✔ and cannot be re-selected.</div>
+            <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap">
+              <input id="peam-search" type="search" placeholder="Search by name…" oninput="peamFilter()"
+                style="flex:1;min-width:140px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.15);border-radius:8px;padding:7px 12px;color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem;outline:none">
+              <button onclick="peamSelectAll()" style="padding:6px 12px;border-radius:8px;border:1px solid rgba(255,255,255,.2);background:transparent;color:var(--text-muted);font-family:DM Sans,sans-serif;font-size:.78rem;cursor:pointer;white-space:nowrap">✔ Select All</button>
+              <button onclick="peamClear()" style="padding:6px 12px;border-radius:8px;border:1px solid rgba(255,255,255,.2);background:transparent;color:var(--text-muted);font-family:DM Sans,sans-serif;font-size:.78rem;cursor:pointer;white-space:nowrap">✕ Clear</button>
+            </div>
+            <div id="peam-list" style="max-height:340px;overflow-y:auto;border:1px solid rgba(255,255,255,.1);border-radius:10px;background:rgba(0,0,0,.2)"></div>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-top:12px;flex-wrap:wrap;gap:8px">
+              <div style="font-size:.8rem;color:var(--text-muted)"><span id="peam-count">0</span> selected</div>
+              <div style="display:flex;gap:8px">
+                <button onclick="document.getElementById('program-enroll-adult-modal').style.display='none'" style="padding:8px 16px;border-radius:9px;border:1px solid rgba(255,255,255,.15);background:transparent;color:var(--text-muted);font-family:Nunito,sans-serif;font-weight:700;font-size:.85rem;cursor:pointer">Cancel</button>
+                <button id="peam-save-btn" onclick="saveProgramEnrollAdultModal()" style="padding:8px 22px;border-radius:9px;border:none;background:var(--ya-blue);color:#fff;font-family:Nunito,sans-serif;font-weight:800;font-size:.88rem;cursor:pointer">Enroll Selected →</button>
+              </div>
+            </div>
+            <div id="peam-feedback" style="font-size:.78rem;margin-top:8px;min-height:16px;text-align:center"></div>
           </div>
         </div>
 
@@ -5731,7 +5760,19 @@ function toggleGardenHrsEdit() {
 async function saveGardenAdultHrsFromInputs() {
   var p = gardenProg(); if (!p) return;
   var pastDates = gardenPastDates(); // excludes cancelled sessions via getActiveProgramSessions()
-  var adultNames = Object.keys(FAC_PROFILES).map(function(k){ return FAC_PROFILES[k].name; }).sort();
+  // Only show enrolled adults (not all FAC_PROFILES)
+  var enrolledAdults = Object.keys(p.adult_participants || {});
+  // Fallback: also include adults who already have hours recorded (historical data)
+  var adultSet = new Set(enrolledAdults);
+  Object.keys(p.attendance || {}).forEach(function(d) {
+    (p.attendance[d] || []).forEach(function(r) {
+      if (r.type === 'adult' && r.attended && r.name !== '_adult_enrolled') adultSet.add(r.name);
+    });
+  });
+  Object.keys(p.adult_volunteers || {}).forEach(function(d) {
+    (p.adult_volunteers[d] || []).forEach(function(n) { adultSet.add(n); });
+  });
+  var adultNames = Array.from(adultSet).sort();
   var promises = [];
   pastDates.forEach(function(d) {
     adultNames.forEach(function(name) {
@@ -5770,10 +5811,23 @@ function renderGardenAdultHrsGrid() {
   if (!p) { thead.innerHTML=''; tbody.innerHTML=''; return; }
 
   var pastDates = gardenPastDates();
-  var adultNames = Object.keys(FAC_PROFILES).map(function(k){ return FAC_PROFILES[k].name; }).sort();
+  // Only enrolled adults + anyone with historical hours (backwards compat)
+  var adultSet = new Set(Object.keys(p.adult_participants || {}));
+  Object.keys(p.attendance || {}).forEach(function(d) {
+    (p.attendance[d] || []).forEach(function(r) {
+      if (r.type === 'adult' && r.attended && r.name !== '_adult_enrolled') adultSet.add(r.name);
+    });
+  });
+  Object.keys(p.adult_volunteers || {}).forEach(function(d) {
+    (p.adult_volunteers[d] || []).forEach(function(n) { adultSet.add(n); });
+  });
+  var adultNames = Array.from(adultSet).sort();
 
   if (pastDates.length === 0) {
     thead.innerHTML=''; tbody.innerHTML='<tr><td style="color:var(--text-muted);font-size:.82rem;padding:12px">No past sessions yet.</td></tr>'; return;
+  }
+  if (adultNames.length === 0) {
+    thead.innerHTML=''; tbody.innerHTML='<tr><td style="color:var(--text-muted);font-size:.82rem;padding:12px">No adult volunteers enrolled yet. Use "+ Enroll Adult" above.</td></tr>'; return;
   }
 
   // Header: Date (sticky) | adult names | Total
@@ -9402,6 +9456,14 @@ async function loadGardenData() {
         }
         return;
       }
+      // _adult_enrolled sentinel rows restore enrolled adult volunteers across page loads
+      if (row.session_date === '_adult_enrolled' && row.participant_type === 'adult') {
+        prog.adult_participants = prog.adult_participants || {};
+        if (!prog.adult_participants[row.participant_name]) {
+          prog.adult_participants[row.participant_name] = true;
+        }
+        return;
+      }
       prog.attendance[row.session_date] = prog.attendance[row.session_date] || [];
       var exists = prog.attendance[row.session_date].find(function(r){ return r.name === row.participant_name; });
       if (!exists) {
@@ -10080,6 +10142,23 @@ async function saveEditYouth(){
     dbPatch('pending_entries', {youth_name: newName}, 'youth_name=eq.'+encodeURIComponent(origName));
     dbPatch('event_registrations', {youth_name: newName}, 'youth_name=eq.'+encodeURIComponent(origName));
     if(newEmail) dbPatch('profiles', {name: newName}, 'email=eq.'+encodeURIComponent(newEmail));
+    // ── Cascade rename into program_attendance (all rows: sentinel + actual) ──
+    dbPatch('program_attendance', {participant_name: newName}, 'participant_name=eq.'+encodeURIComponent(origName));
+    // ── Cascade rename into all PROGRAMS_DATA.youth_participants in-memory ──
+    Object.keys(PROGRAMS_DATA).forEach(function(pid) {
+      var prog = PROGRAMS_DATA[pid];
+      if (!prog || !prog.youth_participants) return;
+      if (origName in prog.youth_participants) {
+        prog.youth_participants[newName] = prog.youth_participants[origName];
+        delete prog.youth_participants[origName];
+      }
+      // Also rename inside attendance arrays
+      Object.keys(prog.attendance || {}).forEach(function(d) {
+        (prog.attendance[d] || []).forEach(function(r) {
+          if (r.name === origName) r.name = newName;
+        });
+      });
+    });
     rebuildYouthLoginDropdown();
   }
 
@@ -10147,6 +10226,20 @@ async function openEditAdult(key){
   document.getElementById('eau-name').value = p.name;
   document.getElementById('eau-role').value = p.role;
   document.getElementById('eau-scrabble').checked = p.name in ADULT_SCRABBLE;
+  // ── Build dynamic program enrollment checkboxes ──
+  var progCbContainer = document.getElementById('eau-program-checkboxes');
+  if (progCbContainer) {
+    var progHtml = '';
+    Object.keys(PROGRAMS_DATA).forEach(function(pid) {
+      var prog = PROGRAMS_DATA[pid];
+      if (!prog || prog.youth_source === 'scrabble_sessions') return;
+      var isEnrolled = !!(prog.adult_participants && prog.adult_participants[p.name]);
+      progHtml += '<label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:.83rem">' +
+        '<input type="checkbox" id="eau-prog-'+pid+'" '+(isEnrolled?'checked':'')+'>'+
+        (prog.name || pid) + ' (adult volunteer)</label>';
+    });
+    progCbContainer.innerHTML = progHtml;
+  }
   document.getElementById('eau-feedback').innerHTML = '';
   document.getElementById('eau-email').value = '';
   modal.style.display = 'flex';
@@ -10159,6 +10252,179 @@ async function openEditAdult(key){
     document.getElementById('eau-email').value = rows[0].email;
   }
 }
+
+// ══════════════════════════════════════════════════════════════════════════════
+// GENERIC ADULT PROGRAM ENROLLMENT HELPERS
+// Used by: Edit Adult modal, Enroll Adult modal inside each program tab
+// ══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Returns names of adults currently enrolled in a program.
+ * Enrollment is indicated by the _adult_enrolled sentinel row or presence in adult_participants.
+ */
+function getEnrolledAdultsForProgram(programId) {
+  var prog = PROGRAMS_DATA[programId];
+  if (!prog) return [];
+  return Object.keys(prog.adult_participants || {});
+}
+
+/**
+ * Enroll one or more adults in a program. Writes sentinel rows to program_attendance.
+ * Prevents duplicates. Updates in-memory PROGRAMS_DATA.
+ * @param {string} programId
+ * @param {string[]} adultNames
+ * @returns {Promise<{enrolled: string[], failed: string[]}>}
+ */
+async function saveProgramAdultEnrollment(programId, adultNames) {
+  var prog = PROGRAMS_DATA[programId];
+  if (!prog) return { enrolled: [], failed: adultNames.slice() };
+  prog.adult_participants = prog.adult_participants || {};
+
+  var newly = adultNames.filter(function(n) { return !prog.adult_participants[n]; });
+  if (!newly.length) return { enrolled: [], failed: [] };
+
+  var results = await Promise.all(newly.map(function(name) {
+    return upsertProgramAttendance({
+      program_id:       programId,
+      program_type:     prog.type || 'garden',
+      session_date:     '_adult_enrolled',
+      participant_name: name,
+      participant_type: 'adult',
+      attended:         false,
+      volunteer_hours:  null
+    });
+  }));
+
+  var enrolled = [], failed = [];
+  newly.forEach(function(name, i) {
+    if (results[i]) {
+      prog.adult_participants[name] = true;
+      enrolled.push(name);
+    } else {
+      failed.push(name);
+    }
+  });
+  return { enrolled: enrolled, failed: failed };
+}
+
+/**
+ * Unenroll an adult from a program. Removes sentinel row. Does NOT delete historical hours rows.
+ * @param {string} programId
+ * @param {string} adultName
+ */
+function removeProgramAdultEnrollment(programId, adultName) {
+  var prog = PROGRAMS_DATA[programId];
+  if (prog && prog.adult_participants) delete prog.adult_participants[adultName];
+  dbDel('program_attendance',
+    'program_id=eq.' + encodeURIComponent(programId) +
+    '&session_date=eq._adult_enrolled' +
+    '&participant_name=eq.' + encodeURIComponent(adultName));
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// GENERIC ENROLL ADULT MODAL  (reusable for any program)
+// ══════════════════════════════════════════════════════════════════════════════
+
+var _peamProgramId = ''; // currently-open programId
+
+function openProgramEnrollAdultModal(programId) {
+  _peamProgramId = programId;
+  var prog = PROGRAMS_DATA[programId];
+  var progName = prog ? (prog.name || programId) : programId;
+  var enrolled = getEnrolledAdultsForProgram(programId);
+
+  document.getElementById('peam-title').textContent    = '+ Enroll Adult Volunteer — ' + progName;
+  document.getElementById('peam-search').value         = '';
+  document.getElementById('peam-feedback').textContent = '';
+  document.getElementById('peam-count').textContent    = '0';
+
+  peamBuildList(enrolled);
+  document.getElementById('program-enroll-adult-modal').style.display = 'flex';
+  setTimeout(function(){ document.getElementById('peam-search').focus(); }, 80);
+}
+
+function peamBuildList(enrolled) {
+  var list   = document.getElementById('peam-list');
+  var filter = (document.getElementById('peam-search').value || '').toLowerCase().trim();
+  var html   = '';
+
+  var adultNames = Object.keys(FAC_PROFILES).map(function(k){ return FAC_PROFILES[k].name; }).sort();
+  adultNames.forEach(function(name) {
+    if (filter && name.toLowerCase().indexOf(filter) < 0) return;
+    var isEnrolled = enrolled.indexOf(name) >= 0;
+    var cbId = 'peam-cb-' + name.replace(/\s+/g,'_').replace(/[^\w]/g,'_');
+    html +=
+      '<label for="'+cbId+'" style="display:flex;align-items:center;gap:10px;padding:8px 12px;cursor:'+(isEnrolled?'default':'pointer')+';border-bottom:1px solid rgba(255,255,255,.04);'+
+      (isEnrolled?'opacity:.5':'')+'">' +
+        '<input type="checkbox" id="'+cbId+'" value="'+name+'" '+(isEnrolled?'disabled checked':'')+
+          ' onchange="peamUpdateCount()"' +
+          ' style="width:16px;height:16px;accent-color:var(--ya-blue);cursor:'+(isEnrolled?'default':'pointer')+'">'+
+        '<div>'+
+          '<div style="font-size:.85rem;font-weight:'+(isEnrolled?'600':'400')+';color:var(--text-main)">'+name+(isEnrolled?' <span style="font-size:.7rem;color:var(--ya-blue)">✔ enrolled</span>':'')+'</div>'+
+        '</div>'+
+      '</label>';
+  });
+
+  if (!html) html = '<div style="padding:16px 12px;font-size:.82rem;color:var(--text-muted)">No adults found' + (filter ? ' matching "'+filter+'"' : '') + '.</div>';
+  list.innerHTML = html;
+  peamUpdateCount();
+}
+
+function peamFilter() {
+  var enrolled = getEnrolledAdultsForProgram(_peamProgramId);
+  peamBuildList(enrolled);
+}
+
+function peamUpdateCount() {
+  var checked = document.querySelectorAll('#peam-list input[type=checkbox]:not(:disabled):checked');
+  document.getElementById('peam-count').textContent = checked.length;
+}
+
+function peamSelectAll() {
+  document.querySelectorAll('#peam-list input[type=checkbox]:not(:disabled)').forEach(function(cb){ cb.checked = true; });
+  peamUpdateCount();
+}
+
+function peamClear() {
+  document.querySelectorAll('#peam-list input[type=checkbox]:not(:disabled)').forEach(function(cb){ cb.checked = false; });
+  peamUpdateCount();
+}
+
+async function saveProgramEnrollAdultModal() {
+  var btn  = document.getElementById('peam-save-btn');
+  var fb   = document.getElementById('peam-feedback');
+  var selected = Array.from(document.querySelectorAll('#peam-list input[type=checkbox]:not(:disabled):checked'))
+    .map(function(cb){ return cb.value; });
+
+  if (!selected.length) {
+    fb.style.color = 'var(--badge-amber)'; fb.textContent = '⚠ No adults selected.'; return;
+  }
+
+  btn.textContent = 'Enrolling…'; btn.style.opacity = '.6'; btn.disabled = true;
+  fb.textContent = '';
+
+  var result = await saveProgramAdultEnrollment(_peamProgramId, selected);
+
+  btn.textContent = 'Enroll Selected →'; btn.style.opacity = ''; btn.disabled = false;
+
+  if (result.failed.length) {
+    fb.style.color = 'var(--badge-red)';
+    fb.textContent = '⚠ '+result.failed.length+' failed to save in Supabase: '+result.failed.join(', ')+'. Check console. RLS may be blocking writes.';
+    return;
+  }
+  if (result.enrolled.length) {
+    fb.style.color = 'var(--ya-teal)';
+    fb.textContent = '✔ Enrolled: ' + result.enrolled.join(', ');
+    setTimeout(function() {
+      document.getElementById('program-enroll-adult-modal').style.display = 'none';
+      if (_peamProgramId === 'garden_2026') renderGardenAdmin();
+    }, 1100);
+  } else {
+    fb.style.color = 'var(--badge-amber)';
+    fb.textContent = 'All selected adults were already enrolled.';
+  }
+}
+
 
 async function saveEditAdult(){
   var modal = document.getElementById('edit-adult-modal');
@@ -10192,6 +10458,26 @@ async function saveEditAdult(){
     if(ADULT_SCRABBLE[origName]){ ADULT_SCRABBLE[newName]=ADULT_SCRABBLE[origName]; delete ADULT_SCRABBLE[origName]; }
     if(ADULT_SCRABBLE_TOTALS[origName]!==undefined){ ADULT_SCRABBLE_TOTALS[newName]=ADULT_SCRABBLE_TOTALS[origName]; delete ADULT_SCRABBLE_TOTALS[origName]; }
     if(ADULT_COMPLIANCE[origName]){ ADULT_COMPLIANCE[newName]=ADULT_COMPLIANCE[origName]; delete ADULT_COMPLIANCE[origName]; }
+    // Rename in all program adult_participants and attendance
+    Object.keys(PROGRAMS_DATA).forEach(function(pid) {
+      var prog = PROGRAMS_DATA[pid];
+      if (!prog) return;
+      if (prog.adult_participants && origName in prog.adult_participants) {
+        prog.adult_participants[newName] = prog.adult_participants[origName];
+        delete prog.adult_participants[origName];
+      }
+      Object.keys(prog.attendance || {}).forEach(function(d) {
+        (prog.attendance[d] || []).forEach(function(r) {
+          if (r.name === origName) r.name = newName;
+        });
+      });
+      if (prog.adult_volunteers) {
+        Object.keys(prog.adult_volunteers).forEach(function(d) {
+          var idx = (prog.adult_volunteers[d] || []).indexOf(origName);
+          if (idx >= 0) prog.adult_volunteers[d][idx] = newName;
+        });
+      }
+    });
     var parts = newName.split(' ');
     p.avatar = (parts[0][0]+(parts[1]?parts[1][0]:'')).toUpperCase();
     if(newEmail) dbPatch('profiles', {name: newName}, 'email=eq.'+encodeURIComponent(newEmail));
@@ -10205,12 +10491,40 @@ async function saveEditAdult(){
     ADULT_SCRABBLE_TOTALS[newName] = 0;
   }
 
+  // ── Program enrollment checkboxes ──
+  Object.keys(PROGRAMS_DATA).forEach(function(pid) {
+    var prog = PROGRAMS_DATA[pid];
+    if (!prog || prog.youth_source === 'scrabble_sessions') return;
+    var cb = document.getElementById('eau-prog-'+pid);
+    if (!cb) return;
+    prog.adult_participants = prog.adult_participants || {};
+    if (cb.checked) {
+      if (!prog.adult_participants[newName]) {
+        prog.adult_participants[newName] = true;
+        upsertProgramAttendance({
+          program_id: pid, program_type: prog.type || 'garden',
+          session_date: '_adult_enrolled', participant_name: newName,
+          participant_type: 'adult', attended: false, volunteer_hours: null
+        });
+      }
+    } else {
+      if (prog.adult_participants[newName]) {
+        delete prog.adult_participants[newName];
+        dbDel('program_attendance',
+          'program_id=eq.'+encodeURIComponent(pid)+
+          '&session_date=eq._adult_enrolled'+
+          '&participant_name=eq.'+encodeURIComponent(newName));
+      }
+    }
+  });
+
   var lvlM = newRole.match(/Level (\d)/);
   dbPatch('adults',{name:p.name,role:p.role,avatar:p.avatar,fac_level:lvlM?parseInt(lvlM[1]):(p.fac_level||0)},'id=eq.'+encodeURIComponent(key));
 
   if(p._prevName){
     dbPatch('adult_scrabble_sessions',{volunteer_name:p.name},'volunteer_name=eq.'+encodeURIComponent(p._prevName));
     dbPatch('program_volunteers',{adult_name:p.name},'adult_name=eq.'+encodeURIComponent(p._prevName));
+    dbPatch('program_attendance',{participant_name:p.name},'participant_name=eq.'+encodeURIComponent(p._prevName)+'&participant_type=eq.adult');
   }
   delete p._prevName;
 
@@ -10222,9 +10536,8 @@ async function saveEditAdult(){
     setBusy(false);
     if(!ok) {
       showErr('User data saved locally, but the profile link to "' + newEmail + '" could not be saved in Supabase. Check the console for details. The user will not be able to log in until this is resolved. Try clicking Save again.');
-      return; // keep modal open so admin sees the error
+      return;
     }
-    // Refresh cache so Credentials tab shows the new email without reopening
     loadProfiles().then(function(rows){ _cachedProfiles = rows; });
     fb.innerHTML = '<span style="color:var(--ya-teal)">✔ Saved — profile linked to ' + newEmail + '</span>';
   } else {
@@ -12359,6 +12672,7 @@ function addAdultScrabbleVolunteer(){
       <div>
         <div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Programme Enrolment</div>
         <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:.83rem"><input type="checkbox" id="eau-scrabble"> Scrabble &amp; Games Club (volunteer hours)</label>
+        <div id="eau-program-checkboxes" style="margin-top:6px;display:grid;gap:5px"></div>
       </div>
     </div>
     <div id="eau-feedback" style="font-size:.78rem;min-height:18px;margin-bottom:10px"></div>

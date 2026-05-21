@@ -5745,6 +5745,7 @@ async function toggleGardenYouthCell(dateStr, name, cell) {
 
 // ── Adult Volunteer Hours Grid ────────────────────────────────────────────────
 function toggleGardenHrsEdit() {
+  var wasEditing = _gardenHrsEdit;
   _gardenHrsEdit = !_gardenHrsEdit;
   var btn = document.getElementById('garden-hrs-edit-btn');
   if (btn) {
@@ -5753,17 +5754,25 @@ function toggleGardenHrsEdit() {
     btn.style.color       = _gardenHrsEdit ? 'var(--ya-orange)' : 'var(--ya-blue)';
     btn.style.background  = _gardenHrsEdit ? 'rgba(232,98,10,.08)' : '';
   }
-  renderGardenAdultHrsGrid();
-  if (!_gardenHrsEdit) saveGardenAdultHrsFromInputs();
+  if (wasEditing) {
+    // CRITICAL: save first (reads live <input> DOM), then re-render to read-only.
+    // Calling renderGardenAdultHrsGrid() before save destroys the <input> elements
+    // so document.getElementById(cellId) returns null and nothing is saved.
+    saveGardenAdultHrsFromInputs().then(function() {
+      renderGardenAdultHrsGrid();
+    });
+  } else {
+    renderGardenAdultHrsGrid();
+  }
 }
 
 async function saveGardenAdultHrsFromInputs() {
   var p = gardenProg(); if (!p) return;
-  var pastDates = gardenPastDates(); // excludes cancelled sessions via getActiveProgramSessions()
-  // Only show enrolled adults (not all FAC_PROFILES)
-  var enrolledAdults = Object.keys(p.adult_participants || {});
-  // Fallback: also include adults who already have hours recorded (historical data)
-  var adultSet = new Set(enrolledAdults);
+  var pastDates = gardenPastDates();
+
+  // Build the SAME adultNames set as renderGardenAdultHrsGrid uses,
+  // so cellIds match exactly. Enrolled adults + historical hours holders.
+  var adultSet = new Set(Object.keys(p.adult_participants || {}));
   Object.keys(p.attendance || {}).forEach(function(d) {
     (p.attendance[d] || []).forEach(function(r) {
       if (r.type === 'adult' && r.attended && r.name !== '_adult_enrolled') adultSet.add(r.name);
@@ -5773,34 +5782,75 @@ async function saveGardenAdultHrsFromInputs() {
     (p.adult_volunteers[d] || []).forEach(function(n) { adultSet.add(n); });
   });
   var adultNames = Array.from(adultSet).sort();
-  var promises = [];
+
+  // ── Step 1: snapshot all values from the live DOM RIGHT NOW,
+  // before any re-render destroys the <input> elements ──
+  var snapshot = {}; // { 'date||name': numericValue }
   pastDates.forEach(function(d) {
     adultNames.forEach(function(name) {
-      var cellId = 'ghrs_'+name.replace(/\s+/g,'_').replace(/[^\w]/g,'_')+'_'+d.replace(/\W/g,'_');
+      var cellId = 'ghrs_' + name.replace(/\s+/g, '_').replace(/[^\w]/g, '_') + '_' + d.replace(/\W/g, '_');
       var inp = document.getElementById(cellId);
       if (!inp) return;
       var val = parseFloat(inp.value);
-      if (isNaN(val) || val <= 0) return;
-      // Update in-memory
-      p.attendance = p.attendance || {};
-      p.attendance[d] = p.attendance[d] || [];
-      var rec = gardenAttRow(p, d, name);
-      if (rec) { rec.hours = val; rec.attended = true; }
-      else { p.attendance[d].push({ name:name, type:'adult', attended:true, hours:val }); }
-      // Also update adult_volunteers for compatibility
-      p.adult_volunteers = p.adult_volunteers || {};
-      p.adult_volunteers[d] = p.adult_volunteers[d] || [];
-      if (p.adult_volunteers[d].indexOf(name) < 0) p.adult_volunteers[d].push(name);
-      // Persist
-      promises.push(upsertProgramAttendance({
-        program_id:'garden_2026', program_type:'garden',
-        session_date:d, participant_name:name,
-        participant_type:'adult', attended:true, volunteer_hours:val
-      }));
+      if (!isNaN(val) && val > 0) snapshot[d + '||' + name] = val;
     });
   });
-  await Promise.all(promises);
-  renderGardenAdultHrsGrid();
+
+  // ── Step 2: show saving indicator on the button ──
+  var btn = document.getElementById('garden-hrs-edit-btn');
+  if (btn) { btn.textContent = '💾 Saving…'; btn.disabled = true; }
+
+  // ── Step 3: update in-memory and build Supabase upsert list ──
+  var promises = [];
+  Object.keys(snapshot).forEach(function(key) {
+    var parts = key.split('||');
+    var d = parts[0], name = parts[1];
+    var val = snapshot[key];
+
+    p.attendance = p.attendance || {};
+    p.attendance[d] = p.attendance[d] || [];
+    var rec = gardenAttRow(p, d, name);
+    if (rec) {
+      rec.hours = val;
+      rec.attended = true;
+    } else {
+      p.attendance[d].push({ name: name, type: 'adult', attended: true, hours: val });
+    }
+    // Keep adult_volunteers in sync for backwards compat with stats fallback
+    p.adult_volunteers = p.adult_volunteers || {};
+    p.adult_volunteers[d] = p.adult_volunteers[d] || [];
+    if (p.adult_volunteers[d].indexOf(name) < 0) p.adult_volunteers[d].push(name);
+
+    promises.push(upsertProgramAttendance({
+      program_id:       'garden_2026',
+      program_type:     'garden',
+      session_date:     d,
+      participant_name: name,
+      participant_type: 'adult',
+      attended:         true,
+      volunteer_hours:  val
+    }));
+  });
+
+  // ── Step 4: await all DB writes ──
+  var results = await Promise.all(promises);
+  var failCount = results.filter(function(ok) { return !ok; }).length;
+
+  // ── Step 5: restore button state ──
+  if (btn) {
+    btn.textContent = '✏️ Edit Hours';
+    btn.disabled = false;
+    btn.style.borderColor = 'var(--ya-blue)';
+    btn.style.color = 'var(--ya-blue)';
+    btn.style.background = '';
+  }
+
+  if (failCount > 0) {
+    console.warn('[saveGardenAdultHrsFromInputs] ' + failCount + ' row(s) failed to save to Supabase. Check RLS policies on program_attendance.');
+  } else if (promises.length > 0) {
+    console.log('[saveGardenAdultHrsFromInputs] Saved ' + promises.length + ' adult hour row(s) to Supabase.');
+  }
+  // Caller (toggleGardenHrsEdit) calls renderGardenAdultHrsGrid() after this resolves.
 }
 
 function renderGardenAdultHrsGrid() {

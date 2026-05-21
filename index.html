@@ -234,6 +234,21 @@ select option[value=""]{
 }
 #garden-youth-att-table tr:hover td.grd-sticky{ background:#1a2d47; }
 
+/* ── JYSEP youth attendance table — same sticky pattern ── */
+#jysep-youth-att-table thead th.grd-sticky,
+#jysep-youth-att-table tbody td.grd-sticky{
+  position:sticky; background:#131f30; z-index:2;
+}
+#jysep-youth-att-table thead th.grd-sticky{ z-index:3; }
+#jysep-youth-att-table .grd-sticky-1{ left:0;   min-width:160px; }
+#jysep-youth-att-table .grd-sticky-2{ left:160px; min-width:70px; }
+#jysep-youth-att-table .grd-sticky-3{ left:230px; min-width:140px; }
+#jysep-youth-att-table .grd-sticky-3::after{
+  content:''; position:absolute; top:0; right:-8px; bottom:0;
+  width:8px; background:linear-gradient(to right,rgba(0,0,0,.18),transparent); pointer-events:none;
+}
+#jysep-youth-att-table tr:hover td.grd-sticky{ background:#1a2d47; }
+
 /* ── Sticky Date column — program adult volunteer hours tables ────────────────
    Reusable: apply class grd-date-sticky to any program's date th/td.
    The date column freezes on the left while adult name columns scroll right.  */
@@ -965,6 +980,7 @@ tr:hover .grd-date-sticky { background: #1a2d47; }
         <button class="tab-btn active" onclick="switchTab('workshops',this)">📚 Workshops</button>
         <button class="tab-btn" onclick="switchTab('scrabble-admin',this)">🎲 Scrabble Club</button>
         <button class="tab-btn" onclick="switchTab('garden-admin',this)">🌱 Garden Program</button>
+        <button class="tab-btn" onclick="switchTab('jysep-admin',this)">✨ JYSEP</button>
         <button class="tab-btn" onclick="switchTab('future-schedule',this)">📆 Schedule</button>
         <button class="tab-btn" onclick="switchTab('events-log',this)">📋 Events Log</button>
         <button class="tab-btn" onclick="switchTab('compliance',this)">Compliance</button>
@@ -1379,6 +1395,129 @@ tr:hover .grd-date-sticky { background: #1a2d47; }
           </div>
         </div>
       </div>
+
+
+      <!-- ══════════════════════════════════════════════════════════════════
+           JYSEP ADMIN TAB
+           ══════════════════════════════════════════════════════════════════ -->
+      <div id="tab-jysep-admin" style="display:none">
+
+        <!-- Stat cards -->
+        <div class="cards-grid" id="jysep-stat-cards" style="margin-bottom:14px"></div>
+
+        <!-- SECTION 1: Youth Attendance Grid -->
+        <details open style="margin-bottom:14px">
+          <summary style="font-family:Nunito,sans-serif;font-weight:900;font-size:.95rem;color:var(--lavender);cursor:pointer;padding:10px 0;list-style:none;display:flex;align-items:center;gap:8px">
+            ✨ Youth Attendance &amp; Participation
+          </summary>
+          <div style="margin-top:10px">
+            <div class="section-box" style="margin-bottom:10px">
+              <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:10px">
+                <div style="font-size:.78rem;color:var(--text-muted)">Only enrolled JYSEP youth appear below. Youth attendance = participation only — not volunteer hours.</div>
+                <button onclick="openProgramEnrollYouthModal('jysep_2026')" class="ws-btn" style="border-color:var(--lavender);color:var(--lavender);font-size:.75rem;white-space:nowrap">+ Enroll Youth</button>
+              </div>
+            </div>
+            <div class="section-box" style="margin-bottom:10px;border-color:rgba(139,92,246,.25)">
+              <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+                <div>
+                  <div style="font-size:.8rem;font-weight:700;color:var(--lavender)">🎓 Participation Badge: <span id="jysep-cert-name-display">JYSEP Participant</span></div>
+                  <div style="font-size:.74rem;color:var(--text-muted);margin-top:2px">Required: <span id="jysep-cert-threshold-display">8</span> sessions</div>
+                </div>
+                <button onclick="toggleJysepCertEdit()" class="ws-btn" style="border-color:var(--lavender);color:var(--lavender);font-size:.72rem">✏️ Edit</button>
+              </div>
+              <div id="jysep-cert-edit-panel" style="display:none;margin-top:10px;border-top:1px solid rgba(255,255,255,.08);padding-top:10px">
+                <div style="display:grid;gap:8px">
+                  <div>
+                    <div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Badge / Certificate Name</div>
+                    <input id="jysep-cert-name-input" value="JYSEP Participant" style="width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.15);border-radius:8px;padding:7px 12px;color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem;box-sizing:border-box">
+                  </div>
+                  <div>
+                    <div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Minimum Sessions Required</div>
+                    <input id="jysep-cert-threshold-input" type="number" min="1" max="40" value="8" style="width:120px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.15);border-radius:8px;padding:7px 12px;color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem">
+                  </div>
+                  <div>
+                    <div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Notes / Description (optional)</div>
+                    <input id="jysep-cert-notes-input" placeholder="e.g. Awarded at end-of-year celebration" style="width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.15);border-radius:8px;padding:7px 12px;color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem;box-sizing:border-box">
+                  </div>
+                </div>
+                <div style="display:flex;gap:8px;margin-top:10px">
+                  <button onclick="saveJysepCertConfig()" style="padding:7px 18px;border-radius:8px;border:none;background:var(--lavender);color:#fff;font-family:Nunito,sans-serif;font-weight:800;font-size:.82rem;cursor:pointer">💾 Save</button>
+                  <button onclick="toggleJysepCertEdit()" class="ws-btn" style="font-size:.82rem">Cancel</button>
+                </div>
+                <div id="jysep-cert-feedback" style="font-size:.78rem;margin-top:6px;min-height:14px"></div>
+              </div>
+            </div>
+            <div style="overflow-x:auto">
+              <table class="data-table" id="jysep-youth-att-table" style="width:auto;min-width:100%">
+                <thead><tr id="jysep-youth-att-thead"></tr></thead>
+                <tbody id="jysep-youth-att-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+        </details>
+
+        <!-- SECTION 2: Animator Hours Grid -->
+        <details open style="margin-bottom:14px">
+          <summary style="font-family:Nunito,sans-serif;font-weight:900;font-size:.95rem;color:var(--ya-blue);cursor:pointer;padding:10px 0;list-style:none;display:flex;align-items:center;gap:8px">
+            🌟 Animator Hours
+          </summary>
+          <div style="margin-top:10px">
+            <div class="section-box" style="margin-bottom:10px">
+              <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+                <div style="font-size:.78rem;color:var(--text-muted)">Hours per animator per session. Default = session duration. Animator hours count toward volunteer totals.</div>
+                <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                  <button onclick="openProgramEnrollAdultModal('jysep_2026')" class="ws-btn" style="border-color:var(--ya-blue);color:var(--ya-blue);font-size:.75rem;white-space:nowrap">+ Enroll Animator</button>
+                  <button id="jysep-hrs-edit-btn" onclick="toggleJysepHrsEdit()" class="ws-btn" style="border-color:var(--ya-blue);color:var(--ya-blue);font-size:.75rem;white-space:nowrap">✏️ Edit Hours</button>
+                </div>
+              </div>
+            </div>
+            <div style="overflow-x:auto">
+              <table class="data-table" id="jysep-adult-hrs-table" style="width:auto;min-width:100%">
+                <thead><tr id="jysep-adult-hrs-thead"></tr></thead>
+                <tbody id="jysep-adult-hrs-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+        </details>
+
+        <!-- SECTION 3: Sessions & Cancellations -->
+        <details style="margin-bottom:14px">
+          <summary style="font-family:Nunito,sans-serif;font-weight:900;font-size:.95rem;color:var(--ya-orange);cursor:pointer;padding:10px 0;list-style:none;display:flex;align-items:center;gap:8px">
+            📅 Sessions &amp; Cancellations
+          </summary>
+          <div id="jysep-sessions-list" style="margin-top:10px"></div>
+        </details>
+
+        <!-- JYSEP Session edit modal -->
+        <div id="jysep-session-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:1000;align-items:center;justify-content:center">
+          <div class="login-box" style="max-width:440px;width:100%;max-height:90vh;overflow-y:auto">
+            <div style="font-family:Nunito,sans-serif;font-weight:900;font-size:1rem;color:var(--lavender);margin-bottom:14px">✨ Edit JYSEP Session</div>
+            <div style="display:grid;gap:9px">
+              <div><div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Date</div>
+                <input id="jsm-date" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--card-border);background:rgba(255,255,255,.06);color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem;box-sizing:border-box" placeholder="e.g. Sep 17, 2026"></div>
+              <div><div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Topic / Theme</div>
+                <input id="jsm-theme" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--card-border);background:rgba(255,255,255,.06);color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem;box-sizing:border-box" placeholder="e.g. Service, Reflection, Community"></div>
+              <div><div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Session Description</div>
+                <input id="jsm-desc" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--card-border);background:rgba(255,255,255,.06);color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem;box-sizing:border-box" placeholder="Optional, for grant reporting"></div>
+              <div><div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Location</div>
+                <input id="jsm-location" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--card-border);background:rgba(255,255,255,.06);color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem;box-sizing:border-box" placeholder="Youth Airdrie (default)"></div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+                <div><div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Start Time</div>
+                  <input id="jsm-start" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--card-border);background:rgba(255,255,255,.06);color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem;box-sizing:border-box" placeholder="4:30 PM"></div>
+                <div><div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">End Time</div>
+                  <input id="jsm-end" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--card-border);background:rgba(255,255,255,.06);color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem;box-sizing:border-box" placeholder="6:30 PM"></div>
+              </div>
+              <div><div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Cancellation Reason <span style="font-weight:400;text-transform:none">(leave blank if not cancelled)</span></div>
+                <input id="jsm-cancel-reason" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--card-border);background:rgba(255,255,255,.06);color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem;box-sizing:border-box"></div>
+            </div>
+            <div id="jsm-feedback" style="min-height:16px;font-size:.78rem;margin-top:10px"></div>
+            <div style="display:flex;gap:10px;margin-top:14px;justify-content:flex-end">
+              <button onclick="document.getElementById('jysep-session-modal').style.display='none'" style="padding:8px 18px;border-radius:9px;border:1px solid rgba(255,255,255,.15);background:transparent;color:var(--text-muted);font-family:Nunito,sans-serif;font-weight:700;cursor:pointer">Cancel</button>
+              <button id="jsm-save-btn" onclick="saveJysepSessionMeta()" style="padding:8px 22px;border-radius:9px;border:none;background:var(--lavender);color:#fff;font-family:Nunito,sans-serif;font-weight:800;cursor:pointer">💾 Save</button>
+            </div>
+          </div>
+        </div>
+      </div><!-- /tab-jysep-admin -->
 
       <div id="tab-future-schedule" style="display:none">
         <div class="cards-grid" id="schedule-stat-cards">
@@ -1828,7 +1967,8 @@ var Q1_CLOSED = false; // loaded from DB on startup — do not edit manually
 var KNOWN_CREDENTIALS={};
 
 var RECURRING_PROGRAMS=[{"id":"rec_scrabble","name":"Scrabble & Games Club","day":"Wednesday","location":"Youth Airdrie","season":"Sep-Apr","note":"Every Wednesday, September through end of April","active":true,"cancellations":[]},{"id":"rec_garden","name":"Summer Garden Program","day":"Wednesday","location":"Youth Airdrie","season":"May-Sep","note":"Every Wednesday, May through end of September","active":true,"cancellations":[]}];
-var PROGRAMS_DATA={"scrabble_2026":{"id":"prog_scrabble_2026","name":"Scrabble \u0026 Games Club","season":"Winter/Spring 2026","time":"4:30 PM \u2013 6:30 PM","location":"Youth Airdrie","type":"weekly","day":"Wednesday","youth_source":"scrabble_sessions","dates":["Jan 7, 2026","Jan 14, 2026","Jan 21, 2026","Jan 28, 2026","Feb 4, 2026","Feb 11, 2026","Feb 18, 2026","Feb 25, 2026","Mar 4, 2026","Mar 11, 2026","Mar 18, 2026","Mar 25, 2026","Apr 1, 2026","Apr 8, 2026","Apr 15, 2026","Apr 22, 2026","Apr 29, 2026"],"cancellations":[],"adult_volunteers":{"Jan 14, 2026":["Julie Robertson","BJ (Bolaji) Hammed","Kim Sundset"],"Jan 21, 2026":["Julie Robertson","BJ (Bolaji) Hammed","Kim Sundset"],"Jan 28, 2026":["Julie Robertson","Olga Korcheva","BJ (Bolaji) Hammed","Kim Sundset"],"Feb 4, 2026":["Julie Robertson","BJ (Bolaji) Hammed","Chloe Nayoung Kim"],"Feb 11, 2026":["Julie Robertson","BJ (Bolaji) Hammed","Kim Sundset"],"Feb 18, 2026":["Julie Robertson","Kim Sundset"],"Feb 25, 2026":["Julie Robertson","BJ (Bolaji) Hammed","Kim Sundset"],"Mar 4, 2026":["Julie Robertson","BJ (Bolaji) Hammed","Kim Sundset"],"Mar 11, 2026":["Julie Robertson","Kim Sundset"],"Mar 18, 2026":["Julie Robertson","BJ (Bolaji) Hammed","Kim Sundset"],"Jan 7, 2026":["BJ (Bolaji) Hammed","Kim Sundset"]},"youth_participants":{},"color":"var(--ya-gold)"},"garden_2026":{"id":"prog_garden_2026","name":"Summer Garden Program","season":"Summer 2026","time":"4:30 PM \u2013 6:30 PM","location":"Youth Airdrie","type":"weekly","day":"Wednesday","dates":["May 6, 2026","May 13, 2026","May 20, 2026","May 27, 2026","Jun 3, 2026","Jun 10, 2026","Jun 17, 2026","Jun 24, 2026","Jul 1, 2026","Jul 8, 2026","Jul 15, 2026","Jul 22, 2026","Jul 29, 2026","Aug 5, 2026","Aug 12, 2026","Aug 19, 2026","Aug 26, 2026","Sep 2, 2026","Sep 9, 2026","Sep 16, 2026","Sep 23, 2026","Sep 30, 2026"],"cancellations":[],"adult_volunteers":{},"youth_participants":{},"color":"var(--ya-green)"},"scrabble_2026_27":{"id":"prog_scrabble_2026_27","name":"Scrabble \u0026 Games Club","season":"Fall/Winter 2026-27","time":"4:30 PM \u2013 6:30 PM","location":"Youth Airdrie","type":"weekly","day":"Wednesday","youth_source":"scrabble_sessions","dates":["Oct 7, 2026","Oct 14, 2026","Oct 21, 2026","Oct 28, 2026","Nov 4, 2026","Nov 11, 2026","Nov 18, 2026","Nov 25, 2026","Dec 2, 2026","Dec 9, 2026","Dec 16, 2026","Dec 23, 2026","Dec 30, 2026","Jan 6, 2027","Jan 13, 2027","Jan 20, 2027","Jan 27, 2027","Feb 3, 2027","Feb 10, 2027","Feb 17, 2027","Feb 24, 2027","Mar 3, 2027","Mar 10, 2027","Mar 17, 2027","Mar 24, 2027","Mar 31, 2027","Apr 7, 2027","Apr 14, 2027","Apr 21, 2027","Apr 28, 2027"],"cancellations":[],"adult_volunteers":{},"youth_participants":{},"color":"var(--ya-gold)"}};
+var PROGRAMS_DATA={"scrabble_2026":{"id":"prog_scrabble_2026","name":"Scrabble \u0026 Games Club","season":"Winter/Spring 2026","time":"4:30 PM \u2013 6:30 PM","location":"Youth Airdrie","type":"weekly","day":"Wednesday","youth_source":"scrabble_sessions","dates":["Jan 7, 2026","Jan 14, 2026","Jan 21, 2026","Jan 28, 2026","Feb 4, 2026","Feb 11, 2026","Feb 18, 2026","Feb 25, 2026","Mar 4, 2026","Mar 11, 2026","Mar 18, 2026","Mar 25, 2026","Apr 1, 2026","Apr 8, 2026","Apr 15, 2026","Apr 22, 2026","Apr 29, 2026"],"cancellations":[],"adult_volunteers":{"Jan 14, 2026":["Julie Robertson","BJ (Bolaji) Hammed","Kim Sundset"],"Jan 21, 2026":["Julie Robertson","BJ (Bolaji) Hammed","Kim Sundset"],"Jan 28, 2026":["Julie Robertson","Olga Korcheva","BJ (Bolaji) Hammed","Kim Sundset"],"Feb 4, 2026":["Julie Robertson","BJ (Bolaji) Hammed","Chloe Nayoung Kim"],"Feb 11, 2026":["Julie Robertson","BJ (Bolaji) Hammed","Kim Sundset"],"Feb 18, 2026":["Julie Robertson","Kim Sundset"],"Feb 25, 2026":["Julie Robertson","BJ (Bolaji) Hammed","Kim Sundset"],"Mar 4, 2026":["Julie Robertson","BJ (Bolaji) Hammed","Kim Sundset"],"Mar 11, 2026":["Julie Robertson","Kim Sundset"],"Mar 18, 2026":["Julie Robertson","BJ (Bolaji) Hammed","Kim Sundset"],"Jan 7, 2026":["BJ (Bolaji) Hammed","Kim Sundset"]},"youth_participants":{},"color":"var(--ya-gold)"},"garden_2026":{"id":"prog_garden_2026","name":"Summer Garden Program","season":"Summer 2026","time":"4:30 PM \u2013 6:30 PM","location":"Youth Airdrie","type":"weekly","day":"Wednesday","dates":["May 6, 2026","May 13, 2026","May 20, 2026","May 27, 2026","Jun 3, 2026","Jun 10, 2026","Jun 17, 2026","Jun 24, 2026","Jul 1, 2026","Jul 8, 2026","Jul 15, 2026","Jul 22, 2026","Jul 29, 2026","Aug 5, 2026","Aug 12, 2026","Aug 19, 2026","Aug 26, 2026","Sep 2, 2026","Sep 9, 2026","Sep 16, 2026","Sep 23, 2026","Sep 30, 2026"],"cancellations":[],"adult_volunteers":{},"youth_participants":{},"color":"var(--ya-green)"},"scrabble_2026_27":{"id":"prog_scrabble_2026_27","name":"Scrabble \u0026 Games Club","season":"Fall/Winter 2026-27","time":"4:30 PM \u2013 6:30 PM","location":"Youth Airdrie","type":"weekly","day":"Wednesday","youth_source":"scrabble_sessions","dates":["Oct 7, 2026","Oct 14, 2026","Oct 21, 2026","Oct 28, 2026","Nov 4, 2026","Nov 11, 2026","Nov 18, 2026","Nov 25, 2026","Dec 2, 2026","Dec 9, 2026","Dec 16, 2026","Dec 23, 2026","Dec 30, 2026","Jan 6, 2027","Jan 13, 2027","Jan 20, 2027","Jan 27, 2027","Feb 3, 2027","Feb 10, 2027","Feb 17, 2027","Feb 24, 2027","Mar 3, 2027","Mar 10, 2027","Mar 17, 2027","Mar 24, 2027","Mar 31, 2027","Apr 7, 2027","Apr 14, 2027","Apr 21, 2027","Apr 28, 2027"],"cancellations":[],"adult_volunteers":{},"youth_participants":{},"color":"var(--ya-gold)"},
+"jysep_2026":{"id":"prog_jysep_2026","name":"JYSEP","season":"Fall/Spring 2026","time":"4:30 PM \u2013 6:30 PM","location":"Youth Airdrie","type":"weekly","day":"Wednesday","dates":["Sep 17, 2026","Sep 24, 2026","Oct 1, 2026","Oct 8, 2026","Oct 15, 2026","Oct 22, 2026","Oct 29, 2026","Nov 5, 2026","Nov 12, 2026","Nov 19, 2026","Nov 26, 2026","Dec 3, 2026","Dec 10, 2026","Dec 17, 2026","Jan 14, 2027","Jan 21, 2027","Jan 28, 2027","Feb 4, 2027","Feb 11, 2027","Feb 18, 2027","Feb 25, 2027","Mar 4, 2027","Mar 11, 2027","Mar 18, 2027","Mar 25, 2027","Apr 1, 2027","Apr 8, 2027","Apr 15, 2027","Apr 22, 2027","Apr 29, 2027"],"cancellations":[],"adult_volunteers":{},"youth_participants":{},"adult_participants":{},"color":"var(--lavender)","program_type":"jysep","animator_label":"Animator"}};
 var ADULT_COMPLIANCE={"Kim Sundset":{"vsc_issued":"2026-01-16","vsc_expiry":"2030-01-16","vsc_on_file":true,"waiver_date":"2024-09-01","waiver_on_file":true},"Olga Korcheva":{"vsc_issued":"","vsc_expiry":"","vsc_on_file":true,"waiver_date":"2024-09-01","waiver_on_file":true},"Connie Wu":{"vsc_issued":"","vsc_expiry":"","vsc_on_file":true,"waiver_date":"2024-09-01","waiver_on_file":true},"Chloe Nayoung Kim":{"vsc_issued":"","vsc_expiry":"","vsc_on_file":false,"waiver_date":"","waiver_on_file":false},"BJ (Bolaji) Hammed":{"vsc_issued":"","vsc_expiry":"","vsc_on_file":true,"waiver_date":"2024-09-01","waiver_on_file":true},"Roberta Ehigiator":{"vsc_issued":"","vsc_expiry":"","vsc_on_file":true,"waiver_date":"2024-09-01","waiver_on_file":true},"Julie Robertson":{"vsc_issued":"2024-01-30","vsc_expiry":"2029-01-30","vsc_on_file":true,"waiver_date":"2024-09-01","waiver_on_file":true},"Tina Petrow":{"vsc_issued":"","vsc_expiry":"","vsc_on_file":true,"waiver_date":"2024-09-01","waiver_on_file":true},"Mary-Beth Finney (Ursa)":{"vsc_issued":"","vsc_expiry":"","vsc_on_file":true,"waiver_date":"","waiver_on_file":false},"Simisola Obasan (Simi)":{"vsc_issued":"","vsc_expiry":"","vsc_on_file":true,"waiver_date":"2024-09-01","waiver_on_file":true},"Tamanna Kaur":{"vsc_issued":"","vsc_expiry":"","vsc_on_file":false,"waiver_date":"","waiver_on_file":false},"Bolaji Ajoke Hammed":{"vsc_issued":"","vsc_expiry":"","vsc_on_file":false,"waiver_date":"","waiver_on_file":false},"Jollean Chapiel":{"vsc_issued":"2020-12-10","vsc_expiry":"2025-12-10","vsc_on_file":true,"waiver_date":"","waiver_on_file":false},"Mimi Omoare":{"vsc_issued":"","vsc_expiry":"","vsc_on_file":false,"waiver_date":"","waiver_on_file":false},"Alex Strokova":{"vsc_issued":"","vsc_expiry":"","vsc_on_file":false,"waiver_date":"","waiver_on_file":false},"Sudi Hedley":{"vsc_issued":"","vsc_expiry":"","vsc_on_file":false,"waiver_date":"","waiver_on_file":false},"Shameen":{"vsc_issued":"","vsc_expiry":"","vsc_on_file":false,"waiver_date":"","waiver_on_file":false},"Carol Brosoto":{"vsc_issued":"","vsc_expiry":"","vsc_on_file":false,"waiver_date":"","waiver_on_file":false},"Kathy March":{"vsc_issued":"2022-06-06","vsc_expiry":"2027-06-06","vsc_on_file":true,"waiver_date":"","waiver_on_file":false}};
 // Workshop IDs that have been saved via the Edit Staff modal (Supabase is source of truth)
 // Once a workshop ID is in this Set, hardcoded ws.facilitators/ws.volunteers are ignored.
@@ -2973,7 +3113,7 @@ function showPage(id,navItem){
 }
 
 function switchTab(tabId,btn){
-  ['tab-workshops','tab-scrabble-admin','tab-garden-admin','tab-future-schedule','tab-events-log','tab-compliance','tab-impact','tab-credentials-admin','tab-users-admin','tab-home-content-editor','tab-stats-diagnostic'].forEach(function(t){
+  ['tab-workshops','tab-scrabble-admin','tab-garden-admin','tab-jysep-admin','tab-future-schedule','tab-events-log','tab-compliance','tab-impact','tab-credentials-admin','tab-users-admin','tab-home-content-editor','tab-stats-diagnostic'].forEach(function(t){
     var el=document.getElementById(t);if(el)el.style.display='none';
   });
   document.querySelectorAll('.tab-btn').forEach(function(b){b.classList.remove('active');});
@@ -2981,6 +3121,7 @@ function switchTab(tabId,btn){
   btn.classList.add('active');
   if(tabId==='workshops') renderAdmin();
   if(tabId==='garden-admin') renderGardenAdmin();
+  if(tabId==='jysep-admin') renderJysepAdmin();
   if(tabId==='future-schedule') renderScheduleTab();
   if(tabId==='credentials-admin') renderCredentialManager();
   if(tabId==='users-admin') renderUsersTab();
@@ -4660,6 +4801,26 @@ function renderScheduleTab(){
     });
   }
 
+  // JYSEP 2026 sessions
+  var jysepSched = PROGRAMS_DATA && PROGRAMS_DATA['jysep_2026'];
+  if (jysepSched) {
+    (jysepSched.dates || []).forEach(function(dateStr) {
+      var d = parseDate(dateStr);
+      var isCan = (jysepSched.cancellations||[]).indexOf(dateStr) >= 0;
+      var meta  = (jysepSched.session_meta||{})[dateStr] || {};
+      var detail = (meta.location || jysepSched.location || 'Youth Airdrie') + ' · ' + (meta.start_time||'4:30') + '–' + (meta.end_time||'6:30 PM');
+      if (meta.theme) detail += ' · ' + meta.theme;
+      items.push({
+        date: d, dateStr: dateStr,
+        type: 'JYSEP', sem: 'Fall/Spring 2026',
+        title: 'JYSEP',
+        detail: detail,
+        status: isCan ? 'cancelled' : (d && d < now ? 'done' : 'upcoming'),
+        typeColor: 'var(--lavender)', typeIcon: '✨'
+      });
+    });
+  }
+
   // Sort chronologically — nulls (no date) go to end
   items.sort(function(a,b){
     if(!a.date && !b.date) return 0;
@@ -5016,10 +5177,52 @@ function renderImpactTab(){
   } else {
     html += '<div style="font-size:.78rem;color:var(--text-muted);padding:4px 0">Garden sessions and enrollments will appear here once the program begins.</div>';
   }
-  // JYSEP
-  html += '<div style="font-size:.72rem;font-weight:700;color:var(--lavender);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;margin-top:12px">JYSEP / Animator Training</div>';
-  var jysepCount = Object.values(FAC_PROFILES).filter(function(p){ return p.role&&p.role.toLowerCase().indexOf('jysep')>=0||p.role&&p.role.toLowerCase().indexOf('animator')>=0; }).length;
-  html += statRow('Animators active', jysepCount||'—', 'pill-blue');
+  // JYSEP — data-driven via shared layer
+  html += '<div style="font-size:.72rem;font-weight:700;color:var(--lavender);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;margin-top:12px">JYSEP ✨</div>';
+  var jysepP = PROGRAMS_DATA['jysep_2026'];
+  var jysepSessionsHeld=0, jysepYouthAtt=0, jysepAdultHrs=0, jysepCertElig=0;
+  var jysepAdultSet=new Set(), jysepEnrolled=[];
+  if(jysepP){
+    var _jysepPS = calcProgramStats()['jysep_2026'] || {};
+    var jPastHeld = getActiveProgramSessions('jysep_2026');
+    jysepSessionsHeld = jPastHeld.length;
+    jysepEnrolled = Object.keys(jysepP.youth_participants||{});
+    var jCertMin = (jysepP.cert_rules||{}).cert_min_sessions||8;
+    Object.entries(jysepP.attendance||{}).forEach(function(e){
+      (e[1]||[]).forEach(function(r){
+        if(r.type==='youth'&&r.attended&&r.name!=='_enrolled'){jysepYouthAtt++;};
+      });
+    });
+    jysepCertElig = jysepEnrolled.filter(function(name){
+      var cnt=jPastHeld.filter(function(d){var r=jysepAttRow(jysepP,d,name);return r&&r.attended;}).length;
+      return cnt>=jCertMin;
+    }).length;
+    jysepAdultHrs = _jysepPS.adultHrs || 0;
+    var _jCan=jysepP.cancellations||[], _jNow=new Date(); _jNow.setHours(0,0,0,0);
+    Object.keys(jysepP.attendance||{}).forEach(function(d){
+      if(_jCan.indexOf(d)>=0) return;
+      var dt=new Date(d); if(isNaN(dt)||dt>_jNow) return;
+      (jysepP.attendance[d]||[]).forEach(function(r){ if(r.type==='adult'&&r.attended&&r.name!=='_adult_enrolled') jysepAdultSet.add(r.name); });
+    });
+    Object.keys(jysepP.adult_volunteers||{}).forEach(function(d){
+      if(_jCan.indexOf(d)>=0) return;
+      var dt=new Date(d); if(isNaN(dt)||dt>_jNow) return;
+      (jysepP.adult_volunteers[d]||[]).forEach(function(n){ jysepAdultSet.add(n); });
+    });
+  }
+  if(jysepSessionsHeld>0||jysepEnrolled.length>0){
+    html += statRow('Sessions held',               jysepSessionsHeld,                    'pill-blue');
+    html += statRow('Enrolled youth',              jysepEnrolled.length,                 'pill-teal');
+    html += statRow('Youth attendances',           jysepYouthAtt,                        'pill-blue');
+    html += statRow('Badge eligible ('+((jysepP&&jysepP.cert_rules&&jysepP.cert_rules.cert_min_sessions)||8)+'+ sessions)', jysepCertElig, 'pill-gold');
+    html += statRow('Animators active',            jysepAdultSet.size,                   'pill-orange');
+    html += statRow('Animator hours',              Math.round(jysepAdultHrs),            'pill-gold');
+    html += '<div style="font-size:.7rem;color:var(--text-muted);margin-top:4px;font-style:italic">Youth attendance = participation only, not volunteer hours.</div>';
+  } else {
+    var jysepCount = Object.values(FAC_PROFILES).filter(function(p){ return p.role&&(p.role.toLowerCase().indexOf('jysep')>=0||p.role.toLowerCase().indexOf('animator')>=0); }).length;
+    html += statRow('Animators active', jysepCount||'—', 'pill-blue');
+    html += '<div style="font-size:.78rem;color:var(--text-muted);padding:4px 0">JYSEP sessions and enrollments will appear here once the program begins.</div>';
+  }
   html += '</div>';
   html += '</div>';
 
@@ -5570,6 +5773,7 @@ async function saveProgramYouthEnrollment() {
     setTimeout(function() {
       document.getElementById('program-enroll-modal').style.display = 'none';
       if (_pemProgramId === 'garden_2026') renderGardenAdmin();
+      if (_pemProgramId === 'jysep_2026') renderJysepAdmin();
     }, 1200);
   } else {
     fb.style.color = 'var(--badge-amber)';
@@ -6100,6 +6304,488 @@ function renderGardenAdmin() {
   renderGardenYouthGrid();
   renderGardenAdultHrsGrid();
   renderGardenSessionsList();
+}
+
+
+// ══════════════════════════════════════════════════════════════════════════════
+// JYSEP PROGRAM — uses all shared program helpers, mirrors Garden pattern
+// Program ID: jysep_2026
+// ══════════════════════════════════════════════════════════════════════════════
+
+var _jysepEditDate = '';
+var _jysepHrsEdit  = false;
+var _jysepCertEditOpen = false;
+
+function jysepProg() { return PROGRAMS_DATA['jysep_2026'] || null; }
+
+function jysepCert() {
+  var p = jysepProg();
+  var defaults = { cert_name: 'JYSEP Participant', cert_min_sessions: 8, cert_notes: '' };
+  if (!p || !p.cert_rules) return defaults;
+  return p.cert_rules;
+}
+
+// Past non-cancelled sessions for jysep_2026
+function jysepPastDates() {
+  return getActiveProgramSessions('jysep_2026');
+}
+
+// Shared attendance-row lookup (same as gardenAttRow but for any prog object)
+function jysepAttRow(prog, dateStr, name) {
+  return ((prog.attendance || {})[dateStr] || []).find(function(r){ return r.name === name; });
+}
+
+// ── Cert edit ────────────────────────────────────────────────────────────────
+function toggleJysepCertEdit() {
+  _jysepCertEditOpen = !_jysepCertEditOpen;
+  var panel = document.getElementById('jysep-cert-edit-panel');
+  if (!panel) return;
+  panel.style.display = _jysepCertEditOpen ? 'block' : 'none';
+  if (_jysepCertEditOpen) {
+    var c = jysepCert();
+    var ni = document.getElementById('jysep-cert-name-input');
+    var ti = document.getElementById('jysep-cert-threshold-input');
+    var no = document.getElementById('jysep-cert-notes-input');
+    if (ni) ni.value = c.cert_name;
+    if (ti) ti.value = c.cert_min_sessions;
+    if (no) no.value = c.cert_notes || '';
+  }
+}
+
+async function saveJysepCertConfig() {
+  var p = jysepProg(); if (!p) return;
+  var name = (document.getElementById('jysep-cert-name-input').value || '').trim() || 'JYSEP Participant';
+  var min  = parseInt(document.getElementById('jysep-cert-threshold-input').value) || 8;
+  var notes= (document.getElementById('jysep-cert-notes-input').value || '').trim();
+  p.cert_rules = { cert_name: name, cert_min_sessions: min, cert_notes: notes };
+  var nd = document.getElementById('jysep-cert-name-display');
+  var td = document.getElementById('jysep-cert-threshold-display');
+  if (nd) nd.textContent = name;
+  if (td) td.textContent = min;
+  var fb = document.getElementById('jysep-cert-feedback');
+  var r = await fetch(SUPA_URL + '/rest/v1/program_settings?on_conflict=program_id', {
+    method: 'POST',
+    headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY, 'Content-Type': 'application/json', 'Prefer': 'resolution=merge-duplicates,return=minimal' },
+    body: JSON.stringify({ program_id: 'jysep_2026', program_type: 'jysep', cert_name: name, cert_min_sessions: min, cert_notes: notes })
+  });
+  if (fb) { fb.style.color = r.ok ? 'var(--ya-teal)' : 'var(--badge-red)'; fb.textContent = r.ok ? '✔ Saved' : '⚠ Save failed ('+r.status+')'; }
+  setTimeout(function(){ if (document.getElementById('jysep-cert-edit-panel')) { document.getElementById('jysep-cert-edit-panel').style.display = 'none'; _jysepCertEditOpen = false; } renderJysepYouthGrid(); }, 700);
+}
+
+// ── Youth attendance grid ─────────────────────────────────────────────────────
+function renderJysepYouthGrid() {
+  var thead = document.getElementById('jysep-youth-att-thead');
+  var tbody = document.getElementById('jysep-youth-att-tbody');
+  if (!thead || !tbody) return;
+  var p = jysepProg();
+  if (!p) { thead.innerHTML = ''; tbody.innerHTML = ''; return; }
+
+  var cert = jysepCert();
+  var pastDates = jysepPastDates();
+  var enrolled  = Object.keys(p.youth_participants || {}).sort();
+
+  if (enrolled.length === 0) {
+    thead.innerHTML = '';
+    tbody.innerHTML = '<tr><td colspan="4" style="color:var(--text-muted);font-size:.82rem;padding:12px">No youth enrolled yet. Use "+ Enroll Youth" above.</td></tr>';
+    return;
+  }
+  if (pastDates.length === 0) {
+    thead.innerHTML = '';
+    tbody.innerHTML = '<tr><td colspan="4" style="color:var(--text-muted);font-size:.82rem;padding:12px">No past sessions yet.</td></tr>';
+    return;
+  }
+
+  var shortDates = pastDates.map(function(d){ return d.replace(', 2026','').replace(', 2027',''); });
+  thead.innerHTML =
+    '<th class="grd-sticky grd-sticky-1" style="font-size:.72rem">Youth</th>' +
+    '<th class="grd-sticky grd-sticky-2" style="font-size:.72rem">Attended</th>' +
+    '<th class="grd-sticky grd-sticky-3" style="font-size:.72rem">Progress</th>' +
+    shortDates.map(function(sd, i){
+      return '<th style="font-size:.6rem;min-width:38px;white-space:nowrap;text-align:center" title="'+pastDates[i]+'">'+sd+'</th>';
+    }).join('');
+
+  var rows = enrolled.map(function(name) {
+    var attCount = pastDates.filter(function(d){ var r = jysepAttRow(p, d, name); return r && r.attended; }).length;
+    var pct = pastDates.length > 0 ? Math.round(attCount / pastDates.length * 100) : 0;
+    var minS = cert.cert_min_sessions;
+    var statusPill = attCount >= minS
+      ? '<span class="pill pill-green" style="font-size:.6rem">✨ '+cert.cert_name+' ✔</span>'
+      : (attCount >= Math.ceil(minS * 0.5)
+          ? '<span class="pill pill-amber" style="font-size:.6rem">'+attCount+'/'+minS+'</span>'
+          : '<span class="pill pill-grey" style="font-size:.6rem">'+attCount+'/'+minS+'</span>');
+    var age = YOUTH_AGES[name] ? 'Age '+YOUTH_AGES[name] : '';
+    var escapedName = name.replace(/'/g, "\'");
+    var cells = pastDates.map(function(d) {
+      var rec = jysepAttRow(p, d, name);
+      var att = rec && rec.attended;
+      var safeDate = d.replace(/'/g,"\\'");
+      return '<td style="text-align:center;padding:4px 2px">' +
+        '<button onclick="toggleJysepYouthCell(\''+escapedName+'\',\''+safeDate+'\',this)" ' +
+        'style="width:28px;height:28px;border-radius:6px;border:1px solid '+(att?'var(--ya-teal)':'rgba(255,255,255,.15)')+
+        ';background:'+(att?'rgba(0,181,160,.2)':'transparent')+
+        ';color:'+(att?'var(--ya-teal)':'var(--text-muted)')+
+        ';font-size:.75rem;cursor:pointer;transition:all .15s">'+(att?'✔':'·')+'</button></td>';
+    }).join('');
+    return '<tr>' +
+      '<td class="grd-sticky grd-sticky-1" style="font-size:.82rem;font-weight:600">' + name +
+        '<div style="font-size:.65rem;color:var(--text-muted);margin-top:1px">'+age+
+        '<button onclick="removeJysepYouth(\''+escapedName+'\')" style="border:none;background:none;color:var(--badge-red);cursor:pointer;font-size:.65rem;padding:0;margin-left:4px;opacity:.6" title="Remove from JYSEP">✕</button></div></td>' +
+      '<td class="grd-sticky grd-sticky-2" style="text-align:center;font-weight:700;color:var(--ya-teal)">'+attCount+'<div style="font-size:.6rem;color:var(--text-muted)">'+pct+'%</div></td>' +
+      '<td class="grd-sticky grd-sticky-3">'+statusPill+'</td>' +
+      cells +
+    '</tr>';
+  }).join('');
+  tbody.innerHTML = rows;
+}
+
+async function toggleJysepYouthCell(name, dateStr, btn) {
+  var p = jysepProg(); if (!p) return;
+  p.attendance = p.attendance || {};
+  p.attendance[dateStr] = p.attendance[dateStr] || [];
+  var rec = jysepAttRow(p, dateStr, name);
+  var newAtt = rec ? !rec.attended : true;
+  if (rec) { rec.attended = newAtt; }
+  else { p.attendance[dateStr].push({ name: name, type: 'youth', attended: true, hours: null }); }
+  btn.textContent = newAtt ? '✔' : '·';
+  btn.style.background = newAtt ? 'rgba(0,181,160,.2)' : 'transparent';
+  btn.style.borderColor = newAtt ? 'var(--ya-teal)' : 'rgba(255,255,255,.15)';
+  btn.style.color = newAtt ? 'var(--ya-teal)' : 'var(--text-muted)';
+  // Update progress cell
+  var p2 = jysepProg();
+  var activeDates = jysepPastDates();
+  var newCount = activeDates.filter(function(d){ var r2 = jysepAttRow(p2, d, name); return r2 && r2.attended; }).length;
+  var minS = jysepCert().cert_min_sessions;
+  var cert = jysepCert();
+  var statusPill = newCount >= minS
+    ? '<span class="pill pill-green" style="font-size:.6rem">✨ '+cert.cert_name+' ✔</span>'
+    : (newCount >= Math.ceil(minS * 0.5)
+        ? '<span class="pill pill-amber" style="font-size:.6rem">'+newCount+'/'+minS+'</span>'
+        : '<span class="pill pill-grey" style="font-size:.6rem">'+newCount+'/'+minS+'</span>');
+  var row = btn.closest('tr');
+  if (row) {
+    var tds = row.querySelectorAll('td');
+    if (tds[1]) tds[1].innerHTML = newCount + '<div style="font-size:.6rem;color:var(--text-muted)">' + (activeDates.length > 0 ? Math.round(newCount/activeDates.length*100) : 0) + '%</div>';
+    if (tds[2]) tds[2].innerHTML = statusPill;
+  }
+  await upsertProgramAttendance({
+    program_id: 'jysep_2026', program_type: 'jysep',
+    session_date: dateStr, participant_name: name,
+    participant_type: 'youth', attended: newAtt, volunteer_hours: null
+  });
+}
+
+function removeJysepYouth(name) {
+  if (!confirm('Remove ' + name + ' from JYSEP?\n\nTheir attendance records will be preserved.')) return;
+  var p = jysepProg(); if (!p) return;
+  delete p.youth_participants[name];
+  dbDel('program_attendance', 'program_id=eq.jysep_2026&session_date=eq._enrolled&participant_name=eq.' + encodeURIComponent(name));
+  renderJysepAdmin();
+}
+
+// ── Animator hours grid ───────────────────────────────────────────────────────
+function toggleJysepHrsEdit() {
+  var wasEditing = _jysepHrsEdit;
+  _jysepHrsEdit = !_jysepHrsEdit;
+  var btn = document.getElementById('jysep-hrs-edit-btn');
+  if (btn) {
+    btn.textContent = _jysepHrsEdit ? '✏️ Done' : '✏️ Edit Hours';
+    btn.style.borderColor = _jysepHrsEdit ? 'var(--ya-orange)' : 'var(--ya-blue)';
+    btn.style.color       = _jysepHrsEdit ? 'var(--ya-orange)' : 'var(--ya-blue)';
+    btn.style.background  = _jysepHrsEdit ? 'rgba(232,98,10,.08)' : '';
+  }
+  if (wasEditing) {
+    saveJysepAdultHrsFromInputs().then(function() { renderJysepAdultHrsGrid(); });
+  } else {
+    renderJysepAdultHrsGrid();
+  }
+}
+
+async function saveJysepAdultHrsFromInputs() {
+  var p = jysepProg(); if (!p) return;
+  var pastDates = jysepPastDates();
+  var adultSet = new Set(Object.keys(p.adult_participants || {}));
+  Object.keys(p.attendance || {}).forEach(function(d) {
+    (p.attendance[d] || []).forEach(function(r) {
+      if (r.type === 'adult' && r.attended && r.name !== '_adult_enrolled') adultSet.add(r.name);
+    });
+  });
+  Object.keys(p.adult_volunteers || {}).forEach(function(d) {
+    (p.adult_volunteers[d] || []).forEach(function(n) { adultSet.add(n); });
+  });
+  var adultNames = Array.from(adultSet).sort();
+
+  // Snapshot all input values while DOM inputs still exist
+  var snapshot = {};
+  pastDates.forEach(function(d) {
+    adultNames.forEach(function(name) {
+      var cellId = 'jhrs_' + name.replace(/\s+/g, '_').replace(/[^\w]/g, '_') + '_' + d.replace(/\W/g, '_');
+      var inp = document.getElementById(cellId);
+      if (!inp) return;
+      var val = parseFloat(inp.value);
+      if (!isNaN(val) && val > 0) snapshot[d + '||' + name] = val;
+    });
+  });
+
+  var btn = document.getElementById('jysep-hrs-edit-btn');
+  if (btn) { btn.textContent = '💾 Saving…'; btn.disabled = true; }
+
+  var promises = [];
+  Object.keys(snapshot).forEach(function(key) {
+    var parts = key.split('||'); var d = parts[0], name = parts[1]; var val = snapshot[key];
+    p.attendance = p.attendance || {};
+    p.attendance[d] = p.attendance[d] || [];
+    var rec = jysepAttRow(p, d, name);
+    if (rec) { rec.hours = val; rec.attended = true; }
+    else { p.attendance[d].push({ name: name, type: 'adult', attended: true, hours: val }); }
+    p.adult_volunteers = p.adult_volunteers || {};
+    p.adult_volunteers[d] = p.adult_volunteers[d] || [];
+    if (p.adult_volunteers[d].indexOf(name) < 0) p.adult_volunteers[d].push(name);
+    promises.push(upsertProgramAttendance({
+      program_id: 'jysep_2026', program_type: 'jysep',
+      session_date: d, participant_name: name,
+      participant_type: 'adult', attended: true, volunteer_hours: val
+    }));
+  });
+
+  var results = await Promise.all(promises);
+  var failCount = results.filter(function(ok){ return !ok; }).length;
+  if (btn) { btn.textContent = '✏️ Edit Hours'; btn.disabled = false; btn.style.borderColor = 'var(--ya-blue)'; btn.style.color = 'var(--ya-blue)'; btn.style.background = ''; }
+  if (failCount > 0) console.warn('[saveJysepAdultHrsFromInputs] ' + failCount + ' row(s) failed. Check RLS on program_attendance.');
+  else if (promises.length > 0) console.log('[saveJysepAdultHrsFromInputs] Saved ' + promises.length + ' animator hour row(s).');
+}
+
+function renderJysepAdultHrsGrid() {
+  var thead = document.getElementById('jysep-adult-hrs-thead');
+  var tbody = document.getElementById('jysep-adult-hrs-tbody');
+  if (!thead || !tbody) return;
+  var p = jysepProg();
+  if (!p) { thead.innerHTML = ''; tbody.innerHTML = ''; return; }
+
+  var pastDates = jysepPastDates();
+  var adultSet = new Set(Object.keys(p.adult_participants || {}));
+  Object.keys(p.attendance || {}).forEach(function(d) {
+    (p.attendance[d] || []).forEach(function(r) {
+      if (r.type === 'adult' && r.attended && r.name !== '_adult_enrolled') adultSet.add(r.name);
+    });
+  });
+  Object.keys(p.adult_volunteers || {}).forEach(function(d) {
+    (p.adult_volunteers[d] || []).forEach(function(n) { adultSet.add(n); });
+  });
+  var adultNames = Array.from(adultSet).sort();
+
+  if (pastDates.length === 0) {
+    thead.innerHTML = ''; tbody.innerHTML = '<tr><td style="color:var(--text-muted);font-size:.82rem;padding:12px">No past sessions yet.</td></tr>'; return;
+  }
+  if (adultNames.length === 0) {
+    thead.innerHTML = ''; tbody.innerHTML = '<tr><td style="color:var(--text-muted);font-size:.82rem;padding:12px">No animators enrolled yet. Use "+ Enroll Animator" above.</td></tr>'; return;
+  }
+
+  thead.innerHTML = '<th class="grd-date-sticky">Date</th>' +
+    adultNames.map(function(n){ return '<th style="font-size:.65rem;min-width:60px">' + n.split(' ')[0] + '</th>'; }).join('') +
+    '<th style="min-width:60px">Total</th>';
+
+  var adultTotals = {}; adultNames.forEach(function(n){ adultTotals[n] = 0; });
+  var grandTotal = 0;
+
+  var rows = pastDates.map(function(d) {
+    var meta = (p.session_meta || {})[d] || {};
+    var defaultHrs = parseSessionHours(meta.start_time || '4:30 PM', meta.end_time || '6:30 PM');
+    var sessionTotal = 0;
+    var cells = adultNames.map(function(name) {
+      var rec = jysepAttRow(p, d, name);
+      var hrs = rec && rec.attended ? (rec.hours || defaultHrs) : null;
+      if (hrs) { sessionTotal += hrs; adultTotals[name] += hrs; grandTotal += hrs; }
+      var cellId = 'jhrs_' + name.replace(/\s+/g, '_').replace(/[^\w]/g, '_') + '_' + d.replace(/\W/g, '_');
+      if (_jysepHrsEdit) {
+        return '<td style="padding:3px"><input id="' + cellId + '" type="number" min="0" max="12" step="0.5" value="' + (hrs || '') + '" placeholder="—" ' +
+          'style="width:52px;background:rgba(0,181,160,.1);border:1px solid rgba(0,181,160,.4);border-radius:5px;padding:3px 5px;color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.78rem;text-align:center"></td>';
+      }
+      return '<td style="text-align:center;color:' + (hrs ? 'var(--ya-teal)' : 'var(--text-muted)') + ';font-weight:' + (hrs ? '700' : '400') + '">' + (hrs ? hrs.toFixed(1) : '—') + '</td>';
+    }).join('');
+    var shortDate = d.replace(', 2026', '').replace(', 2027', '');
+    return '<tr><td class="grd-date-sticky" style="font-weight:600;white-space:nowrap;font-size:.82rem">' + shortDate + '</td>' + cells +
+      '<td style="text-align:center;font-weight:700;color:var(--ya-teal)">' + (sessionTotal ? sessionTotal.toFixed(1) : '—') + '</td></tr>';
+  }).join('');
+
+  var totalsRow = '<tr style="border-top:2px solid var(--card-border)"><td class="grd-date-sticky" style="font-weight:800;font-size:.82rem">Total</td>' +
+    adultNames.map(function(n){ return '<td style="text-align:center;font-weight:800;color:var(--ya-teal)">' + (adultTotals[n] ? adultTotals[n].toFixed(1) : '—') + '</td>'; }).join('') +
+    '<td style="text-align:center;font-weight:800;color:var(--ya-teal)">' + (grandTotal ? grandTotal.toFixed(1) : '—') + '</td></tr>';
+
+  tbody.innerHTML = rows + totalsRow;
+}
+
+// ── Sessions list ─────────────────────────────────────────────────────────────
+function renderJysepSessionsList() {
+  var el = document.getElementById('jysep-sessions-list'); if (!el) return;
+  var p  = jysepProg(); if (!p) { el.innerHTML = ''; return; }
+  var now = new Date(); now.setHours(0, 0, 0, 0);
+  var html = '<div class="section-box">';
+  p.dates.forEach(function(d) {
+    var isCan = (p.cancellations || []).indexOf(d) >= 0;
+    var meta  = (p.session_meta || {})[d] || {};
+    var isPast = new Date(d) < now;
+    var sd = d.replace(/'/g, "\'");
+    html += '<div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:6px;padding:7px 0;border-bottom:1px solid rgba(255,255,255,.05)">';
+    html += '<div>';
+    html += '<div style="font-size:.84rem;font-weight:700;color:' + (isCan ? 'var(--badge-red)' : isPast ? 'var(--text-muted)' : 'var(--text-main)') + '">' + d + (isCan ? ' — <em>CANCELLED</em>' : '') + '</div>';
+    html += '<div style="font-size:.73rem;color:var(--text-muted)">' + (meta.start_time || '4:30 PM') + ' – ' + (meta.end_time || '6:30 PM');
+    if (meta.location) html += ' · ' + meta.location;
+    if (meta.theme) html += ' · <em>' + meta.theme + '</em>';
+    if (isCan && meta.cancellation_reason) html += ' · <span style="color:var(--badge-red)">' + meta.cancellation_reason + '</span>';
+    html += '</div></div>';
+    html += '<div style="display:flex;gap:6px;flex-wrap:wrap">';
+    html += '<button onclick="openJysepSessionEdit(\'' + sd + '\')" class="ws-btn" style="font-size:.7rem">✏️ Edit</button>';
+    if (isCan) {
+      html += '<button onclick="resumeJysepSession(\'' + sd + '\')" class="ws-btn" style="border-color:var(--lavender);color:var(--lavender);font-size:.7rem">↩ Resume</button>';
+    } else {
+      html += '<button onclick="cancelJysepSession(\'' + sd + '\')" class="ws-btn" style="border-color:var(--badge-red);color:var(--badge-red);font-size:.7rem">✘ Cancel</button>';
+    }
+    html += '</div></div>';
+  });
+  html += '</div>';
+  el.innerHTML = html;
+}
+
+// ── Session edit modal ────────────────────────────────────────────────────────
+function openJysepSessionEdit(dateStr) {
+  var p    = jysepProg();
+  var meta = p && p.session_meta && p.session_meta[dateStr] ? p.session_meta[dateStr] : {};
+  _jysepEditDate = dateStr;
+  document.getElementById('jsm-date').value          = dateStr;
+  document.getElementById('jsm-theme').value         = meta.theme        || '';
+  document.getElementById('jsm-desc').value          = meta.description  || '';
+  document.getElementById('jsm-location').value      = meta.location     || '';
+  document.getElementById('jsm-start').value         = meta.start_time   || '4:30 PM';
+  document.getElementById('jsm-end').value           = meta.end_time     || '6:30 PM';
+  document.getElementById('jsm-cancel-reason').value = meta.cancellation_reason || '';
+  document.getElementById('jsm-feedback').textContent = '';
+  document.getElementById('jysep-session-modal').style.display = 'flex';
+}
+
+async function saveJysepSessionMeta() {
+  var btn = document.getElementById('jsm-save-btn');
+  var fb  = document.getElementById('jsm-feedback');
+  var origDate = _jysepEditDate;
+  var newDate  = (document.getElementById('jsm-date').value || '').trim();
+  fb.textContent = '';
+  if (!newDate) { fb.style.color = 'var(--badge-red)'; fb.textContent = '⚠ Date is required.'; return; }
+  btn.textContent = 'Saving…'; btn.style.opacity = '.6'; btn.disabled = true;
+
+  var row = {
+    program_id: 'jysep_2026', program_type: 'jysep', session_date: origDate,
+    activity_theme:      document.getElementById('jsm-theme').value.trim(),
+    session_description: document.getElementById('jsm-desc').value.trim(),
+    location:            document.getElementById('jsm-location').value.trim(),
+    start_time:          document.getElementById('jsm-start').value.trim(),
+    end_time:            document.getElementById('jsm-end').value.trim(),
+    cancellation_reason: document.getElementById('jsm-cancel-reason').value.trim()
+  };
+
+  var r = await fetch(SUPA_URL + '/rest/v1/program_session_meta?on_conflict=program_id,session_date', {
+    method: 'POST',
+    headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY, 'Content-Type': 'application/json', 'Prefer': 'resolution=merge-duplicates,return=minimal' },
+    body: JSON.stringify(row)
+  });
+  if (!r.ok) {
+    var err = await r.text();
+    fb.style.color = 'var(--badge-red)'; fb.textContent = '⚠ Save failed: ' + (JSON.parse(err || '{}').message || r.status);
+    btn.textContent = '💾 Save'; btn.style.opacity = ''; btn.disabled = false; return;
+  }
+
+  var p = jysepProg();
+  if (p) {
+    if (newDate !== origDate) {
+      var idx = p.dates.indexOf(origDate); if (idx >= 0) p.dates[idx] = newDate;
+      if (p.session_meta[origDate]) { p.session_meta[newDate] = p.session_meta[origDate]; delete p.session_meta[origDate]; }
+      if (p.attendance[origDate])   { p.attendance[newDate]   = p.attendance[origDate];   delete p.attendance[origDate]; }
+      var ci = p.cancellations.indexOf(origDate); if (ci >= 0) p.cancellations[ci] = newDate;
+    }
+    p.session_meta[newDate] = { theme: row.activity_theme, description: row.session_description, location: row.location, start_time: row.start_time, end_time: row.end_time, cancellation_reason: row.cancellation_reason };
+    if (row.cancellation_reason) { if (p.cancellations.indexOf(newDate) < 0) p.cancellations.push(newDate); }
+    else { p.cancellations = p.cancellations.filter(function(d){ return d !== newDate; }); }
+  }
+
+  fb.style.color = 'var(--ya-teal)'; fb.textContent = '✔ Saved';
+  btn.textContent = '💾 Save'; btn.style.opacity = ''; btn.disabled = false;
+  setTimeout(function(){ document.getElementById('jysep-session-modal').style.display = 'none'; renderJysepAdmin(); renderScheduleTab(); }, 600);
+}
+
+function cancelJysepSession(dateStr) {
+  var reason = prompt('Cancellation reason (optional):') || '';
+  var p = jysepProg(); if (!p) return;
+  if (p.cancellations.indexOf(dateStr) < 0) p.cancellations.push(dateStr);
+  p.session_meta = p.session_meta || {};
+  p.session_meta[dateStr] = p.session_meta[dateStr] || {};
+  p.session_meta[dateStr].cancellation_reason = reason;
+  var meta = p.session_meta[dateStr];
+  fetch(SUPA_URL + '/rest/v1/program_session_meta?on_conflict=program_id,session_date', {
+    method: 'POST', headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY, 'Content-Type': 'application/json', 'Prefer': 'resolution=merge-duplicates,return=minimal' },
+    body: JSON.stringify({ program_id: 'jysep_2026', program_type: 'jysep', session_date: dateStr,
+      activity_theme: meta.theme || '', session_description: meta.description || '', location: meta.location || '',
+      start_time: meta.start_time || '', end_time: meta.end_time || '', cancellation_reason: reason })
+  });
+  saveProgramCancellation('jysep_2026', dateStr, reason);
+  renderJysepAdmin();
+}
+
+function resumeJysepSession(dateStr) {
+  var p = jysepProg(); if (!p) return;
+  p.cancellations = p.cancellations.filter(function(d){ return d !== dateStr; });
+  if (p.session_meta && p.session_meta[dateStr]) p.session_meta[dateStr].cancellation_reason = '';
+  dbPatch('program_session_meta', { cancellation_reason: '' }, 'program_id=eq.jysep_2026&session_date=eq.' + encodeURIComponent(dateStr));
+  dbDel('program_cancellations', 'program_id=eq.jysep_2026&session_date=eq.' + encodeURIComponent(dateStr));
+  renderJysepAdmin();
+}
+
+// ── Main JYSEP admin render ───────────────────────────────────────────────────
+function renderJysepAdmin() {
+  var statsEl = document.getElementById('jysep-stat-cards'); if (!statsEl) return;
+  var p = jysepProg();
+  if (!p) { statsEl.innerHTML = '<div style="color:var(--text-muted)">JYSEP data not loaded.</div>'; return; }
+
+  var cert       = jysepCert();
+  var pastDates  = jysepPastDates();
+  var enrolled   = Object.keys(p.youth_participants || {});
+
+  var totalYouthAtt = 0;
+  enrolled.forEach(function(name) {
+    pastDates.forEach(function(d){ var r = jysepAttRow(p, d, name); if (r && r.attended) totalYouthAtt++; });
+  });
+  var certEligible = enrolled.filter(function(name){
+    var cnt = pastDates.filter(function(d){ var r = jysepAttRow(p, d, name); return r && r.attended; }).length;
+    return cnt >= cert.cert_min_sessions;
+  }).length;
+
+  var _jysepPS = calcProgramStats()['jysep_2026'] || {};
+  var totalAdultHrs = _jysepPS.adultHrs || 0;
+  var adultSet = new Set();
+  var _cancelled = p.cancellations || [], _now = new Date(); _now.setHours(0,0,0,0);
+  Object.keys(p.attendance || {}).forEach(function(d){
+    if (_cancelled.indexOf(d) >= 0) return;
+    var dt = new Date(d); if (isNaN(dt) || dt > _now) return;
+    (p.attendance[d] || []).forEach(function(r){ if (r.type === 'adult' && r.attended && r.name !== '_adult_enrolled') adultSet.add(r.name); });
+  });
+  Object.keys(p.adult_volunteers || {}).forEach(function(d){
+    if (_cancelled.indexOf(d) >= 0) return;
+    var dt = new Date(d); if (isNaN(dt) || dt > _now) return;
+    (p.adult_volunteers[d] || []).forEach(function(n){ adultSet.add(n); });
+  });
+
+  statsEl.innerHTML =
+    '<div class="stat-card" style="--accent-color:var(--lavender)"><div class="stat-label">Sessions Held</div><div class="stat-value">'+pastDates.length+'</div><div class="stat-meta">of '+p.dates.length+' scheduled</div><div class="stat-icon">✅</div></div>'+
+    '<div class="stat-card" style="--accent-color:var(--ya-teal)"><div class="stat-label">Enrolled Youth</div><div class="stat-value">'+enrolled.length+'</div><div class="stat-meta">in JYSEP 2026</div><div class="stat-icon">✨</div></div>'+
+    '<div class="stat-card" style="--accent-color:var(--ya-blue)"><div class="stat-label">Youth Attendances</div><div class="stat-value">'+totalYouthAtt+'</div><div class="stat-meta">participation only</div><div class="stat-icon">👥</div></div>'+
+    '<div class="stat-card" style="--accent-color:var(--ya-gold)"><div class="stat-label">Badge Eligible</div><div class="stat-value">'+certEligible+'</div><div class="stat-meta">'+cert.cert_min_sessions+'+ sessions</div><div class="stat-icon">🎓</div></div>'+
+    '<div class="stat-card" style="--accent-color:var(--ya-orange)"><div class="stat-label">Animator Hours</div><div class="stat-value">'+Math.round(totalAdultHrs)+'</div><div class="stat-meta">'+adultSet.size+' animators</div><div class="stat-icon">⏱</div></div>';
+
+  var nameDisplay = document.getElementById('jysep-cert-name-display');
+  var threshDisplay = document.getElementById('jysep-cert-threshold-display');
+  if (nameDisplay) nameDisplay.textContent = cert.cert_name;
+  if (threshDisplay) threshDisplay.textContent = cert.cert_min_sessions;
+
+  renderJysepYouthGrid();
+  renderJysepAdultHrsGrid();
+  renderJysepSessionsList();
 }
 
 function getCurrentRecurring(){
@@ -9531,6 +10217,75 @@ async function loadGardenData() {
     'cert_min:', prog.cert_rules.cert_min_sessions);
 }
 
+// ── JYSEP data loader — reuses same pattern as loadGardenData ─────────────────
+async function loadJysepData() {
+  var prog = PROGRAMS_DATA['jysep_2026'];
+  if (!prog) return;
+  prog.session_meta     = prog.session_meta     || {};
+  prog.attendance       = prog.attendance       || {};
+  prog.adult_participants = prog.adult_participants || {};
+
+  prog.cert_rules = prog.cert_rules || { cert_name: 'JYSEP Participant', cert_min_sessions: 8, cert_notes: '' };
+  var settings = await dbGet('program_settings', 'select=*&program_id=eq.jysep_2026&limit=1');
+  if (settings && settings.length > 0) {
+    var s = settings[0];
+    prog.cert_rules = {
+      cert_name:         s.cert_name         || 'JYSEP Participant',
+      cert_min_sessions: s.cert_min_sessions || 8,
+      cert_notes:        s.cert_notes        || ''
+    };
+  }
+
+  var metaRows = await dbGet('program_session_meta',
+    'select=session_date,activity_theme,session_description,location,start_time,end_time,cancellation_reason,notes&program_id=eq.jysep_2026');
+  if (metaRows) {
+    metaRows.forEach(function(row) {
+      prog.session_meta[row.session_date] = {
+        theme:               row.activity_theme      || '',
+        description:         row.session_description || '',
+        location:            row.location            || '',
+        start_time:          row.start_time          || '',
+        end_time:            row.end_time            || '',
+        cancellation_reason: row.cancellation_reason || '',
+        notes:               row.notes               || ''
+      };
+      if (row.cancellation_reason && prog.cancellations.indexOf(row.session_date) < 0) {
+        prog.cancellations.push(row.session_date);
+      }
+    });
+  }
+
+  var attRows = await dbGet('program_attendance',
+    'select=session_date,participant_name,participant_type,attended,volunteer_hours&program_id=eq.jysep_2026&order=session_date.asc');
+  if (attRows) {
+    attRows.forEach(function(row) {
+      if (row.session_date === '_enrolled' && row.participant_type === 'youth') {
+        prog.youth_participants = prog.youth_participants || {};
+        if (!prog.youth_participants[row.participant_name]) prog.youth_participants[row.participant_name] = [];
+        return;
+      }
+      if (row.session_date === '_adult_enrolled' && row.participant_type === 'adult') {
+        prog.adult_participants = prog.adult_participants || {};
+        if (!prog.adult_participants[row.participant_name]) prog.adult_participants[row.participant_name] = true;
+        return;
+      }
+      prog.attendance[row.session_date] = prog.attendance[row.session_date] || [];
+      var exists = prog.attendance[row.session_date].find(function(r){ return r.name === row.participant_name; });
+      if (!exists) {
+        prog.attendance[row.session_date].push({
+          name:    row.participant_name,
+          type:    row.participant_type,
+          attended:row.attended,
+          hours:   row.volunteer_hours != null ? parseFloat(row.volunteer_hours) : null
+        });
+      }
+    });
+  }
+  console.log('[loadJysepData] meta:', Object.keys(prog.session_meta).length,
+    'attendance rows:', attRows ? attRows.length : 0,
+    'cert_min:', prog.cert_rules.cert_min_sessions);
+}
+
 async function loadComplianceData() {
   const adults = await dbGet('adult_compliance', 'select=*');
   if (adults) {
@@ -9615,6 +10370,7 @@ async function dbStartup() {
       loadWorkshopCancellations(),
       loadProgramData(),
       loadGardenData(),
+      loadJysepData(),
       loadComplianceData(),
       loadPendingEntries(),
       loadScrabbleData(),
@@ -10468,6 +11224,7 @@ async function saveProgramEnrollAdultModal() {
     setTimeout(function() {
       document.getElementById('program-enroll-adult-modal').style.display = 'none';
       if (_peamProgramId === 'garden_2026') renderGardenAdmin();
+      if (_peamProgramId === 'jysep_2026') renderJysepAdmin();
     }, 1100);
   } else {
     fb.style.color = 'var(--badge-amber)';

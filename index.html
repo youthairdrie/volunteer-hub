@@ -7019,9 +7019,16 @@ async function saveJysepGroupModal() {
 
   // Update in-memory PROGRAMS_DATA
   if (!PROGRAMS_DATA[gid]) {
+    // New group — start completely clean. cancellations, session_meta, attendance,
+    // and participants are all empty arrays/objects; nothing is inherited from other groups.
     PROGRAMS_DATA[gid] = {
-      id: 'prog_'+gid, cancellations: [], adult_volunteers: {},
-      youth_participants: {}, adult_participants: {}, session_meta: {}, attendance: {},
+      id: 'prog_'+gid,
+      cancellations: [],      // ← strictly per-group; never shared
+      session_meta: {},       // ← strictly per-group; never shared
+      attendance: {},
+      adult_volunteers: {},
+      youth_participants: {},
+      adult_participants: {},
       color: 'var(--lavender)', program_type: 'jysep', animator_label: 'Animator'
     };
   }
@@ -10717,10 +10724,16 @@ async function loadProgramData() {
       }
     });
   }
-  // Load cancellations
+  // Load cancellations for non-JYSEP programs only.
+  // JYSEP groups load their own cancellations inside loadSingleJysepGroup(),
+  // which runs after their PROGRAMS_DATA entries are guaranteed to exist.
+  // This prevents cross-group bleed where a cancellation row for jysep_g_X
+  // is dropped because that group's PROGRAMS_DATA entry hasn't been created yet.
   const cancels = await dbGet('program_cancellations', 'select=program_id,session_date,reason');
   if (cancels) {
     cancels.forEach(function(row) {
+      // Skip JYSEP groups — handled exclusively by loadSingleJysepGroup
+      if (row.program_id && row.program_id.indexOf('jysep_g_') === 0) return;
       const prog = PROGRAMS_DATA[row.program_id];
       if (prog) {
         prog.cancellations = prog.cancellations || [];
@@ -10874,12 +10887,33 @@ async function loadAllJysepData() {
 async function loadSingleJysepGroup(gid) {
   var prog = PROGRAMS_DATA[gid];
   if (!prog) return;
-  prog.session_meta     = prog.session_meta     || {};
-  prog.attendance       = prog.attendance       || {};
+  prog.session_meta       = prog.session_meta       || {};
+  prog.attendance         = prog.attendance         || {};
   prog.adult_participants = prog.adult_participants || {};
 
+  // ── Reset cancellations for this group before loading from DB ──────────────
+  // This prevents any stale in-memory state from the JS seed or a previous
+  // loadProgramData run from persisting incorrectly. The DB is the sole source
+  // of truth for cancellations after startup.
+  prog.cancellations = [];
+
+  // ── Load cancellations from program_cancellations, scoped to this gid ──────
+  // This is the authoritative source. program_session_meta.cancellation_reason
+  // is a secondary indicator loaded below and merged in, but program_cancellations
+  // is the primary record written by cancelJysepSession / saveProgramCancellation.
+  var cancelRows = await dbGet('program_cancellations',
+    'select=session_date,reason&program_id=eq.' + encodeURIComponent(gid));
+  if (cancelRows) {
+    cancelRows.forEach(function(row) {
+      if (prog.cancellations.indexOf(row.session_date) < 0) {
+        prog.cancellations.push(row.session_date);
+      }
+    });
+  }
+
+  // ── Load session metadata, scoped to this gid ─────────────────────────────
   var metaRows = await dbGet('program_session_meta',
-    'select=session_date,activity_theme,session_description,location,start_time,end_time,cancellation_reason,notes&program_id=eq.'+encodeURIComponent(gid));
+    'select=session_date,activity_theme,session_description,location,start_time,end_time,cancellation_reason,notes&program_id=eq.' + encodeURIComponent(gid));
   if (metaRows) {
     metaRows.forEach(function(row) {
       prog.session_meta[row.session_date] = {
@@ -10891,14 +10925,18 @@ async function loadSingleJysepGroup(gid) {
         cancellation_reason: row.cancellation_reason || '',
         notes:               row.notes               || ''
       };
+      // Treat a non-empty cancellation_reason as a secondary cancellation signal,
+      // in case the program_cancellations row was written before this group existed
+      // in PROGRAMS_DATA (edge case: offline writes, legacy data).
       if (row.cancellation_reason && prog.cancellations.indexOf(row.session_date) < 0) {
         prog.cancellations.push(row.session_date);
       }
     });
   }
 
+  // ── Load attendance + enrollment sentinels, scoped to this gid ───────────
   var attRows = await dbGet('program_attendance',
-    'select=session_date,participant_name,participant_type,attended,volunteer_hours&program_id=eq.'+encodeURIComponent(gid)+'&order=session_date.asc');
+    'select=session_date,participant_name,participant_type,attended,volunteer_hours&program_id=eq.' + encodeURIComponent(gid) + '&order=session_date.asc');
   if (attRows) {
     attRows.forEach(function(row) {
       if (row.session_date === '_enrolled' && row.participant_type === 'youth') {
@@ -10923,7 +10961,10 @@ async function loadSingleJysepGroup(gid) {
       }
     });
   }
-  console.log('[loadSingleJysepGroup]', gid, '- meta:', Object.keys(prog.session_meta).length, 'att rows:', attRows ? attRows.length : 0);
+  console.log('[loadSingleJysepGroup]', gid,
+    '- cancellations:', prog.cancellations.length,
+    '- meta:', Object.keys(prog.session_meta).length,
+    '- att rows:', attRows ? attRows.length : 0);
 }
 
 async function loadComplianceData() {

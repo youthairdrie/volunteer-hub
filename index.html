@@ -1494,12 +1494,6 @@ tr:hover .grd-date-sticky { background: #1a2d47; }
                 </select>
                 <div id="jgm-book-focus" style="font-size:.72rem;color:var(--text-muted);margin-top:4px;min-height:14px;font-style:italic"></div>
               </div>
-              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-                <div><div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Book Start Date</div>
-                  <input type="date" id="jgm-book-start" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--card-border);background:rgba(20,32,48,1);color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem;box-sizing:border-box"></div>
-                <div><div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Book End Date</div>
-                  <input type="date" id="jgm-book-end" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--card-border);background:rgba(20,32,48,1);color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem;box-sizing:border-box"></div>
-              </div>
               <div><div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Age Range</div>
                 <input id="jgm-age" placeholder="e.g. Ages 11–12" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--card-border);background:rgba(255,255,255,.06);color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem;box-sizing:border-box"></div>
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
@@ -1517,11 +1511,16 @@ tr:hover .grd-date-sticky { background: #1a2d47; }
                   <input id="jgm-time" value="10:00 AM – 12:00 PM" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--card-border);background:rgba(255,255,255,.06);color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem;box-sizing:border-box"></div>
               </div>
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-                <div><div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Group Start Date</div>
-                  <input id="jgm-start" value="Jan 10, 2026" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--card-border);background:rgba(255,255,255,.06);color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem;box-sizing:border-box"></div>
-                <div><div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Group End Date</div>
-                  <input id="jgm-end" value="Dec 25, 2027" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--card-border);background:rgba(255,255,255,.06);color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem;box-sizing:border-box"></div>
+                <div>
+                  <div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Group Start Date *</div>
+                  <input type="date" id="jgm-start" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--card-border);background:rgba(20,32,48,1);color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem;box-sizing:border-box">
+                </div>
+                <div>
+                  <div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Group End Date *</div>
+                  <input type="date" id="jgm-end" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--card-border);background:rgba(20,32,48,1);color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem;box-sizing:border-box">
+                </div>
               </div>
+              <div id="jgm-date-preview" style="font-size:.72rem;color:var(--text-muted);margin-top:-4px;min-height:16px"></div>
               <div><div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Location</div>
                 <input id="jgm-location" value="Youth Airdrie" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--card-border);background:rgba(255,255,255,.06);color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem;box-sizing:border-box"></div>
               <div><div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Notes (optional)</div>
@@ -2058,22 +2057,32 @@ function jysepSlug(name) {
 }
 // Build a weekly date list from start to end date (inclusive) for any day of week.
 // dayName: 'Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'
-// Falls back to Saturday if dayName is unrecognised.
+// Accepts start/end as "Mon D, YYYY" display format OR "YYYY-MM-DD" ISO format.
 function buildWeeklyDates(startStr, endStr, dayName) {
   var dayMap = {sunday:0,monday:1,tuesday:2,wednesday:3,thursday:4,friday:5,saturday:6};
   var targetDay = dayMap[(dayName||'Saturday').toLowerCase().trim()];
-  if (targetDay === undefined) targetDay = 6; // default Saturday
+  if (targetDay === undefined) targetDay = 6;
   var months = {Jan:0,Feb:1,Mar:2,Apr:3,May:4,Jun:5,Jul:6,Aug:7,Sep:8,Oct:9,Nov:10,Dec:11};
   var mNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  var parseD = function(s){ var p=s.trim().split(/[\s,]+/); return new Date(parseInt(p[2]),months[p[0]],parseInt(p[1])); };
+  var parseD = function(s) {
+    s = (s||'').trim();
+    // ISO format: "2026-01-10"
+    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+      var pp = s.split('-');
+      return new Date(parseInt(pp[0],10), parseInt(pp[1],10)-1, parseInt(pp[2],10));
+    }
+    // Display format: "Jan 10, 2026"
+    var p = s.replace(',','').split(/\s+/);
+    return new Date(parseInt(p[2],10), months[p[0]], parseInt(p[1],10));
+  };
   var s = parseD(startStr), e = parseD(endStr), dates = [];
-  // advance to nearest target weekday
+  if (isNaN(s.getTime()) || isNaN(e.getTime())) return [];
   var offset = (targetDay - s.getDay() + 7) % 7;
   s.setDate(s.getDate() + offset);
   while(s<=e){ dates.push(mNames[s.getMonth()]+' '+s.getDate()+', '+s.getFullYear()); s.setDate(s.getDate()+7); }
   return dates;
 }
-// Backward-compat alias (used in some older call sites)
+// Backward-compat alias
 function buildSaturdayDates(startStr, endStr) { return buildWeeklyDates(startStr, endStr, 'Saturday'); }
 
 // ── JYSEP book-date helpers ──────────────────────────────────────────────────
@@ -6900,23 +6909,73 @@ function resumeJysepSession(gid, dateStr) {
 }
 
 // ── Create / Edit Group modal ─────────────────────────────────────────────────
+
+// Convert "Jan 10, 2026" display string → "2026-01-10" ISO for type=date inputs.
+function jgmDisplayToISO(str) {
+  if (!str) return '';
+  var mo = {Jan:'01',Feb:'02',Mar:'03',Apr:'04',May:'05',Jun:'06',
+            Jul:'07',Aug:'08',Sep:'09',Oct:'10',Nov:'11',Dec:'12'};
+  var p = str.trim().replace(',','').split(/\s+/);
+  if (p.length !== 3 || !mo[p[0]]) return '';
+  return p[2]+'-'+mo[p[0]]+'-'+('0'+parseInt(p[1],10)).slice(-2);
+}
+
+// Convert "2026-01-10" ISO → "Jan 10, 2026" display for storage and rendering.
+function jgmISOToDisplay(iso) {
+  if (!iso || !iso.match(/^\d{4}-\d{2}-\d{2}$/)) return '';
+  var mNames=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  var p = iso.split('-');
+  var d = new Date(parseInt(p[0],10), parseInt(p[1],10)-1, parseInt(p[2],10));
+  if (isNaN(d.getTime())) return '';
+  return mNames[d.getMonth()]+' '+d.getDate()+', '+d.getFullYear();
+}
+
+// Live session-count preview below the date fields
+function updateJgmDatePreview() {
+  var el = document.getElementById('jgm-date-preview'); if (!el) return;
+  var startISO = (document.getElementById('jgm-start').value || '').trim();
+  var endISO   = (document.getElementById('jgm-end').value   || '').trim();
+  var day      = (document.getElementById('jgm-day').value   || 'Saturday');
+  if (!startISO || !endISO) { el.textContent = ''; return; }
+  if (endISO < startISO) {
+    el.style.color = 'var(--badge-red)';
+    el.textContent = '⚠ End date is before start date.'; return;
+  }
+  var startDisp = jgmISOToDisplay(startISO);
+  var endDisp   = jgmISOToDisplay(endISO);
+  if (!startDisp || !endDisp) { el.textContent = ''; return; }
+  var count = buildWeeklyDates(startDisp, endDisp, day).length;
+  el.style.color = 'var(--ya-teal)';
+  el.textContent = count + ' ' + day + ' session' + (count !== 1 ? 's' : '') +
+    ' · ' + startDisp + ' → ' + endDisp;
+}
+
+function _wireJgmDateListeners() {
+  var s = document.getElementById('jgm-start');
+  var e = document.getElementById('jgm-end');
+  var d = document.getElementById('jgm-day');
+  if (s) s.onchange = updateJgmDatePreview;
+  if (e) e.onchange = updateJgmDatePreview;
+  if (d) d.onchange = function(){ updateJgmDatePreview(); };
+}
+
 function openCreateJysepGroupModal() {
   _jysepEditGroupId = '';
   document.getElementById('jgm-title').textContent = '➕ New JYSEP Group';
-  document.getElementById('jgm-name').value      = '';
-  document.getElementById('jgm-age').value       = 'Ages 10–14';
-  document.getElementById('jgm-day').value       = 'Saturday';
-  document.getElementById('jgm-time').value      = '10:00 AM – 12:00 PM';
-  document.getElementById('jgm-start').value     = 'Jan 10, 2026';
-  document.getElementById('jgm-end').value       = 'Dec 25, 2027';
-  document.getElementById('jgm-location').value  = 'Youth Airdrie';
-  document.getElementById('jgm-book-start').value= '';
-  document.getElementById('jgm-book-end').value  = '';
-  document.getElementById('jgm-notes').value     = '';
+  document.getElementById('jgm-name').value     = '';
+  document.getElementById('jgm-age').value      = 'Ages 10–14';
+  document.getElementById('jgm-day').value      = 'Saturday';
+  document.getElementById('jgm-time').value     = '10:00 AM – 12:00 PM';
+  document.getElementById('jgm-start').value    = '2026-01-10';
+  document.getElementById('jgm-end').value      = '2026-12-26';
+  document.getElementById('jgm-location').value = 'Youth Airdrie';
+  document.getElementById('jgm-notes').value    = '';
   document.getElementById('jgm-feedback').textContent = '';
   populateBookSelect('jgm-book', '');
   document.getElementById('jgm-book').onchange = function(){ updateJgmBookFocus(); };
   document.getElementById('jgm-book-focus').textContent = '';
+  _wireJgmDateListeners();
+  updateJgmDatePreview();
   document.getElementById('jysep-group-modal').style.display = 'flex';
 }
 
@@ -6924,22 +6983,24 @@ function openEditJysepGroupModal(gid) {
   var p = jysepProg(gid); if (!p) return;
   _jysepEditGroupId = gid;
   document.getElementById('jgm-title').textContent = '✏️ Edit JYSEP Group';
-  document.getElementById('jgm-name').value      = p.name;
-  document.getElementById('jgm-age').value       = p.group_age_range || 'Ages 10–14';
-  document.getElementById('jgm-day').value       = p.day || 'Saturday';
-  document.getElementById('jgm-time').value      = p.time || '10:00 AM – 12:00 PM';
-  // Read from the stored group_start/group_end scalars — NOT from p.dates[0]/p.dates[last],
-  // which can be contaminated if dates were ever incorrectly inherited from another group.
-  document.getElementById('jgm-start').value     = p.group_start || (p.dates && p.dates.length ? p.dates[0] : 'Jan 10, 2026');
-  document.getElementById('jgm-end').value       = p.group_end   || (p.dates && p.dates.length ? p.dates[p.dates.length-1] : 'Dec 25, 2027');
-  document.getElementById('jgm-location').value  = p.location || 'Youth Airdrie';
-  document.getElementById('jgm-book-start').value= bookDisplayToISO(p.group_book_start || '');
-  document.getElementById('jgm-book-end').value  = bookDisplayToISO(p.group_book_end   || '');
-  document.getElementById('jgm-notes').value     = p.group_notes || '';
+  document.getElementById('jgm-name').value     = p.name;
+  document.getElementById('jgm-age').value      = p.group_age_range || 'Ages 10–14';
+  document.getElementById('jgm-day').value      = p.day || 'Saturday';
+  document.getElementById('jgm-time').value     = p.time || '10:00 AM – 12:00 PM';
+  document.getElementById('jgm-location').value = p.location || 'Youth Airdrie';
+  document.getElementById('jgm-notes').value    = p.group_notes || '';
   document.getElementById('jgm-feedback').textContent = '';
+  // Convert stored display string ("Jan 10, 2026") → ISO for type=date input.
+  // p.group_start is always the authoritative scalar; p.dates[0] is last resort.
+  var storedStart = p.group_start || (p.dates && p.dates.length ? p.dates[0] : '');
+  var storedEnd   = p.group_end   || (p.dates && p.dates.length ? p.dates[p.dates.length-1] : '');
+  document.getElementById('jgm-start').value = jgmDisplayToISO(storedStart) || storedStart;
+  document.getElementById('jgm-end').value   = jgmDisplayToISO(storedEnd)   || storedEnd;
   populateBookSelect('jgm-book', p.group_book || '');
   document.getElementById('jgm-book').onchange = function(){ updateJgmBookFocus(); };
+  _wireJgmDateListeners();
   updateJgmBookFocus();
+  updateJgmDatePreview();
   document.getElementById('jysep-group-modal').style.display = 'flex';
 }
 
@@ -6955,78 +7016,86 @@ async function saveJysepGroupModal() {
   var fb  = document.getElementById('jgm-feedback');
   var btn = document.getElementById('jgm-save-btn');
   fb.textContent = '';
-  var name     = (document.getElementById('jgm-name').value || '').trim();
-  if (!name) { fb.style.color = 'var(--badge-red)'; fb.textContent = '⚠ Group name is required.'; return; }
-  var book     = document.getElementById('jgm-book').value || '';
-  var bookStartISO = (document.getElementById('jgm-book-start').value || '').trim();
-  var bookEndISO   = (document.getElementById('jgm-book-end').value || '').trim();
 
-  // Validate book dates: if either is provided, both must be valid and end >= start
-  if (bookStartISO || bookEndISO) {
-    if (bookStartISO && !bookStartISO.match(/^\d{4}-\d{2}-\d{2}$/)) {
-      fb.style.color = 'var(--badge-red)'; fb.textContent = '⚠ Book Start Date is not a valid date.'; return;
-    }
-    if (bookEndISO && !bookEndISO.match(/^\d{4}-\d{2}-\d{2}$/)) {
-      fb.style.color = 'var(--badge-red)'; fb.textContent = '⚠ Book End Date is not a valid date.'; return;
-    }
-    if (bookStartISO && bookEndISO && bookEndISO < bookStartISO) {
-      fb.style.color = 'var(--badge-red)'; fb.textContent = '⚠ Book End Date cannot be before Book Start Date.'; return;
-    }
-  }
-  // Convert to app display format for storage (e.g. "Jan 10, 2026"); empty stays empty
-  var bookStart = bookISOToDisplay(bookStartISO);
-  var bookEnd   = bookISOToDisplay(bookEndISO);
-  var ageRange = (document.getElementById('jgm-age').value || '').trim() || 'Ages 10–14';
-  var day      = (document.getElementById('jgm-day').value || 'Saturday').trim();
-  var time     = (document.getElementById('jgm-time').value || '10:00 AM – 12:00 PM').trim();
-  var startD   = (document.getElementById('jgm-start').value || 'Jan 10, 2026').trim();
-  var endD     = (document.getElementById('jgm-end').value || 'Dec 25, 2027').trim();
-  var location = (document.getElementById('jgm-location').value || 'Youth Airdrie').trim();
-  var notes    = (document.getElementById('jgm-notes').value || '').trim();
+  var name = (document.getElementById('jgm-name').value || '').trim();
+  if (!name) { fb.style.color='var(--badge-red)'; fb.textContent='⚠ Group name is required.'; return; }
+
+  var book      = document.getElementById('jgm-book').value || '';
+  var ageRange  = (document.getElementById('jgm-age').value  || '').trim() || 'Ages 10–14';
+  var day       = (document.getElementById('jgm-day').value  || 'Saturday').trim();
+  var time      = (document.getElementById('jgm-time').value || '10:00 AM – 12:00 PM').trim();
+  var location  = (document.getElementById('jgm-location').value || 'Youth Airdrie').trim();
+  var notes     = (document.getElementById('jgm-notes').value || '').trim();
+
+  // ── Read and validate Group Start / End dates ──────────────────────────────
+  // jgm-start and jgm-end are type=date inputs → value is always "YYYY-MM-DD" or "".
+  var startISO = (document.getElementById('jgm-start').value || '').trim();
+  var endISO   = (document.getElementById('jgm-end').value   || '').trim();
+
+  if (!startISO) { fb.style.color='var(--badge-red)'; fb.textContent='⚠ Group Start Date is required.'; return; }
+  if (!endISO)   { fb.style.color='var(--badge-red)'; fb.textContent='⚠ Group End Date is required.'; return; }
+  if (!startISO.match(/^\d{4}-\d{2}-\d{2}$/)) { fb.style.color='var(--badge-red)'; fb.textContent='⚠ Invalid start date.'; return; }
+  if (!endISO.match(/^\d{4}-\d{2}-\d{2}$/))   { fb.style.color='var(--badge-red)'; fb.textContent='⚠ Invalid end date.'; return; }
+  if (endISO < startISO) { fb.style.color='var(--badge-red)'; fb.textContent='⚠ End date cannot be before start date.'; return; }
+
+  // Convert ISO → "Mon D, YYYY" display format for storage and buildWeeklyDates
+  var startD = jgmISOToDisplay(startISO);
+  var endD   = jgmISOToDisplay(endISO);
+  if (!startD || !endD) { fb.style.color='var(--badge-red)'; fb.textContent='⚠ Date conversion failed — please re-enter dates.'; return; }
+
+  // Generate this group's session dates from its own day/start/end
+  var dates = buildWeeklyDates(startD, endD, day);
+  if (dates.length === 0) { fb.style.color='var(--badge-red)'; fb.textContent='⚠ No '+day+' sessions found in the selected date range.'; return; }
 
   // Determine program_id
   var gid = _jysepEditGroupId || jysepSlug(name);
-  // Ensure uniqueness for new groups
   if (!_jysepEditGroupId && PROGRAMS_DATA[gid]) gid = gid + '_' + Date.now().toString(36);
-
-  // Build weekly date list using this group's chosen meeting day
-  var dates = buildWeeklyDates(startD, endD, day);
 
   btn.textContent = 'Saving…'; btn.style.opacity = '.6'; btn.disabled = true;
 
-  // Persist group settings to Supabase
   // Preserve archived flag — editing a group never un-archives it
   var _existingArchived = (PROGRAMS_DATA[gid] && PROGRAMS_DATA[gid].group_archived) ? true : false;
+
+  // Persist to Supabase — group_start and group_end stored as display strings ("Jan 10, 2026")
+  // so they round-trip cleanly through buildWeeklyDates on reload.
   var settingsRow = {
-    program_id: gid,
-    group_name: name, group_book: book, group_book_start: bookStart,
-    group_book_end: bookEnd, group_age_range: ageRange, group_time: time,
-    group_day: day, group_location: location, group_notes: notes,
-    group_start: startD, group_end: endD,
+    program_id:     gid,
+    group_name:     name,
+    group_book:     book,
+    group_age_range: ageRange,
+    group_time:     time,
+    group_day:      day,
+    group_location: location,
+    group_notes:    notes,
+    group_start:    startD,   // stored as "Jan 10, 2026"
+    group_end:      endD,     // stored as "Jan 10, 2026"
     group_archived: _existingArchived
   };
+
   var r = await fetch(SUPA_URL + '/rest/v1/program_settings?on_conflict=program_id', {
     method: 'POST',
-    headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY, 'Content-Type': 'application/json', 'Prefer': 'resolution=merge-duplicates,return=minimal' },
+    headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer '+SUPA_KEY,
+               'Content-Type': 'application/json',
+               'Prefer': 'resolution=merge-duplicates,return=minimal' },
     body: JSON.stringify(settingsRow)
   });
 
   if (!r.ok) {
     var err = await r.text();
-    var errMsg = ''; try { var errObj=JSON.parse(err||'{}'); errMsg=errObj.message||errObj.hint||err; } catch(e){ errMsg=err; }
-    fb.style.color = 'var(--badge-red)'; fb.textContent = '⚠ Save failed (' + r.status + '): ' + (errMsg||'unknown error');
+    var errMsg = '';
+    try { var errObj=JSON.parse(err||'{}'); errMsg=errObj.message||errObj.hint||err; } catch(e){ errMsg=err; }
+    fb.style.color='var(--badge-red)';
+    fb.textContent='⚠ Save failed ('+r.status+'): '+(errMsg||'unknown error');
     console.error('[saveJysepGroupModal] Supabase error', r.status, err);
-    btn.textContent = '💾 Save Group'; btn.style.opacity = ''; btn.disabled = false; return;
+    btn.textContent='💾 Save Group'; btn.style.opacity=''; btn.disabled=false; return;
   }
 
-  // Update in-memory PROGRAMS_DATA
+  // Update in-memory PROGRAMS_DATA immediately so the UI reflects changes without reload
   if (!PROGRAMS_DATA[gid]) {
-    // New group — start completely clean. cancellations, session_meta, attendance,
-    // and participants are all empty arrays/objects; nothing is inherited from other groups.
     PROGRAMS_DATA[gid] = {
       id: 'prog_'+gid,
-      cancellations: [],      // ← strictly per-group; never shared
-      session_meta: {},       // ← strictly per-group; never shared
+      cancellations: [],
+      session_meta: {},
       attendance: {},
       adult_volunteers: {},
       youth_participants: {},
@@ -7035,26 +7104,26 @@ async function saveJysepGroupModal() {
     };
   }
   var prog = PROGRAMS_DATA[gid];
-  prog.name             = name;
-  prog.group_book       = book;
-  prog.group_book_start = bookStart;
-  prog.group_book_end   = bookEnd;
-  prog.group_age_range  = ageRange;
-  prog.time             = time;
-  prog.day              = day;
-  prog.location         = location;
-  prog.group_notes      = notes;
-  prog.dates            = dates;
-  prog.group_start      = startD;   // store so openEditJysepGroupModal can read them
-  prog.group_end        = endD;     // without falling back to p.dates[0]/p.dates[last]
-  prog.season           = 'Year-round';
+  prog.name            = name;
+  prog.group_book      = book;
+  prog.group_age_range = ageRange;
+  prog.time            = time;
+  prog.day             = day;
+  prog.location        = location;
+  prog.group_notes     = notes;
+  prog.group_start     = startD;  // scalar scalars for openEditJysepGroupModal to read
+  prog.group_end       = endD;
+  prog.dates           = dates;   // freshly generated for this group only
+  prog.season          = 'Year-round';
 
-  fb.style.color = 'var(--ya-teal)'; fb.textContent = '✔ Saved';
-  btn.textContent = '💾 Save Group'; btn.style.opacity = ''; btn.disabled = false;
+  fb.style.color='var(--ya-teal)'; fb.textContent='✔ Saved — '+dates.length+' sessions generated.';
+  btn.textContent='💾 Save Group'; btn.style.opacity=''; btn.disabled=false;
+
   setTimeout(function(){
-    document.getElementById('jysep-group-modal').style.display = 'none';
+    document.getElementById('jysep-group-modal').style.display='none';
     _jysepActiveGroup = gid;
     renderJysepAdmin();
+    renderScheduleTab();
   }, 500);
 }
 

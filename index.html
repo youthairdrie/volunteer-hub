@@ -234,7 +234,20 @@ select option[value=""]{
 }
 #garden-youth-att-table tr:hover td.grd-sticky{ background:#1a2d47; }
 
-/* ── JYSEP youth attendance table — same sticky pattern ── */
+/* ── Spiritual CC youth attendance table — same sticky pattern ── */
+#scc-youth-att-table thead th.grd-sticky,
+#scc-youth-att-table tbody td.grd-sticky{
+  position:sticky; background:var(--card-bg);
+}
+#scc-youth-att-table thead th.grd-sticky{ z-index:3; }
+#scc-youth-att-table .grd-sticky-1{ left:0;   min-width:160px; }
+#scc-youth-att-table .grd-sticky-2{ left:160px; min-width:70px; }
+#scc-youth-att-table .grd-sticky-3{ left:230px; min-width:140px; }
+#scc-youth-att-table .grd-sticky-3::after{
+  content:''; position:absolute; right:-1px; top:0; bottom:0;
+  width:1px; background:rgba(255,255,255,.06);
+}
+#scc-youth-att-table tr:hover td.grd-sticky{ background:#1a2d47; }
 #jysep-youth-att-table thead th.grd-sticky,
 #jysep-youth-att-table tbody td.grd-sticky{
   position:sticky; background:#131f30; z-index:2;
@@ -981,6 +994,7 @@ tr:hover .grd-date-sticky { background: #1a2d47; }
         <button class="tab-btn" onclick="switchTab('scrabble-admin',this)">🎲 Scrabble Club</button>
         <button class="tab-btn" onclick="switchTab('garden-admin',this)">🌱 Garden Program</button>
         <button class="tab-btn" onclick="switchTab('jysep-admin',this)">✨ JYSEP</button>
+        <button class="tab-btn" onclick="switchTab('scc-admin',this)">🌟 Spiritual CC</button>
         <button class="tab-btn" onclick="switchTab('future-schedule',this)">📆 Schedule</button>
         <button class="tab-btn" onclick="switchTab('events-log',this)">📋 Events Log</button>
         <button class="tab-btn" onclick="switchTab('compliance',this)">Compliance</button>
@@ -1579,6 +1593,239 @@ tr:hover .grd-date-sticky { background: #1a2d47; }
         </div>
 
       </div><!-- /tab-jysep-admin -->
+
+      <!-- ══════════════════════════════════════════════════════════════════
+           SPIRITUAL CC ADMIN TAB
+           ══════════════════════════════════════════════════════════════════ -->
+      <div id="tab-scc-admin" style="display:none">
+
+        <!-- Stat cards -->
+        <div class="cards-grid" id="scc-stat-cards" style="margin-bottom:14px"></div>
+
+        <!-- Group selector strip -->
+        <div class="section-box" style="margin-bottom:14px">
+          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:12px">
+            <div style="font-family:Nunito,sans-serif;font-weight:900;font-size:.95rem;color:var(--ya-gold)">🌟 Spiritual Children's Classes</div>
+            <button onclick="openCreateSccGroupModal()" class="ws-btn" style="border-color:var(--ya-gold);color:var(--ya-gold);font-size:.75rem;white-space:nowrap">➕ New Group</button>
+          </div>
+          <div id="scc-group-strip" style="display:flex;flex-wrap:wrap;gap:8px"></div>
+        </div>
+
+        <!-- Per-group detail panel -->
+        <div id="scc-group-detail" style="display:none">
+
+          <!-- Group header -->
+          <div class="section-box" style="margin-bottom:14px;border-color:rgba(245,166,35,.3)">
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:10px">
+              <div>
+                <div id="scd-group-name" style="font-family:Nunito,sans-serif;font-weight:900;font-size:1.05rem;color:var(--ya-gold)"></div>
+                <div id="scd-group-meta" style="font-size:.78rem;color:var(--text-muted);margin-top:3px"></div>
+              </div>
+              <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+                <button onclick="openEditSccGroupModal(_sccActiveGroup)" class="ws-btn" style="border-color:var(--ya-gold);color:var(--ya-gold);font-size:.72rem;white-space:nowrap">✏️ Edit Group</button>
+                <button onclick="archiveSccGroup(_sccActiveGroup)" class="ws-btn" style="border-color:var(--text-muted);color:var(--text-muted);font-size:.72rem;white-space:nowrap" title="Archive this group — data preserved">📦 Archive</button>
+                <button onclick="deleteSccGroup(_sccActiveGroup)" class="ws-btn" style="border-color:var(--badge-red);color:var(--badge-red);font-size:.72rem;white-space:nowrap" title="Permanently delete this group">🗑 Delete</button>
+              </div>
+            </div>
+            <div id="scd-book-panel" style="margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,.08)">
+              <div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">📚 Current Grade / Book</div>
+              <div id="scd-book-display" style="font-size:.88rem;color:var(--text-main)"></div>
+            </div>
+          </div>
+
+          <!-- Youth attendance -->
+          <details open style="margin-bottom:14px">
+            <summary style="font-family:Nunito,sans-serif;font-weight:900;font-size:.95rem;color:var(--ya-gold);cursor:pointer;padding:10px 0;list-style:none;display:flex;align-items:center;gap:8px">
+              🌟 Children's Attendance &amp; Participation
+            </summary>
+            <div style="margin-top:10px">
+              <div class="section-box" style="margin-bottom:10px">
+                <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+                  <div style="font-size:.78rem;color:var(--text-muted)">Only enrolled children appear. Attendance = participation only — not volunteer hours.</div>
+                  <button onclick="openProgramEnrollYouthModal(_sccActiveGroup)" class="ws-btn" style="border-color:var(--ya-gold);color:var(--ya-gold);font-size:.75rem;white-space:nowrap">+ Enroll Child</button>
+                </div>
+              </div>
+              <div style="overflow-x:auto">
+                <table class="data-table" id="scc-youth-att-table" style="width:auto;min-width:100%">
+                  <thead><tr id="scc-youth-att-thead"></tr></thead>
+                  <tbody id="scc-youth-att-tbody"></tbody>
+                </table>
+              </div>
+            </div>
+          </details>
+
+          <!-- Facilitator hours -->
+          <details open style="margin-bottom:14px">
+            <summary style="font-family:Nunito,sans-serif;font-weight:900;font-size:.95rem;color:var(--ya-teal);cursor:pointer;padding:10px 0;list-style:none;display:flex;align-items:center;gap:8px">
+              👩‍🏫 Facilitator Hours
+            </summary>
+            <div style="margin-top:10px">
+              <div class="section-box" style="margin-bottom:10px">
+                <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+                  <div style="font-size:.78rem;color:var(--text-muted)">Hours per facilitator per session. Counts toward volunteer totals.</div>
+                  <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                    <button onclick="openProgramEnrollAdultModal(_sccActiveGroup)" class="ws-btn" style="border-color:var(--ya-teal);color:var(--ya-teal);font-size:.75rem;white-space:nowrap">+ Enroll Facilitator</button>
+                    <button id="scc-hrs-edit-btn" onclick="toggleSccHrsEdit()" class="ws-btn" style="border-color:var(--ya-teal);color:var(--ya-teal);font-size:.75rem;white-space:nowrap">✏️ Edit Hours</button>
+                  </div>
+                </div>
+              </div>
+              <div style="overflow-x:auto">
+                <table class="data-table" id="scc-adult-hrs-table" style="width:auto;min-width:100%">
+                  <thead><tr id="scc-adult-hrs-thead"></tr></thead>
+                  <tbody id="scc-adult-hrs-tbody"></tbody>
+                </table>
+              </div>
+            </div>
+          </details>
+
+          <!-- Sessions & Cancellations -->
+          <details style="margin-bottom:14px">
+            <summary style="font-family:Nunito,sans-serif;font-weight:900;font-size:.95rem;color:var(--ya-orange);cursor:pointer;padding:10px 0;list-style:none;display:flex;align-items:center;gap:8px">
+              📅 Sessions &amp; Cancellations
+            </summary>
+            <div id="scc-sessions-list" style="margin-top:10px"></div>
+          </details>
+
+          <!-- Youth Book Completion -->
+          <details style="margin-bottom:14px">
+            <summary style="font-family:Nunito,sans-serif;font-weight:900;font-size:.95rem;color:var(--ya-teal);cursor:pointer;padding:10px 0;list-style:none;display:flex;align-items:center;gap:8px">
+              📚 Children's Grade / Book Completion Summary
+            </summary>
+            <div id="scc-book-completion-panel" style="margin-top:10px"></div>
+          </details>
+
+        </div><!-- /scc-group-detail -->
+
+        <!-- Book / Grade Library -->
+        <div class="section-box" style="margin-top:14px">
+          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:12px">
+            <div style="font-family:Nunito,sans-serif;font-weight:900;font-size:.95rem;color:var(--ya-gold)">📚 Grade &amp; Book Library</div>
+            <button onclick="openSccBookModal()" class="ws-btn" style="border-color:var(--ya-gold);color:var(--ya-gold);font-size:.75rem;white-space:nowrap">➕ Add Grade / Book</button>
+          </div>
+          <div id="scc-book-library-list"></div>
+        </div>
+
+        <!-- Youth Progress Report -->
+        <div class="section-box" style="margin-top:14px">
+          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:4px">
+            <div style="font-family:Nunito,sans-serif;font-weight:900;font-size:.95rem;color:var(--ya-blue)">🧭 Children's Progress Report</div>
+            <div style="font-size:.72rem;color:var(--text-muted)">All groups · current &amp; archived</div>
+          </div>
+          <div style="font-size:.73rem;color:var(--text-muted);margin-bottom:12px;font-style:italic">Each child's history across every Spiritual CC group and grade/book they have participated in.</div>
+          <div id="scc-youth-progress-report"></div>
+        </div>
+
+        <!-- Book Trends Report -->
+        <div class="section-box" style="margin-top:14px">
+          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:4px">
+            <div style="font-family:Nunito,sans-serif;font-weight:900;font-size:.95rem;color:var(--ya-orange)">📊 Grade / Book Trends Report</div>
+            <div style="font-size:.72rem;color:var(--text-muted)">All groups · current &amp; archived</div>
+          </div>
+          <div style="font-size:.73rem;color:var(--text-muted);margin-bottom:12px;font-style:italic">How often each grade/book has been taught, participation rates, and which facilitators led each group.</div>
+          <div id="scc-book-trends-report"></div>
+        </div>
+
+        <!-- Session edit modal -->
+        <div id="scc-session-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:1000;align-items:center;justify-content:center">
+          <div class="login-box" style="max-width:440px;width:100%;max-height:90vh;overflow-y:auto">
+            <div style="font-family:Nunito,sans-serif;font-weight:900;font-size:1rem;color:var(--ya-gold);margin-bottom:14px">🌟 Edit Spiritual CC Session</div>
+            <div style="display:grid;gap:9px">
+              <div><div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Date</div>
+                <input id="ssm-date" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--card-border);background:rgba(255,255,255,.06);color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem;box-sizing:border-box"></div>
+              <div><div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Activity / Theme</div>
+                <input id="ssm-theme" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--card-border);background:rgba(255,255,255,.06);color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem;box-sizing:border-box"></div>
+              <div><div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Session Description</div>
+                <input id="ssm-desc" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--card-border);background:rgba(255,255,255,.06);color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem;box-sizing:border-box"></div>
+              <div><div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Location</div>
+                <input id="ssm-location" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--card-border);background:rgba(255,255,255,.06);color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem;box-sizing:border-box"></div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+                <div><div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Start Time</div>
+                  <input id="ssm-start" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--card-border);background:rgba(255,255,255,.06);color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem;box-sizing:border-box"></div>
+                <div><div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">End Time</div>
+                  <input id="ssm-end" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--card-border);background:rgba(255,255,255,.06);color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem;box-sizing:border-box"></div>
+              </div>
+              <div><div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Cancellation Reason <span style="font-weight:400;text-transform:none">(leave blank if not cancelled)</span></div>
+                <input id="ssm-cancel-reason" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--card-border);background:rgba(255,255,255,.06);color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem;box-sizing:border-box"></div>
+            </div>
+            <div id="ssm-feedback" style="min-height:16px;font-size:.78rem;margin-top:10px"></div>
+            <div style="display:flex;gap:10px;margin-top:14px;justify-content:flex-end">
+              <button onclick="document.getElementById('scc-session-modal').style.display='none'" style="padding:8px 18px;border-radius:9px;border:1px solid rgba(255,255,255,.15);background:transparent;color:var(--text-muted);font-family:Nunito,sans-serif;font-weight:700;cursor:pointer">Cancel</button>
+              <button id="ssm-save-btn" onclick="saveSccSessionMeta()" style="padding:8px 22px;border-radius:9px;border:none;background:var(--ya-gold);color:#000;font-family:Nunito,sans-serif;font-weight:800;cursor:pointer">💾 Save</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Create / Edit Group modal -->
+        <div id="scc-group-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:1000;align-items:center;justify-content:center">
+          <div class="login-box" style="max-width:480px;width:100%;max-height:92vh;overflow-y:auto">
+            <div id="sgm-title" style="font-family:Nunito,sans-serif;font-weight:900;font-size:1rem;color:var(--ya-gold);margin-bottom:14px">➕ New Spiritual CC Group</div>
+            <div style="display:grid;gap:10px">
+              <div><div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Group Name *</div>
+                <input id="sgm-name" placeholder="e.g. Grade 1 · Saturday Morning" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--card-border);background:rgba(255,255,255,.06);color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem;box-sizing:border-box"></div>
+              <div><div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Grade / Book</div>
+                <select id="sgm-book" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--card-border);background:rgba(20,32,48,1);color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem;box-sizing:border-box">
+                  <option value="">— Select a grade/book —</option>
+                </select>
+                <div id="sgm-book-focus" style="font-size:.72rem;color:var(--text-muted);margin-top:4px;min-height:14px;font-style:italic"></div>
+              </div>
+              <div><div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Age Range</div>
+                <input id="sgm-age" placeholder="e.g. Ages 5–10" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--card-border);background:rgba(255,255,255,.06);color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem;box-sizing:border-box"></div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+                <div><div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Meeting Day</div>
+                  <select id="sgm-day" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--card-border);background:rgba(20,32,48,1);color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem;box-sizing:border-box">
+                    <option value="Sunday">Sunday</option><option value="Monday">Monday</option>
+                    <option value="Tuesday">Tuesday</option><option value="Wednesday">Wednesday</option>
+                    <option value="Thursday">Thursday</option><option value="Friday">Friday</option>
+                    <option value="Saturday" selected>Saturday</option>
+                  </select></div>
+                <div><div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Time</div>
+                  <input id="sgm-time" value="10:00 AM – 11:00 AM" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--card-border);background:rgba(255,255,255,.06);color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem;box-sizing:border-box"></div>
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+                <div><div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Group Start Date *</div>
+                  <input type="date" id="sgm-start" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--card-border);background:rgba(20,32,48,1);color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem;box-sizing:border-box"></div>
+                <div><div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Group End Date *</div>
+                  <input type="date" id="sgm-end" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--card-border);background:rgba(20,32,48,1);color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem;box-sizing:border-box"></div>
+              </div>
+              <div id="sgm-date-preview" style="font-size:.72rem;color:var(--text-muted);margin-top:-4px;min-height:16px"></div>
+              <div><div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Location</div>
+                <input id="sgm-location" value="Youth Airdrie" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--card-border);background:rgba(255,255,255,.06);color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem;box-sizing:border-box"></div>
+              <div><div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Notes (optional)</div>
+                <textarea id="sgm-notes" rows="2" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--card-border);background:rgba(255,255,255,.06);color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem;box-sizing:border-box;resize:vertical"></textarea></div>
+            </div>
+            <div id="sgm-feedback" style="min-height:16px;font-size:.78rem;margin-top:10px"></div>
+            <div style="display:flex;gap:10px;margin-top:14px;justify-content:flex-end">
+              <button onclick="document.getElementById('scc-group-modal').style.display='none'" style="padding:8px 18px;border-radius:9px;border:1px solid rgba(255,255,255,.15);background:transparent;color:var(--text-muted);font-family:Nunito,sans-serif;font-weight:700;cursor:pointer">Cancel</button>
+              <button id="sgm-save-btn" onclick="saveSccGroupModal()" style="padding:8px 22px;border-radius:9px;border:none;background:var(--ya-gold);color:#000;font-family:Nunito,sans-serif;font-weight:800;cursor:pointer">💾 Save Group</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Book Edit Modal -->
+        <div id="scc-book-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:1001;align-items:center;justify-content:center">
+          <div class="login-box" style="max-width:440px;width:100%;max-height:90vh;overflow-y:auto">
+            <div id="sbm-title" style="font-family:Nunito,sans-serif;font-weight:900;font-size:1rem;color:var(--ya-gold);margin-bottom:14px">📚 Add Grade / Book</div>
+            <div style="display:grid;gap:10px">
+              <div><div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Title *</div>
+                <input id="sbm-title-input" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--card-border);background:rgba(255,255,255,.06);color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem;box-sizing:border-box"></div>
+              <div><div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Focus / Description</div>
+                <input id="sbm-focus-input" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--card-border);background:rgba(255,255,255,.06);color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem;box-sizing:border-box"></div>
+              <div id="sbm-archive-row" style="display:none">
+                <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:.85rem;color:var(--text-muted)">
+                  <input type="checkbox" id="sbm-archived" style="width:16px;height:16px;accent-color:var(--ya-gold)">
+                  Archive this grade/book (hides from dropdown but preserves history)
+                </label>
+              </div>
+            </div>
+            <div id="sbm-feedback" style="min-height:16px;font-size:.78rem;margin-top:10px"></div>
+            <div style="display:flex;gap:10px;margin-top:14px;justify-content:flex-end">
+              <button onclick="document.getElementById('scc-book-modal').style.display='none'" style="padding:8px 18px;border-radius:9px;border:1px solid rgba(255,255,255,.15);background:transparent;color:var(--text-muted);font-family:Nunito,sans-serif;font-weight:700;cursor:pointer">Cancel</button>
+              <button id="sbm-save-btn" onclick="saveSccBookModal()" style="padding:8px 22px;border-radius:9px;border:none;background:var(--ya-gold);color:#000;font-family:Nunito,sans-serif;font-weight:800;cursor:pointer">💾 Save</button>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /tab-scc-admin -->
 
       <div id="tab-future-schedule" style="display:none">
         <div class="cards-grid" id="schedule-stat-cards">
@@ -3275,7 +3522,7 @@ function showPage(id,navItem){
 }
 
 function switchTab(tabId,btn){
-  ['tab-workshops','tab-scrabble-admin','tab-garden-admin','tab-jysep-admin','tab-future-schedule','tab-events-log','tab-compliance','tab-impact','tab-credentials-admin','tab-users-admin','tab-home-content-editor','tab-stats-diagnostic'].forEach(function(t){
+  ['tab-workshops','tab-scrabble-admin','tab-garden-admin','tab-jysep-admin','tab-scc-admin','tab-future-schedule','tab-events-log','tab-compliance','tab-impact','tab-credentials-admin','tab-users-admin','tab-home-content-editor','tab-stats-diagnostic'].forEach(function(t){
     var el=document.getElementById(t);if(el)el.style.display='none';
   });
   document.querySelectorAll('.tab-btn').forEach(function(b){b.classList.remove('active');});
@@ -3284,6 +3531,7 @@ function switchTab(tabId,btn){
   if(tabId==='workshops') renderAdmin();
   if(tabId==='garden-admin') renderGardenAdmin();
   if(tabId==='jysep-admin') renderJysepAdmin();
+  if(tabId==='scc-admin') renderSccAdmin();
   if(tabId==='future-schedule') renderScheduleTab();
   if(tabId==='credentials-admin') renderCredentialManager();
   if(tabId==='users-admin') renderUsersTab();
@@ -4989,7 +5237,23 @@ function renderScheduleTab(){
     });
   });
 
-  // Sort chronologically — nulls (no date) go to end
+  // Spiritual CC sessions — loop all active groups
+  getSccGroupIds().forEach(function(gid){
+    var sccSched=PROGRAMS_DATA[gid];if(!sccSched)return;
+    (sccSched.dates||[]).forEach(function(dateStr){
+      var d=parseDate(dateStr);
+      var isCan=(sccSched.cancellations||[]).indexOf(dateStr)>=0;
+      var meta=(sccSched.session_meta||{})[dateStr]||{};
+      var timeParts=sccSched.time?sccSched.time.split(/\s*[\u2013\u2014\-]\s*/):[],defS=(timeParts[0]||'10:00 AM').trim(),defE=(timeParts[1]||'11:00 AM').trim();
+      var detail=(meta.location||sccSched.location||'Youth Airdrie')+' · '+(meta.start_time||defS)+'–'+(meta.end_time||defE);
+      if(meta.theme)detail+=' · '+meta.theme;
+      var gradeLabel=sccSched.group_book?' · 📚 '+sccSched.group_book:'';
+      items.push({date:d,dateStr:dateStr,type:'Spiritual CC',sem:'Year-round',
+        title:sccSched.name||'Spiritual CC',detail:detail+gradeLabel,
+        status:isCan?'cancelled':(d&&d<now?'done':'upcoming'),
+        typeColor:'var(--ya-gold)',typeIcon:'🌟'});
+    });
+  });
   items.sort(function(a,b){
     if(!a.date && !b.date) return 0;
     if(!a.date) return 1;
@@ -5393,10 +5657,50 @@ function renderImpactTab(){
     html += statRow('Animators active', jysepCount||'--', 'pill-blue');
     html += '<div style="font-size:.78rem;color:var(--text-muted);padding:4px 0">No JYSEP groups created yet.</div>';
   }
-  html += '</div>';
-  html += '</div>';
-
-  // ── SECTION 5 — Skills & Themes ───────────────────────────────────────────
+  // SPIRITUAL CC — aggregated across all groups
+  html += '<div style="font-size:.72rem;font-weight:700;color:var(--ya-gold);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;margin-top:12px">Spiritual Children\'s Classes 🌟</div>';
+  var sccGids = getSccGroupIds();
+  var sccSessionsHeld=0,sccYouthAtt=0,sccFacHrs=0;
+  var sccFacSet=new Set(),sccYouthSet=new Set(),sccGroupRows=[];
+  sccGids.forEach(function(gid){
+    var sP=PROGRAMS_DATA[gid];if(!sP)return;
+    var _sPS=calcProgramStats()[gid]||{};
+    var sPast=getActiveProgramSessions(gid);
+    var enrolled=Object.keys(sP.youth_participants||{});
+    var grpYouthAtt=0;
+    enrolled.forEach(function(n){sccYouthSet.add(n);});
+    enrolled.forEach(function(name){
+      sPast.forEach(function(d){var r=((sP.attendance||{})[d]||[]).find(function(x){return x.name===name;});if(r&&r.attended){sccYouthAtt++;grpYouthAtt++;}});
+    });
+    sccSessionsHeld+=sPast.length;sccFacHrs+=_sPS.adultHrs||0;
+    var _sCan=sP.cancellations||[],_sNow=new Date();_sNow.setHours(0,0,0,0);
+    Object.keys(sP.attendance||{}).forEach(function(d){
+      if(_sCan.indexOf(d)>=0)return;
+      var dt=new Date(d);if(isNaN(dt)||dt>_sNow)return;
+      (sP.attendance[d]||[]).forEach(function(r){if(r.type==='adult'&&r.attended&&r.name!=='_adult_enrolled')sccFacSet.add(r.name);});
+    });
+    sccGroupRows.push({name:sP.name,sessions:sPast.length,enrolled:enrolled.length,youthAtt:grpYouthAtt,book:sP.group_book||''});
+  });
+  if(sccGids.length>0){
+    html+=statRow('Active SCC groups',sccGids.length,'pill-blue');
+    html+=statRow('Total sessions held',sccSessionsHeld,'pill-blue');
+    html+=statRow('Total enrolled children',sccYouthSet.size,'pill-teal');
+    html+=statRow('Total child attendances',sccYouthAtt,'pill-blue');
+    html+=statRow('Facilitators active',sccFacSet.size,'pill-orange');
+    html+=statRow('Facilitator hours',Math.round(sccFacHrs),'pill-gold');
+    if(sccGroupRows.length>1){
+      html+='<div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin:8px 0 4px">Per-group</div>';
+      sccGroupRows.forEach(function(g){
+        html+='<div style="font-size:.78rem;padding:4px 0;border-bottom:1px solid rgba(255,255,255,.05)">';
+        html+='<span style="font-weight:700;color:var(--ya-gold)">'+g.name+'</span>';
+        if(g.book)html+=' · 📚 '+g.book;
+        html+='<br><span style="color:var(--text-muted)">'+g.sessions+' sessions · '+g.enrolled+' children · '+g.youthAtt+' attendances</span></div>';
+      });
+    }
+    html+='<div style="font-size:.7rem;color:var(--text-muted);margin-top:4px;font-style:italic">Child attendance = participation only, not volunteer hours.</div>';
+  } else {
+    html+='<div style="font-size:.78rem;color:var(--text-muted);padding:4px 0">No Spiritual CC groups created yet.</div>';
+  }
   html += impactHead('💡','Skills & Themes Delivered','var(--lavender)','Developmental competencies woven through workshop programming');
   html += '<div class="section-box">';
   html += '<div style="font-size:.78rem;color:var(--text-muted);margin-bottom:14px">Topics covered across the '+conducted.length+' delivered workshops this semester:</div>';
@@ -5945,6 +6249,7 @@ async function saveProgramYouthEnrollment() {
       document.getElementById('program-enroll-modal').style.display = 'none';
       if (_pemProgramId === 'garden_2026') renderGardenAdmin();
       if (PROGRAMS_DATA[_pemProgramId] && PROGRAMS_DATA[_pemProgramId].program_type === 'jysep') { _jysepActiveGroup = _pemProgramId; renderJysepAdmin(); }
+      if (PROGRAMS_DATA[_pemProgramId] && PROGRAMS_DATA[_pemProgramId].program_type === 'spiritual_cc') { _sccActiveGroup = _pemProgramId; renderSccAdmin(); }
     }, 1200);
   } else {
     fb.style.color = 'var(--badge-amber)';
@@ -7297,7 +7602,743 @@ async function deleteJysepGroup(gid) {
   renderJysepAdmin();
 }
 // ══════════════════════════════════════════════════════════════════════════════
-// GENERIC MULTI-GROUP PROGRAM REPORTING FRAMEWORK
+// SPIRITUAL CC — Spiritual Children's Classes
+// Reuses the same multi-group architecture as JYSEP.
+// program_type: 'spiritual_cc'   |   ID prefix: 'scc_g_'
+// ══════════════════════════════════════════════════════════════════════════════
+
+var _sccActiveGroup  = '';
+var _sccEditGroupId  = '';
+var _sccEditDate     = '';
+var _sccHrsEdit      = false;
+var _sccBookEditId   = '';
+
+// ── Book list ─────────────────────────────────────────────────────────────────
+var SCC_BOOKS = [
+  { id:'scc_g1',     title:'Children\'s Class Grade 1',   focus:'Developing Spiritual Qualities and Virtues that Shape a Noble Character',                                          archived:false },
+  { id:'scc_g2',     title:'Children\'s Class Grade 2',   focus:'Learning to Live a Spiritual Life Through Study, Service, Friendship, Unity, and Consultation',                   archived:false },
+  { id:'scc_g3',     title:'Children\'s Class Grade 3',   focus:'Exploring World Religions and Humanity\'s Spiritual Journey Toward Peace and Fulfillment',                        archived:false },
+  { id:'scc_ruhi31', title:'Ruhi Book 3.1',               focus:'Teaching Children\'s Class Grade 1',                                                                              archived:false },
+  { id:'scc_ruhi32', title:'Ruhi Book 3.2',               focus:'Teaching Children\'s Class Grade 2',                                                                              archived:false },
+  { id:'scc_ruhi33', title:'Ruhi Book 3.3',               focus:'Teaching Children\'s Class Grade 3',                                                                              archived:false }
+];
+function sccBookByTitle(title) { return SCC_BOOKS.find(function(b){ return b.title===title; })||null; }
+function getActiveSccBooks()   { return SCC_BOOKS.filter(function(b){ return !b.archived; }); }
+
+async function loadSccBooks() {
+  var row = await dbGet('program_settings','select=group_notes&program_id=eq.spiritual_cc_books');
+  if (row && row.length && row[0].group_notes) {
+    try {
+      var saved = JSON.parse(row[0].group_notes);
+      saved.forEach(function(sb){
+        var idx = SCC_BOOKS.findIndex(function(b){ return b.id===sb.id; });
+        if (idx>=0) SCC_BOOKS[idx]=sb; else SCC_BOOKS.push(sb);
+      });
+    } catch(e){ console.warn('[loadSccBooks] JSON parse error',e); }
+  }
+}
+async function persistSccBooks() {
+  var row={ program_id:'spiritual_cc_books', cert_name:'Certificate of Participation',
+            cert_min_sessions:6, group_name:'SCC Book Library', group_notes:JSON.stringify(SCC_BOOKS) };
+  var r = await fetch(SUPA_URL+'/rest/v1/program_settings?on_conflict=program_id',{
+    method:'POST', headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,
+    'Content-Type':'application/json','Prefer':'resolution=merge-duplicates,return=minimal'},
+    body:JSON.stringify(row) });
+  return r.ok;
+}
+function populateSccBookSelect(selId, currentTitle) {
+  var sel=document.getElementById(selId); if(!sel) return;
+  sel.innerHTML='<option value="">— Select a grade/book —</option>';
+  SCC_BOOKS.filter(function(b){ return !b.archived||b.title===currentTitle; }).forEach(function(b){
+    var opt=document.createElement('option');
+    opt.value=b.title; opt.textContent=b.title+(b.archived?' (archived)':'');
+    if(b.title===currentTitle) opt.selected=true;
+    sel.appendChild(opt);
+  });
+}
+
+// ── Book Library UI ───────────────────────────────────────────────────────────
+function renderSccBookLibrary() {
+  var el=document.getElementById('scc-book-library-list'); if(!el) return;
+  if(!SCC_BOOKS.length){el.innerHTML='<div style="color:var(--text-muted);font-size:.82rem">No grades/books yet.</div>';return;}
+  el.innerHTML=SCC_BOOKS.map(function(b){
+    var safe=b.id.replace(/'/g,"\\'");
+    return '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.05)">'+
+      '<div style="flex:1;min-width:0">'+
+        '<div style="font-size:.85rem;font-weight:700;color:'+(b.archived?'var(--text-muted)':'var(--text-main)')+'">'+
+          (b.archived?'<span style="font-size:.68rem;color:var(--ya-gold);background:rgba(245,166,35,.1);border-radius:4px;padding:1px 5px;margin-right:5px">archived</span>':'')+b.title+'</div>'+
+        '<div style="font-size:.72rem;color:var(--text-muted);margin-top:2px;font-style:italic">'+b.focus+'</div>'+
+      '</div>'+
+      '<button onclick="openSccBookModal(\''+safe+'\')" class="ws-btn" style="font-size:.7rem;border-color:var(--ya-gold);color:var(--ya-gold);flex-shrink:0">✏️ Edit</button>'+
+    '</div>';
+  }).join('');
+}
+function openSccBookModal(bookId) {
+  _sccBookEditId=bookId||'';
+  var bObj=bookId?SCC_BOOKS.find(function(b){return b.id===bookId;}):null;
+  document.getElementById('sbm-title').textContent=bObj?'✏️ Edit Grade / Book':'📚 Add Grade / Book';
+  document.getElementById('sbm-title-input').value=bObj?bObj.title:'';
+  document.getElementById('sbm-focus-input').value=bObj?bObj.focus:'';
+  document.getElementById('sbm-archive-row').style.display=bObj?'block':'none';
+  if(bObj) document.getElementById('sbm-archived').checked=bObj.archived||false;
+  document.getElementById('sbm-feedback').textContent='';
+  document.getElementById('scc-book-modal').style.display='flex';
+}
+async function saveSccBookModal() {
+  var fb=document.getElementById('sbm-feedback'), btn=document.getElementById('sbm-save-btn');
+  var title=(document.getElementById('sbm-title-input').value||'').trim();
+  var focus=(document.getElementById('sbm-focus-input').value||'').trim();
+  fb.textContent='';
+  if(!title){fb.style.color='var(--badge-red)';fb.textContent='⚠ Title is required.';return;}
+  var dup=SCC_BOOKS.find(function(b){return b.title===title&&b.id!==_sccBookEditId;});
+  if(dup){fb.style.color='var(--badge-red)';fb.textContent='⚠ A grade/book with that title already exists.';return;}
+  btn.textContent='Saving…';btn.disabled=true;btn.style.opacity='.6';
+  if(_sccBookEditId){
+    var idx=SCC_BOOKS.findIndex(function(b){return b.id===_sccBookEditId;});
+    if(idx>=0){SCC_BOOKS[idx].title=title;SCC_BOOKS[idx].focus=focus;SCC_BOOKS[idx].archived=document.getElementById('sbm-archived').checked;}
+  } else {
+    SCC_BOOKS.push({id:'scc_bk_'+Date.now().toString(36),title:title,focus:focus,archived:false});
+  }
+  var ok=await persistSccBooks();
+  btn.textContent='💾 Save';btn.disabled=false;btn.style.opacity='';
+  if(!ok){fb.style.color='var(--badge-red)';fb.textContent='⚠ Save failed.';return;}
+  fb.style.color='var(--ya-teal)';fb.textContent='✔ Saved';
+  setTimeout(function(){document.getElementById('scc-book-modal').style.display='none';renderSccBookLibrary();},500);
+}
+
+// ── Group helpers ─────────────────────────────────────────────────────────────
+function getSccGroupIds(includeArchived) {
+  return Object.keys(PROGRAMS_DATA||{}).filter(function(k){
+    var p=PROGRAMS_DATA[k];
+    return p&&p.program_type==='spiritual_cc'&&(includeArchived||!p.group_archived);
+  });
+}
+function sccProg(gid){ return PROGRAMS_DATA[gid||_sccActiveGroup]||null; }
+function sccSlug(name){
+  return 'scc_g_'+name.toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_|_$/g,'').slice(0,30);
+}
+
+// ── Load / Startup ────────────────────────────────────────────────────────────
+async function loadAllSccData() {
+  var settingsRows = await dbGet('program_settings','select=*&program_id=like.scc_g_%25');
+  console.log('[loadAllSccData] program_settings rows:',settingsRows?settingsRows.length:0);
+  if(settingsRows){
+    settingsRows.forEach(function(s){
+      var gid=s.program_id;
+      var day=s.group_day||'Saturday';
+      var startD=s.group_start||null, endD=s.group_end||null;
+      console.log('[loadAllSccData] row:',gid,'start:',startD,'end:',endD,'day:',day);
+      if(!PROGRAMS_DATA[gid]){
+        var dates=(startD&&endD)?buildWeeklyDates(startD,endD,day):[];
+        PROGRAMS_DATA[gid]={
+          id:'prog_'+gid, name:s.group_name||'Spiritual CC Group',
+          season:'Year-round', time:s.group_time||'10:00 AM – 11:00 AM',
+          location:s.group_location||'Youth Airdrie', type:'weekly', day:day,
+          dates:dates, group_start:startD||'', group_end:endD||'',
+          cancellations:[], adult_volunteers:{}, youth_participants:{},
+          adult_participants:{}, session_meta:{}, attendance:{},
+          color:'var(--ya-gold)', program_type:'spiritual_cc', facilitator_label:'Facilitator',
+          group_book:s.group_book||'', group_age_range:s.group_age_range||'Ages 5–10',
+          group_notes:s.group_notes||'', group_archived:s.group_archived===true||s.group_archived==='true'
+        };
+        console.log('[loadAllSccData] NEW group:',gid,'dates:',dates.length);
+      } else {
+        var p=PROGRAMS_DATA[gid];
+        p.name           = s.group_name    || p.name    || 'Spiritual CC Group';
+        p.group_book     = (s.group_book!==undefined&&s.group_book!==null)?s.group_book:(p.group_book||'');
+        p.group_age_range= s.group_age_range||p.group_age_range||'Ages 5–10';
+        p.group_notes    = (s.group_notes!==undefined&&s.group_notes!==null)?s.group_notes:(p.group_notes||'');
+        p.group_archived = (s.group_archived===true||s.group_archived==='true');
+        p.time           = s.group_time    ||p.time    ||'10:00 AM – 11:00 AM';
+        p.location       = s.group_location||p.location||'Youth Airdrie';
+        p.day            = s.group_day     ||p.day     ||'Saturday';
+        var rS=startD||p.group_start||null, rE=endD||p.group_end||null;
+        p.group_start=rS||''; p.group_end=rE||'';
+        if(rS&&rE){ p.dates=buildWeeklyDates(rS,rE,p.day); }
+        else { p.dates=[]; }
+        console.log('[loadAllSccData] UPDATED:',gid,'dates:',p.dates.length);
+      }
+    });
+  }
+  var gids=getSccGroupIds(true);
+  await Promise.all(gids.map(function(gid){return loadSingleSccGroup(gid);}));
+  console.log('[loadAllSccData] Loaded',gids.length,'SCC group(s):',gids.join(', '));
+}
+
+async function loadSingleSccGroup(gid) {
+  var prog=PROGRAMS_DATA[gid]; if(!prog) return;
+  prog.session_meta={};prog.attendance={};
+  prog.youth_participants={};prog.adult_participants={};
+  prog.cancellations=[];
+  var cancelRows=await dbGet('program_cancellations','select=session_date,reason&program_id=eq.'+encodeURIComponent(gid));
+  if(cancelRows) cancelRows.forEach(function(row){
+    if(prog.cancellations.indexOf(row.session_date)<0) prog.cancellations.push(row.session_date);
+  });
+  var metaRows=await dbGet('program_session_meta','select=session_date,activity_theme,session_description,location,start_time,end_time,cancellation_reason,notes&program_id=eq.'+encodeURIComponent(gid));
+  if(metaRows) metaRows.forEach(function(row){
+    prog.session_meta[row.session_date]={
+      theme:row.activity_theme||'',description:row.session_description||'',
+      location:row.location||'',start_time:row.start_time||'',end_time:row.end_time||'',
+      cancellation_reason:row.cancellation_reason||'',notes:row.notes||''
+    };
+    if(row.cancellation_reason&&prog.cancellations.indexOf(row.session_date)<0)
+      prog.cancellations.push(row.session_date);
+  });
+  var attRows=await dbGet('program_attendance','select=session_date,participant_name,participant_type,attended,volunteer_hours&program_id=eq.'+encodeURIComponent(gid)+'&order=session_date.asc');
+  if(attRows) attRows.forEach(function(row){
+    if(row.session_date==='_enrolled'&&row.participant_type==='youth'){
+      prog.youth_participants=prog.youth_participants||{};
+      if(!prog.youth_participants[row.participant_name]) prog.youth_participants[row.participant_name]=[];
+      return;
+    }
+    if(row.session_date==='_adult_enrolled'&&row.participant_type==='adult'){
+      prog.adult_participants=prog.adult_participants||{};
+      if(!prog.adult_participants[row.participant_name]) prog.adult_participants[row.participant_name]=true;
+      return;
+    }
+    prog.attendance[row.session_date]=prog.attendance[row.session_date]||[];
+    var exists=prog.attendance[row.session_date].find(function(r){return r.name===row.participant_name;});
+    if(!exists) prog.attendance[row.session_date].push({
+      name:row.participant_name,type:row.participant_type,attended:row.attended,
+      hours:row.volunteer_hours!=null?parseFloat(row.volunteer_hours):null
+    });
+  });
+  console.log('[loadSingleSccGroup]',gid,'- cancellations:',prog.cancellations.length,'- att rows:',attRows?attRows.length:0);
+}
+
+// ── Group Create / Edit Modal ─────────────────────────────────────────────────
+function _wireSgmDateListeners(){
+  var s=document.getElementById('sgm-start'),e=document.getElementById('sgm-end'),d=document.getElementById('sgm-day');
+  if(s)s.onchange=updateSgmDatePreview;if(e)e.onchange=updateSgmDatePreview;
+  if(d)d.onchange=function(){updateSgmDatePreview();};
+}
+function updateSgmDatePreview(){
+  var el=document.getElementById('sgm-date-preview');if(!el)return;
+  var sI=(document.getElementById('sgm-start').value||'').trim();
+  var eI=(document.getElementById('sgm-end').value||'').trim();
+  var day=(document.getElementById('sgm-day').value||'Saturday');
+  if(!sI||!eI){el.textContent='';return;}
+  if(eI<sI){el.style.color='var(--badge-red)';el.textContent='⚠ End date is before start date.';return;}
+  var sD=jgmISOToDisplay(sI), eD=jgmISOToDisplay(eI);
+  if(!sD||!eD){el.textContent='';return;}
+  var count=buildWeeklyDates(sD,eD,day).length;
+  el.style.color='var(--ya-teal)';
+  el.textContent=count+' '+day+' session'+(count!==1?'s':'')+' · '+sD+' → '+eD;
+}
+function updateSgmBookFocus(){
+  var sel=document.getElementById('sgm-book'),focEl=document.getElementById('sgm-book-focus');
+  if(!sel||!focEl)return;
+  var bObj=sccBookByTitle(sel.value);
+  focEl.textContent=bObj?bObj.focus:'';
+}
+function openCreateSccGroupModal(){
+  _sccEditGroupId='';
+  document.getElementById('sgm-title').textContent='➕ New Spiritual CC Group';
+  document.getElementById('sgm-name').value='';document.getElementById('sgm-age').value='Ages 5–10';
+  document.getElementById('sgm-day').value='Saturday';document.getElementById('sgm-time').value='10:00 AM – 11:00 AM';
+  document.getElementById('sgm-start').value='2026-01-10';document.getElementById('sgm-end').value='2026-12-26';
+  document.getElementById('sgm-location').value='Youth Airdrie';document.getElementById('sgm-notes').value='';
+  document.getElementById('sgm-feedback').textContent='';
+  populateSccBookSelect('sgm-book','');
+  document.getElementById('sgm-book').onchange=function(){updateSgmBookFocus();};
+  document.getElementById('sgm-book-focus').textContent='';
+  _wireSgmDateListeners();updateSgmDatePreview();
+  document.getElementById('scc-group-modal').style.display='flex';
+}
+function openEditSccGroupModal(gid){
+  var p=sccProg(gid);if(!p)return;
+  _sccEditGroupId=gid;
+  document.getElementById('sgm-title').textContent='✏️ Edit Spiritual CC Group';
+  document.getElementById('sgm-name').value=p.name;
+  document.getElementById('sgm-age').value=p.group_age_range||'Ages 5–10';
+  document.getElementById('sgm-day').value=p.day||'Saturday';
+  document.getElementById('sgm-time').value=p.time||'10:00 AM – 11:00 AM';
+  document.getElementById('sgm-location').value=p.location||'Youth Airdrie';
+  document.getElementById('sgm-notes').value=p.group_notes||'';
+  document.getElementById('sgm-feedback').textContent='';
+  var sS=p.group_start||(p.dates&&p.dates.length?p.dates[0]:'');
+  var sE=p.group_end  ||(p.dates&&p.dates.length?p.dates[p.dates.length-1]:'');
+  document.getElementById('sgm-start').value=jgmDisplayToISO(sS)||sS;
+  document.getElementById('sgm-end').value  =jgmDisplayToISO(sE)||sE;
+  populateSccBookSelect('sgm-book',p.group_book||'');
+  document.getElementById('sgm-book').onchange=function(){updateSgmBookFocus();};
+  _wireSgmDateListeners();updateSgmBookFocus();updateSgmDatePreview();
+  document.getElementById('scc-group-modal').style.display='flex';
+}
+
+async function saveSccGroupModal(){
+  var fb=document.getElementById('sgm-feedback'),btn=document.getElementById('sgm-save-btn');
+  fb.textContent='';fb.style.color='var(--text-muted)';
+  var name=(document.getElementById('sgm-name').value||'').trim();
+  if(!name){fb.style.color='var(--badge-red)';fb.textContent='⚠ Group name is required.';return;}
+  var book=document.getElementById('sgm-book').value||'';
+  var ageRange=(document.getElementById('sgm-age').value||'').trim()||'Ages 5–10';
+  var day=(document.getElementById('sgm-day').value||'Saturday').trim();
+  var time=(document.getElementById('sgm-time').value||'10:00 AM – 11:00 AM').trim();
+  var location=(document.getElementById('sgm-location').value||'Youth Airdrie').trim();
+  var notes=(document.getElementById('sgm-notes').value||'').trim();
+  var startISO=(document.getElementById('sgm-start').value||'').trim();
+  var endISO  =(document.getElementById('sgm-end').value  ||'').trim();
+  if(!startISO){fb.style.color='var(--badge-red)';fb.textContent='⚠ Group Start Date is required.';return;}
+  if(!endISO)  {fb.style.color='var(--badge-red)';fb.textContent='⚠ Group End Date is required.';return;}
+  if(endISO<startISO){fb.style.color='var(--badge-red)';fb.textContent='⚠ End date cannot be before start date.';return;}
+  var startD=jgmISOToDisplay(startISO),endD=jgmISOToDisplay(endISO);
+  if(!startD||!endD){fb.style.color='var(--badge-red)';fb.textContent='⚠ Date conversion failed.';return;}
+  var dates=buildWeeklyDates(startD,endD,day);
+  if(!dates.length){fb.style.color='var(--badge-red)';fb.textContent='⚠ No '+day+' sessions in date range.';return;}
+  var gid=_sccEditGroupId||sccSlug(name);
+  if(!_sccEditGroupId&&PROGRAMS_DATA[gid]) gid=gid+'_'+Date.now().toString(36);
+  btn.textContent='Saving…';btn.style.opacity='.6';btn.disabled=true;
+  var existingArchived=!!(PROGRAMS_DATA[gid]&&PROGRAMS_DATA[gid].group_archived);
+  var settingsRow={
+    program_id:gid, cert_name:'Certificate of Participation', cert_min_sessions:6,
+    group_name:name, group_book:book, group_age_range:ageRange, group_time:time,
+    group_day:day, group_location:location, group_notes:notes,
+    group_start:startD, group_end:endD, group_archived:existingArchived
+  };
+  var r; try {
+    r=await fetch(SUPA_URL+'/rest/v1/program_settings?on_conflict=program_id',{
+      method:'POST',headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,
+        'Content-Type':'application/json','Prefer':'resolution=merge-duplicates,return=representation'},
+      body:JSON.stringify(settingsRow)});
+  } catch(netErr){
+    fb.style.color='var(--badge-red)';fb.textContent='⚠ Network error: '+netErr.message;
+    btn.textContent='💾 Save Group';btn.style.opacity='';btn.disabled=false;return;
+  }
+  if(!r.ok){
+    var errText=await r.text(),errMsg=errText;
+    try{var eO=JSON.parse(errText||'{}');errMsg=eO.message||eO.hint||errText;}catch(e){}
+    fb.style.color='var(--badge-red)';fb.textContent='⚠ Save failed (HTTP '+r.status+'): '+errMsg;
+    btn.textContent='💾 Save Group';btn.style.opacity='';btn.disabled=false;return;
+  }
+  var savedRows;try{savedRows=await r.json();}catch(e){savedRows=null;}
+  var savedRow=Array.isArray(savedRows)?savedRows[0]:(savedRows||null);
+  var cS=(savedRow&&savedRow.group_start)?savedRow.group_start:startD;
+  var cE=(savedRow&&savedRow.group_end)  ?savedRow.group_end  :endD;
+  var cD=(savedRow&&savedRow.group_day)  ?savedRow.group_day  :day;
+  var cDates=buildWeeklyDates(cS,cE,cD); if(!cDates.length) cDates=dates;
+  if(!PROGRAMS_DATA[gid]){
+    PROGRAMS_DATA[gid]={id:'prog_'+gid,cancellations:[],session_meta:{},attendance:{},
+      adult_volunteers:{},youth_participants:{},adult_participants:{},
+      color:'var(--ya-gold)',program_type:'spiritual_cc',facilitator_label:'Facilitator'};
+  }
+  var prog=PROGRAMS_DATA[gid];
+  prog.name=savedRow&&savedRow.group_name?savedRow.group_name:name;
+  prog.group_book=savedRow&&savedRow.group_book!==undefined?savedRow.group_book:book;
+  prog.group_age_range=ageRange;prog.time=cS?prog.time:time;prog.time=time;
+  prog.day=cD;prog.location=location;prog.group_notes=notes;
+  prog.group_start=cS;prog.group_end=cE;prog.dates=cDates;prog.season='Year-round';
+  fb.style.color='var(--ya-teal)';
+  fb.textContent='✔ Saved — '+cDates.length+' '+cD+' sessions · '+cS+' → '+cE;
+  btn.textContent='💾 Save Group';btn.style.opacity='';btn.disabled=false;
+  setTimeout(function(){
+    document.getElementById('scc-group-modal').style.display='none';
+    _sccActiveGroup=gid; renderSccAdmin(); renderScheduleTab(); updateLandingStats();
+  },500);
+}
+
+// ── Archive / Delete ──────────────────────────────────────────────────────────
+async function archiveSccGroup(gid){
+  var p=sccProg(gid);if(!p)return;
+  if(!confirm('Archive "'+p.name+'"?\n\nAll data is preserved. The group will be hidden from active views.'))return;
+  p.group_archived=true;
+  await fetch(SUPA_URL+'/rest/v1/program_settings?program_id=eq.'+encodeURIComponent(gid),{
+    method:'PATCH',headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,
+    'Content-Type':'application/json','Prefer':'return=minimal'},body:JSON.stringify({group_archived:true})});
+  var remaining=getSccGroupIds();
+  _sccActiveGroup=remaining.length?remaining[0]:'';
+  renderSccAdmin();
+}
+async function deleteSccGroup(gid){
+  var p=sccProg(gid);if(!p)return;
+  var confirmName=prompt('Type the group name exactly to permanently delete:\n"'+p.name+'"');
+  if(confirmName!==p.name){alert('Name did not match. Deletion cancelled.');return;}
+  var secondConfirm=confirm('PERMANENTLY DELETE "'+p.name+'"?\n\nThis cannot be undone.');
+  if(!secondConfirm)return;
+  await fetch(SUPA_URL+'/rest/v1/program_cancellations?program_id=eq.'+encodeURIComponent(gid),{method:'DELETE',headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,'Prefer':'return=minimal'}});
+  await fetch(SUPA_URL+'/rest/v1/program_session_meta?program_id=eq.'+encodeURIComponent(gid), {method:'DELETE',headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,'Prefer':'return=minimal'}});
+  await fetch(SUPA_URL+'/rest/v1/program_attendance?program_id=eq.'+encodeURIComponent(gid),   {method:'DELETE',headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,'Prefer':'return=minimal'}});
+  await fetch(SUPA_URL+'/rest/v1/program_settings?program_id=eq.'+encodeURIComponent(gid),     {method:'DELETE',headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,'Prefer':'return=minimal'}});
+  delete PROGRAMS_DATA[gid];
+  var remaining=getSccGroupIds();_sccActiveGroup=remaining.length?remaining[0]:'';
+  renderSccAdmin();
+}
+
+// ── Stat cards ────────────────────────────────────────────────────────────────
+function renderSccStatCards(){
+  var el=document.getElementById('scc-stat-cards');if(!el)return;
+  var gids=getSccGroupIds();
+  var totalGroups=gids.length,totalSessions=0,totalEnrolled=0,totalYouthAtt=0,totalFacHrs=0;
+  var facSet=new Set();
+  gids.forEach(function(gid){
+    var p=PROGRAMS_DATA[gid];if(!p)return;
+    var pastDates=getActiveProgramSessions(gid);
+    totalSessions+=pastDates.length;
+    var enrolled=Object.keys(p.youth_participants||{});
+    totalEnrolled+=enrolled.length;
+    enrolled.forEach(function(name){
+      pastDates.forEach(function(d){
+        var r=((p.attendance||{})[d]||[]).find(function(x){return x.name===name;});
+        if(r&&r.attended)totalYouthAtt++;
+      });
+    });
+    var ps=calcProgramStats()[gid]||{};totalFacHrs+=ps.adultHrs||0;
+    var can=p.cancellations||[],now2=new Date();now2.setHours(0,0,0,0);
+    Object.keys(p.attendance||{}).forEach(function(d){
+      if(can.indexOf(d)>=0)return;
+      var dt=new Date(d);if(isNaN(dt)||dt>now2)return;
+      (p.attendance[d]||[]).forEach(function(r){if(r.type==='adult'&&r.attended&&r.name!=='_adult_enrolled')facSet.add(r.name);});
+    });
+  });
+  el.innerHTML=
+    '<div class="stat-card" style="--accent-color:var(--ya-gold)"><div class="stat-label">Active Groups</div><div class="stat-value">'+totalGroups+'</div><div class="stat-meta">CC cohorts</div><div class="stat-icon">🌟</div></div>'+
+    '<div class="stat-card" style="--accent-color:var(--ya-teal)"><div class="stat-label">Enrolled Children</div><div class="stat-value">'+totalEnrolled+'</div><div class="stat-meta">across all groups</div><div class="stat-icon">👧</div></div>'+
+    '<div class="stat-card" style="--accent-color:var(--ya-blue)"><div class="stat-label">Sessions Held</div><div class="stat-value">'+totalSessions+'</div><div class="stat-meta">total</div><div class="stat-icon">✅</div></div>'+
+    '<div class="stat-card" style="--accent-color:var(--ya-orange)"><div class="stat-label">Child Attendances</div><div class="stat-value">'+totalYouthAtt+'</div><div class="stat-meta">all groups combined</div><div class="stat-icon">📋</div></div>'+
+    '<div class="stat-card" style="--accent-color:var(--ya-green)"><div class="stat-label">Facilitator Hours</div><div class="stat-value">'+Math.round(totalFacHrs)+'</div><div class="stat-meta">'+facSet.size+' facilitators</div><div class="stat-icon">⏱</div></div>';
+}
+
+// ── Group strip ───────────────────────────────────────────────────────────────
+function renderSccGroupStrip(){
+  var strip=document.getElementById('scc-group-strip');if(!strip)return;
+  var gids=getSccGroupIds();
+  if(!gids.length){strip.innerHTML='<div style="color:var(--text-muted);font-size:.82rem">No Spiritual CC groups yet. Click "+ New Group" to create one.</div>';return;}
+  strip.innerHTML=gids.map(function(gid){
+    var p=PROGRAMS_DATA[gid],isA=(gid===_sccActiveGroup);
+    var book=p.group_book?'📚 '+p.group_book:'📚 No grade selected';
+    return '<button onclick="selectSccGroup(\''+gid+'\')" style="padding:10px 14px;border-radius:10px;border:2px solid '+(isA?'var(--ya-gold)':'rgba(255,255,255,.12)')+
+      ';background:'+(isA?'rgba(245,166,35,.12)':'rgba(255,255,255,.04)')+';color:'+(isA?'var(--ya-gold)':'var(--text-main)')+
+      ';cursor:pointer;text-align:left;min-width:160px;max-width:220px">'+
+      '<div style="font-weight:700;font-size:.85rem;margin-bottom:3px">'+p.name+'</div>'+
+      '<div style="font-size:.69rem;color:var(--text-muted)">'+(p.group_age_range||'Ages 5–10')+'</div>'+
+      '<div style="font-size:.69rem;color:var(--text-muted);margin-top:2px">'+book+'</div></button>';
+  }).join('');
+}
+function selectSccGroup(gid){_sccActiveGroup=gid;renderSccGroupStrip();renderSccGroupDetail();}
+
+// ── Group detail ──────────────────────────────────────────────────────────────
+function renderSccGroupDetail(){
+  var detailEl=document.getElementById('scc-group-detail');if(!detailEl)return;
+  var gid=_sccActiveGroup,p=sccProg(gid);
+  if(!p){detailEl.style.display='none';return;}
+  detailEl.style.display='block';
+  var nameEl=document.getElementById('scd-group-name'),metaEl=document.getElementById('scd-group-meta');
+  if(nameEl)nameEl.textContent=p.name+(p.group_archived?' [archived]':'');
+  if(metaEl)metaEl.textContent=(p.group_age_range||'Ages 5–10')+' · '+(p.day||'Saturday')+'s · '+(p.location||'Youth Airdrie')+' · '+(p.time||'10:00 AM – 11:00 AM');
+  var bookEl=document.getElementById('scd-book-panel');
+  if(bookEl){
+    var bookDisp=document.getElementById('scd-book-display');
+    if(p.group_book){
+      var bObj=sccBookByTitle(p.group_book)||{};
+      if(bookDisp)bookDisp.innerHTML='<strong>'+p.group_book+'</strong>'+(bObj.focus?'<div style="font-size:.78rem;color:var(--text-muted);margin-top:3px;font-style:italic">'+bObj.focus+'</div>':'');
+    } else {
+      if(bookDisp)bookDisp.innerHTML='<span style="color:var(--text-muted);font-style:italic">No grade/book assigned yet — edit group to set one.</span>';
+    }
+  }
+  renderSccYouthGrid();renderSccAdultHrsGrid();renderSccSessionsList();renderSccBookCompletion();
+}
+
+// ── Youth attendance grid ─────────────────────────────────────────────────────
+function renderSccYouthGrid(){
+  var thead=document.getElementById('scc-youth-att-thead'),tbody=document.getElementById('scc-youth-att-tbody');
+  if(!thead||!tbody)return;
+  var gid=_sccActiveGroup,p=sccProg(gid);
+  if(!p){thead.innerHTML='';tbody.innerHTML='';return;}
+  var pastDates=getActiveProgramSessions(gid);
+  var enrolled=Object.keys(p.youth_participants||{}).sort();
+  if(!enrolled.length){thead.innerHTML='';tbody.innerHTML='<tr><td colspan="3" style="color:var(--text-muted);font-size:.82rem;padding:12px">No children enrolled yet.</td></tr>';return;}
+  if(!pastDates.length){thead.innerHTML='';tbody.innerHTML='<tr><td colspan="3" style="color:var(--text-muted);font-size:.82rem;padding:12px">No past sessions yet.</td></tr>';return;}
+  var shortDates=pastDates.map(function(d){return d.replace(/, 20\d\d/,'');});
+  thead.innerHTML='<th class="grd-sticky grd-sticky-1" style="font-size:.72rem">Child</th>'+
+    '<th class="grd-sticky grd-sticky-2" style="font-size:.72rem">Attended</th>'+
+    '<th class="grd-sticky grd-sticky-3" style="font-size:.72rem">Rate</th>'+
+    shortDates.map(function(sd,i){return '<th style="font-size:.6rem;min-width:38px;white-space:nowrap;text-align:center" title="'+pastDates[i]+'">'+sd+'</th>';}).join('');
+  var rows=enrolled.map(function(name){
+    var attCount=pastDates.filter(function(d){var r=((p.attendance||{})[d]||[]).find(function(x){return x.name===name;});return r&&r.attended;}).length;
+    var pct=pastDates.length>0?Math.round(attCount/pastDates.length*100):0;
+    var age=YOUTH_AGES[name]?'Age '+YOUTH_AGES[name]:'';
+    var eN=name.replace(/'/g,"\\'"),sG=gid.replace(/'/g,"\\'");
+    var cells=pastDates.map(function(d){
+      var rec=((p.attendance||{})[d]||[]).find(function(x){return x.name===name;});
+      var att=rec&&rec.attended;var sD=d.replace(/'/g,"\\'");
+      return '<td style="text-align:center;padding:4px 2px">'+
+        '<button onclick="toggleSccYouthCell(\''+sG+'\',\''+eN+'\',\''+sD+'\',this)" '+
+        'style="width:28px;height:28px;border-radius:6px;border:1px solid '+(att?'var(--ya-gold)':'rgba(255,255,255,.15)')+
+        ';background:'+(att?'rgba(245,166,35,.2)':'transparent')+
+        ';color:'+(att?'var(--ya-gold)':'var(--text-muted)')+
+        ';font-size:.75rem;cursor:pointer;transition:all .15s">'+(att?'✔':'·')+'</button></td>';
+    }).join('');
+    return '<tr>'+
+      '<td class="grd-sticky grd-sticky-1" style="font-size:.82rem;font-weight:600">'+name+
+        '<div style="font-size:.65rem;color:var(--text-muted);margin-top:1px">'+age+
+        ' <button onclick="removeSccYouth(\''+sG+'\',\''+eN+'\')" style="border:none;background:none;color:var(--badge-red);cursor:pointer;font-size:.65rem;padding:0;margin-left:2px;opacity:.6" title="Remove">✕</button></div></td>'+
+      '<td class="grd-sticky grd-sticky-2" style="text-align:center;font-weight:700;color:var(--ya-gold)">'+attCount+'</td>'+
+      '<td class="grd-sticky grd-sticky-3" style="text-align:center;color:var(--text-muted);font-size:.75rem">'+pct+'%</td>'+
+      cells+'</tr>';
+  }).join('');
+  tbody.innerHTML=rows;
+}
+
+async function toggleSccYouthCell(gid,name,dateStr,btn){
+  var p=sccProg(gid);if(!p)return;
+  p.attendance=p.attendance||{};p.attendance[dateStr]=p.attendance[dateStr]||[];
+  var rec=p.attendance[dateStr].find(function(r){return r.name===name;});
+  var newAtt=rec?!rec.attended:true;
+  if(rec)rec.attended=newAtt;
+  else p.attendance[dateStr].push({name:name,type:'youth',attended:true,hours:null});
+  btn.textContent=newAtt?'✔':'·';
+  btn.style.background=newAtt?'rgba(245,166,35,.2)':'transparent';
+  btn.style.borderColor=newAtt?'var(--ya-gold)':'rgba(255,255,255,.15)';
+  btn.style.color=newAtt?'var(--ya-gold)':'var(--text-muted)';
+  await fetch(SUPA_URL+'/rest/v1/program_attendance?on_conflict=program_id,session_date,participant_name',{
+    method:'POST',headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,
+    'Content-Type':'application/json','Prefer':'resolution=merge-duplicates,return=minimal'},
+    body:JSON.stringify({program_id:gid,session_date:dateStr,participant_name:name,
+      participant_type:'youth',attended:newAtt,volunteer_hours:null})});
+}
+
+async function removeSccYouth(gid,name){
+  var p=sccProg(gid);if(!p)return;
+  if(!confirm('Remove "'+name+'" from this group?'))return;
+  delete p.youth_participants[name];
+  await fetch(SUPA_URL+'/rest/v1/program_attendance?program_id=eq.'+encodeURIComponent(gid)+'&participant_name=eq.'+encodeURIComponent(name),{
+    method:'DELETE',headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,'Prefer':'return=minimal'}});
+  renderSccYouthGrid();renderSccStatCards();
+}
+
+// ── Facilitator hours grid ────────────────────────────────────────────────────
+function renderSccAdultHrsGrid(){
+  var thead=document.getElementById('scc-adult-hrs-thead'),tbody=document.getElementById('scc-adult-hrs-tbody');
+  if(!thead||!tbody)return;
+  var gid=_sccActiveGroup,p=sccProg(gid);
+  if(!p){thead.innerHTML='';tbody.innerHTML='';return;}
+  var pastDates=getActiveProgramSessions(gid);
+  var facilitators=Object.keys(p.adult_participants||{}).sort();
+  if(!facilitators.length){thead.innerHTML='';tbody.innerHTML='<tr><td colspan="3" style="color:var(--text-muted);font-size:.82rem;padding:12px">No facilitators enrolled yet.</td></tr>';return;}
+  if(!pastDates.length){thead.innerHTML='';tbody.innerHTML='<tr><td colspan="3" style="color:var(--text-muted);font-size:.82rem;padding:12px">No past sessions yet.</td></tr>';return;}
+  var shortDates=pastDates.map(function(d){return d.replace(/, 20\d\d/,'');});
+  thead.innerHTML='<th class="grd-sticky grd-sticky-1" style="font-size:.72rem">Facilitator</th>'+
+    '<th class="grd-sticky grd-sticky-2" style="font-size:.72rem">Total Hrs</th>'+
+    '<th class="grd-sticky grd-sticky-3" style="font-size:.72rem">Sessions</th>'+
+    shortDates.map(function(sd,i){return '<th style="font-size:.6rem;min-width:52px;white-space:nowrap;text-align:center" title="'+pastDates[i]+'">'+sd+'</th>';}).join('');
+  var timeParts=p.time?p.time.split(/\s*[\u2013\u2014\-]\s*/):[],defHrs=2;
+  if(timeParts.length>=2){var s=parseFloat(timeParts[0]),e=parseFloat(timeParts[1]);if(!isNaN(s)&&!isNaN(e))defHrs=Math.abs(e-s)||2;}
+  var rows=facilitators.map(function(name){
+    var eN=name.replace(/'/g,"\\'"),sG=gid.replace(/'/g,"\\'");
+    var totalHrs=0,totalSess=0;
+    var cells=pastDates.map(function(d){
+      var rec=(p.attendance[d]||[]).find(function(r){return r.name===name&&r.type==='adult';});
+      var hrs=rec?rec.hours:null;
+      if(hrs!=null){totalHrs+=hrs;totalSess++;}
+      var sD=d.replace(/'/g,"\\'");
+      if(_sccHrsEdit){
+        return '<td style="text-align:center;padding:3px 2px"><input type="number" step="0.5" min="0" max="24" value="'+(hrs!=null?hrs:'')+
+          '" placeholder="'+defHrs+'" data-gid="'+sG+'" data-name="'+eN+'" data-date="'+sD+'" '+
+          'style="width:48px;padding:3px 4px;border-radius:5px;border:1px solid var(--card-border);background:rgba(255,255,255,.06);color:var(--text-main);font-size:.75rem;text-align:center;font-family:DM Sans,sans-serif" class="scc-hrs-input"></td>';
+      }
+      return '<td style="text-align:center;font-size:.78rem;color:'+(hrs!=null?'var(--ya-teal)':'var(--text-muted)')+'">'+
+        (hrs!=null?hrs+'h':'—')+'</td>';
+    }).join('');
+    return '<tr>'+
+      '<td class="grd-sticky grd-sticky-1" style="font-size:.82rem;font-weight:600">'+name+
+        '<div style="font-size:.65rem;color:var(--text-muted)"><button onclick="removeSccFacilitator(\''+sG+'\',\''+eN+'\')" style="border:none;background:none;color:var(--badge-red);cursor:pointer;font-size:.65rem;padding:0;opacity:.6" title="Remove">✕ Remove</button></div></td>'+
+      '<td class="grd-sticky grd-sticky-2" style="text-align:center;font-weight:700;color:var(--ya-teal)">'+totalHrs.toFixed(1)+'h</td>'+
+      '<td class="grd-sticky grd-sticky-3" style="text-align:center;color:var(--text-muted)">'+totalSess+'</td>'+
+      cells+'</tr>';
+  }).join('');
+  tbody.innerHTML=rows;
+}
+
+function toggleSccHrsEdit(){
+  _sccHrsEdit=!_sccHrsEdit;
+  var btn=document.getElementById('scc-hrs-edit-btn');
+  if(btn)btn.textContent=_sccHrsEdit?'💾 Save Hours':'✏️ Edit Hours';
+  if(!_sccHrsEdit){saveSccAdultHrsFromInputs();}else{renderSccAdultHrsGrid();}
+}
+async function saveSccAdultHrsFromInputs(){
+  var inputs=document.querySelectorAll('.scc-hrs-input');
+  var saves=[];
+  inputs.forEach(function(inp){
+    var gid=inp.dataset.gid,name=inp.dataset.name,d=inp.dataset.date;
+    var hrs=inp.value!==''?parseFloat(inp.value):null;
+    if(isNaN(hrs))hrs=null;
+    var p=sccProg(gid);if(!p)return;
+    p.attendance[d]=p.attendance[d]||[];
+    var rec=p.attendance[d].find(function(r){return r.name===name&&r.type==='adult';});
+    if(rec)rec.hours=hrs;
+    else p.attendance[d].push({name:name,type:'adult',attended:hrs!=null&&hrs>0,hours:hrs});
+    saves.push({program_id:gid,session_date:d,participant_name:name,participant_type:'adult',attended:hrs!=null&&hrs>0,volunteer_hours:hrs});
+  });
+  if(saves.length){
+    await fetch(SUPA_URL+'/rest/v1/program_attendance?on_conflict=program_id,session_date,participant_name',{
+      method:'POST',headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,
+      'Content-Type':'application/json','Prefer':'resolution=merge-duplicates,return=minimal'},
+      body:JSON.stringify(saves)});
+  }
+  renderSccAdultHrsGrid();renderSccStatCards();
+}
+
+async function removeSccFacilitator(gid,name){
+  var p=sccProg(gid);if(!p)return;
+  if(!confirm('Remove facilitator "'+name+'" from this group?'))return;
+  delete p.adult_participants[name];
+  await fetch(SUPA_URL+'/rest/v1/program_attendance?program_id=eq.'+encodeURIComponent(gid)+'&participant_name=eq.'+encodeURIComponent(name),{
+    method:'DELETE',headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,'Prefer':'return=minimal'}});
+  renderSccAdultHrsGrid();renderSccStatCards();
+}
+
+// ── Sessions list ─────────────────────────────────────────────────────────────
+function renderSccSessionsList(){
+  var el=document.getElementById('scc-sessions-list');if(!el)return;
+  var gid=_sccActiveGroup,p=sccProg(gid);
+  if(!p){el.innerHTML='';return;}
+  var now=new Date();now.setHours(0,0,0,0);
+  var timeParts=p.time?p.time.split(/\s*[\u2013\u2014\-]\s*/):[],defS=(timeParts[0]||'10:00 AM').trim(),defE=(timeParts[1]||'11:00 AM').trim();
+  var html='<div class="section-box">';
+  p.dates.forEach(function(d){
+    var isCan=(p.cancellations||[]).indexOf(d)>=0;
+    var meta=(p.session_meta||{})[d]||{};
+    var isPast=new Date(d)<now;
+    var sd=d.replace(/'/g,"\\'"),sG=gid.replace(/'/g,"\\'");
+    html+='<div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:6px;padding:7px 0;border-bottom:1px solid rgba(255,255,255,.05)">';
+    html+='<div>';
+    html+='<div style="font-size:.84rem;font-weight:700;color:'+(isCan?'var(--badge-red)':isPast?'var(--text-muted)':'var(--text-main)')+'">'+d+(isCan?' — <em>CANCELLED</em>':'')+'</div>';
+    html+='<div style="font-size:.73rem;color:var(--text-muted)">'+(meta.start_time||defS)+' – '+(meta.end_time||defE);
+    if(meta.location)html+=' · '+meta.location;
+    if(meta.theme)html+=' · <em>'+meta.theme+'</em>';
+    if(isCan&&meta.cancellation_reason)html+=' · <span style="color:var(--badge-red)">'+meta.cancellation_reason+'</span>';
+    html+='</div></div>';
+    html+='<div style="display:flex;gap:6px;flex-wrap:wrap">';
+    html+='<button onclick="openSccSessionEdit(\''+sG+'\',\''+sd+'\')" class="ws-btn" style="font-size:.7rem">✏️ Edit</button>';
+    if(isCan){
+      html+='<button onclick="resumeSccSession(\''+sG+'\',\''+sd+'\')" class="ws-btn" style="border-color:var(--ya-gold);color:var(--ya-gold);font-size:.7rem">↩ Resume</button>';
+    } else {
+      html+='<button onclick="cancelSccSession(\''+sG+'\',\''+sd+'\')" class="ws-btn" style="border-color:var(--badge-red);color:var(--badge-red);font-size:.7rem">✘ Cancel</button>';
+    }
+    html+='</div></div>';
+  });
+  html+='</div>';el.innerHTML=html;
+}
+
+function openSccSessionEdit(gid,dateStr){
+  var p=sccProg(gid),meta=p&&p.session_meta&&p.session_meta[dateStr]?p.session_meta[dateStr]:{};
+  _sccActiveGroup=gid;_sccEditDate=dateStr;
+  var timeParts=p&&p.time?p.time.split(/\s*[\u2013\u2014\-]\s*/):[],defS=(timeParts[0]||'10:00 AM').trim(),defE=(timeParts[1]||'11:00 AM').trim();
+  document.getElementById('ssm-date').value=dateStr;
+  document.getElementById('ssm-theme').value=meta.theme||'';
+  document.getElementById('ssm-desc').value=meta.description||'';
+  document.getElementById('ssm-location').value=meta.location||'';
+  document.getElementById('ssm-start').value=meta.start_time||defS;
+  document.getElementById('ssm-end').value=meta.end_time||defE;
+  document.getElementById('ssm-cancel-reason').value=meta.cancellation_reason||'';
+  document.getElementById('ssm-feedback').textContent='';
+  document.getElementById('scc-session-modal').style.display='flex';
+}
+async function saveSccSessionMeta(){
+  var gid=_sccActiveGroup,btn=document.getElementById('ssm-save-btn'),fb=document.getElementById('ssm-feedback');
+  var origDate=_sccEditDate,newDate=(document.getElementById('ssm-date').value||'').trim();
+  fb.textContent='';
+  if(!newDate){fb.style.color='var(--badge-red)';fb.textContent='⚠ Date is required.';return;}
+  var p=sccProg(gid);if(!p)return;
+  btn.textContent='Saving…';btn.disabled=true;btn.style.opacity='.6';
+  var meta={activity_theme:document.getElementById('ssm-theme').value.trim(),
+    session_description:document.getElementById('ssm-desc').value.trim(),
+    location:document.getElementById('ssm-location').value.trim(),
+    start_time:document.getElementById('ssm-start').value.trim(),
+    end_time:document.getElementById('ssm-end').value.trim(),
+    cancellation_reason:document.getElementById('ssm-cancel-reason').value.trim()};
+  p.session_meta=p.session_meta||{};
+  p.session_meta[newDate]={theme:meta.activity_theme,description:meta.session_description,location:meta.location,start_time:meta.start_time,end_time:meta.end_time,cancellation_reason:meta.cancellation_reason,notes:''};
+  var r=await fetch(SUPA_URL+'/rest/v1/program_session_meta?on_conflict=program_id,session_date',{
+    method:'POST',headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,
+    'Content-Type':'application/json','Prefer':'resolution=merge-duplicates,return=minimal'},
+    body:JSON.stringify(Object.assign({program_id:gid,program_type:'spiritual_cc',session_date:newDate},meta))});
+  if(!r.ok){fb.style.color='var(--badge-red)';fb.textContent='⚠ Save failed.';}
+  else{fb.style.color='var(--ya-teal)';fb.textContent='✔ Saved';}
+  btn.textContent='💾 Save';btn.disabled=false;btn.style.opacity='';
+  setTimeout(function(){document.getElementById('scc-session-modal').style.display='none';renderSccGroupDetail();renderScheduleTab();},600);
+}
+
+async function cancelSccSession(gid,dateStr){
+  var p=sccProg(gid);if(!p)return;
+  var reason=prompt('Cancellation reason (optional):','');
+  if(reason===null)return;
+  p.cancellations=p.cancellations||[];
+  if(p.cancellations.indexOf(dateStr)<0)p.cancellations.push(dateStr);
+  p.session_meta=p.session_meta||{};p.session_meta[dateStr]=p.session_meta[dateStr]||{};
+  p.session_meta[dateStr].cancellation_reason=reason;
+  await saveProgramCancellation(gid,dateStr,reason);
+  renderSccGroupDetail();renderScheduleTab();
+}
+async function resumeSccSession(gid,dateStr){
+  var p=sccProg(gid);if(!p)return;
+  p.cancellations=(p.cancellations||[]).filter(function(d){return d!==dateStr;});
+  if(p.session_meta&&p.session_meta[dateStr])p.session_meta[dateStr].cancellation_reason='';
+  await fetch(SUPA_URL+'/rest/v1/program_cancellations?program_id=eq.'+encodeURIComponent(gid)+'&session_date=eq.'+encodeURIComponent(dateStr),{
+    method:'DELETE',headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,'Prefer':'return=minimal'}});
+  await fetch(SUPA_URL+'/rest/v1/program_session_meta?on_conflict=program_id,session_date',{
+    method:'POST',headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,
+    'Content-Type':'application/json','Prefer':'resolution=merge-duplicates,return=minimal'},
+    body:JSON.stringify({program_id:gid,program_type:'spiritual_cc',session_date:dateStr,cancellation_reason:''})});
+  renderSccGroupDetail();renderScheduleTab();
+}
+
+// ── Book Completion Summary ───────────────────────────────────────────────────
+function renderSccBookCompletion(){
+  var el=document.getElementById('scc-book-completion-panel');if(!el)return;
+  var gid=_sccActiveGroup,p=sccProg(gid);if(!p){el.innerHTML='';return;}
+  p._gid=gid;
+  var enrolled=Object.keys(p.youth_participants||{}).sort();
+  if(!enrolled.length){el.innerHTML='<div style="color:var(--text-muted);font-size:.82rem;padding:8px">No children enrolled yet.</div>';return;}
+  if(!p.group_book){el.innerHTML='<div style="color:var(--text-muted);font-size:.82rem;padding:8px;font-style:italic">No grade/book assigned to this group yet.</div>';return;}
+  var eligible=programAllGroupSessions(gid);
+  var total=eligible.length;
+  var bObj=sccBookByTitle(p.group_book)||{};
+  var html='<div class="section-box">';
+  html+='<div style="font-size:.88rem;font-weight:700;color:var(--text-main);margin-bottom:8px">📚 '+p.group_book+'</div>';
+  if(bObj.focus)html+='<div style="font-size:.72rem;color:var(--text-muted);font-style:italic;margin-bottom:8px">'+bObj.focus+'</div>';
+  html+='<div style="font-size:.72rem;color:var(--text-muted);margin-bottom:10px">'+total+' eligible session'+(total!==1?'s':'')+'</div>';
+  if(!total){html+='<div style="color:var(--text-muted);font-size:.82rem;font-style:italic">No completed sessions in this group yet.</div></div>';el.innerHTML=html;return;}
+  html+='<div style="overflow-x:auto"><table class="data-table" style="width:100%"><thead><tr>'+
+    '<th style="font-size:.72rem;text-align:left">Child</th><th style="font-size:.72rem;text-align:center">Attended</th>'+
+    '<th style="font-size:.72rem;text-align:center">Possible</th><th style="font-size:.72rem;text-align:center">Completion</th>'+
+    '<th style="font-size:.72rem;text-align:left">Status</th></tr></thead><tbody>';
+  enrolled.forEach(function(name){
+    var attended=eligible.filter(function(d){var r=((p.attendance||{})[d]||[]).find(function(x){return x.name===name;});return r&&r.attended;}).length;
+    var pct=total>0?Math.round(attended/total*100):0;
+    var pctBar='<div style="display:inline-block;width:60px;height:6px;background:rgba(255,255,255,.08);border-radius:3px;vertical-align:middle;margin-right:5px"><div style="width:'+pct+'%;height:100%;background:var(--ya-gold);border-radius:3px"></div></div>';
+    html+='<tr><td style="font-size:.82rem;font-weight:600">'+name+'</td><td style="text-align:center;font-weight:700;color:var(--ya-gold)">'+attended+'</td>'+
+      '<td style="text-align:center;color:var(--text-muted)">'+total+'</td>'+
+      '<td style="text-align:center;white-space:nowrap">'+pctBar+'<span style="font-size:.8rem;font-weight:700">'+pct+'%</span></td>'+
+      '<td>'+programCompletionBadge(pct)+'</td></tr>';
+  });
+  html+='</tbody></table></div></div>';el.innerHTML=html;
+}
+
+// ── Enroll helpers — reuse generic modal, but with SCC-specific callback ──────
+// The generic openProgramEnrollYouthModal / openProgramEnrollAdultModal already
+// write to program_attendance keyed by program_id, so they work for SCC directly.
+// After enroll we just need to refresh the SCC views.
+var _origPemSuccessCallback=null;
+function openSccEnrollYouthModal(gid){
+  _sccActiveGroup=gid;
+  openProgramEnrollYouthModal(gid);
+}
+function openSccEnrollAdultModal(gid){
+  _sccActiveGroup=gid;
+  openProgramEnrollAdultModal(gid);
+}
+
+// ── Main render ───────────────────────────────────────────────────────────────
+function renderSccAdmin(){
+  renderSccStatCards();renderSccGroupStrip();renderSccBookLibrary();
+  renderYouthProgressReport('scc-youth-progress-report','spiritual_cc',{});
+  renderBookTrendsReport('scc-book-trends-report','spiritual_cc',sccBookByTitle,{});
+  var gids=getSccGroupIds();
+  if(gids.length>0&&!PROGRAMS_DATA[_sccActiveGroup])_sccActiveGroup=gids[0];
+  if(gids.length>0)renderSccGroupDetail();
+  else{var d=document.getElementById('scc-group-detail');if(d)d.style.display='none';}
+}
 // ──────────────────────────────────────────────────────────────────────────────
 // Works for any program_type that uses the shared data model:
 //   PROGRAMS_DATA[gid].program_type    — e.g. 'jysep', 'spiritual_cc'
@@ -11621,6 +12662,7 @@ async function dbStartup() {
       loadProgramData(),
       loadGardenData(),
       loadJysepBooks().then(function(){ return loadAllJysepData(); }),
+      loadSccBooks().then(function(){ return loadAllSccData(); }),
       loadComplianceData(),
       loadPendingEntries(),
       loadScrabbleData(),
@@ -12494,6 +13536,7 @@ async function saveProgramEnrollAdultModal() {
       document.getElementById('program-enroll-adult-modal').style.display = 'none';
       if (_peamProgramId === 'garden_2026') renderGardenAdmin();
       if (PROGRAMS_DATA[_peamProgramId] && PROGRAMS_DATA[_peamProgramId].program_type === 'jysep') { _jysepActiveGroup = _peamProgramId; renderJysepAdmin(); }
+      if (PROGRAMS_DATA[_peamProgramId] && PROGRAMS_DATA[_peamProgramId].program_type === 'spiritual_cc') { _sccActiveGroup = _peamProgramId; renderSccAdmin(); }
     }, 1100);
   } else {
     fb.style.color = 'var(--badge-amber)';

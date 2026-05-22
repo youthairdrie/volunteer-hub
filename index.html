@@ -11440,9 +11440,12 @@ async function loadAllJysepData() {
   }
 
   // Now load attendance, session meta, and cancellations for each JYSEP group.
+  // IMPORTANT: pass true to include archived groups — their historical attendance,
+  // youth enrollment, animator records, and cancellations must all load correctly
+  // so that the Youth Progress Report and Book Trends Report show complete data.
   // loadSingleJysepGroup is the sole authority for cancellations — it resets
   // prog.cancellations = [] before querying, so no cross-group bleed is possible.
-  var gids = getJysepGroupIds();
+  var gids = getJysepGroupIds(true); // true = include archived
   await Promise.all(gids.map(function(gid) { return loadSingleJysepGroup(gid); }));
   console.log('[loadAllJysepData] Loaded', gids.length, 'JYSEP group(s):', gids.join(', '));
 }
@@ -11450,9 +11453,12 @@ async function loadAllJysepData() {
 async function loadSingleJysepGroup(gid) {
   var prog = PROGRAMS_DATA[gid];
   if (!prog) return;
-  prog.session_meta       = prog.session_meta       || {};
-  prog.attendance         = prog.attendance         || {};
-  prog.adult_participants = prog.adult_participants || {};
+  // Reset all per-session state before loading from DB — prevents stale
+  // in-memory data from a previous session or a failed earlier load persisting.
+  prog.session_meta       = {};
+  prog.attendance         = {};
+  prog.youth_participants = {};   // reset so removed enrollments don't ghost
+  prog.adult_participants = {};
 
   // ── Reset cancellations for this group before loading from DB ──────────────
   // This prevents any stale in-memory state from the JS seed or a previous

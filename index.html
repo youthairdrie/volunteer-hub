@@ -11393,14 +11393,33 @@ async function openEditAdult(key){
   }
   document.getElementById('eau-feedback').innerHTML = '';
   document.getElementById('eau-email').value = '';
+
+  // Show Admin Access toggle only to current admins; populate from in-memory flag
+  var adminSection = document.getElementById('eau-admin-section');
+  var adminCb      = document.getElementById('eau-is-admin');
+  if (adminSection && adminCb) {
+    var isCurrentUserAdmin = (currentRole === 'admin');
+    adminSection.style.display = isCurrentUserAdmin ? 'block' : 'none';
+    adminCb.checked = p.isAdmin || false;
+  }
+
   modal.style.display = 'flex';
 
-  // Live DB fetch for email — more reliable than stale _cachedProfiles cache
-  var rows = await dbGet('profiles',
-    'select=email&or=(linked_id.eq.' + encodeURIComponent(key) +
-    ',name.eq.' + encodeURIComponent(p.name.trim()) + ')&limit=1');
-  if(rows && rows.length > 0 && rows[0].email) {
-    document.getElementById('eau-email').value = rows[0].email;
+  // Live DB fetch for email (profiles) AND freshest is_admin (adults) in parallel
+  var fetches = await Promise.all([
+    dbGet('profiles',
+      'select=email&or=(linked_id.eq.' + encodeURIComponent(key) +
+      ',name.eq.' + encodeURIComponent(p.name.trim()) + ')&limit=1'),
+    dbGet('adults', 'select=is_admin&id=eq.' + encodeURIComponent(key) + '&limit=1')
+  ]);
+  var profRows  = fetches[0];
+  var adultRows = fetches[1];
+  if (profRows && profRows.length > 0 && profRows[0].email) {
+    document.getElementById('eau-email').value = profRows[0].email;
+  }
+  // Sync is_admin from DB into checkbox so it always reflects Supabase truth
+  if (adminCb && adultRows && adultRows.length > 0 && adultRows[0].is_admin !== undefined) {
+    adminCb.checked = !!adultRows[0].is_admin;
   }
 }
 
@@ -11670,8 +11689,42 @@ async function saveEditAdult(){
     }
   });
 
+  // ── Read admin toggle (only present for admin sessions) ──
+  var adminCbEl   = document.getElementById('eau-is-admin');
+  var adminSection = document.getElementById('eau-admin-section');
+  var adminToggleVisible = adminSection && adminSection.style.display !== 'none';
+  // Only apply the toggle value when the section is actually shown to this user.
+  // When hidden (non-admin session) we preserve the existing isAdmin value untouched.
+  var newIsAdmin = adminToggleVisible ? (adminCbEl ? adminCbEl.checked : p.isAdmin) : p.isAdmin;
+  var adminChanged = adminToggleVisible && (newIsAdmin !== (p.isAdmin || false));
+
+  // ── Persist adults row (include is_admin when visible) ──
   var lvlM = newRole.match(/Level (\d)/);
-  dbPatch('adults',{name:p.name,role:p.role,avatar:p.avatar,fac_level:lvlM?parseInt(lvlM[1]):(p.fac_level||0)},'id=eq.'+encodeURIComponent(key));
+  var adultsPayload = {
+    name: p.name, role: p.role, avatar: p.avatar,
+    fac_level: lvlM ? parseInt(lvlM[1]) : (p.fac_level || 0)
+  };
+  if (adminToggleVisible) adultsPayload.is_admin = newIsAdmin;
+
+  setBusy(true);
+
+  // Await the adults patch so we can catch failures
+  var adultsR = await fetch(SUPA_URL + '/rest/v1/adults?id=eq.' + encodeURIComponent(key), {
+    method: 'PATCH',
+    headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY,
+               'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+    body: JSON.stringify(adultsPayload)
+  });
+  if (!adultsR.ok) {
+    var adultsErr = await adultsR.text();
+    setBusy(false);
+    showErr('Failed to save to adults table (' + adultsR.status + '): ' +
+      (function(){ try { return JSON.parse(adultsErr).message || adultsErr; } catch(e){ return adultsErr; } })());
+    return;
+  }
+
+  // Update in-memory isAdmin
+  p.isAdmin = newIsAdmin;
 
   if(p._prevName){
     dbPatch('adult_scrabble_sessions',{volunteer_name:p.name},'volunteer_name=eq.'+encodeURIComponent(p._prevName));
@@ -11680,23 +11733,47 @@ async function saveEditAdult(){
   }
   delete p._prevName;
 
-  // ── Profile upsert — awaited, result gates the success message ──
+  // ── Profile upsert — always run when email present, role reflects new admin state ──
+  var profileOk = true;
   if(newEmail) {
-    setBusy(true);
-    var appRole = (p.isAdmin || newRole.toLowerCase().includes('admin')) ? 'admin' : 'adult';
-    var ok = await upsertProfile(newEmail, newName, appRole, key);
-    setBusy(false);
-    if(!ok) {
-      showErr('User data saved locally, but the profile link to "' + newEmail + '" could not be saved in Supabase. Check the console for details. The user will not be able to log in until this is resolved. Try clicking Save again.');
+    // appRole: use newIsAdmin (may have just been toggled), not legacy role-string detection
+    var appRole = newIsAdmin ? 'admin' : 'adult';
+    profileOk = await upsertProfile(newEmail, newName, appRole, key);
+    if (!profileOk) {
+      setBusy(false);
+      showErr(
+        'adults table updated, but profiles table failed for "' + newEmail + '". ' +
+        (adminChanged
+          ? 'The admin role change will NOT take effect at login until profiles is also updated. Try clicking Save again.'
+          : 'The user\u2019s login link was not saved. Try clicking Save again.') +
+        ' Check console for details.'
+      );
       return;
     }
     loadProfiles().then(function(rows){ _cachedProfiles = rows; });
-    fb.innerHTML = '<span style="color:var(--ya-teal)">✔ Saved — profile linked to ' + newEmail + '</span>';
-  } else {
-    fb.innerHTML = '<span style="color:var(--ya-teal)">✔ Saved</span>';
+  } else if (adminChanged) {
+    // Admin toggled but no email linked — warn that profiles can't be updated
+    setBusy(false);
+    showErr(
+      'adults.is_admin was updated, but this person has no email address linked, ' +
+      'so the profiles table could not be synced. Add their email address to complete the admin role change.'
+    );
+    p.isAdmin = newIsAdmin; // memory already updated — at least local state is right
+    renderAdultRoster();
+    return;
   }
 
-  setTimeout(function(){ modal.style.display='none'; renderAdultRoster(); renderAdmin(); }, 900);
+  setBusy(false);
+
+  // ── Success message ──
+  var msgs = [];
+  if (newEmail) msgs.push('profile linked to ' + newEmail);
+  if (adminChanged) msgs.push(newIsAdmin
+    ? '⚡ Admin access granted — user must log out and back in'
+    : 'Admin access revoked — user must log out and back in');
+  fb.innerHTML = '<span style="color:var(--ya-teal)">✔ Saved' + (msgs.length ? ' — ' + msgs.join(' · ') : '') + '</span>';
+
+  setTimeout(function(){ modal.style.display='none'; renderAdultRoster(); renderAdmin(); }, 1400);
 }
 
 function deactivateYouth(name){
@@ -13825,6 +13902,22 @@ function addAdultScrabbleVolunteer(){
         <div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Programme Enrolment</div>
         <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:.83rem"><input type="checkbox" id="eau-scrabble"> Scrabble &amp; Games Club (volunteer hours)</label>
         <div id="eau-program-checkboxes" style="margin-top:6px;display:grid;gap:5px"></div>
+      </div>
+    </div>
+    <!-- Admin Access toggle — only rendered when current session is admin -->
+    <div id="eau-admin-section" style="display:none;margin-bottom:4px">
+      <div style="border:1px solid rgba(245,158,11,.25);border-radius:10px;padding:12px 14px;background:rgba(245,158,11,.05)">
+        <label style="display:flex;align-items:center;gap:10px;cursor:pointer;user-select:none">
+          <input type="checkbox" id="eau-is-admin"
+            style="width:17px;height:17px;accent-color:var(--ya-orange);cursor:pointer;flex-shrink:0">
+          <div>
+            <div style="font-size:.85rem;font-weight:700;color:var(--ya-orange)">⚡ Administrator Access</div>
+            <div style="font-size:.72rem;color:var(--text-muted);margin-top:2px;line-height:1.4">
+              Allows this person to manage users, programs, compliance, and app settings.<br>
+              <strong style="color:var(--badge-amber)">Changes take effect after the user logs out and back in.</strong>
+            </div>
+          </div>
+        </label>
       </div>
     </div>
     <div id="eau-feedback" style="font-size:.78rem;min-height:18px;margin-bottom:10px"></div>

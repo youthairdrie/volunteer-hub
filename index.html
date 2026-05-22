@@ -6795,6 +6795,7 @@ function renderJysepSessionsList() {
   var defaultStart = (timeParts[0] || '10:00 AM').trim();
   var defaultEnd   = (timeParts[1] || '12:00 PM').trim();
   p.dates.forEach(function(d) {
+    var isCan = (p.cancellations || []).indexOf(d) >= 0;
     var meta  = (p.session_meta || {})[d] || {};
     var isPast = new Date(d) < now;
     var sd = d.replace(/'/g, "\\'");

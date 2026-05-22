@@ -7297,126 +7297,247 @@ async function deleteJysepGroup(gid) {
   renderJysepAdmin();
 }
 // ══════════════════════════════════════════════════════════════════════════════
-// JYSEP ANALYTICS — Youth Progress Report & Book Trends Report
-// Both reports use ALL groups (current + archived) from PROGRAMS_DATA.
+// GENERIC MULTI-GROUP PROGRAM REPORTING FRAMEWORK
+// ──────────────────────────────────────────────────────────────────────────────
+// Works for any program_type that uses the shared data model:
+//   PROGRAMS_DATA[gid].program_type    — e.g. 'jysep', 'spiritual_cc'
+//   PROGRAMS_DATA[gid].youth_participants
+//   PROGRAMS_DATA[gid].adult_participants
+//   PROGRAMS_DATA[gid].attendance
+//   PROGRAMS_DATA[gid].cancellations
+//   PROGRAMS_DATA[gid].dates
+//   PROGRAMS_DATA[gid].group_book
+//   PROGRAMS_DATA[gid].group_start / group_end
+//   PROGRAMS_DATA[gid].group_archived
+//
+// To add a new program (e.g. Spiritual CC):
+//   1. Add program_type: 'spiritual_cc' to its PROGRAMS_DATA entries
+//   2. Define PROGRAM_REPORT_OPTS['spiritual_cc'] (see below)
+//   3. Add HTML containers and call renderYouthProgressReport / renderBookTrendsReport
+//   4. No other changes needed — all computation is automatic
 // ══════════════════════════════════════════════════════════════════════════════
 
-// Returns all JYSEP group ids — active AND archived.
-function getAllJysepGroupIds() {
-  return Object.keys(PROGRAMS_DATA).filter(function(k){
-    return PROGRAMS_DATA[k] && PROGRAMS_DATA[k].program_type === 'jysep';
+// ── Per-program terminology and display options ───────────────────────────────
+// Each program type registers its own labels and accent colours here.
+// Override any key by passing an opts object to the render functions.
+var PROGRAM_REPORT_OPTS = {
+  jysep: {
+    programType:    'jysep',
+    bookLabel:      'Booklet',          // column header in tables
+    bookNoneLabel:  '(No book assigned)',
+    bookIconLabel:  '📖',
+    adultRoleLabel: 'Animators',        // column header + summary label
+    groupLabel:     'Group',
+    accentColor:    'var(--lavender)',  // times-taught highlight colour
+    emptyYouthMsg:  'No youth enrolled in any JYSEP group yet.',
+    emptyBookMsg:   'No booklets assigned to any JYSEP group yet.'
+  },
+  spiritual_cc: {
+    programType:    'spiritual_cc',
+    bookLabel:      'Grade / Book',
+    bookNoneLabel:  '(No grade assigned)',
+    bookIconLabel:  '📚',
+    adultRoleLabel: 'Facilitators',
+    groupLabel:     'Class Group',
+    accentColor:    'var(--ya-green)',
+    emptyYouthMsg:  'No children enrolled in any Spiritual CC group yet.',
+    emptyBookMsg:   'No grades/books assigned to any Spiritual CC group yet.'
+  }
+};
+
+// ── Core data helpers — program-agnostic ──────────────────────────────────────
+
+// All group ids for a given program_type. includeArchived defaults to true for reporting.
+function getProgramGroupIds(programType, includeArchived) {
+  var incArch = (includeArchived !== false); // default true
+  return Object.keys(PROGRAMS_DATA).filter(function(k) {
+    var p = PROGRAMS_DATA[k];
+    if (!p || p.program_type !== programType) return false;
+    if (!incArch && p.group_archived) return false;
+    return true;
   }).sort();
 }
 
-// ── Helper: non-cancelled sessions for a group (past + future, full list) ────
-// For reporting we want all scheduled sessions, not just past ones,
-// so we can show the full date range a group operated.
-function jysepAllGroupSessions(gid) {
+// Non-cancelled sessions for a group (full schedule — past + future).
+// Used for reporting so the full date range a group operated is visible.
+function programAllGroupSessions(gid) {
   var p = PROGRAMS_DATA[gid]; if (!p) return [];
   var cancels = p.cancellations || [];
-  return (p.dates || []).filter(function(d){ return cancels.indexOf(d) < 0; });
+  return (p.dates || []).filter(function(d) { return cancels.indexOf(d) < 0; });
 }
 
-// ── Helper: count attended sessions for a youth in a group ───────────────────
-function jysepYouthAttendedCount(prog, eligibleDates, name) {
-  return eligibleDates.filter(function(d){
-    var r = jysepAttRow(prog, d, name);
-    return r && r.attended;
+// Attended session count for one participant in one group.
+function programYouthAttendedCount(prog, eligibleDates, name) {
+  return eligibleDates.filter(function(d) {
+    var row = ((prog.attendance || {})[d] || []).find(function(r) { return r.name === name; });
+    return row && row.attended;
   }).length;
 }
 
-// ── Helper: completion status badge HTML ─────────────────────────────────────
-function jysepCompletionBadge(pct) {
+// Completion status badge HTML — shared across all programs.
+function programCompletionBadge(pct) {
   if (pct >= 80) return '<span style="background:rgba(0,181,160,.15);color:var(--ya-teal);border-radius:4px;padding:1px 7px;font-size:.68rem;font-weight:700">Strong ✔</span>';
   if (pct >= 50) return '<span style="background:rgba(90,140,220,.15);color:var(--ya-blue);border-radius:4px;padding:1px 7px;font-size:.68rem;font-weight:700">On Track</span>';
   if (pct > 0)   return '<span style="background:rgba(232,98,10,.12);color:var(--ya-orange);border-radius:4px;padding:1px 7px;font-size:.68rem;font-weight:700">Low</span>';
   return '<span style="background:rgba(255,255,255,.06);color:var(--text-muted);border-radius:4px;padding:1px 7px;font-size:.68rem">Not started</span>';
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// YOUTH PROGRESS REPORT
-// For each youth who has ever been enrolled in any JYSEP group:
-//   - show every group they joined
-//   - the booklet studied in that group
-//   - the group's date range
-//   - sessions attended / total eligible sessions
-//   - % completion
-//   - status badge
-// Youth are sorted alphabetically. Groups are sorted by start date.
-// ─────────────────────────────────────────────────────────────────────────────
-function renderJysepYouthProgressReport() {
-  var el = document.getElementById('jysep-youth-progress-report'); if (!el) return;
-  var allGids = getAllJysepGroupIds();
+// ── Computation layer — pure data, no DOM ─────────────────────────────────────
 
-  // Build a map: youth name → array of { gid, groupName, book, dateRange, attended, total, pct }
-  var youthMap = {}; // name → [{...}]
+// Returns: { youthName: [ { gid, groupName, book, dateRange, groupStart, attended, total, pct, archived } ] }
+// Sorted: groups within each youth entry sorted chronologically.
+function calculateYouthProgressData(programType) {
+  var gids    = getProgramGroupIds(programType, true); // always include archived for reporting
+  var youthMap = {};
 
-  allGids.forEach(function(gid) {
+  gids.forEach(function(gid) {
     var p = PROGRAMS_DATA[gid]; if (!p) return;
     var enrolled = Object.keys(p.youth_participants || {});
     if (enrolled.length === 0) return;
 
-    var eligible = jysepAllGroupSessions(gid);
+    var eligible   = programAllGroupSessions(gid);
     var groupStart = p.group_start || (p.dates && p.dates.length ? p.dates[0] : '');
-    var groupEnd   = p.group_end   || (p.dates && p.dates.length ? p.dates[p.dates.length-1] : '');
-    var dateRange  = groupStart && groupEnd ? groupStart + ' → ' + groupEnd : (groupStart || groupEnd || 'Dates unknown');
-    var isArchived = p.group_archived || false;
+    var groupEnd   = p.group_end   || (p.dates && p.dates.length ? p.dates[p.dates.length - 1] : '');
+    var dateRange  = groupStart && groupEnd
+      ? groupStart + ' → ' + groupEnd
+      : (groupStart || groupEnd || 'Dates unknown');
 
     enrolled.forEach(function(name) {
-      var attended = jysepYouthAttendedCount(p, eligible, name);
+      var attended = programYouthAttendedCount(p, eligible, name);
       var total    = eligible.length;
       var pct      = total > 0 ? Math.round(attended / total * 100) : 0;
       if (!youthMap[name]) youthMap[name] = [];
       youthMap[name].push({
-        gid:       gid,
-        groupName: p.name,
-        book:      p.group_book || '(No book assigned)',
-        dateRange: dateRange,
+        gid:        gid,
+        groupName:  p.name,
+        book:       (p.group_book || '').trim() || null,
+        dateRange:  dateRange,
         groupStart: groupStart,
-        attended:  attended,
-        total:     total,
-        pct:       pct,
-        archived:  isArchived
+        attended:   attended,
+        total:      total,
+        pct:        pct,
+        archived:   p.group_archived || false
       });
     });
   });
 
-  var allYouth = Object.keys(youthMap).sort();
+  // Sort each youth's group list chronologically
+  Object.keys(youthMap).forEach(function(name) {
+    youthMap[name].sort(function(a, b) {
+      return (a.groupStart || '').localeCompare(b.groupStart || '');
+    });
+  });
+
+  return youthMap;
+}
+
+// Optional bookLookupFn: function(title) → { focus: '...' } | null
+// Allows each program to supply its own book metadata store.
+// Returns: { bookTitle: [ { gid, groupName, dateRange, groupStart, enrolled, totalSessions, avgPct, animators, archived } ] }
+function calculateBookTrendsData(programType, bookLookupFn) {
+  var gids    = getProgramGroupIds(programType, true);
+  var bookMap = {};
+
+  gids.forEach(function(gid) {
+    var p    = PROGRAMS_DATA[gid]; if (!p) return;
+    var book = (p.group_book || '').trim();
+    if (!book) return;
+
+    var eligible = programAllGroupSessions(gid);
+    var enrolled = Object.keys(p.youth_participants || {});
+    var total    = eligible.length;
+
+    // Average participation = mean of each youth's individual completion %
+    var avgPct = 0;
+    if (enrolled.length > 0 && total > 0) {
+      var sumPct = enrolled.reduce(function(s, name) {
+        return s + (programYouthAttendedCount(p, eligible, name) / total * 100);
+      }, 0);
+      avgPct = Math.round(sumPct / enrolled.length);
+    }
+
+    // Adults: from adult_participants registry + attendance records
+    var adultSet = new Set();
+    Object.keys(p.adult_participants || {}).forEach(function(n) { adultSet.add(n); });
+    Object.keys(p.attendance || {}).forEach(function(d) {
+      (p.attendance[d] || []).forEach(function(r) {
+        if (r.type === 'adult' && r.name && r.name !== '_adult_enrolled') adultSet.add(r.name);
+      });
+    });
+
+    var groupStart = p.group_start || (p.dates && p.dates.length ? p.dates[0] : '');
+    var groupEnd   = p.group_end   || (p.dates && p.dates.length ? p.dates[p.dates.length - 1] : '');
+    var dateRange  = groupStart && groupEnd
+      ? groupStart + ' → ' + groupEnd
+      : (groupStart || groupEnd || 'Dates unknown');
+
+    var bookMeta = (typeof bookLookupFn === 'function') ? (bookLookupFn(book) || {}) : {};
+
+    if (!bookMap[book]) bookMap[book] = { focus: bookMeta.focus || '', instances: [] };
+    bookMap[book].instances.push({
+      gid:           gid,
+      groupName:     p.name,
+      dateRange:     dateRange,
+      groupStart:    groupStart,
+      enrolled:      enrolled.length,
+      totalSessions: total,
+      avgPct:        avgPct,
+      adults:        [...adultSet].sort(),
+      archived:      p.group_archived || false
+    });
+  });
+
+  // Sort each book's instances chronologically
+  Object.keys(bookMap).forEach(function(book) {
+    bookMap[book].instances.sort(function(a, b) {
+      return (a.groupStart || '').localeCompare(b.groupStart || '');
+    });
+  });
+
+  return bookMap;
+}
+
+// ── Generic renderers — DOM output ────────────────────────────────────────────
+
+// opts: overrides for any key in PROGRAM_REPORT_OPTS[programType]
+function renderYouthProgressReport(containerId, programType, opts) {
+  var el = document.getElementById(containerId); if (!el) return;
+  var cfg = Object.assign({}, PROGRAM_REPORT_OPTS[programType] || PROGRAM_REPORT_OPTS.jysep, opts || {});
+  var youthMap  = calculateYouthProgressData(programType);
+  var allYouth  = Object.keys(youthMap).sort();
+
   if (allYouth.length === 0) {
-    el.innerHTML = '<div style="color:var(--text-muted);font-size:.82rem;padding:8px">No youth enrolled in any JYSEP group yet.</div>';
+    el.innerHTML = '<div style="color:var(--text-muted);font-size:.82rem;padding:8px">'+cfg.emptyYouthMsg+'</div>';
     return;
   }
 
   var html = '';
   allYouth.forEach(function(name) {
-    // Sort groups by start date ascending
-    var groups = youthMap[name].slice().sort(function(a, b){
-      return (a.groupStart || '').localeCompare(b.groupStart || '');
-    });
-
-    // Summary: overall attendance across all groups
-    var totalAttended = groups.reduce(function(s, g){ return s + g.attended; }, 0);
-    var totalPossible = groups.reduce(function(s, g){ return s + g.total; }, 0);
+    var groups        = youthMap[name];
+    var totalAttended = groups.reduce(function(s, g) { return s + g.attended; }, 0);
+    var totalPossible = groups.reduce(function(s, g) { return s + g.total; }, 0);
     var overallPct    = totalPossible > 0 ? Math.round(totalAttended / totalPossible * 100) : 0;
-    var booksStudied  = [...new Set(groups.map(function(g){ return g.book; }))].filter(function(b){ return b !== '(No book assigned)'; });
+    var booksStudied  = groups.map(function(g) { return g.book; })
+                              .filter(function(b, i, a) { return b && a.indexOf(b) === i; });
 
     html += '<details style="border-bottom:1px solid rgba(255,255,255,.06);padding:6px 0;margin-bottom:2px">';
     html += '<summary style="cursor:pointer;list-style:none;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;padding:4px 0">';
     html += '<div style="display:flex;align-items:center;gap:10px">';
     html += '<div style="font-size:.88rem;font-weight:700;color:var(--text-main)">'+name+'</div>';
-    html += '<div style="font-size:.72rem;color:var(--text-muted)">'+groups.length+' group'+(groups.length!==1?'s':'')+' · '+booksStudied.length+' booklet'+(booksStudied.length!==1?'s':'')+'</div>';
+    html += '<div style="font-size:.72rem;color:var(--text-muted)">'+
+      groups.length+' '+cfg.groupLabel.toLowerCase()+(groups.length!==1?'s':'')+' · '+
+      booksStudied.length+' '+cfg.bookLabel.toLowerCase()+(booksStudied.length!==1?'s':'')+'</div>';
     html += '</div>';
     html += '<div style="display:flex;align-items:center;gap:8px">';
-    html += '<div style="font-size:.78rem;color:var(--text-muted)">Overall: <strong style="color:var(--ya-teal)">'+overallPct+'%</strong> ('+totalAttended+'/'+totalPossible+')</div>';
-    html += jysepCompletionBadge(overallPct);
+    html += '<div style="font-size:.78rem;color:var(--text-muted)">Overall: <strong style="color:var(--ya-teal)">'+
+      overallPct+'%</strong> ('+totalAttended+'/'+totalPossible+')</div>';
+    html += programCompletionBadge(overallPct);
     html += '</div></summary>';
 
-    // Expanded detail: one row per group
     html += '<div style="margin-top:8px;margin-left:12px;overflow-x:auto">';
-    html += '<table class="data-table" style="width:100%;min-width:520px">';
-    html += '<thead><tr>';
-    html += '<th style="font-size:.7rem;text-align:left">Group</th>';
-    html += '<th style="font-size:.7rem;text-align:left">Booklet</th>';
+    html += '<table class="data-table" style="width:100%;min-width:520px"><thead><tr>';
+    html += '<th style="font-size:.7rem;text-align:left">'+cfg.groupLabel+'</th>';
+    html += '<th style="font-size:.7rem;text-align:left">'+cfg.bookLabel+'</th>';
     html += '<th style="font-size:.7rem;text-align:left">Dates</th>';
     html += '<th style="font-size:.7rem;text-align:center">Attended</th>';
     html += '<th style="font-size:.7rem;text-align:center">Sessions</th>';
@@ -7425,15 +7546,17 @@ function renderJysepYouthProgressReport() {
     html += '</tr></thead><tbody>';
 
     groups.forEach(function(g) {
-      var pctBar = '<div style="display:inline-block;width:48px;height:5px;background:rgba(255,255,255,.08);border-radius:3px;vertical-align:middle;margin-right:4px"><div style="width:'+g.pct+'%;height:100%;background:var(--ya-teal);border-radius:3px"></div></div>';
+      var pctBar = '<div style="display:inline-block;width:48px;height:5px;background:rgba(255,255,255,.08);border-radius:3px;vertical-align:middle;margin-right:4px">'+
+        '<div style="width:'+g.pct+'%;height:100%;background:var(--ya-teal);border-radius:3px"></div></div>';
       html += '<tr>';
-      html += '<td style="font-size:.78rem;font-weight:600;white-space:nowrap">'+g.groupName+(g.archived?'<span style="font-size:.65rem;color:var(--text-muted);margin-left:4px">[archived]</span>':'')+'</td>';
-      html += '<td style="font-size:.78rem;color:var(--text-muted)">'+g.book+'</td>';
+      html += '<td style="font-size:.78rem;font-weight:600;white-space:nowrap">'+g.groupName+
+        (g.archived?'<span style="font-size:.65rem;color:var(--text-muted);margin-left:4px">[archived]</span>':'')+'</td>';
+      html += '<td style="font-size:.78rem;color:var(--text-muted)">'+(g.book || cfg.bookNoneLabel)+'</td>';
       html += '<td style="font-size:.72rem;color:var(--text-muted);white-space:nowrap">'+g.dateRange+'</td>';
       html += '<td style="text-align:center;font-weight:700;color:var(--ya-teal)">'+g.attended+'</td>';
       html += '<td style="text-align:center;color:var(--text-muted)">'+g.total+'</td>';
       html += '<td style="text-align:center;white-space:nowrap">'+pctBar+'<span style="font-size:.78rem;font-weight:700">'+g.pct+'%</span></td>';
-      html += '<td>'+jysepCompletionBadge(g.pct)+'</td>';
+      html += '<td>'+programCompletionBadge(g.pct)+'</td>';
       html += '</tr>';
     });
 
@@ -7443,136 +7566,78 @@ function renderJysepYouthProgressReport() {
   el.innerHTML = html;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// BOOK TRENDS REPORT
-// For each booklet that has ever been taught across any JYSEP group:
-//   - how many times it has been taught (# of groups)
-//   - for each group instance: group name, date range, # youth enrolled,
-//     avg participation %, and which animators led it
-// Booklets are sorted by number of times taught (desc), then alphabetically.
-// ─────────────────────────────────────────────────────────────────────────────
-function renderJysepBookTrendsReport() {
-  var el = document.getElementById('jysep-book-trends-report'); if (!el) return;
-  var allGids = getAllJysepGroupIds();
+// bookLookupFn: optional function(title) → { focus } for description tooltips
+function renderBookTrendsReport(containerId, programType, bookLookupFn, opts) {
+  var el = document.getElementById(containerId); if (!el) return;
+  var cfg     = Object.assign({}, PROGRAM_REPORT_OPTS[programType] || PROGRAM_REPORT_OPTS.jysep, opts || {});
+  var bookMap = calculateBookTrendsData(programType, bookLookupFn);
 
-  // Build a map: book title → array of group instances
-  var bookMap = {}; // title → [{gid, groupName, dateRange, groupStart, enrolled, avgPct, animators, archived}]
-
-  allGids.forEach(function(gid) {
-    var p = PROGRAMS_DATA[gid]; if (!p) return;
-    var book = (p.group_book || '').trim();
-    if (!book) return; // skip groups with no book assigned
-
-    var eligible = jysepAllGroupSessions(gid);
-    var enrolled = Object.keys(p.youth_participants || {});
-    var total    = eligible.length;
-
-    // Average participation: mean of each youth's % across eligible sessions
-    var avgPct = 0;
-    if (enrolled.length > 0 && total > 0) {
-      var sumPct = enrolled.reduce(function(s, name){
-        var att = jysepYouthAttendedCount(p, eligible, name);
-        return s + (att / total * 100);
-      }, 0);
-      avgPct = Math.round(sumPct / enrolled.length);
-    }
-
-    // Animators who have logged hours in this group
-    var animatorSet = new Set();
-    Object.keys(p.adult_participants || {}).forEach(function(n){ animatorSet.add(n); });
-    // Also check attendance records for adult type
-    var now = new Date(); now.setHours(0,0,0,0);
-    Object.keys(p.attendance || {}).forEach(function(d){
-      (p.attendance[d] || []).forEach(function(r){
-        if (r.type === 'adult' && r.name && r.name !== '_adult_enrolled') animatorSet.add(r.name);
-      });
-    });
-
-    var groupStart = p.group_start || (p.dates && p.dates.length ? p.dates[0] : '');
-    var groupEnd   = p.group_end   || (p.dates && p.dates.length ? p.dates[p.dates.length-1] : '');
-    var dateRange  = groupStart && groupEnd ? groupStart + ' → ' + groupEnd : (groupStart || groupEnd || 'Dates unknown');
-
-    if (!bookMap[book]) bookMap[book] = [];
-    bookMap[book].push({
-      gid:       gid,
-      groupName: p.name,
-      dateRange: dateRange,
-      groupStart: groupStart,
-      enrolled:  enrolled.length,
-      totalSessions: total,
-      avgPct:    avgPct,
-      animators: [...animatorSet].sort(),
-      archived:  p.group_archived || false
-    });
-  });
-
-  var allBooks = Object.keys(bookMap).sort(function(a, b){
-    // Sort by times taught desc, then alpha
-    var diff = bookMap[b].length - bookMap[a].length;
+  var allBooks = Object.keys(bookMap).sort(function(a, b) {
+    var diff = bookMap[b].instances.length - bookMap[a].instances.length;
     return diff !== 0 ? diff : a.localeCompare(b);
   });
 
   if (allBooks.length === 0) {
-    el.innerHTML = '<div style="color:var(--text-muted);font-size:.82rem;padding:8px">No booklets assigned to any JYSEP group yet.</div>';
+    el.innerHTML = '<div style="color:var(--text-muted);font-size:.82rem;padding:8px">'+cfg.emptyBookMsg+'</div>';
     return;
   }
 
   var html = '';
   allBooks.forEach(function(book) {
-    var instances = bookMap[book].slice().sort(function(a, b){
-      return (a.groupStart || '').localeCompare(b.groupStart || '');
-    });
-    var timesTaught  = instances.length;
-    var totalEnrolled = instances.reduce(function(s, g){ return s + g.enrolled; }, 0);
-    var overallAvgPct = instances.length > 0
-      ? Math.round(instances.reduce(function(s, g){ return s + g.avgPct; }, 0) / instances.length)
-      : 0;
-    var allAnimators = [...new Set(instances.flatMap(function(g){ return g.animators; }))].sort();
-
-    var bookObj = jysepBookByTitle(book);
-    var focusText = bookObj ? bookObj.focus : '';
+    var entry         = bookMap[book];
+    var instances     = entry.instances;
+    var focusText     = entry.focus || '';
+    var timesTaught   = instances.length;
+    var totalEnrolled = instances.reduce(function(s, g) { return s + g.enrolled; }, 0);
+    var overallAvgPct = Math.round(
+      instances.reduce(function(s, g) { return s + g.avgPct; }, 0) / instances.length
+    );
+    // Deduplicate adults across all instances of this book
+    var allAdultsSet = new Set();
+    instances.forEach(function(g) { g.adults.forEach(function(n) { allAdultsSet.add(n); }); });
+    var allAdults = [...allAdultsSet].sort();
 
     html += '<details style="border-bottom:1px solid rgba(255,255,255,.06);padding:6px 0;margin-bottom:2px">';
     html += '<summary style="cursor:pointer;list-style:none;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;padding:4px 0">';
     html += '<div>';
-    html += '<div style="font-size:.88rem;font-weight:700;color:var(--text-main)">📖 '+book+'</div>';
+    html += '<div style="font-size:.88rem;font-weight:700;color:var(--text-main)">'+cfg.bookIconLabel+' '+book+'</div>';
     if (focusText) html += '<div style="font-size:.71rem;color:var(--text-muted);font-style:italic;margin-top:1px">'+focusText+'</div>';
     html += '</div>';
     html += '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">';
-    html += '<div style="font-size:.75rem;color:var(--text-muted)"><strong style="color:var(--lavender)">'+timesTaught+'×</strong> taught</div>';
-    html += '<div style="font-size:.75rem;color:var(--text-muted)"><strong style="color:var(--ya-teal)">'+totalEnrolled+'</strong> youth total</div>';
+    html += '<div style="font-size:.75rem;color:var(--text-muted)"><strong style="color:'+cfg.accentColor+'">'+timesTaught+'×</strong> taught</div>';
+    html += '<div style="font-size:.75rem;color:var(--text-muted)"><strong style="color:var(--ya-teal)">'+totalEnrolled+'</strong> participants total</div>';
     html += '<div style="font-size:.75rem;color:var(--text-muted)">Avg participation: <strong style="color:var(--ya-orange)">'+overallAvgPct+'%</strong></div>';
     html += '</div></summary>';
 
-    // Expanded: one row per group instance
     html += '<div style="margin-top:8px;margin-left:12px">';
-
-    if (allAnimators.length > 0) {
+    if (allAdults.length > 0) {
       html += '<div style="font-size:.73rem;color:var(--text-muted);margin-bottom:8px">'+
-        '<span style="font-weight:700;color:var(--ya-gold)">Animators across all groups: </span>'+
-        allAnimators.join(', ')+'</div>';
+        '<span style="font-weight:700;color:var(--ya-gold)">'+cfg.adultRoleLabel+' across all groups: </span>'+
+        allAdults.join(', ')+'</div>';
     }
 
-    html += '<div style="overflow-x:auto"><table class="data-table" style="width:100%;min-width:480px">';
-    html += '<thead><tr>';
-    html += '<th style="font-size:.7rem;text-align:left">Group</th>';
+    html += '<div style="overflow-x:auto"><table class="data-table" style="width:100%;min-width:480px"><thead><tr>';
+    html += '<th style="font-size:.7rem;text-align:left">'+cfg.groupLabel+'</th>';
     html += '<th style="font-size:.7rem;text-align:left">Dates</th>';
     html += '<th style="font-size:.7rem;text-align:center">Sessions</th>';
     html += '<th style="font-size:.7rem;text-align:center">Youth</th>';
     html += '<th style="font-size:.7rem;text-align:center">Avg %</th>';
-    html += '<th style="font-size:.7rem;text-align:left">Animators</th>';
+    html += '<th style="font-size:.7rem;text-align:left">'+cfg.adultRoleLabel+'</th>';
     html += '</tr></thead><tbody>';
 
     instances.forEach(function(g) {
-      var pctBar = '<div style="display:inline-block;width:40px;height:5px;background:rgba(255,255,255,.08);border-radius:3px;vertical-align:middle;margin-right:4px"><div style="width:'+g.avgPct+'%;height:100%;background:var(--ya-orange);border-radius:3px"></div></div>';
+      var pctBar = '<div style="display:inline-block;width:40px;height:5px;background:rgba(255,255,255,.08);border-radius:3px;vertical-align:middle;margin-right:4px">'+
+        '<div style="width:'+g.avgPct+'%;height:100%;background:var(--ya-orange);border-radius:3px"></div></div>';
       html += '<tr>';
-      html += '<td style="font-size:.78rem;font-weight:600;white-space:nowrap">'+g.groupName+(g.archived?'<span style="font-size:.65rem;color:var(--text-muted);margin-left:4px">[archived]</span>':'')+'</td>';
+      html += '<td style="font-size:.78rem;font-weight:600;white-space:nowrap">'+g.groupName+
+        (g.archived?'<span style="font-size:.65rem;color:var(--text-muted);margin-left:4px">[archived]</span>':'')+'</td>';
       html += '<td style="font-size:.72rem;color:var(--text-muted);white-space:nowrap">'+g.dateRange+'</td>';
       html += '<td style="text-align:center;font-size:.78rem;color:var(--text-muted)">'+g.totalSessions+'</td>';
       html += '<td style="text-align:center;font-weight:700;color:var(--ya-teal)">'+g.enrolled+'</td>';
-      html += '<td style="text-align:center;white-space:nowrap">'+pctBar+'<span style="font-size:.78rem;font-weight:700;color:var(--ya-orange)">'+g.avgPct+'%</span></td>';
+      html += '<td style="text-align:center;white-space:nowrap">'+pctBar+
+        '<span style="font-size:.78rem;font-weight:700;color:var(--ya-orange)">'+g.avgPct+'%</span></td>';
       html += '<td style="font-size:.72rem;color:var(--text-muted)">'+
-        (g.animators.length > 0 ? g.animators.join(', ') : '<em>None recorded</em>')+'</td>';
+        (g.adults.length > 0 ? g.adults.join(', ') : '<em>None recorded</em>')+'</td>';
       html += '</tr>';
     });
 
@@ -7581,6 +7646,24 @@ function renderJysepBookTrendsReport() {
 
   el.innerHTML = html;
 }
+
+// ── JYSEP thin wrappers — keep the exact same call sites as before ─────────────
+// These call the generic renderers with JYSEP-specific container ids and opts.
+// They are the only JYSEP-specific code remaining in the report system.
+
+function renderJysepYouthProgressReport() {
+  renderYouthProgressReport('jysep-youth-progress-report', 'jysep', {});
+}
+
+function renderJysepBookTrendsReport() {
+  renderBookTrendsReport('jysep-book-trends-report', 'jysep', jysepBookByTitle, {});
+}
+
+// ── Backward-compat aliases for any call sites still using old names ──────────
+function getAllJysepGroupIds()                         { return getProgramGroupIds('jysep', true); }
+function jysepAllGroupSessions(gid)                   { return programAllGroupSessions(gid); }
+function jysepYouthAttendedCount(prog, dates, name)   { return programYouthAttendedCount(prog, dates, name); }
+function jysepCompletionBadge(pct)                    { return programCompletionBadge(pct); }
 
 // ══════════════════════════════════════════════════════════════════════════════
 // JYSEP BOOK LIBRARY — Admin-managed book/text list

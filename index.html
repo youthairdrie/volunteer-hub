@@ -4950,8 +4950,11 @@ function renderScheduleTab(){
       var d = parseDate(dateStr);
       var isCan = (jysepSched.cancellations||[]).indexOf(dateStr) >= 0;
       var meta  = (jysepSched.session_meta||{})[dateStr] || {};
-      var defaultStart = jysepSched.time ? jysepSched.time.split('–')[0].trim() : '10:00 AM';
-      var defaultEnd   = jysepSched.time ? jysepSched.time.split('–')[1].trim() : '12:00 PM';
+      // Split time on any dash variant (en-dash –, em-dash —, hyphen -) with optional spaces.
+      // Guard against undefined if the time string has no dash at all.
+      var timeParts = jysepSched.time ? jysepSched.time.split(/\s*[\u2013\u2014\-]\s*/) : [];
+      var defaultStart = (timeParts[0] || '10:00 AM').trim();
+      var defaultEnd   = (timeParts[1] || '12:00 PM').trim();
       var detail = (meta.location || jysepSched.location || 'Youth Airdrie') + ' · ' + (meta.start_time||defaultStart) + '–' + (meta.end_time||defaultEnd);
       if (meta.theme) detail += ' · ' + meta.theme;
       var bookLabel = jysepSched.group_book ? ' · 📖 ' + jysepSched.group_book : '';
@@ -6788,10 +6791,10 @@ function renderJysepSessionsList() {
   var p  = jysepProg(gid); if (!p) { el.innerHTML = ''; return; }
   var now = new Date(); now.setHours(0, 0, 0, 0);
   var html = '<div class="section-box">';
-  var defaultStart = p.time ? p.time.split('–')[0].trim() : '10:00 AM';
-  var defaultEnd   = p.time ? p.time.split('–')[1].trim() : '12:00 PM';
+  var timeParts   = p.time ? p.time.split(/\s*[\u2013\u2014\-]\s*/) : [];
+  var defaultStart = (timeParts[0] || '10:00 AM').trim();
+  var defaultEnd   = (timeParts[1] || '12:00 PM').trim();
   p.dates.forEach(function(d) {
-    var isCan = (p.cancellations || []).indexOf(d) >= 0;
     var meta  = (p.session_meta || {})[d] || {};
     var isPast = new Date(d) < now;
     var sd = d.replace(/'/g, "\\'");
@@ -6823,8 +6826,9 @@ function openJysepSessionEdit(gid, dateStr) {
   var meta = p && p.session_meta && p.session_meta[dateStr] ? p.session_meta[dateStr] : {};
   _jysepActiveGroup = gid;
   _jysepEditDate = dateStr;
-  var defaultStart = p && p.time ? p.time.split('–')[0].trim() : '10:00 AM';
-  var defaultEnd   = p && p.time ? p.time.split('–')[1].trim() : '12:00 PM';
+  var editTimeParts = p && p.time ? p.time.split(/\s*[\u2013\u2014\-]\s*/) : [];
+  var defaultStart = (editTimeParts[0] || '10:00 AM').trim();
+  var defaultEnd   = (editTimeParts[1] || '12:00 PM').trim();
   document.getElementById('jsm-date').value          = dateStr;
   document.getElementById('jsm-theme').value         = meta.theme        || '';
   document.getElementById('jsm-desc').value          = meta.description  || '';

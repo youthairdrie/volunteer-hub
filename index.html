@@ -1307,64 +1307,6 @@ tr:hover .grd-date-sticky { background: #1a2d47; }
           <div id="garden-sessions-list" style="margin-top:10px"></div>
         </details>
 
-        <!-- Generic multi-youth enroll modal (reusable for any program) -->
-        <div id="program-enroll-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:1100;align-items:flex-start;justify-content:center;padding:24px 16px;overflow-y:auto">
-          <div class="login-box" style="max-width:520px;width:100%;margin:auto">
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
-              <div style="font-family:Nunito,sans-serif;font-weight:900;font-size:1rem;color:var(--ya-green)" id="pem-title">Enroll Youth</div>
-              <button onclick="document.getElementById('program-enroll-modal').style.display='none'" style="background:none;border:none;color:var(--text-muted);font-size:1.3rem;cursor:pointer;line-height:1;padding:2px">×</button>
-            </div>
-            <div style="font-size:.76rem;color:var(--text-muted);margin-bottom:14px" id="pem-subtitle">Select youth to enroll. Already-enrolled youth are shown but cannot be re-selected.</div>
-
-            <!-- Search + select-all row -->
-            <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap">
-              <input id="pem-search" type="search" placeholder="Search by name…" oninput="pemFilter()"
-                style="flex:1;min-width:140px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.15);border-radius:8px;padding:7px 12px;color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem;outline:none">
-              <button onclick="pemSelectAll()" style="padding:6px 12px;border-radius:8px;border:1px solid rgba(255,255,255,.2);background:transparent;color:var(--text-muted);font-family:DM Sans,sans-serif;font-size:.78rem;cursor:pointer;white-space:nowrap">✔ Select All</button>
-              <button onclick="pemClear()" style="padding:6px 12px;border-radius:8px;border:1px solid rgba(255,255,255,.2);background:transparent;color:var(--text-muted);font-family:DM Sans,sans-serif;font-size:.78rem;cursor:pointer;white-space:nowrap">✕ Clear</button>
-            </div>
-
-            <!-- Youth list with checkboxes -->
-            <div id="pem-list" style="max-height:340px;overflow-y:auto;border:1px solid rgba(255,255,255,.1);border-radius:10px;background:rgba(0,0,0,.2)"></div>
-
-            <!-- Count + save row -->
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-top:12px;flex-wrap:wrap;gap:8px">
-              <div style="font-size:.8rem;color:var(--text-muted)"><span id="pem-count">0</span> selected</div>
-              <div style="display:flex;gap:8px">
-                <button onclick="document.getElementById('program-enroll-modal').style.display='none'" style="padding:8px 16px;border-radius:9px;border:1px solid rgba(255,255,255,.15);background:transparent;color:var(--text-muted);font-family:Nunito,sans-serif;font-weight:700;font-size:.85rem;cursor:pointer">Cancel</button>
-                <button id="pem-save-btn" onclick="saveProgramYouthEnrollment()" style="padding:8px 22px;border-radius:9px;border:none;background:var(--ya-green);color:#fff;font-family:Nunito,sans-serif;font-weight:800;font-size:.88rem;cursor:pointer">Enroll Selected →</button>
-              </div>
-            </div>
-            <div id="pem-feedback" style="font-size:.78rem;margin-top:8px;min-height:16px;text-align:center"></div>
-          </div>
-        </div>
-
-        <!-- Generic multi-adult enroll modal (reusable for any program) -->
-        <div id="program-enroll-adult-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:1100;align-items:flex-start;justify-content:center;padding:24px 16px;overflow-y:auto">
-          <div class="login-box" style="max-width:520px;width:100%;margin:auto">
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
-              <div style="font-family:Nunito,sans-serif;font-weight:900;font-size:1rem;color:var(--ya-blue)" id="peam-title">Enroll Adult Volunteer</div>
-              <button onclick="document.getElementById('program-enroll-adult-modal').style.display='none'" style="background:none;border:none;color:var(--text-muted);font-size:1.3rem;cursor:pointer;line-height:1;padding:2px">×</button>
-            </div>
-            <div style="font-size:.76rem;color:var(--text-muted);margin-bottom:14px">Select adults to enroll as volunteers. Already-enrolled adults are shown with a ✔ and cannot be re-selected.</div>
-            <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap">
-              <input id="peam-search" type="search" placeholder="Search by name…" oninput="peamFilter()"
-                style="flex:1;min-width:140px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.15);border-radius:8px;padding:7px 12px;color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem;outline:none">
-              <button onclick="peamSelectAll()" style="padding:6px 12px;border-radius:8px;border:1px solid rgba(255,255,255,.2);background:transparent;color:var(--text-muted);font-family:DM Sans,sans-serif;font-size:.78rem;cursor:pointer;white-space:nowrap">✔ Select All</button>
-              <button onclick="peamClear()" style="padding:6px 12px;border-radius:8px;border:1px solid rgba(255,255,255,.2);background:transparent;color:var(--text-muted);font-family:DM Sans,sans-serif;font-size:.78rem;cursor:pointer;white-space:nowrap">✕ Clear</button>
-            </div>
-            <div id="peam-list" style="max-height:340px;overflow-y:auto;border:1px solid rgba(255,255,255,.1);border-radius:10px;background:rgba(0,0,0,.2)"></div>
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-top:12px;flex-wrap:wrap;gap:8px">
-              <div style="font-size:.8rem;color:var(--text-muted)"><span id="peam-count">0</span> selected</div>
-              <div style="display:flex;gap:8px">
-                <button onclick="document.getElementById('program-enroll-adult-modal').style.display='none'" style="padding:8px 16px;border-radius:9px;border:1px solid rgba(255,255,255,.15);background:transparent;color:var(--text-muted);font-family:Nunito,sans-serif;font-weight:700;font-size:.85rem;cursor:pointer">Cancel</button>
-                <button id="peam-save-btn" onclick="saveProgramEnrollAdultModal()" style="padding:8px 22px;border-radius:9px;border:none;background:var(--ya-blue);color:#fff;font-family:Nunito,sans-serif;font-weight:800;font-size:.88rem;cursor:pointer">Enroll Selected →</button>
-              </div>
-            </div>
-            <div id="peam-feedback" style="font-size:.78rem;margin-top:8px;min-height:16px;text-align:center"></div>
-          </div>
-        </div>
-
         <!-- Session edit modal -->
         <div id="garden-session-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:1000;align-items:center;justify-content:center">
           <div class="login-box" style="max-width:440px;width:100%;max-height:90vh;overflow-y:auto">
@@ -6999,7 +6941,9 @@ async function saveJysepGroupModal() {
 
   if (!r.ok) {
     var err = await r.text();
-    fb.style.color = 'var(--badge-red)'; fb.textContent = '⚠ Save failed: ' + r.status;
+    var errMsg = ''; try { var errObj=JSON.parse(err||'{}'); errMsg=errObj.message||errObj.hint||err; } catch(e){ errMsg=err; }
+    fb.style.color = 'var(--badge-red)'; fb.textContent = '⚠ Save failed (' + r.status + '): ' + (errMsg||'unknown error');
+    console.error('[saveJysepGroupModal] Supabase error', r.status, err);
     btn.textContent = '💾 Save Group'; btn.style.opacity = ''; btn.disabled = false; return;
   }
 
@@ -9592,16 +9536,41 @@ async function initDB() {
       unique(program_id, session_date, participant_name)
     );
     alter table program_attendance disable row level security;
-    -- Program-level settings: certification rules, config. session_date='_config' for program-level rows.
+    -- Program-level settings: cert rules + JYSEP group config columns.
     create table if not exists program_settings (
-      id          bigserial primary key,
-      program_id  text not null unique,
-      cert_name   text not null default 'Certificate of Participation',
+      id                bigserial primary key,
+      program_id        text not null unique,
+      cert_name         text not null default 'Certificate of Participation',
       cert_min_sessions integer not null default 6,
-      cert_notes  text,
-      updated_at  timestamptz default now()
+      cert_notes        text,
+      updated_at        timestamptz default now(),
+      group_name        text,
+      group_book        text,
+      group_book_start  text,
+      group_book_end    text,
+      group_age_range   text,
+      group_time        text,
+      group_day         text,
+      group_location    text,
+      group_notes       text,
+      group_start       text,
+      group_end         text,
+      group_archived    boolean not null default false
     );
     alter table program_settings disable row level security;
+    -- Idempotent: add any columns that may be missing from an existing table
+    alter table program_settings add column if not exists group_name       text;
+    alter table program_settings add column if not exists group_book       text;
+    alter table program_settings add column if not exists group_book_start text;
+    alter table program_settings add column if not exists group_book_end   text;
+    alter table program_settings add column if not exists group_age_range  text;
+    alter table program_settings add column if not exists group_time       text;
+    alter table program_settings add column if not exists group_day        text;
+    alter table program_settings add column if not exists group_location   text;
+    alter table program_settings add column if not exists group_notes      text;
+    alter table program_settings add column if not exists group_start      text;
+    alter table program_settings add column if not exists group_end        text;
+    alter table program_settings add column if not exists group_archived   boolean not null default false;
     alter table program_volunteers add column if not exists hours numeric default 2;
   `;
   const r = await fetch(SUPA_URL + '/rest/v1/rpc/exec_sql', {
@@ -14081,5 +14050,65 @@ console.log(
   'color:#00b4a6;font-weight:bold;font-size:11px'
 );
 </script>
+
+<!-- ═══ Global program enrollment modals (body-level; work across all tabs) ═══ -->
+<!-- Generic multi-youth enroll modal (reusable for any program) -->
+        <div id="program-enroll-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:1100;align-items:flex-start;justify-content:center;padding:24px 16px;overflow-y:auto">
+          <div class="login-box" style="max-width:520px;width:100%;margin:auto">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+              <div style="font-family:Nunito,sans-serif;font-weight:900;font-size:1rem;color:var(--ya-green)" id="pem-title">Enroll Youth</div>
+              <button onclick="document.getElementById('program-enroll-modal').style.display='none'" style="background:none;border:none;color:var(--text-muted);font-size:1.3rem;cursor:pointer;line-height:1;padding:2px">×</button>
+            </div>
+            <div style="font-size:.76rem;color:var(--text-muted);margin-bottom:14px" id="pem-subtitle">Select youth to enroll. Already-enrolled youth are shown but cannot be re-selected.</div>
+
+            <!-- Search + select-all row -->
+            <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap">
+              <input id="pem-search" type="search" placeholder="Search by name…" oninput="pemFilter()"
+                style="flex:1;min-width:140px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.15);border-radius:8px;padding:7px 12px;color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem;outline:none">
+              <button onclick="pemSelectAll()" style="padding:6px 12px;border-radius:8px;border:1px solid rgba(255,255,255,.2);background:transparent;color:var(--text-muted);font-family:DM Sans,sans-serif;font-size:.78rem;cursor:pointer;white-space:nowrap">✔ Select All</button>
+              <button onclick="pemClear()" style="padding:6px 12px;border-radius:8px;border:1px solid rgba(255,255,255,.2);background:transparent;color:var(--text-muted);font-family:DM Sans,sans-serif;font-size:.78rem;cursor:pointer;white-space:nowrap">✕ Clear</button>
+            </div>
+
+            <!-- Youth list with checkboxes -->
+            <div id="pem-list" style="max-height:340px;overflow-y:auto;border:1px solid rgba(255,255,255,.1);border-radius:10px;background:rgba(0,0,0,.2)"></div>
+
+            <!-- Count + save row -->
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-top:12px;flex-wrap:wrap;gap:8px">
+              <div style="font-size:.8rem;color:var(--text-muted)"><span id="pem-count">0</span> selected</div>
+              <div style="display:flex;gap:8px">
+                <button onclick="document.getElementById('program-enroll-modal').style.display='none'" style="padding:8px 16px;border-radius:9px;border:1px solid rgba(255,255,255,.15);background:transparent;color:var(--text-muted);font-family:Nunito,sans-serif;font-weight:700;font-size:.85rem;cursor:pointer">Cancel</button>
+                <button id="pem-save-btn" onclick="saveProgramYouthEnrollment()" style="padding:8px 22px;border-radius:9px;border:none;background:var(--ya-green);color:#fff;font-family:Nunito,sans-serif;font-weight:800;font-size:.88rem;cursor:pointer">Enroll Selected →</button>
+              </div>
+            </div>
+            <div id="pem-feedback" style="font-size:.78rem;margin-top:8px;min-height:16px;text-align:center"></div>
+          </div>
+        </div>
+
+        <!-- Generic multi-adult enroll modal (reusable for any program) -->
+        <div id="program-enroll-adult-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:1100;align-items:flex-start;justify-content:center;padding:24px 16px;overflow-y:auto">
+          <div class="login-box" style="max-width:520px;width:100%;margin:auto">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+              <div style="font-family:Nunito,sans-serif;font-weight:900;font-size:1rem;color:var(--ya-blue)" id="peam-title">Enroll Adult Volunteer</div>
+              <button onclick="document.getElementById('program-enroll-adult-modal').style.display='none'" style="background:none;border:none;color:var(--text-muted);font-size:1.3rem;cursor:pointer;line-height:1;padding:2px">×</button>
+            </div>
+            <div style="font-size:.76rem;color:var(--text-muted);margin-bottom:14px">Select adults to enroll as volunteers. Already-enrolled adults are shown with a ✔ and cannot be re-selected.</div>
+            <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap">
+              <input id="peam-search" type="search" placeholder="Search by name…" oninput="peamFilter()"
+                style="flex:1;min-width:140px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.15);border-radius:8px;padding:7px 12px;color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem;outline:none">
+              <button onclick="peamSelectAll()" style="padding:6px 12px;border-radius:8px;border:1px solid rgba(255,255,255,.2);background:transparent;color:var(--text-muted);font-family:DM Sans,sans-serif;font-size:.78rem;cursor:pointer;white-space:nowrap">✔ Select All</button>
+              <button onclick="peamClear()" style="padding:6px 12px;border-radius:8px;border:1px solid rgba(255,255,255,.2);background:transparent;color:var(--text-muted);font-family:DM Sans,sans-serif;font-size:.78rem;cursor:pointer;white-space:nowrap">✕ Clear</button>
+            </div>
+            <div id="peam-list" style="max-height:340px;overflow-y:auto;border:1px solid rgba(255,255,255,.1);border-radius:10px;background:rgba(0,0,0,.2)"></div>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-top:12px;flex-wrap:wrap;gap:8px">
+              <div style="font-size:.8rem;color:var(--text-muted)"><span id="peam-count">0</span> selected</div>
+              <div style="display:flex;gap:8px">
+                <button onclick="document.getElementById('program-enroll-adult-modal').style.display='none'" style="padding:8px 16px;border-radius:9px;border:1px solid rgba(255,255,255,.15);background:transparent;color:var(--text-muted);font-family:Nunito,sans-serif;font-weight:700;font-size:.85rem;cursor:pointer">Cancel</button>
+                <button id="peam-save-btn" onclick="saveProgramEnrollAdultModal()" style="padding:8px 22px;border-radius:9px;border:none;background:var(--ya-blue);color:#fff;font-family:Nunito,sans-serif;font-weight:800;font-size:.88rem;cursor:pointer">Enroll Selected →</button>
+              </div>
+            </div>
+            <div id="peam-feedback" style="font-size:.78rem;margin-top:8px;min-height:16px;text-align:center"></div>
+          </div>
+        </div>
+
 </body>
 </html>

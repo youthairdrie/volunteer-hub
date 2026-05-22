@@ -7016,7 +7016,9 @@ async function saveJysepGroupModal() {
   var fb  = document.getElementById('jgm-feedback');
   var btn = document.getElementById('jgm-save-btn');
   fb.textContent = '';
+  fb.style.color  = 'var(--text-muted)';
 
+  // ── Collect and validate form values ────────────────────────────────────────
   var name = (document.getElementById('jgm-name').value || '').trim();
   if (!name) { fb.style.color='var(--badge-red)'; fb.textContent='⚠ Group name is required.'; return; }
 
@@ -7027,8 +7029,7 @@ async function saveJysepGroupModal() {
   var location  = (document.getElementById('jgm-location').value || 'Youth Airdrie').trim();
   var notes     = (document.getElementById('jgm-notes').value || '').trim();
 
-  // ── Read and validate Group Start / End dates ──────────────────────────────
-  // jgm-start and jgm-end are type=date inputs → value is always "YYYY-MM-DD" or "".
+  // jgm-start and jgm-end are type=date → value is "YYYY-MM-DD" or "".
   var startISO = (document.getElementById('jgm-start').value || '').trim();
   var endISO   = (document.getElementById('jgm-end').value   || '').trim();
 
@@ -7038,59 +7039,102 @@ async function saveJysepGroupModal() {
   if (!endISO.match(/^\d{4}-\d{2}-\d{2}$/))   { fb.style.color='var(--badge-red)'; fb.textContent='⚠ Invalid end date.'; return; }
   if (endISO < startISO) { fb.style.color='var(--badge-red)'; fb.textContent='⚠ End date cannot be before start date.'; return; }
 
-  // Convert ISO → "Mon D, YYYY" display format for storage and buildWeeklyDates
+  // Convert ISO "YYYY-MM-DD" → display "Mon D, YYYY" for storage and buildWeeklyDates
   var startD = jgmISOToDisplay(startISO);
   var endD   = jgmISOToDisplay(endISO);
   if (!startD || !endD) { fb.style.color='var(--badge-red)'; fb.textContent='⚠ Date conversion failed — please re-enter dates.'; return; }
 
-  // Generate this group's session dates from its own day/start/end
+  // Generate session dates for this group only
   var dates = buildWeeklyDates(startD, endD, day);
-  if (dates.length === 0) { fb.style.color='var(--badge-red)'; fb.textContent='⚠ No '+day+' sessions found in the selected date range.'; return; }
+  if (dates.length === 0) { fb.style.color='var(--badge-red)'; fb.textContent='⚠ No '+day+' sessions found in the date range.'; return; }
 
-  // Determine program_id
+  // ── Determine program_id ─────────────────────────────────────────────────────
+  // IMPORTANT: _jysepEditGroupId is set by openEditJysepGroupModal — it is the
+  // EXISTING program_id of the group being edited. NEVER re-derive from name when
+  // editing, as that would create a new row instead of updating the existing one.
   var gid = _jysepEditGroupId || jysepSlug(name);
+  // Guard: prevent accidental collision for new groups only
   if (!_jysepEditGroupId && PROGRAMS_DATA[gid]) gid = gid + '_' + Date.now().toString(36);
 
   btn.textContent = 'Saving…'; btn.style.opacity = '.6'; btn.disabled = true;
 
-  // Preserve archived flag — editing a group never un-archives it
-  var _existingArchived = (PROGRAMS_DATA[gid] && PROGRAMS_DATA[gid].group_archived) ? true : false;
+  // Preserve archived flag — editing never un-archives
+  var existingArchived = !!(PROGRAMS_DATA[gid] && PROGRAMS_DATA[gid].group_archived);
 
-  // Persist to Supabase — group_start and group_end stored as display strings ("Jan 10, 2026")
-  // so they round-trip cleanly through buildWeeklyDates on reload.
+  // ── Write to Supabase ────────────────────────────────────────────────────────
+  // Include cert_name and cert_min_sessions so new-group INSERTs never fail
+  // on NOT NULL columns (existing rows already have these values; the merge-duplicates
+  // UPDATE will only overwrite them if explicitly included, which is what we want
+  // so new groups get sensible defaults).
   var settingsRow = {
-    program_id:     gid,
-    group_name:     name,
-    group_book:     book,
-    group_age_range: ageRange,
-    group_time:     time,
-    group_day:      day,
-    group_location: location,
-    group_notes:    notes,
-    group_start:    startD,   // stored as "Jan 10, 2026"
-    group_end:      endD,     // stored as "Jan 10, 2026"
-    group_archived: _existingArchived
+    program_id:       gid,
+    cert_name:        'Certificate of Participation',  // NOT NULL default — safe to always send
+    cert_min_sessions: 6,                              // NOT NULL default — safe to always send
+    group_name:       name,
+    group_book:       book,
+    group_age_range:  ageRange,
+    group_time:       time,
+    group_day:        day,
+    group_location:   location,
+    group_notes:      notes,
+    group_start:      startD,   // stored as "Jan 10, 2026" — exact format buildWeeklyDates expects
+    group_end:        endD,
+    group_archived:   existingArchived
   };
 
-  var r = await fetch(SUPA_URL + '/rest/v1/program_settings?on_conflict=program_id', {
-    method: 'POST',
-    headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer '+SUPA_KEY,
-               'Content-Type': 'application/json',
-               'Prefer': 'resolution=merge-duplicates,return=minimal' },
-    body: JSON.stringify(settingsRow)
-  });
-
-  if (!r.ok) {
-    var err = await r.text();
-    var errMsg = '';
-    try { var errObj=JSON.parse(err||'{}'); errMsg=errObj.message||errObj.hint||err; } catch(e){ errMsg=err; }
+  // Use return=representation so Supabase sends back the actual saved row.
+  // This is the only reliable way to confirm what was persisted.
+  var r;
+  try {
+    r = await fetch(SUPA_URL + '/rest/v1/program_settings?on_conflict=program_id', {
+      method: 'POST',
+      headers: {
+        'apikey':        SUPA_KEY,
+        'Authorization': 'Bearer ' + SUPA_KEY,
+        'Content-Type':  'application/json',
+        'Prefer':        'resolution=merge-duplicates,return=representation'
+      },
+      body: JSON.stringify(settingsRow)
+    });
+  } catch(netErr) {
     fb.style.color='var(--badge-red)';
-    fb.textContent='⚠ Save failed ('+r.status+'): '+(errMsg||'unknown error');
-    console.error('[saveJysepGroupModal] Supabase error', r.status, err);
+    fb.textContent='⚠ Network error — check connection: ' + netErr.message;
     btn.textContent='💾 Save Group'; btn.style.opacity=''; btn.disabled=false; return;
   }
 
-  // Update in-memory PROGRAMS_DATA immediately so the UI reflects changes without reload
+  if (!r.ok) {
+    var errText = await r.text();
+    var errMsg = errText;
+    try { var errObj = JSON.parse(errText||'{}'); errMsg = errObj.message||errObj.hint||errObj.details||errText; } catch(e){}
+    fb.style.color='var(--badge-red)';
+    fb.textContent='⚠ Save failed (HTTP '+r.status+'): '+(errMsg||'unknown error');
+    console.error('[saveJysepGroupModal] Supabase error', r.status, errText);
+    btn.textContent='💾 Save Group'; btn.style.opacity=''; btn.disabled=false; return;
+  }
+
+  // Parse the returned row to confirm what was actually saved
+  var savedRows;
+  try { savedRows = await r.json(); } catch(e) { savedRows = null; }
+  var savedRow = Array.isArray(savedRows) ? savedRows[0] : (savedRows || null);
+
+  // Use the confirmed saved values (not the local variables) to update memory.
+  // If Supabase transformed any values, we pick them up here.
+  var confirmedStart = (savedRow && savedRow.group_start) ? savedRow.group_start : startD;
+  var confirmedEnd   = (savedRow && savedRow.group_end)   ? savedRow.group_end   : endD;
+  var confirmedDay   = (savedRow && savedRow.group_day)   ? savedRow.group_day   : day;
+  var confirmedName  = (savedRow && savedRow.group_name)  ? savedRow.group_name  : name;
+  var confirmedTime  = (savedRow && savedRow.group_time)  ? savedRow.group_time  : time;
+  var confirmedLoc   = (savedRow && savedRow.group_location) ? savedRow.group_location : location;
+
+  // Regenerate dates from the confirmed DB values
+  var confirmedDates = buildWeeklyDates(confirmedStart, confirmedEnd, confirmedDay);
+  if (confirmedDates.length === 0) confirmedDates = dates; // fall back to locally-computed
+
+  console.log('[saveJysepGroupModal] Confirmed save for', gid,
+    '| group_start:', confirmedStart, '| group_end:', confirmedEnd,
+    '| sessions:', confirmedDates.length);
+
+  // ── Update in-memory PROGRAMS_DATA from confirmed DB values ──────────────────
   if (!PROGRAMS_DATA[gid]) {
     PROGRAMS_DATA[gid] = {
       id: 'prog_'+gid,
@@ -7104,26 +7148,30 @@ async function saveJysepGroupModal() {
     };
   }
   var prog = PROGRAMS_DATA[gid];
-  prog.name            = name;
-  prog.group_book      = book;
-  prog.group_age_range = ageRange;
-  prog.time            = time;
-  prog.day             = day;
-  prog.location        = location;
-  prog.group_notes     = notes;
-  prog.group_start     = startD;  // scalar scalars for openEditJysepGroupModal to read
-  prog.group_end       = endD;
-  prog.dates           = dates;   // freshly generated for this group only
+  prog.name            = confirmedName;
+  prog.group_book      = (savedRow && savedRow.group_book  !== undefined) ? savedRow.group_book  : book;
+  prog.group_age_range = (savedRow && savedRow.group_age_range) ? savedRow.group_age_range : ageRange;
+  prog.time            = confirmedTime;
+  prog.day             = confirmedDay;
+  prog.location        = confirmedLoc;
+  prog.group_notes     = (savedRow && savedRow.group_notes !== undefined) ? savedRow.group_notes : notes;
+  prog.group_start     = confirmedStart;   // authoritative scalar — used by openEditJysepGroupModal
+  prog.group_end       = confirmedEnd;     // authoritative scalar
+  prog.dates           = confirmedDates;   // freshly generated from confirmed DB values
   prog.season          = 'Year-round';
 
-  fb.style.color='var(--ya-teal)'; fb.textContent='✔ Saved — '+dates.length+' sessions generated.';
+  // ── Show confirmed result and refresh all affected UI ────────────────────────
+  fb.style.color='var(--ya-teal)';
+  fb.textContent='✔ Saved — '+confirmedDates.length+' '+confirmedDay+' sessions · '+confirmedStart+' → '+confirmedEnd;
   btn.textContent='💾 Save Group'; btn.style.opacity=''; btn.disabled=false;
 
   setTimeout(function(){
     document.getElementById('jysep-group-modal').style.display='none';
     _jysepActiveGroup = gid;
-    renderJysepAdmin();
-    renderScheduleTab();
+    // Full re-render of all sections that depend on group dates/settings
+    renderJysepAdmin();      // stat cards + group strip + group detail (sessions, grids)
+    renderScheduleTab();     // Schedule tab
+    updateLandingStats();    // Impact / Stats Audit
   }, 500);
 }
 
@@ -10950,36 +10998,35 @@ async function loadAllJysepData() {
           group_archived:   s.group_archived === true || s.group_archived === 'true'
         };
       } else {
-        // Existing in-memory group — sync all fields from DB settings.
+        // Existing in-memory group — unconditionally overwrite all settings fields
+        // from the DB row. Do NOT use truthy guards like `if (s.group_name)` —
+        // a falsy value in the DB (empty string, null) might be intentional, and
+        // a truthy guard would silently leave a stale JS-seed value in memory.
         var p = PROGRAMS_DATA[gid];
-        if (s.group_name)              p.name            = s.group_name;
-        if (s.group_book !== undefined) p.group_book      = s.group_book;
-        if (s.group_book_start !== undefined) p.group_book_start = s.group_book_start;
-        if (s.group_book_end   !== undefined) p.group_book_end   = s.group_book_end;
-        if (s.group_age_range)         p.group_age_range = s.group_age_range;
-        if (s.group_notes !== undefined) p.group_notes   = s.group_notes;
-        if (s.group_archived !== undefined)
-          p.group_archived = (s.group_archived === true || s.group_archived === 'true');
-        if (s.group_time)     p.time     = s.group_time;
-        if (s.group_location) p.location = s.group_location;
-        if (s.group_day)      p.day      = s.group_day;
+        p.name           = s.group_name    || p.name    || 'JYSEP Group';
+        p.group_book     = (s.group_book     !== undefined && s.group_book     !== null) ? s.group_book     : (p.group_book     || '');
+        p.group_age_range= s.group_age_range || p.group_age_range || 'Ages 10–14';
+        p.group_notes    = (s.group_notes    !== undefined && s.group_notes    !== null) ? s.group_notes    : (p.group_notes    || '');
+        p.group_archived = (s.group_archived === true || s.group_archived === 'true');
+        p.time           = s.group_time     || p.time     || '10:00 AM – 12:00 PM';
+        p.location       = s.group_location || p.location || 'Youth Airdrie';
+        p.day            = s.group_day      || p.day      || 'Saturday';
 
-        // Always store the authoritative start/end from DB
-        if (startD) p.group_start = startD;
-        if (endD)   p.group_end   = endD;
-
-        // Regenerate this group's dates from ITS OWN start/end/day.
-        // Use the DB values first; fall back to what's already stored on p
-        // (never fall back to a hardcoded constant that matches another group).
+        // group_start and group_end: DB value is authoritative.
+        // If DB has them (normal case after any save), use them.
+        // Fall back to existing p.group_start/p.group_end (e.g. from JS seed) only
+        // if the DB row genuinely has no value — never fall back to another group's values.
         var resolvedStart = startD || p.group_start || null;
         var resolvedEnd   = endD   || p.group_end   || null;
+        p.group_start = resolvedStart || '';
+        p.group_end   = resolvedEnd   || '';
+
         if (resolvedStart && resolvedEnd) {
-          p.dates = buildWeeklyDates(resolvedStart, resolvedEnd, p.day || 'Saturday');
+          p.dates = buildWeeklyDates(resolvedStart, resolvedEnd, p.day);
         } else {
-          // We genuinely don't know the schedule — clear dates so the group
-          // shows an empty session list rather than inheriting another group's dates.
           p.dates = [];
-          console.warn('[loadAllJysepData]', gid, 'has no group_start/group_end in DB — dates cleared');
+          console.warn('[loadAllJysepData]', gid,
+            'has no group_start/group_end — dates cleared. Run Edit Group and save to fix.');
         }
       }
     });

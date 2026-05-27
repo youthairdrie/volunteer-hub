@@ -1007,7 +1007,7 @@ tr:hover .grd-date-sticky { background: #1a2d47; }
       <div id="tab-workshops">
         <div class="cards-grid">
           <div class="stat-card" style="--accent-color:var(--ya-teal)"><div class="stat-label">EL Youth Members</div><div class="stat-value">39</div><div class="stat-meta">Emerging Leaders 2026</div><div class="stat-icon">👥</div></div>
-          <div class="stat-card" style="--accent-color:var(--ya-blue)"><div class="stat-label">Total Attendances</div><div class="stat-value">174</div><div class="stat-meta">Across 9 workshops</div><div class="stat-icon">✅</div></div>
+          <div class="stat-card" style="--accent-color:var(--ya-blue)"><div class="stat-label">Total Attendances</div><div class="stat-value" id="admin-total-att">—</div><div class="stat-meta" id="admin-total-att-meta">Across — workshops</div><div class="stat-icon">✅</div></div>
           <div class="stat-card" style="--accent-color:var(--ya-orange)"><div class="stat-label">Level 1 Eligible</div><div class="stat-value" id="a-lvl1">—</div><div class="stat-meta">6+ workshops done</div><div class="stat-icon">🎓</div></div>
           <div class="stat-card" style="--accent-color:var(--ya-green)"><div class="stat-label">Workshops Done</div><div class="stat-value" id="admin-ws-done-count">—</div><div class="stat-meta" id="admin-ws-done-meta">of — scheduled</div><div class="stat-icon">📚</div></div>
         </div>
@@ -3125,6 +3125,19 @@ function renderAdmin(){
   var wsMetaEl = eid('admin-ws-done-meta');
   if(wsDoneEl) wsDoneEl.textContent = wsStats.delivered.length;
   if(wsMetaEl) wsMetaEl.textContent = 'of ' + wsStats.scheduled.length + ' scheduled · ' + wsStats.cancelled.length + ' cancelled';
+
+  // ── Dynamic "Total Attendances" stat card — mirrors Impact tab calculation ──
+  var totalAtt = 0;
+  var allYouthNamesAtt = Object.keys(EL_YOUTH);
+  wsStats.delivered.forEach(function(w){
+    allYouthNamesAtt.forEach(function(n){
+      if((EL_YOUTH[n]||[]).indexOf(w.id) >= 0) totalAtt++;
+    });
+  });
+  var attEl = eid('admin-total-att');
+  var attMetaEl = eid('admin-total-att-meta');
+  if(attEl) attEl.textContent = totalAtt;
+  if(attMetaEl) attMetaEl.textContent = 'Across ' + wsStats.delivered.length + ' workshop' + (wsStats.delivered.length !== 1 ? 's' : '');
 
   // ── Dynamic Kim Sundset cert card (replaces hardcoded "8 Workshops (2026)") ──
   // Uses the same getFacilitatedWorkshopCount/getFacilitatedWorkshopIds helpers

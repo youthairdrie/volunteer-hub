@@ -974,7 +974,7 @@ tr:hover .grd-date-sticky { background: #1a2d47; }
       <div class="ya-stripe"></div>
       <div class="page-header">
         <div class="page-title">Admin Dashboard <span class="hl">⚡</span></div>
-        <div class="page-sub">Youth Airdrie · Semester Jan 12 – May 25, 2026 · Kim Sundset, Level 3 Certified Facilitator</div>
+        <div class="page-sub">Youth Airdrie · Emerging Leaders · Kim Sundset, Program Facilitator</div>
       </div>
       <div class="alert-row success" id="adult-ws-next-alert" style="margin-bottom:14px"></div>
       <div id="admin-kim-cert-card" class="fac-cert-card">
@@ -1054,22 +1054,56 @@ tr:hover .grd-date-sticky { background: #1a2d47; }
           </div>
         </div>
 
-        <details open style="margin-bottom:14px">
-          <summary style="font-family:Nunito,sans-serif;font-weight:900;font-size:.95rem;color:var(--ya-blue);cursor:pointer;padding:10px 0;list-style:none;display:flex;align-items:center;gap:8px">📋 Workshop Schedule &amp; Status</summary>
+        <!-- Template Library + Schedule Next Series -->
+        <details style="margin-bottom:14px" id="ws-template-details">
+          <summary style="font-family:Nunito,sans-serif;font-weight:900;font-size:.95rem;color:var(--ya-teal);cursor:pointer;padding:10px 0;list-style:none;display:flex;align-items:center;justify-content:space-between">
+            <span>📚 Workshop Template Library</span>
+            <button onclick="event.stopPropagation();openScheduleNextSeriesModal()" style="padding:5px 14px;border-radius:8px;border:1px solid var(--ya-blue);background:rgba(29,127,212,.1);color:var(--ya-blue);font-size:.75rem;font-weight:700;cursor:pointer;font-family:DM Sans,sans-serif">📅 Schedule Next Series</button>
+          </summary>
           <div style="margin-top:10px">
-            <div class="section-box"><div class="section-title">📋 Full 2026 Workshop Schedule</div>
-          <table class="data-table"><thead><tr><th>#</th><th>Workshop</th><th>Facilitator(s)</th><th>Volunteers</th><th>Date</th><th>Status</th><th>Attendance</th><th>Staff</th></tr></thead><tbody id="admin-ws-tbody"></tbody></table>
-        </div>
+            <div class="section-box">
+              <div style="font-size:.78rem;color:var(--text-muted);margin-bottom:12px">Master sequence used when generating new series. Reorder, add, or archive topics without affecting historical sessions.</div>
+              <div id="ws-template-list"></div>
+              <button onclick="openAddTemplateModal()" style="margin-top:10px;padding:6px 16px;border-radius:8px;border:1px solid var(--ya-teal);background:rgba(0,181,160,.08);color:var(--ya-teal);font-size:.78rem;font-weight:700;cursor:pointer;font-family:DM Sans,sans-serif">＋ Add Workshop Topic</button>
+            </div>
           </div>
         </details>
+
+        <!-- Winter 2026 Schedule — collapsed by default (historical) -->
+        <details style="margin-bottom:14px" id="ws-winter-2026-details">
+          <summary style="font-family:Nunito,sans-serif;font-weight:900;font-size:.95rem;color:var(--ya-teal);cursor:pointer;padding:10px 0;list-style:none;display:flex;align-items:center;gap:8px">🌱 Winter 2026 Workshop Schedule</summary>
+          <div style="margin-top:10px">
+            <div class="section-box">
+              <div class="section-title">🌱 Winter 2026 Workshop Schedule</div>
+              <div style="font-size:.75rem;color:var(--text-muted);margin-bottom:10px">Jan 12 – May 25, 2026 · Historical · Attendance data preserved</div>
+              <table class="data-table"><thead><tr><th>#</th><th>Workshop</th><th>Facilitator(s)</th><th>Volunteers</th><th>Date</th><th>Status</th><th>Attendance</th><th>Staff</th></tr></thead><tbody id="admin-ws-tbody"></tbody></table>
+            </div>
+          </div>
+        </details>
+
+        <!-- Fall 2026 Schedule — expanded by default (active) -->
+        <details open style="margin-bottom:14px" id="ws-fall-2026-details">
+          <summary style="font-family:Nunito,sans-serif;font-weight:900;font-size:.95rem;color:var(--ya-orange);cursor:pointer;padding:10px 0;list-style:none;display:flex;align-items:center;gap:8px">🍂 Fall 2026 Workshop Schedule</summary>
+          <div style="margin-top:10px">
+            <div class="section-box">
+              <div class="section-title">🍂 Fall 2026 Workshop Schedule</div>
+              <div style="font-size:.75rem;color:var(--text-muted);margin-bottom:10px">Sep 14 – Dec 14, 2026 · Mondays · Labour Day &amp; Thanksgiving skipped</div>
+              <table class="data-table"><thead><tr><th>#</th><th>Workshop</th><th>Facilitator(s)</th><th>Volunteers</th><th>Date</th><th>Status</th><th>Attendance</th><th>Staff</th></tr></thead><tbody id="admin-ws-fall-tbody"></tbody></table>
+            </div>
+          </div>
+        </details>
+
+        <!-- Additional DB-created series rendered here dynamically -->
+        <div id="admin-ws-future-series-sections"></div>
 
         <details open style="margin-bottom:14px">
           <summary style="font-family:Nunito,sans-serif;font-weight:900;font-size:.95rem;color:var(--ya-orange);cursor:pointer;padding:10px 0;list-style:none;display:flex;align-items:center;gap:8px">👥 Facilitators &amp; Volunteers</summary>
           <div style="margin-top:10px">
-            <div class="section-box"><div class="section-title">👥 Facilitator Overview — 2026</div>
-          <table class="data-table"><thead><tr><th>Facilitator</th><th>Workshops</th><th>Count</th><th>Cert Level</th></tr></thead><tbody id="admin-fac-tbody"></tbody></table>
-        </div>
-        <div class="section-box"><div class="section-title">🏆 Leaderboard</div><div id="admin-fac-leaderboard"></div></div>
+            <div class="section-box">
+              <div class="section-title">👥 Facilitator Overview</div>
+              <table class="data-table"><thead><tr><th>Facilitator</th><th>Winter 2026</th><th>Fall 2026</th><th>Total</th><th>Cert Level</th></tr></thead><tbody id="admin-fac-tbody"></tbody></table>
+            </div>
+            <div class="section-box"><div class="section-title">🏆 Leaderboard</div><div id="admin-fac-leaderboard"></div></div>
           </div>
         </details>
       </div>
@@ -1830,7 +1864,7 @@ tr:hover .grd-date-sticky { background: #1a2d47; }
       <div id="tab-future-schedule" style="display:none">
         <div class="cards-grid" id="schedule-stat-cards">
           <div class="stat-card" style="--accent-color:var(--ya-teal)">
-            <div class="stat-label">Spring 2026</div>
+            <div class="stat-label">Winter 2026</div>
             <div class="stat-value" style="font-size:1.1rem;padding-top:4px">Jan 12–May 25</div>
             <div class="stat-meta">Workshops #1–18</div>
             <div class="stat-icon">🌱</div>
@@ -1838,14 +1872,14 @@ tr:hover .grd-date-sticky { background: #1a2d47; }
           <div class="stat-card" style="--accent-color:var(--ya-orange)">
             <div class="stat-label">Fall 2026</div>
             <div class="stat-value" style="font-size:1.1rem;padding-top:4px">Sep 14–Dec 14</div>
-            <div class="stat-meta">Workshops #1–12</div>
+            <div class="stat-meta">Workshops #1–13 · 13 sessions</div>
             <div class="stat-icon">🍂</div>
           </div>
           <div class="stat-card" style="--accent-color:var(--ya-blue)">
-            <div class="stat-label">Winter/Spring 2027</div>
-            <div class="stat-value" style="font-size:1.1rem;padding-top:4px">Jan 11–Feb 22</div>
-            <div class="stat-meta">Workshops #13–18</div>
-            <div class="stat-icon">❄️</div>
+            <div class="stat-label">Template Library</div>
+            <div class="stat-value" style="font-size:1.1rem;padding-top:4px" id="sched-tmpl-count">18 topics</div>
+            <div class="stat-meta">Reusable master sequence</div>
+            <div class="stat-icon">📚</div>
           </div>
           <div class="stat-card" style="--accent-color:var(--ya-green)">
             <div class="stat-label">Scrabble Sessions</div>
@@ -2241,11 +2275,121 @@ tr:hover .grd-date-sticky { background: #1a2d47; }
 </div>
 
 <script>
-var WORKSHOPS=[{"id":1,"name":"Becoming a Leader","facilitators":["Roberta Ehigiator","Kim Sundset"],"date":"Jan 12, 2026","conducted":true,"volunteers":["Olga Korcheva"]},{"id":2,"name":"Junior Finance","facilitators":["Connie Wu","Kim Sundset"],"date":"Jan 19, 2026","conducted":true,"volunteers":["Roberta Ehigiator","Olga Korcheva"]},{"id":3,"name":"Effective Communication","facilitators":["Olga Korcheva","Kim Sundset"],"date":"Jan 26, 2026","conducted":true,"volunteers":["Roberta Ehigiator","BJ (Bolaji) Hammed","Jollean Chapiel","Julie Robertson"]},{"id":4,"name":"Conflict Management","facilitators":["Olga Korcheva","Kim Sundset"],"date":"Feb 2, 2026","conducted":true,"volunteers":["Roberta Ehigiator","Olga Korcheva"]},{"id":5,"name":"Planning and Organizing","facilitators":["Tina Petrow","Kim Sundset"],"date":"Feb 9, 2026","conducted":true,"volunteers":["Roberta Ehigiator","Olga Korcheva"]},{"id":6,"name":"Learn to Belong","facilitators":["Simisola Obasan (Simi)","Kim Sundset"],"date":"Feb 23, 2026","conducted":true,"volunteers":["Roberta Ehigiator","Olga Korcheva","Mimi Omoare"]},{"id":7,"name":"Building Connections","facilitators":["Kim Sundset"],"date":"Mar 2, 2026","conducted":true,"volunteers":["Roberta Ehigiator","Olga Korcheva","Mimi Omoare"]},{"id":8,"name":"Building Social Capacity","facilitators":["Kim Sundset"],"date":"Mar 9, 2026","conducted":true,"volunteers":["Roberta Ehigiator","Olga Korcheva","Mimi Omoare"]},{"id":9,"name":"Seeing Differently","facilitators":["Roberta Ehigiator","Mary-Beth Finney (Ursa)"],"date":"Mar 16, 2026","conducted":true,"volunteers":["Julie Robertson","Mimi Omoare","Kim Sundset"]},{"id":10,"name":"Tools for Resilience","facilitators":["Olga Korcheva"],"date":"Mar 23, 2026","conducted":true,"volunteers":["Roberta Ehigiator","Kim Sundset"]},{"id":11,"name":"Digital Detoxing","facilitators":["Tina Petrow"],"date":"Mar 30, 2026","conducted":true,"volunteers":[]},{"id":12,"name":"Bullying Prevention","facilitators":["Olga Korcheva"],"date":"Apr 13, 2026","conducted":false},{"id":13,"name":"Healthy Debating","facilitators":["Tina Petrow"],"date":"Apr 20, 2026","conducted":false},{"id":14,"name":"Health & Fitness","facilitators":["Tina Petrow"],"date":"Apr 27, 2026","conducted":false},{"id":15,"name":"Healthy Spending","facilitators":["Connie Wu"],"date":"May 4, 2026","conducted":false},{"id":16,"name":"Leveraging Differences","facilitators":["Roberta Ehigiator"],"date":"May 11, 2026","conducted":false},{"id":17,"name":"Joy of Accomplishment","facilitators":["TBD"],"date":"CANCELLED","conducted":false,"cancelled":true},{"id":18,"name":"Public Speaking","facilitators":["TBD"],"date":"May 25, 2026","conducted":false}];
-var FUTURE_WORKSHOPS=[{"id":101,"semester":"Fall 2026","name":"Becoming a Leader","facilitators":["TBD"],"volunteers":[],"date":"Sep 14, 2026","conducted":false},{"id":102,"semester":"Fall 2026","name":"Junior Finance","facilitators":["TBD"],"volunteers":[],"date":"Sep 21, 2026","conducted":false},{"id":103,"semester":"Fall 2026","name":"Effective Communication","facilitators":["TBD"],"volunteers":[],"date":"Sep 28, 2026","conducted":false},{"id":104,"semester":"Fall 2026","name":"Conflict Management","facilitators":["TBD"],"volunteers":[],"date":"Oct 5, 2026","conducted":false},{"id":105,"semester":"Fall 2026","name":"Planning and Organizing","facilitators":["TBD"],"volunteers":[],"date":"Oct 19, 2026","conducted":false,"skipped_before":"Oct 12 \u2014 Thanksgiving"},{"id":106,"semester":"Fall 2026","name":"Learn to Belong","facilitators":["TBD"],"volunteers":[],"date":"Oct 26, 2026","conducted":false},{"id":107,"semester":"Fall 2026","name":"Building Connections","facilitators":["TBD"],"volunteers":[],"date":"Nov 2, 2026","conducted":false},{"id":108,"semester":"Fall 2026","name":"Building Social Capacity","facilitators":["TBD"],"volunteers":[],"date":"Nov 9, 2026","conducted":false},{"id":109,"semester":"Fall 2026","name":"Seeing Differently","facilitators":["TBD"],"volunteers":[],"date":"Nov 16, 2026","conducted":false},{"id":110,"semester":"Fall 2026","name":"Tools for Resilience","facilitators":["TBD"],"volunteers":[],"date":"Nov 23, 2026","conducted":false},{"id":111,"semester":"Fall 2026","name":"Digital Detoxing","facilitators":["TBD"],"volunteers":[],"date":"Nov 30, 2026","conducted":false},{"id":112,"semester":"Fall 2026","name":"Bullying Prevention","facilitators":["TBD"],"volunteers":[],"date":"Dec 7, 2026","conducted":false},{"id":201,"semester":"Winter/Spring 2027","name":"Healthy Debating","facilitators":["TBD"],"volunteers":[],"date":"Jan 11, 2027","conducted":false},{"id":202,"semester":"Winter/Spring 2027","name":"Health & Fitness","facilitators":["TBD"],"volunteers":[],"date":"Jan 18, 2027","conducted":false},{"id":203,"semester":"Winter/Spring 2027","name":"Healthy Spending","facilitators":["TBD"],"volunteers":[],"date":"Jan 25, 2027","conducted":false},{"id":204,"semester":"Winter/Spring 2027","name":"Leveraging Differences","facilitators":["TBD"],"volunteers":[],"date":"Feb 1, 2027","conducted":false},{"id":205,"semester":"Winter/Spring 2027","name":"Joy of Accomplishment","facilitators":["TBD"],"volunteers":[],"date":"Feb 8, 2027","conducted":false},{"id":206,"semester":"Winter/Spring 2027","name":"Public Speaking","facilitators":["TBD"],"volunteers":[],"date":"Feb 22, 2027","conducted":false,"skipped_before":"Feb 15 \u2014 Family Day"}];
+// ═══════════════════════════════════════════════════════════════════════════
+// WORKSHOP TEMPLATE LIBRARY — master reusable sequence for all series
+// Each template carries default_facilitators; these auto-populate new series.
+// sort_order is 1-based; active:false = archived (removed from future generation)
+// ═══════════════════════════════════════════════════════════════════════════
+var WS_TEMPLATES = [
+  {workshop_id:1,  title:"Becoming a Leader",        description:"Learn about three different types of leaders and discover which style feels most like you.",              default_facilitators:["Kim Sundset"], active:true,  sort_order:1},
+  {workshop_id:2,  title:"Junior Finance",            description:"Find out how to build good money habits, make smart choices, and avoid debt as you get older.",          default_facilitators:["Connie Wu"],   active:true,  sort_order:2},
+  {workshop_id:3,  title:"Effective Communication",   description:"Explore the four personality styles and figure out which one matches you best.",                         default_facilitators:["Kim Sundset"], active:true,  sort_order:3},
+  {workshop_id:4,  title:"Conflict Management",       description:"Learn how to handle tough situations, stand up to bullies, and avoid toxic friendships.",                 default_facilitators:["Kim Sundset"], active:true,  sort_order:4},
+  {workshop_id:5,  title:"Planning and Organizing",   description:"Discover how to set goals, stay on top of your time, and learn the six habits of super organized people.",default_facilitators:["Tina Petrow"], active:true,  sort_order:5},
+  {workshop_id:6,  title:"Learn to Belong",           description:"Talk about privilege, bias, and the power of community in a safe and friendly space.",                    default_facilitators:["Kim Sundset"], active:true,  sort_order:6},
+  {workshop_id:7,  title:"Building Connections",      description:"Explores how human connections help people feel safe, valued, and supported.",                            default_facilitators:["Kim Sundset"], active:true,  sort_order:7},
+  {workshop_id:8,  title:"Building Social Capacity",  description:"Explore how social media shapes reputation and how online actions can have long-lasting impacts.",        default_facilitators:["Kim Sundset"], active:true,  sort_order:8},
+  {workshop_id:9,  title:"Seeing Differently",        description:"Helps youth understand how different life experiences shape how people see the world.",                   default_facilitators:["Roberta Ehigiator"], active:true, sort_order:9},
+  {workshop_id:10, title:"Tools for Resilience",      description:"Helps youth understand stress and how it affects emotions, focus, and decision-making.",                  default_facilitators:["Olga Korcheva"],    active:true, sort_order:10},
+  {workshop_id:11, title:"Digital Detoxing",          description:"Explore how screens, gaming, sugar, and social media influence habits and attention.",                    default_facilitators:["Tina Petrow"],      active:true, sort_order:11},
+  {workshop_id:12, title:"Bullying Prevention",       description:"Explores how communities can work together to prevent bullying and create safer, more respectful spaces.", default_facilitators:["Olga Korcheva"],    active:true, sort_order:12},
+  {workshop_id:13, title:"Healthy Debating",          description:"Youth will practice sharing opinions respectfully while listening to different viewpoints.",               default_facilitators:["Tina Petrow"],      active:true, sort_order:13},
+  {workshop_id:14, title:"Health & Fitness",          description:"Explores how movement, nutrition, and rest support both physical and mental well-being.",                 default_facilitators:["Tina Petrow"],      active:true, sort_order:14},
+  {workshop_id:15, title:"Healthy Spending",          description:"Youth will learn how advertising, trends, and media influence spending habits and consumer debt.",         default_facilitators:["Connie Wu"],        active:true, sort_order:15},
+  {workshop_id:16, title:"Leveraging Differences",    description:"Helps youth see how differences in personality, skills, and experiences are strengths when working together.", default_facilitators:["Roberta Ehigiator"], active:true, sort_order:16},
+  {workshop_id:17, title:"Joy of Accomplishment",     description:"Celebrate progress, reflect on growth, and set intentions for continued leadership development.",         default_facilitators:["Kim Sundset"],      active:true, sort_order:17},
+  {workshop_id:18, title:"Public Speaking",           description:"Youth will build confidence speaking in front of others through fun, supportive activities.",             default_facilitators:["Kim Sundset"],      active:true, sort_order:18}
+];
+// Runtime: DB-loaded template overrides (persisted edits, re-orders, additions)
+var WS_TEMPLATES_DB_LOADED = false;
+
+// ═══════════════════════════════════════════════════════════════════════════
+// WORKSHOP SERIES — each is a scheduled delivery instance of the template seq
+// id_prefix: used to namespace session integer IDs (winter_2026 → 1-99,
+//   fall_2026 → 101-199, custom series → 1001+)
+// ═══════════════════════════════════════════════════════════════════════════
+var WS_SERIES = {
+  'winter_2026': {
+    id: 'winter_2026', name: 'Winter 2026',
+    start_date: 'Jan 12, 2026', end_date: 'May 25, 2026',
+    meeting_day: 'Monday', archived: false,
+    id_base: 1, id_max: 99,
+    icon: '🌱', color: 'var(--ya-teal)'
+  },
+  'fall_2026': {
+    id: 'fall_2026', name: 'Fall 2026',
+    start_date: 'Sep 7, 2026', end_date: 'Dec 14, 2026',
+    meeting_day: 'Monday', archived: false,
+    id_base: 101, id_max: 199,
+    icon: '🍂', color: 'var(--ya-orange)'
+  }
+};
+// Runtime: additional series loaded from DB (admin-created via Schedule Next Series)
+var WS_SERIES_DB = {};
+
+// ═══════════════════════════════════════════════════════════════════════════
+// WINTER 2026 SESSIONS — historical; attendance, facilitators, status are
+// immutable source of truth. Do NOT edit these without a data migration.
+// series_id and series_num added for multi-series compatibility.
+// ═══════════════════════════════════════════════════════════════════════════
+var WORKSHOPS=[
+  {"id":1, "series_id":"winter_2026","series_num":1, "name":"Becoming a Leader",       "facilitators":["Roberta Ehigiator","Kim Sundset"],"date":"Jan 12, 2026","conducted":true, "volunteers":["Olga Korcheva"]},
+  {"id":2, "series_id":"winter_2026","series_num":2, "name":"Junior Finance",           "facilitators":["Connie Wu","Kim Sundset"],        "date":"Jan 19, 2026","conducted":true, "volunteers":["Roberta Ehigiator","Olga Korcheva"]},
+  {"id":3, "series_id":"winter_2026","series_num":3, "name":"Effective Communication",  "facilitators":["Olga Korcheva","Kim Sundset"],    "date":"Jan 26, 2026","conducted":true, "volunteers":["Roberta Ehigiator","BJ (Bolaji) Hammed","Jollean Chapiel","Julie Robertson"]},
+  {"id":4, "series_id":"winter_2026","series_num":4, "name":"Conflict Management",      "facilitators":["Olga Korcheva","Kim Sundset"],    "date":"Feb 2, 2026", "conducted":true, "volunteers":["Roberta Ehigiator","Olga Korcheva"]},
+  {"id":5, "series_id":"winter_2026","series_num":5, "name":"Planning and Organizing",  "facilitators":["Tina Petrow","Kim Sundset"],      "date":"Feb 9, 2026", "conducted":true, "volunteers":["Roberta Ehigiator","Olga Korcheva"]},
+  {"id":6, "series_id":"winter_2026","series_num":6, "name":"Learn to Belong",          "facilitators":["Simisola Obasan (Simi)","Kim Sundset"],"date":"Feb 23, 2026","conducted":true,"volunteers":["Roberta Ehigiator","Olga Korcheva","Mimi Omoare"]},
+  {"id":7, "series_id":"winter_2026","series_num":7, "name":"Building Connections",     "facilitators":["Kim Sundset"],                   "date":"Mar 2, 2026", "conducted":true, "volunteers":["Roberta Ehigiator","Olga Korcheva","Mimi Omoare"]},
+  {"id":8, "series_id":"winter_2026","series_num":8, "name":"Building Social Capacity", "facilitators":["Kim Sundset"],                   "date":"Mar 9, 2026", "conducted":true, "volunteers":["Roberta Ehigiator","Olga Korcheva","Mimi Omoare"]},
+  {"id":9, "series_id":"winter_2026","series_num":9, "name":"Seeing Differently",       "facilitators":["Roberta Ehigiator","Mary-Beth Finney (Ursa)"],"date":"Mar 16, 2026","conducted":true,"volunteers":["Julie Robertson","Mimi Omoare","Kim Sundset"]},
+  {"id":10,"series_id":"winter_2026","series_num":10,"name":"Tools for Resilience",     "facilitators":["Olga Korcheva"],                  "date":"Mar 23, 2026","conducted":true, "volunteers":["Roberta Ehigiator","Kim Sundset"]},
+  {"id":11,"series_id":"winter_2026","series_num":11,"name":"Digital Detoxing",         "facilitators":["Tina Petrow"],                   "date":"Mar 30, 2026","conducted":true, "volunteers":[]},
+  {"id":12,"series_id":"winter_2026","series_num":12,"name":"Bullying Prevention",      "facilitators":["Olga Korcheva"],                  "date":"Apr 13, 2026","conducted":false,"volunteers":[]},
+  {"id":13,"series_id":"winter_2026","series_num":13,"name":"Healthy Debating",         "facilitators":["Tina Petrow"],                   "date":"Apr 20, 2026","conducted":false,"volunteers":[]},
+  {"id":14,"series_id":"winter_2026","series_num":14,"name":"Health & Fitness",         "facilitators":["Tina Petrow"],                   "date":"Apr 27, 2026","conducted":false,"volunteers":[]},
+  {"id":15,"series_id":"winter_2026","series_num":15,"name":"Healthy Spending",         "facilitators":["Connie Wu"],                     "date":"May 4, 2026", "conducted":false,"volunteers":[]},
+  {"id":16,"series_id":"winter_2026","series_num":16,"name":"Leveraging Differences",   "facilitators":["Roberta Ehigiator"],             "date":"May 11, 2026","conducted":false,"volunteers":[]},
+  {"id":17,"series_id":"winter_2026","series_num":17,"name":"Joy of Accomplishment",    "facilitators":["TBD"],                           "date":"CANCELLED",   "conducted":false,"cancelled":true,"volunteers":[]},
+  {"id":18,"series_id":"winter_2026","series_num":18,"name":"Public Speaking",          "facilitators":["TBD"],                           "date":"May 25, 2026","conducted":false,"volunteers":[]}
+];
+
+// ═══════════════════════════════════════════════════════════════════════════
+// FALL 2026 SESSIONS — generated from WS_TEMPLATES (templates #1–13)
+// Mondays Sep 7–Dec 14, 2026; Labour Day (Sep 7) and Thanksgiving (Oct 12) skipped.
+// IDs 101–113. Facilitators copied from template defaults.
+// ═══════════════════════════════════════════════════════════════════════════
+var WS_FALL_2026 = (function() {
+  var tmpl = WS_TEMPLATES.filter(function(t){ return t.active; }).sort(function(a,b){ return a.sort_order - b.sort_order; });
+  // Non-holiday Mondays Sep 7–Dec 14, 2026 (Labour Day Sep 7 and Thanksgiving Oct 12 skipped)
+  var dates = ["Sep 14, 2026","Sep 21, 2026","Sep 28, 2026","Oct 5, 2026","Oct 19, 2026",
+                "Oct 26, 2026","Nov 2, 2026","Nov 9, 2026","Nov 16, 2026","Nov 23, 2026",
+                "Nov 30, 2026","Dec 7, 2026","Dec 14, 2026"];
+  return dates.map(function(date, i) {
+    var t = tmpl[i] || {title: "Workshop "+(i+1), default_facilitators: ["TBD"]};
+    var facs = (t.default_facilitators && t.default_facilitators.length) ? t.default_facilitators.slice() : ["TBD"];
+    return {
+      id: 101 + i, series_id: "fall_2026", series_num: i + 1,
+      name: t.title, template_id: t.workshop_id,
+      facilitators: facs, volunteers: [],
+      date: date, conducted: false, cancelled: false
+    };
+  });
+})();
+
+// Runtime: DB-loaded overrides for Fall 2026 sessions (facilitator edits, mark-done, cancellations)
+// Key = workshop_id integer. Merged on startup.
+var WS_FALL_2026_DB_OVERRIDES = {};
+
+// Runtime: DB-created future series sessions (from Schedule Next Series)
+// Key = series_id. Value = array of session objects.
+var WS_FUTURE_SERIES_SESSIONS = {};
+
+// ── BACKWARD COMPAT: keep FUTURE_WORKSHOPS as a computed alias ────────────
+// Any code that still references FUTURE_WORKSHOPS will get Fall 2026 sessions.
+var FUTURE_WORKSHOPS = WS_FALL_2026;
 
 var EL_YOUTH={"Aaliyah": [6], "Abegail Jbbo-Rustrian": [7, 8, 9], "Abigail Robinson": [2], "Adam Choe": [2, 3, 5, 7, 8, 4], "Aiden Bruce": [1, 4], "Anisim Rashid": [2, 1, 3, 5, 6, 7, 8, 4, 9], "Anna Choi": [2, 1, 3, 5, 6, 4], "Ariel Young": [2, 3, 5, 6], "Avery Sengsavang": [2, 1, 3, 5, 6, 7, 8, 4, 9], "Caitlen": [2], "Claire Choe": [2, 1, 3, 5, 6, 7, 8, 4, 9], "Connor Sengsavang": [2, 1, 3, 5, 6, 7, 8, 4, 9], "David": [6, 7, 8, 9], "Devira": [6, 7, 8, 9], "Eilleen Shin": [2, 1, 5, 6, 4], "Elijah butler": [7, 8, 9], "Elisa Choi": [3, 6, 4], "Emma Memedovski": [9], "Everett Rempel": [2, 1, 3, 5, 4], "Greyson Riley": [9], "Haytham": [2, 3, 5, 4], "Ji Hoon": [2, 1, 3, 5, 6, 7, 8, 4, 9], "Ji Woo": [2, 1, 3, 5, 6, 7, 8, 4, 9], "Jude Effah": [8], "Kinsey Ehigiator": [2, 1, 3, 5, 6, 7, 8, 4, 9], "Kristen Robinson": [2], "Lee (Karlee)": [7, 8, 9], "Mackensie": [7, 8, 9], "Mason Guise": [1, 6], "Mason Seo": [2, 3, 5, 6, 4], "Oliver": [7, 8, 9], "Preston": [1], "Reed Bieganski": [2, 1, 3, 5, 6, 7, 8, 4, 9], "Roza": [1], "Sebastian Baitson": [7, 8, 9], "Sophia Tong": [2, 3, 5, 6, 7, 8, 4, 9], "Taya Allen": [2], "Theodore Bourdeau": [2, 3, 5, 7, 8, 4, 9], "Zoya Rashid": [2, 1, 3, 5, 6, 7, 8, 4, 9]};
-var FAC_PROFILES={"kim":{"name":"Kim Sundset","avatar":"KS","bg":"#1a0d05","role":"Level 3 Certified Facilitator","facilitated":[1,2,3,4,5,6,7,8],"volunteered":[9,10],"hours":159,"fac_level":3,"grandfathered":true,"isAdmin":true},"olga":{"name":"Olga Korcheva","avatar":"OK","bg":"#0c1f38","role":"Adult Volunteer","facilitated":[3,4,10],"volunteered":[1,2,4,5,6,7,8],"hours":72,"fac_level":0},"connie":{"name":"Connie Wu","avatar":"CW","bg":"#12243a","role":"Adult Volunteer","facilitated":[2],"volunteered":[],"hours":42,"fac_level":0},"chloe":{"name":"Chloe Nayoung Kim","avatar":"CK","bg":"#0f1f30","role":"Adult Volunteer","facilitated":[],"volunteered":[],"hours":28,"fac_level":0},"bj":{"name":"BJ (Bolaji) Hammed","avatar":"BH","bg":"#1a1605","role":"Adult Volunteer","facilitated":[],"volunteered":[3],"hours":50.5,"fac_level":0,"isAdmin":true},"roberta":{"name":"Roberta Ehigiator","avatar":"RE","bg":"#12200f","role":"Adult Volunteer","facilitated":[1,9],"volunteered":[2,3,4,5,6,7,8,10],"hours":80,"fac_level":0,"isAdmin":true},"julie":{"name":"Julie Robertson","avatar":"JR","bg":"#1f1230","role":"Adult Volunteer","facilitated":[],"volunteered":[3,9],"hours":40,"fac_level":0,"isAdmin":true},"tina":{"name":"Tina Petrow","avatar":"TP","bg":"#1a0d18","role":"Adult Volunteer","facilitated":[5,11],"volunteered":[],"hours":66,"fac_level":0},"marybeth":{"name":"Mary-Beth Finney (Ursa)","avatar":"MF","bg":"#0d1a1a","role":"Adult Volunteer","facilitated":[9],"volunteered":[],"hours":30,"fac_level":0},"simi":{"name":"Simisola Obasan (Simi)","avatar":"SO","bg":"#1f1a0d","role":"Adult Volunteer","facilitated":[6],"volunteered":[],"hours":43,"fac_level":0},"tamanna":{"name":"Tamanna Kaur","avatar":"TK","bg":"#1a1240","role":"Adult Volunteer","facilitated":[],"volunteered":[],"hours":2,"fac_level":0,"grandfathered":false},"bolaji_a":{"name":"Bolaji Ajoke Hammed","avatar":"BA","bg":"#0d1f2d","role":"Adult Volunteer","facilitated":[],"volunteered":[],"hours":4,"fac_level":0,"grandfathered":false},"jollean":{"name":"Jollean Chapiel","avatar":"JC","bg":"#1a2010","role":"Adult Volunteer","facilitated":[],"volunteered":[3],"hours":2,"fac_level":0,"grandfathered":false},"mimi":{"name":"Mimi Omoare","avatar":"MO","bg":"#201020","role":"Adult Volunteer","facilitated":[],"volunteered":[6,7,8,9],"hours":8,"fac_level":0,"grandfathered":false},"alex":{"name":"Alex Strokova","avatar":"AS","bg":"#0d1f30","role":"Adult Volunteer","facilitated":[],"volunteered":[],"hours":5,"fac_level":0,"grandfathered":false,"isAdmin":false},"sudi":{"name":"Sudi Hedley","avatar":"SH","bg":"#1a1a0a","role":"JYSEP Animator","facilitated":[],"volunteered":[],"hours":4,"fac_level":0,"grandfathered":false,"isAdmin":false},"shameen":{"name":"Shameen","avatar":"SM","bg":"#0a1a1a","role":"JYSEP Animator","facilitated":[],"volunteered":[],"hours":4,"fac_level":0,"grandfathered":false,"isAdmin":false},"carol":{"name":"Carol Brosoto","avatar":"CB","bg":"#1a0d1a","role":"Adult Volunteer","facilitated":[],"volunteered":[],"hours":2,"fac_level":0,"grandfathered":false,"isAdmin":false},"kathy":{"name":"Kathy March","avatar":"KM","bg":"#0d1a2a","role":"Adult Volunteer","facilitated":[],"volunteered":[],"hours":0,"fac_level":0,"grandfathered":false,"isAdmin":false}};
+var FAC_PROFILES={"kim":{"name":"Kim Sundset","avatar":"KS","bg":"#1a0d05","role":"Certified Facilitator","facilitated":[1,2,3,4,5,6,7,8],"volunteered":[9,10],"hours":159,"fac_level":3,"grandfathered":false,"prior_facilitated":40,"isAdmin":true},"olga":{"name":"Olga Korcheva","avatar":"OK","bg":"#0c1f38","role":"Adult Volunteer","facilitated":[3,4,10],"volunteered":[1,2,4,5,6,7,8],"hours":72,"fac_level":0},"connie":{"name":"Connie Wu","avatar":"CW","bg":"#12243a","role":"Adult Volunteer","facilitated":[2],"volunteered":[],"hours":42,"fac_level":0},"chloe":{"name":"Chloe Nayoung Kim","avatar":"CK","bg":"#0f1f30","role":"Adult Volunteer","facilitated":[],"volunteered":[],"hours":28,"fac_level":0},"bj":{"name":"BJ (Bolaji) Hammed","avatar":"BH","bg":"#1a1605","role":"Adult Volunteer","facilitated":[],"volunteered":[3],"hours":50.5,"fac_level":0,"isAdmin":true},"roberta":{"name":"Roberta Ehigiator","avatar":"RE","bg":"#12200f","role":"Adult Volunteer","facilitated":[1,9],"volunteered":[2,3,4,5,6,7,8,10],"hours":80,"fac_level":0,"isAdmin":true},"julie":{"name":"Julie Robertson","avatar":"JR","bg":"#1f1230","role":"Adult Volunteer","facilitated":[],"volunteered":[3,9],"hours":40,"fac_level":0,"isAdmin":true},"tina":{"name":"Tina Petrow","avatar":"TP","bg":"#1a0d18","role":"Adult Volunteer","facilitated":[5,11],"volunteered":[],"hours":66,"fac_level":0},"marybeth":{"name":"Mary-Beth Finney (Ursa)","avatar":"MF","bg":"#0d1a1a","role":"Adult Volunteer","facilitated":[9],"volunteered":[],"hours":30,"fac_level":0},"simi":{"name":"Simisola Obasan (Simi)","avatar":"SO","bg":"#1f1a0d","role":"Adult Volunteer","facilitated":[6],"volunteered":[],"hours":43,"fac_level":0},"tamanna":{"name":"Tamanna Kaur","avatar":"TK","bg":"#1a1240","role":"Adult Volunteer","facilitated":[],"volunteered":[],"hours":2,"fac_level":0,"grandfathered":false},"bolaji_a":{"name":"Bolaji Ajoke Hammed","avatar":"BA","bg":"#0d1f2d","role":"Adult Volunteer","facilitated":[],"volunteered":[],"hours":4,"fac_level":0,"grandfathered":false},"jollean":{"name":"Jollean Chapiel","avatar":"JC","bg":"#1a2010","role":"Adult Volunteer","facilitated":[],"volunteered":[3],"hours":2,"fac_level":0,"grandfathered":false},"mimi":{"name":"Mimi Omoare","avatar":"MO","bg":"#201020","role":"Adult Volunteer","facilitated":[],"volunteered":[6,7,8,9],"hours":8,"fac_level":0,"grandfathered":false},"alex":{"name":"Alex Strokova","avatar":"AS","bg":"#0d1f30","role":"Adult Volunteer","facilitated":[],"volunteered":[],"hours":5,"fac_level":0,"grandfathered":false,"isAdmin":false},"sudi":{"name":"Sudi Hedley","avatar":"SH","bg":"#1a1a0a","role":"JYSEP Animator","facilitated":[],"volunteered":[],"hours":4,"fac_level":0,"grandfathered":false,"isAdmin":false},"shameen":{"name":"Shameen","avatar":"SM","bg":"#0a1a1a","role":"JYSEP Animator","facilitated":[],"volunteered":[],"hours":4,"fac_level":0,"grandfathered":false,"isAdmin":false},"carol":{"name":"Carol Brosoto","avatar":"CB","bg":"#1a0d1a","role":"Adult Volunteer","facilitated":[],"volunteered":[],"hours":2,"fac_level":0,"grandfathered":false,"isAdmin":false},"kathy":{"name":"Kathy March","avatar":"KM","bg":"#0d1a2a","role":"Adult Volunteer","facilitated":[],"volunteered":[],"hours":0,"fac_level":0,"grandfathered":false,"isAdmin":false}};
 var SCRABBLE_SESSIONS={"Reed Bieganski": {"14-Jan": 1, "21-Jan": 1, "28-Jan": 1, "4-Feb": 1, "11-Feb": 1, "18-Feb": 1, "25-Feb": 1, "4-Mar": 1, "11-Mar": 1, "18-Mar": 1}, "Anisim Rashid": {"28-Jan": 1}, "Koby Bolton": {"7-Jan": 5, "14-Jan": 1, "4-Feb": 1, "11-Feb": 1, "25-Feb": 1, "4-Mar": 1, "11-Mar": 1}, "Sasha Tumak": {"7-Jan": 6, "14-Jan": 1, "25-Feb": 1, "4-Mar": 1, "11-Mar": 1}, "Emma Tumak": {"7-Jan": 1, "14-Jan": 2, "11-Feb": 5, "25-Feb": 5, "4-Mar": 19, "11-Mar": 2}, "Alleem Hammed": {"11-Feb": 6, "4-Mar": 3, "11-Mar": 2, "18-Mar": 1}, "Ameerah Hammed": {"7-Jan": 2, "14-Jan": 11, "21-Jan": 22, "28-Jan": 8, "4-Feb": 2, "11-Feb": 1, "4-Mar": 1, "18-Mar": 1}, "Azeem Hammed": {"7-Jan": 3, "14-Jan": 4, "21-Jan": 10, "28-Jan": 7, "4-Feb": 2, "25-Feb": 2, "18-Mar": 1}, "Juanna Shin": {"14-Jan": 12, "21-Jan": 25, "28-Jan": 1, "4-Feb": 8, "11-Feb": 1, "18-Feb": 5, "25-Feb": 6, "4-Mar": 4, "18-Mar": 1}, "Serena Shin": {"7-Jan": 2, "14-Jan": 14, "21-Jan": 23, "28-Jan": 4, "4-Feb": 11, "11-Feb": 2, "18-Feb": 1, "25-Feb": 1, "4-Mar": 2, "18-Mar": 1}, "Cindy Hwang": {"7-Jan": 1, "14-Jan": 15, "21-Jan": 25, "28-Jan": 1, "4-Feb": 9, "11-Feb": 2, "18-Feb": 1, "25-Feb": 7, "4-Mar": 2, "18-Mar": 1}, "Sophie Hwang": {"7-Jan": 2, "14-Jan": 15, "21-Jan": 24, "28-Jan": 3, "4-Feb": 14, "18-Feb": 3, "25-Feb": 7, "4-Mar": 5, "18-Mar": 1}, "Chaey Moon": {"4-Feb": 6, "11-Feb": 2, "25-Feb": 6, "4-Mar": 2, "18-Mar": 1}, "Khanishka Kaur": {"14-Jan": 13, "21-Jan": 21, "28-Jan": 14, "4-Feb": 2, "11-Feb": 2, "25-Feb": 15, "11-Mar": 2, "18-Mar": 1}, "Navkar Sing": {"4-Feb": 1, "25-Feb": 7, "18-Mar": 1}, "Teni Olaniyan": {"18-Mar": 1}, "Tobi Olaniyan": {"18-Mar": 1}};
 var SCRABBLE_TOTALS={"Reed Bieganski": 10, "Anisim Rashid": 1, "Koby Bolton": 11, "Sasha Tumak": 10, "Emma Tumak": 34, "Alleem Hammed": 12, "Ameerah Hammed": 48, "Azeem Hammed": 29, "Juanna Shin": 63, "Serena Shin": 61, "Cindy Hwang": 64, "Sophie Hwang": 74, "Chaey Moon": 17, "Khanishka Kaur": 70, "Navkar Sing": 9, "Teni Olaniyan": 1, "Tobi Olaniyan": 1};
 var SCRABBLE_SCORES={"Ameerah Hammed":{"4-Feb":127,"11-Feb":147},"Azeem Hammed":{"4-Feb":91,"11-Feb":54},"Juanna Shin":{"11-Feb":226},"Sophie Hwang":{"11-Feb":145},"Khanishka Kaur":{"11-Feb":236}};
@@ -2403,12 +2547,99 @@ function getYouthLevel(ws,hrs){
   if(ws>=6&&hrs>=2)return 1;
   return 0;
 }
-function getFacLevel(cnt,gf){
-  if(gf)return 3;
-  if(cnt>=18)return 3;
-  if(cnt>=12)return 2;
-  if(cnt>=6)return 1;
-  return 0;
+// ── isHoliday(date) — Canadian federal statutory holidays ────────────────
+// Returns true if the given Date object falls on a federal stat holiday.
+// Used to skip sessions when generating new series.
+function isHoliday(date) {
+  if (!date || isNaN(date.getTime())) return false;
+  var y = date.getFullYear(), m = date.getMonth(), d = date.getDate(), dow = date.getDay();
+  // New Year's Day — Jan 1
+  if (m === 0 && d === 1) return true;
+  // Good Friday — varies; approximate: 2 days before Easter
+  var easter = getEasterDate(y);
+  if (easter) {
+    var gf = new Date(easter); gf.setDate(gf.getDate() - 2);
+    if (m === gf.getMonth() && d === gf.getDate()) return true;
+  }
+  // Victoria Day — Monday before May 25
+  if (m === 4 && dow === 1 && d >= 18 && d <= 24) return true;
+  // Canada Day — July 1 (observed Mon if Sun)
+  if (m === 6 && d === 1) return true;
+  if (m === 6 && d === 2 && dow === 1) return true; // observed
+  // Labour Day — first Monday of September
+  if (m === 8 && dow === 1 && d <= 7) return true;
+  // Thanksgiving — second Monday of October
+  if (m === 9 && dow === 1 && d >= 8 && d <= 14) return true;
+  // Remembrance Day — Nov 11
+  if (m === 10 && d === 11) return true;
+  // Christmas Day — Dec 25
+  if (m === 11 && d === 25) return true;
+  // Boxing Day — Dec 26
+  if (m === 11 && d === 26) return true;
+  return false;
+}
+function getEasterDate(year) {
+  // Anonymous Gregorian algorithm
+  var a=year%19,b=Math.floor(year/100),c=year%100,d=Math.floor(b/4),e=b%4,f=Math.floor((b+8)/25),g=Math.floor((b-f+1)/3),h=(19*a+b-d-g+15)%30,i=Math.floor(c/4),k=c%4,l=(32+2*e+2*i-h-k)%7,m=Math.floor((a+11*h+22*l)/451),month=Math.floor((h+l-7*m+114)/31)-1,day=((h+l-7*m+114)%31)+1;
+  return new Date(year, month, day);
+}
+
+// ── getAllWsSessions() — all sessions across all active series ────────────
+// Returns a merged flat array: Winter 2026 + Fall 2026 + any DB future series.
+// This is the universal source used by all helpers below.
+function getAllWsSessions() {
+  var all = WORKSHOPS.slice(); // Winter 2026 (ids 1-18)
+  // Fall 2026 — apply any DB overrides
+  WS_FALL_2026.forEach(function(s) {
+    var override = WS_FALL_2026_DB_OVERRIDES[s.id];
+    all.push(override ? Object.assign({}, s, override) : s);
+  });
+  // DB-created future series
+  Object.keys(WS_FUTURE_SERIES_SESSIONS).forEach(function(sid) {
+    (WS_FUTURE_SERIES_SESSIONS[sid] || []).forEach(function(s){ all.push(s); });
+  });
+  return all;
+}
+
+// Returns sessions for a specific series only
+function getSeriesWsSessions(seriesId) {
+  return getAllWsSessions().filter(function(s){ return s.series_id === seriesId; });
+}
+
+// Returns all active series definitions (built-in + DB)
+function getAllWsSeries() {
+  var result = [];
+  Object.values(WS_SERIES).forEach(function(s){ if(!s.archived) result.push(s); });
+  Object.values(WS_SERIES_DB).forEach(function(s){ if(!s.archived) result.push(s); });
+  return result.sort(function(a, b) {
+    // Sort by start_date ascending
+    return wsParseDisplayDate(a.start_date) - wsParseDisplayDate(b.start_date);
+  });
+}
+
+// Internal date parser for workshop date strings "Mon D, YYYY"
+function wsParseDisplayDate(str) {
+  if (!str || str === 'CANCELLED') return new Date(0);
+  var months = {Jan:0,Feb:1,Mar:2,Apr:3,May:4,Jun:5,Jul:6,Aug:7,Sep:8,Oct:9,Nov:10,Dec:11};
+  var p = str.replace(',','').split(' ');
+  if (p.length < 3) return new Date(0);
+  var d = new Date(parseInt(p[2]), months[p[0]] !== undefined ? months[p[0]] : 0, parseInt(p[1]));
+  return isNaN(d.getTime()) ? new Date(0) : d;
+}
+
+// ── getFacLevel — uniform dynamic ladder, no grandfathered exception ──────
+// Level = floor(totalCount / 6). Unlimited: L1=6, L2=12, L3=18, L4=24...
+function getFacLevel(cnt) {
+  if (cnt < 6) return 0;
+  return Math.floor(cnt / 6);
+}
+
+// Total facilitated count = prior (pre-app) + all-series completed in app
+function getTotalFacilitatedCount(adultName) {
+  var appCount = getFacilitatedWorkshopCount(adultName);
+  var prof = Object.values(FAC_PROFILES).find(function(p){ return p.name === adultName; });
+  var prior = (prof && prof.prior_facilitated) ? prof.prior_facilitated : 0;
+  return appCount + prior;
 }
 function wsDateChip(ws){
   if(ws.cancelled)return '<span class="ws-date-chip ws-cancelled-chip">CANCELLED</span>';
@@ -2426,13 +2657,19 @@ function certBannerHTML(ws,hrs){
   if(lvl===0)return '<div class="in-progress-bar">🎯 <strong style="color:var(--text-main)">Working toward Level 1</strong> — '+ws+' workshops, '+hrs+' hrs. '+msg+'</div>';
   return '<div class="cert-banner"><div class="cert-level">L'+lvl+'</div><div class="cert-info"><div class="cert-title">'+ll[lvl]+'</div><div class="cert-sub">'+ws+' workshops · '+hrs+' volunteer hours</div><div class="cert-next">'+msg+'</div></div></div>';
 }
-function facCertBannerHTML(cnt,gf){
-  var lvl=getFacLevel(cnt,gf);
-  if(gf)return '<div class="cert-banner"><div class="cert-level">FL3</div><div class="cert-info"><div class="cert-title">Level 3 Certified Facilitator</div><div class="cert-sub">40 prior to 2026 · · '+cnt+' facilitated in 2026</div><div class="cert-next">Max facilitator level</div></div></div>';
-  var tg=[6,12,18];var msg='';
-  if(lvl<3){msg=Math.max(0,tg[lvl]-cnt)+' more to Facilitator Level '+(lvl+1);}else{msg='Max level!';}
-  if(lvl===0)return '<div class="in-progress-bar">🎯 <strong style="color:var(--text-main)">Working toward Facilitator Level 1</strong> — '+cnt+' facilitated. '+msg+'</div>';
-  return '<div class="cert-banner"><div class="cert-level">FL'+lvl+'</div><div class="cert-info"><div class="cert-title">Facilitator Level '+lvl+' Certified</div><div class="cert-sub">'+cnt+' workshops facilitated in 2026</div><div class="cert-next">'+msg+'</div></div></div>';
+function facCertBannerHTML(adultName){
+  var total = getTotalFacilitatedCount(adultName);
+  var inApp = getFacilitatedWorkshopCount(adultName);
+  var prof = Object.values(FAC_PROFILES).find(function(p){ return p.name === adultName; });
+  var prior = (prof && prof.prior_facilitated) ? prof.prior_facilitated : 0;
+  var lvl = getFacLevel(total);
+  var nextLvlAt = (lvl + 1) * 6;
+  var toNext = nextLvlAt - total;
+  var msg = toNext > 0 ? toNext + ' more to Facilitator Level ' + (lvl + 1) : '';
+  var priorStr = prior > 0 ? prior + ' prior + ' : '';
+  var sub = priorStr + inApp + ' facilitated across all series';
+  if (lvl === 0) return '<div class="in-progress-bar">🎯 <strong style="color:var(--text-main)">Working toward Facilitator Level 1</strong> — ' + total + ' total facilitated. ' + msg + '</div>';
+  return '<div class="cert-banner"><div class="cert-level">FL' + lvl + '</div><div class="cert-info"><div class="cert-title">Facilitator Level ' + lvl + ' Certified</div><div class="cert-sub">' + sub + '</div><div class="cert-next">' + msg + '</div></div></div>';
 }
 
 function isScrabbleMember(name){return name in SCRABBLE_SESSIONS;}
@@ -2652,7 +2889,7 @@ function renderYouth(){
         '<div class="stat-card" style="--accent-color:var(--ya-gold)"><div class="stat-label">Scrabble Points</div><div class="stat-value">'+getScrabbleTotal(name)+'</div><div class="stat-meta">Rank #'+(lb2.findIndex(function(x){return x[0]===name;})+1)+'</div><div class="stat-icon">🎲</div></div>':
         '';
       sc.innerHTML=
-        '<div class="stat-card" style="--accent-color:var(--ya-teal)"><div class="stat-label">Workshops Attended</div><div class="stat-value">'+cnt+'</div><div class="stat-meta">of '+calcWorkshopStats().scheduled.length+' scheduled</div><div class="stat-icon">📚</div></div>'+
+        '<div class="stat-card" style="--accent-color:var(--ya-teal)"><div class="stat-label">Workshops Attended</div><div class="stat-value">'+cnt+'</div><div class="stat-meta">of '+calcWorkshopStats('winter_2026').scheduled.length+' in Winter 2026</div><div class="stat-icon">📚</div></div>'+
         '<div class="stat-card" style="--accent-color:var(--ya-orange)"><div class="stat-label">Volunteer Hours</div><div class="stat-value">'+verifiedHrs+'</div><div class="stat-meta">Admin-verified · Goal: '+(lvl<1?2:lvl<2?4:6)+'h for Level '+(Math.min(lvl+1,3))+'</div><div class="stat-icon">⏱</div></div>'+
         '<div class="stat-card" style="--accent-color:var(--ya-blue)"><div class="stat-label">EL Level</div><div class="stat-value" style="font-size:'+(lvl>0?'1.8rem':'1.1rem')+';padding-top:'+(lvl>0?'3px':'6px')+'">'+(lvl>0?'Level '+lvl:'In Progress')+'</div><div class="stat-meta">EL Certificate</div><div class="stat-icon">🎓</div></div>'+
         scCard;
@@ -2672,27 +2909,35 @@ function renderYouth(){
     }
   }
 
-  // ── Workshop grid (EL only — attendance marking, no hour logging) ───────
+  // ── Workshop grid (EL only — all series) ────────────────────────────────
   var grid=document.getElementById('youth-workshop-grid');
   if(grid&&isEL){
     grid.innerHTML='';
-    WORKSHOPS.forEach(function(w){
-      var att=ws.has(w.id);
-      var el2=document.createElement('div');
-      el2.className='ws-card'+(att?' attended':'')+(w.cancelled?' cancelled':'')+(w.upcoming?' upcoming-ws':'');
-      // Cancelled: label only. Upcoming (not yet conducted): label only. Conducted: mark attended.
-      var action='';
-      if(w.cancelled){
-        action='<span style="font-size:.72rem;color:var(--badge-red)">Cancelled</span>';
-      }else if(w.conducted){
-        action='<button class="ws-btn '+(att?'active-att':'')+'" onclick="toggleYouthWs('+w.id+',this)">'+(att?'✔ Attended':'Mark Attended')+'</button>';
-      }else if(w.upcoming){
-        action='<span style="font-size:.72rem;color:var(--ya-gold)">📅 Tomorrow</span>';
-      }else{
-        action='<span style="font-size:.72rem;color:var(--text-muted)">Upcoming</span>';
-      }
-      el2.innerHTML='<div class="ws-num">#'+w.id+'</div><div class="ws-name">'+w.name+'</div><div class="ws-fac">'+(function(){var f=getWsFacilitators(w).filter(function(n){return n&&n!=='TBD';});return f.length?f.join(' & '):'TBD';})()+'</div>'+wsDateChip(w)+'<div class="ws-actions">'+action+'</div>';
-      grid.appendChild(el2);
+    var allSer = getAllWsSeries();
+    allSer.forEach(function(ser) {
+      var serSessions = getSeriesWsSessions(ser.id);
+      if (!serSessions.length) return;
+      var hdr = document.createElement('div');
+      hdr.style.cssText = 'grid-column:1/-1;font-size:.72rem;font-weight:800;color:'+ser.color+';text-transform:uppercase;letter-spacing:.07em;margin:12px 0 4px;padding-bottom:4px;border-bottom:1px solid rgba(255,255,255,.08)';
+      hdr.textContent = ser.icon + ' ' + ser.name;
+      grid.appendChild(hdr);
+      serSessions.forEach(function(w){
+        var att=ws.has(w.id);
+        var el2=document.createElement('div');
+        el2.className='ws-card'+(att?' attended':'')+(w.cancelled?' cancelled':'')+(w.upcoming?' upcoming-ws':'');
+        var action='';
+        if(w.cancelled){
+          action='<span style="font-size:.72rem;color:var(--badge-red)">Cancelled</span>';
+        }else if(w.conducted){
+          action='<button class="ws-btn '+(att?'active-att':'')+'" onclick="toggleYouthWs('+w.id+',this)">'+(att?'✔ Attended':'Mark Attended')+'</button>';
+        }else if(w.upcoming){
+          action='<span style="font-size:.72rem;color:var(--ya-gold)">📅 Tomorrow</span>';
+        }else{
+          action='<span style="font-size:.72rem;color:var(--text-muted)">Upcoming</span>';
+        }
+        el2.innerHTML='<div class="ws-num">#'+w.series_num+'</div><div class="ws-name">'+w.name+'</div><div class="ws-fac">'+(function(){var f=getWsFacilitators(w).filter(function(n){return n&&n!=='TBD';});return f.length?f.join(' & '):'TBD';})()+'</div>'+wsDateChip(w)+'<div class="ws-actions">'+action+'</div>';
+        grid.appendChild(el2);
+      });
     });
   }
 
@@ -2724,7 +2969,7 @@ function renderYouth(){
 
 function toggleYouthWs(id,btn){
   // Marks workshop attendance only — does NOT log volunteer hours
-  var w=WORKSHOPS.find(function(x){return x.id===id;});
+  var w=getAllWsSessions().find(function(x){return x.id===id;});
   if(!w||w.cancelled||!w.conducted) return; // only past conducted workshops can be marked
   var attended;
   if(youthState.workshops.has(id)){youthState.workshops.delete(id);attended=false;}
@@ -2822,15 +3067,15 @@ function renderAdult(){
   if(!adultState) return;
   var prof=adultState,fac=prof.facilitated,vol=prof.volunteered;
 
-  // ── Workshop counts — canonical source: WORKSHOPS array (+ FAC_PROFILES merge) ──
-  // getFacilitatedWorkshopCount reads from delivered WORKSHOPS.facilitators + FAC_PROFILES
+  // ── Workshop counts — canonical source: getAllWsSessions() ───────────────
   var cnt = getFacilitatedWorkshopCount(prof.name);
+  var totalFacCount = getTotalFacilitatedCount(prof.name);
   var deliveredFacIds = getFacilitatedWorkshopIds(prof.name);
-  var lvl = getFacLevel(cnt, prof.grandfathered);
+  var lvl = getFacLevel(totalFacCount);
 
   // conductedVol: from FAC_PROFILES.volunteered, filter to delivered workshops only
   var conductedVolIds = (vol || []).filter(function(id){
-    var w = WORKSHOPS.find(function(w){ return w.id === id; });
+    var w = getAllWsSessions().find(function(w){ return w.id === id; });
     return w && w.conducted && !w.cancelled;
   });
   // conductedFac for hours calc — same as deliveredFacIds
@@ -2838,7 +3083,7 @@ function renderAdult(){
   var conductedVol = conductedVolIds;
   // Upcoming assignments from FAC_PROFILES only (not yet delivered)
   var upcomingFacIds = (fac||[]).filter(function(id){
-    var w = WORKSHOPS.find(function(w){ return w.id===id; });
+    var w = getAllWsSessions().find(function(w){ return w.id===id; });
     return w && !w.conducted && !w.cancelled;
   });
 
@@ -2875,8 +3120,8 @@ function renderAdult(){
   if(t)t.innerHTML='Welcome, '+prof.name+'! <span class="hl">🙌</span>';
   var cb1=document.getElementById('adult-cert-banner-dash');
   var cb2=document.getElementById('adult-cert-banner-ws');
-  if(cb1)cb1.innerHTML=facCertBannerHTML(cnt,prof.grandfathered);
-  if(cb2)cb2.innerHTML=facCertBannerHTML(cnt,prof.grandfathered);
+  if(cb1)cb1.innerHTML=facCertBannerHTML(prof.name);
+  if(cb2)cb2.innerHTML=facCertBannerHTML(prof.name);
 
   // ── Stat cards ───────────────────────────────────────────────────────────
   var sc=document.getElementById('adult-stat-cards');
@@ -2884,22 +3129,32 @@ function renderAdult(){
     '<div class="stat-card" style="--accent-color:var(--ya-orange)"><div class="stat-label">Workshops Facilitated</div><div class="stat-value">'+cnt+'</div><div class="stat-meta">'+(upcomingFacIds.length>0?cnt+' delivered · '+upcomingFacIds.length+' upcoming':'All delivered 2026')+'</div><div class="stat-icon">🎤</div></div>'+
     '<div class="stat-card" style="--accent-color:var(--ya-blue)"><div class="stat-label">Workshops Volunteered</div><div class="stat-value">'+conductedVol.length+'</div><div class="stat-meta">'+(conductedVol.length>0?conductedVol.length+' delivered':'Support roles')+'</div><div class="stat-icon">🤝</div></div>'+
     '<div class="stat-card" style="--accent-color:var(--ya-teal)"><div class="stat-label">My Volunteer Hours</div><div class="stat-value">'+myTotalHrs+'</div><div class="stat-meta">'+hrsMeta+'</div><div class="stat-icon">⏱</div></div>'+
-    '<div class="stat-card" style="--accent-color:#22c55e"><div class="stat-label">Facilitator Level</div><div class="stat-value" style="font-size:'+(lvl>0?'1.8rem':'1.1rem')+';padding-top:'+(lvl>0?'3px':'6px')+'">'+(prof.grandfathered?'Level 3 ⭐':lvl>0?'Level '+lvl:'In Progress')+'</div><div class="stat-meta">EL Certified</div><div class="stat-icon">🏅</div></div>';
+    '<div class="stat-card" style="--accent-color:#22c55e"><div class="stat-label">Facilitator Level</div><div class="stat-value" style="font-size:'+(lvl>0?'1.8rem':'1.1rem')+';padding-top:'+(lvl>0?'3px':'6px')+'">'+(lvl>0?'Level '+lvl:'In Progress')+'</div><div class="stat-meta">EL Certified</div><div class="stat-icon">🏅</div></div>';
 
-  // ── Workshop grid (facilitation/volunteering — admin-managed) ────────────
+  // ── Workshop grid (facilitation/volunteering — all series) ──────────────
   var grid=document.getElementById('adult-workshop-grid');
   if(grid){
     grid.innerHTML='';
-    WORKSHOPS.forEach(function(w){
-      var iF=fac.includes(w.id),iV=vol.includes(w.id);
-      var el2=document.createElement('div');
-      el2.className='ws-card'+(iF?' facilitated':iV?' volunteered':'')+(w.cancelled?' cancelled':'')+(w.upcoming?' upcoming-ws':'');
-      var cancelBtn='';
-      if(adultState&&adultState.isAdmin&&!w.cancelled){
-        cancelBtn='<button class="ws-btn" style="border-color:'+(w.adminCancelled?'var(--ya-green)':'var(--badge-red)')+';color:'+(w.adminCancelled?'var(--ya-green)':'var(--badge-red)')+'" onclick="toggleWsCancel('+w.id+')">'+(w.adminCancelled?'↩ Resume':'⛔ Cancel')+'</button>';
-      }
-      el2.innerHTML='<div class="ws-num">#'+w.id+'</div><div class="ws-name">'+w.name+'</div><div class="ws-fac">'+(function(){var f=getWsFacilitators(w).filter(function(n){return n&&n!=='TBD';});return f.length?f.join(' & '):'TBD';})()+'</div>'+wsDateChip(w)+'<div class="ws-actions">'+(w.adminCancelled?'<span style="font-size:.72rem;color:var(--badge-red)">Admin Cancelled</span> '+cancelBtn:w.cancelled?'<span style="font-size:.72rem;color:var(--badge-red)">Cancelled</span>':'<button class="ws-btn '+(iF?'active-fac':'')+'" onclick="toggleAdultFac('+w.id+',this)">'+(iF?'🎤 Facilitated':'Facilitated')+'</button><button class="ws-btn '+(iV?'active-vol':'')+'" onclick="toggleAdultVol('+w.id+',this)">'+(iV?'🤝 Volunteered':'Volunteered')+'</button>'+cancelBtn)+'</div>';
-      grid.appendChild(el2);
+    var allSeries = getAllWsSeries();
+    allSeries.forEach(function(ser) {
+      var serSessions = getSeriesWsSessions(ser.id);
+      if (!serSessions.length) return;
+      // Series header
+      var hdr = document.createElement('div');
+      hdr.style.cssText = 'grid-column:1/-1;font-size:.72rem;font-weight:800;color:'+ser.color+';text-transform:uppercase;letter-spacing:.07em;margin:12px 0 4px;padding-bottom:4px;border-bottom:1px solid rgba(255,255,255,.08)';
+      hdr.textContent = ser.icon + ' ' + ser.name;
+      grid.appendChild(hdr);
+      serSessions.forEach(function(w){
+        var iF=fac.includes(w.id),iV=vol.includes(w.id);
+        var el2=document.createElement('div');
+        el2.className='ws-card'+(iF?' facilitated':iV?' volunteered':'')+(w.cancelled?' cancelled':'')+(w.upcoming?' upcoming-ws':'');
+        var cancelBtn='';
+        if(adultState&&adultState.isAdmin&&!w.cancelled){
+          cancelBtn='<button class="ws-btn" style="border-color:'+(w.adminCancelled?'var(--ya-green)':'var(--badge-red)')+';color:'+(w.adminCancelled?'var(--ya-green)':'var(--badge-red)')+'" onclick="toggleWsCancel('+w.id+')">'+(w.adminCancelled?'↩ Resume':'⛔ Cancel')+'</button>';
+        }
+        el2.innerHTML='<div class="ws-num">#'+w.series_num+'</div><div class="ws-name">'+w.name+'</div><div class="ws-fac">'+(function(){var f=getWsFacilitators(w).filter(function(n){return n&&n!=='TBD';});return f.length?f.join(' & '):'TBD';})()+'</div>'+wsDateChip(w)+'<div class="ws-actions">'+(w.adminCancelled?'<span style="font-size:.72rem;color:var(--badge-red)">Admin Cancelled</span> '+cancelBtn:w.cancelled?'<span style="font-size:.72rem;color:var(--badge-red)">Cancelled</span>':'<button class="ws-btn '+(iF?'active-fac':'')+'" onclick="toggleAdultFac('+w.id+',this)">'+(iF?'🎤 Facilitated':'Facilitated')+'</button><button class="ws-btn '+(iV?'active-vol':'')+'" onclick="toggleAdultVol('+w.id+',this)">'+(iV?'🤝 Volunteered':'Volunteered')+'</button>'+cancelBtn)+'</div>';
+        grid.appendChild(el2);
+      });
     });
   }
 
@@ -2907,8 +3162,8 @@ function renderAdult(){
   var volHist=document.getElementById('adult-vol-history-content');
   if(volHist){
     var rows=[];
-    deliveredFacIds.forEach(function(id){var w=WORKSHOPS.find(function(w){return w.id===id;});if(w)rows.push({label:'Facilitated: '+w.name,date:w.date,hrs:2,color:'var(--ya-orange)'});});
-    conductedVolIds.forEach(function(id){var w=WORKSHOPS.find(function(w){return w.id===id;});if(w)rows.push({label:'Volunteered: '+w.name,date:w.date,hrs:2,color:'var(--ya-blue)'});});
+    deliveredFacIds.forEach(function(id){var w=getAllWsSessions().find(function(w){return w.id===id;});if(w)rows.push({label:'Facilitated: '+w.name+(w.series_id?' ('+((WS_SERIES[w.series_id]||WS_SERIES_DB[w.series_id]||{}).name||w.series_id)+')':''),date:w.date,hrs:2,color:'var(--ya-orange)'});});
+    conductedVolIds.forEach(function(id){var w=getAllWsSessions().find(function(w){return w.id===id;});if(w)rows.push({label:'Volunteered: '+w.name+(w.series_id?' ('+((WS_SERIES[w.series_id]||WS_SERIES_DB[w.series_id]||{}).name||w.series_id)+')':''),date:w.date,hrs:2,color:'var(--ya-blue)'});});
     if(Object.keys(_scrMerged).length>0) rows.push({label:'Scrabble & Games Club ('+Object.keys(_scrMerged).length+' sessions)',date:'2026',hrs:scrHrs,color:'var(--ya-gold)'});
     // Program sessions
     Object.keys(PROGRAMS_DATA).forEach(function(pid){
@@ -2947,18 +3202,24 @@ function renderAdult(){
     }
   }
 
-  // ── Upcoming workshops ────────────────────────────────────────────────────
+  // ── Upcoming workshops (all series) ──────────────────────────────────────
   var ul=document.getElementById('adult-upcoming-list');
-  if(ul)ul.innerHTML=WORKSHOPS.filter(function(w){return !w.cancelled&&!w.conducted;}).slice(0,8).map(function(w){
-    var iF=fac.includes(w.id),iV=vol.includes(w.id);
-    return '<div class="activity-item"><div class="activity-dot" style="background:'+(w.upcoming?'var(--ya-gold)':'rgba(255,255,255,.2)')+'"></div><div style="flex:1"><div class="activity-name">#'+w.id+' '+w.name+(w.upcoming?' 📅':'')+'</div><div class="activity-meta">'+w.date+(iF?' · <strong style="color:var(--ya-orange)">You facilitating</strong>':iV?' · <strong style="color:var(--ya-blue)">You volunteering</strong>':'')+'</div></div></div>';
-  }).join('');
+  if(ul){
+    var now2=new Date();now2.setHours(0,0,0,0);
+    ul.innerHTML=getAllWsSessions().filter(function(w){
+      return !w.cancelled&&!w.conducted&&wsParseDisplayDate(w.date)>=now2;
+    }).sort(function(a,b){return wsParseDisplayDate(a.date)-wsParseDisplayDate(b.date);}).slice(0,8).map(function(w){
+      var iF=fac.includes(w.id),iV=vol.includes(w.id);
+      var ser=WS_SERIES[w.series_id]||WS_SERIES_DB[w.series_id]||{icon:'📅',name:w.series_id};
+      return '<div class="activity-item"><div class="activity-dot" style="background:'+(w.upcoming?'var(--ya-gold)':'rgba(255,255,255,.2)')+'"></div><div style="flex:1"><div class="activity-name">'+ser.icon+' #'+w.series_num+' '+w.name+'</div><div class="activity-meta">'+w.date+' · '+ser.name+(iF?' · <strong style="color:var(--ya-orange)">You facilitating</strong>':iV?' · <strong style="color:var(--ya-blue)">You volunteering</strong>':'')+'</div></div></div>';
+    }).join('');
+  }
 
   // ── Self-compliance ───────────────────────────────────────────────────────
   renderAdultSelfCompliance(prof.name);
 }
 function toggleAdultFac(id,btn){
-  var w=WORKSHOPS.find(function(x){return x.id===id;});if(w&&w.cancelled)return;
+  var w=getAllWsSessions().find(function(x){return x.id===id;});if(w&&w.cancelled)return;
   var fac=adultState.facilitated,vol=adultState.volunteered,card=btn.closest('.ws-card');
   if(fac.includes(id)){
     adultState.facilitated=fac.filter(function(x){return x!==id;});
@@ -2971,16 +3232,14 @@ function toggleAdultFac(id,btn){
   }
   var cb1=document.getElementById('adult-cert-banner-dash');
   var cb2=document.getElementById('adult-cert-banner-ws');
-  // Use delivered-only count (same source as renderAdult) so cert banner stays consistent
-  var _facDone=getFacilitatedWorkshopCount(adultState.name);
-  if(cb1)cb1.innerHTML=facCertBannerHTML(_facDone,adultState.grandfathered);
-  if(cb2)cb2.innerHTML=facCertBannerHTML(_facDone,adultState.grandfathered);
+  if(cb1)cb1.innerHTML=facCertBannerHTML(adultState.name);
+  if(cb2)cb2.innerHTML=facCertBannerHTML(adultState.name);
   saveAdultProfile();
   renderAdult();
 }
 
 function toggleAdultVol(id,btn){
-  var w=WORKSHOPS.find(function(x){return x.id===id;});if(w&&w.cancelled)return;
+  var w=getAllWsSessions().find(function(x){return x.id===id;});if(w&&w.cancelled)return;
   var fac=adultState.facilitated,vol=adultState.volunteered,card=btn.closest('.ws-card');
   if(vol.includes(id)){
     adultState.volunteered=vol.filter(function(x){return x!==id;});
@@ -3093,136 +3352,162 @@ function renderAdmin(){
   var lvl1=allNames.filter(function(n){return EL_YOUTH[n].length>=6;}).length;
   var eid=function(id){return document.getElementById(id);};
   if(eid('a-lvl1'))eid('a-lvl1').textContent=lvl1;
+
+  // ── Attendance bars — Winter 2026 delivered workshops ───────────────────
   var bars=eid('admin-ws-bars');
-  if(bars)bars.innerHTML=WORKSHOPS.filter(function(w){return w.conducted;}).map(function(w){
+  if(bars)bars.innerHTML=WORKSHOPS.filter(function(w){return w.conducted&&!w.cancelled;}).map(function(w){
     var cnt=allNames.filter(function(n){return (EL_YOUTH[n]||[]).includes(w.id);}).length;
     var pct=Math.round(cnt/allNames.length*100);
-    return '<div class="prog-bar-wrap"><div class="prog-label"><span>#'+w.id+' '+w.name+'</span><span>'+cnt+' / '+allNames.length+' ('+pct+'%)</span></div><div class="prog-track"><div class="prog-fill" style="width:'+pct+'%;background:linear-gradient(90deg,var(--ya-teal),var(--ya-blue))"></div></div></div>';
+    return '<div class="prog-bar-wrap"><div class="prog-label"><span>#'+w.series_num+' '+w.name+'</span><span>'+cnt+' / '+allNames.length+' ('+pct+'%)</span></div><div class="prog-track"><div class="prog-fill" style="width:'+pct+'%;background:linear-gradient(90deg,var(--ya-teal),var(--ya-blue))"></div></div></div>';
   }).join('');
   renderYouthAttendanceTable();
 
-  var wtb=eid('admin-ws-tbody');
-  if(wtb)wtb.innerHTML=WORKSHOPS.map(function(w){
-    var cnt=w.conducted?allNames.filter(function(n){return (EL_YOUTH[n]||[]).includes(w.id);}).length:'—';
-    // Use helpers so DB staffing data fully overrides hardcoded defaults
+  // ── Helper to build a session row for any series schedule table ──────────
+  function wsSessionRow(w, allNms) {
+    var cnt = w.conducted ? allNms.filter(function(n){return (EL_YOUTH[n]||[]).includes(w.id);}).length : '—';
     var facNames = getWsFacilitators(w);
     var volNames = getWsVolunteers(w);
-    var facStr = facNames.join(', ') || '—';
-    var volStr = volNames.join(', ') || '—';
-    return '<tr id="ws-row-'+w.id+'">'+
-      '<td>'+w.id+'</td><td>'+w.name+'</td>'+
-      '<td style="font-size:.75rem" id="ws-fac-'+w.id+'">'+facStr+'</td>'+
-      '<td style="font-size:.75rem;color:var(--text-muted)" id="ws-vol-'+w.id+'">'+volStr+'</td>'+
-      '<td style="font-size:.75rem">'+w.date+'</td>'+
-      '<td>'+(w.cancelled?'<span class="pill pill-red">Cancelled</span>':w.conducted?'<span class="pill pill-green">Done</span>':'<button onclick="markWorkshopDone('+w.id+')" style="padding:3px 10px;border-radius:6px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.06);color:var(--text-muted);font-size:.72rem;cursor:pointer;font-family:DM Sans,sans-serif">Mark Done</button>')+'</td>'+
-      '<td>'+(typeof cnt==='number'?cnt+' youth':'—')+'</td>'+
-      '<td><button onclick="openWsStaffEdit('+w.id+')" style="padding:3px 10px;border-radius:6px;border:1px solid rgba(29,127,212,.4);background:rgba(29,127,212,.08);color:var(--ya-blue);font-size:.72rem;cursor:pointer;font-family:DM Sans,sans-serif">✏️ Edit</button></td>'+
+    var facStr = facNames.filter(function(n){return n&&n!=='TBD';}).join(', ') || '<span style="color:var(--text-muted)">TBD</span>';
+    var volStr = volNames.length ? volNames.join(', ') : '<span style="color:var(--text-muted)">—</span>';
+    var statusCell = w.cancelled
+      ? '<span class="pill pill-red">Cancelled</span>'
+      : w.conducted
+        ? '<span class="pill pill-green">Done</span>'
+        : '<button onclick="markWorkshopDone('+w.id+')" style="padding:3px 10px;border-radius:6px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.06);color:var(--text-muted);font-size:.72rem;cursor:pointer;font-family:DM Sans,sans-serif">Mark Done</button>';
+    return '<tr id="ws-row-'+w.id+'">' +
+      '<td>'+w.series_num+'</td><td>'+w.name+'</td>' +
+      '<td style="font-size:.75rem" id="ws-fac-'+w.id+'">'+facStr+'</td>' +
+      '<td style="font-size:.75rem;color:var(--text-muted)" id="ws-vol-'+w.id+'">'+volStr+'</td>' +
+      '<td style="font-size:.75rem">'+w.date+'</td>' +
+      '<td>'+statusCell+'</td>' +
+      '<td>'+(typeof cnt==='number'?cnt+' youth':'—')+'</td>' +
+      '<td><button onclick="openWsStaffEdit('+w.id+')" style="padding:3px 10px;border-radius:6px;border:1px solid rgba(29,127,212,.4);background:rgba(29,127,212,.08);color:var(--ya-blue);font-size:.72rem;cursor:pointer;font-family:DM Sans,sans-serif">✏️ Edit</button></td>' +
       '</tr>';
-  }).join('');
-  // ── Dynamic "Workshops Done" stat card (replaces hardcoded 10/17) ──────
-  var wsStats = calcWorkshopStats();
+  }
+
+  // ── Winter 2026 schedule table ───────────────────────────────────────────
+  var wtb=eid('admin-ws-tbody');
+  if(wtb) wtb.innerHTML = WORKSHOPS.map(function(w){ return wsSessionRow(w, allNames); }).join('');
+
+  // ── Fall 2026 schedule table ─────────────────────────────────────────────
+  var ftb2 = eid('admin-ws-fall-tbody');
+  if(ftb2) ftb2.innerHTML = WS_FALL_2026.map(function(w){ return wsSessionRow(w, allNames); }).join('');
+
+  // ── Additional future series sections ────────────────────────────────────
+  var futureSeriesDiv = eid('admin-ws-future-series-sections');
+  if(futureSeriesDiv) {
+    var fsHtml = '';
+    Object.keys(WS_FUTURE_SERIES_SESSIONS).forEach(function(sid) {
+      var ser = WS_SERIES_DB[sid] || {name: sid, icon: '📅', color: 'var(--ya-blue)'};
+      var sessions = WS_FUTURE_SERIES_SESSIONS[sid] || [];
+      var tbId = 'admin-ws-'+sid+'-tbody';
+      fsHtml += '<details open style="margin-bottom:14px"><summary style="font-family:Nunito,sans-serif;font-weight:900;font-size:.95rem;color:'+ser.color+';cursor:pointer;padding:10px 0;list-style:none;display:flex;align-items:center;gap:8px">'+ser.icon+' '+ser.name+' Workshop Schedule</summary>' +
+        '<div style="margin-top:10px"><div class="section-box">' +
+        '<div class="section-title">'+ser.icon+' '+ser.name+'</div>' +
+        '<table class="data-table"><thead><tr><th>#</th><th>Workshop</th><th>Facilitator(s)</th><th>Volunteers</th><th>Date</th><th>Status</th><th>Attendance</th><th>Staff</th></tr></thead>' +
+        '<tbody id="'+tbId+'">'+sessions.map(function(w){ return wsSessionRow(w, allNames); }).join('')+'</tbody></table>' +
+        '</div></div></details>';
+    });
+    futureSeriesDiv.innerHTML = fsHtml;
+  }
+
+  // ── Dynamic stat cards ───────────────────────────────────────────────────
+  var wsStats = calcWorkshopStats(); // across all series
+  var wsW26   = calcWorkshopStats('winter_2026');
+  var wsF26   = calcWorkshopStats('fall_2026');
   var wsDoneEl = eid('admin-ws-done-count');
   var wsMetaEl = eid('admin-ws-done-meta');
   if(wsDoneEl) wsDoneEl.textContent = wsStats.delivered.length;
-  if(wsMetaEl) wsMetaEl.textContent = 'of ' + wsStats.scheduled.length + ' scheduled · ' + wsStats.cancelled.length + ' cancelled';
+  if(wsMetaEl) wsMetaEl.textContent = 'W26: '+wsW26.delivered.length+' done · F26: '+wsF26.delivered.length+' done';
 
-  // ── Dynamic "Total Attendances" stat card — mirrors Impact tab calculation ──
   var totalAtt = 0;
-  var allYouthNamesAtt = Object.keys(EL_YOUTH);
   wsStats.delivered.forEach(function(w){
-    allYouthNamesAtt.forEach(function(n){
+    allNames.forEach(function(n){
       if((EL_YOUTH[n]||[]).indexOf(w.id) >= 0) totalAtt++;
     });
   });
   var attEl = eid('admin-total-att');
   var attMetaEl = eid('admin-total-att-meta');
   if(attEl) attEl.textContent = totalAtt;
-  if(attMetaEl) attMetaEl.textContent = 'Across ' + wsStats.delivered.length + ' workshop' + (wsStats.delivered.length !== 1 ? 's' : '');
+  if(attMetaEl) attMetaEl.textContent = 'Across ' + wsStats.delivered.length + ' workshop' + (wsStats.delivered.length !== 1 ? 's' : '') + ' (all series)';
 
-  // ── Dynamic Kim Sundset cert card (replaces hardcoded "8 Workshops (2026)") ──
-  // Uses the same getFacilitatedWorkshopCount/getFacilitatedWorkshopIds helpers
-  // so this card always matches the facilitator table and leaderboard below.
+  // ── Kim Sundset cert card ─────────────────────────────────────────────────
   var kimProf = FAC_PROFILES['kim'];
   if(kimProf) {
     var kimCount = getFacilitatedWorkshopCount(kimProf.name);
+    var kimTotal = getTotalFacilitatedCount(kimProf.name);
     var kimIds   = getFacilitatedWorkshopIds(kimProf.name);
-    var kimUpcoming = (kimProf.facilitated || []).filter(function(id){
-      var w = WORKSHOPS.find(function(w){ return w.id === id; });
-      return w && !w.conducted && !w.cancelled;
-    });
     var kimSubEl  = eid('admin-kim-cert-sub');
     var kimPillEl = eid('admin-kim-ws-pill');
-    if(kimSubEl) {
-      var wsListStr = kimIds.length ? 'Workshops #'+kimIds.join(', #')+' in 2026' : 'No workshops facilitated yet in 2026';
-      var upStr = kimUpcoming.length ? ' · #'+kimUpcoming.join(', #')+' upcoming' : '';
-      kimSubEl.textContent = '40 prior to 2026 · at Level 3 · '+wsListStr+upStr+' · Program Administrator';
-    }
-    if(kimPillEl) {
-      kimPillEl.textContent = kimCount + ' Workshop' + (kimCount !== 1 ? 's' : '') + ' (2026)';
-    }
+    if(kimSubEl) kimSubEl.textContent = (kimProf.prior_facilitated||0)+' prior + '+kimCount+' in-app · FL'+getFacLevel(kimTotal)+' Certified · Program Administrator';
+    if(kimPillEl) kimPillEl.textContent = kimCount + ' Workshop' + (kimCount !== 1 ? 's' : '') + ' (in-app)';
   }
 
-  // ── Facilitator table (uses canonical getFacilitatedWorkshopIds/Count) ──
-  var ftb=eid('admin-fac-tbody');
-  if(ftb){
-    var rows=Object.values(FAC_PROFILES).map(function(p){
-      // Delivered facilitations only — uses merged WORKSHOPS+FAC_PROFILES source
-      var deliveredIds = getFacilitatedWorkshopIds(p.name);
-      var cnt = deliveredIds.length;
-      var lvl = getFacLevel(cnt, p.grandfathered);
-      // Also show upcoming assignments from FAC_PROFILES (not yet delivered)
-      var allFacIds = p.facilitated || [];
-      var upcomingIds = allFacIds.filter(function(id){
-        var w = WORKSHOPS.find(function(w){ return w.id===id; });
-        return w && !w.conducted && !w.cancelled;
-      });
-      return {name:p.name,cnt:cnt,lvl:lvl,gf:p.grandfathered,deliveredIds:deliveredIds,upcomingIds:upcomingIds};
-    }).sort(function(a,b){ return b.cnt-a.cnt || a.name.localeCompare(b.name); });
-    ftb.innerHTML=rows.map(function(r){
-      var facStr = r.deliveredIds.length > 0
-        ? r.deliveredIds.map(function(id){ return '#'+id; }).join(', ')
-        : '—';
-      var upStr = r.upcomingIds.length > 0
-        ? ' <span style="color:var(--text-muted);font-size:.7rem">(+'+r.upcomingIds.map(function(id){ return '#'+id; }).join(', ')+' upcoming)</span>'
-        : '';
+  // ── Template Library ─────────────────────────────────────────────────────
+  renderWsTemplateList();
+
+  // ── Facilitator table — multi-series columns ─────────────────────────────
+  var facTb=eid('admin-fac-tbody');
+  if(facTb){
+    var facRows=Object.values(FAC_PROFILES).map(function(p){
+      var w26Ids = getSeriesWsSessions('winter_2026').filter(function(w){
+        return w.conducted && !w.cancelled && getWorkshopFacilitatorNames(w).indexOf(p.name) >= 0;
+      }).map(function(w){ return '#'+w.series_num; });
+      var f26Ids = getSeriesWsSessions('fall_2026').filter(function(w){
+        return w.conducted && !w.cancelled && getWorkshopFacilitatorNames(w).indexOf(p.name) >= 0;
+      }).map(function(w){ return '#'+w.series_num; });
+      var totalCount = getTotalFacilitatedCount(p.name);
+      var lvl = getFacLevel(totalCount);
+      return {name:p.name,w26:w26Ids,f26:f26Ids,total:totalCount,lvl:lvl,prior:p.prior_facilitated||0};
+    }).filter(function(r){ return r.total > 0 || r.w26.length > 0 || r.f26.length > 0; })
+      .sort(function(a,b){ return b.total-a.total || a.name.localeCompare(b.name); });
+    facTb.innerHTML=facRows.map(function(r){
+      var priorStr = r.prior > 0 ? '<div style="font-size:.68rem;color:var(--text-muted)">+'+r.prior+' prior</div>' : '';
       return '<tr><td>'+r.name+'</td>'+
-        '<td style="font-size:.75rem">'+facStr+upStr+'</td>'+
-        '<td><strong>'+r.cnt+'</strong></td>'+
-        '<td><span class="pill '+(r.gf?'pill-gold':r.lvl>0?'pill-teal':'pill-grey')+'">'+(r.gf?'⭐ L3 (grandfathered)':r.lvl>0?'Level '+r.lvl:'In progress')+'</span></td></tr>';
+        '<td style="font-size:.75rem">'+(r.w26.length?r.w26.join(', '):'—')+'</td>'+
+        '<td style="font-size:.75rem">'+(r.f26.length?r.f26.join(', '):'—')+'</td>'+
+        '<td><strong>'+r.total+'</strong>'+priorStr+'</td>'+
+        '<td><span class="pill '+(r.lvl>0?'pill-teal':'pill-grey')+'">'+(r.lvl>0?'Level '+r.lvl:'In progress')+'</span></td></tr>';
     }).join('');
   }
-  // ── Facilitator leaderboard (delivered count only) ────────────────────
+  // ── Facilitator leaderboard (total count including prior) ────────────────
   var lbel=eid('admin-fac-leaderboard');
   if(lbel){
     var sorted=Object.values(FAC_PROFILES).map(function(p){
-      return {name:p.name,cnt:getFacilitatedWorkshopCount(p.name),gf:p.grandfathered};
-    }).sort(function(a,b){ return b.cnt-a.cnt || a.name.localeCompare(b.name); });
-    var maxFac = sorted.length > 0 ? Math.max(sorted[0].cnt, 1) : 1;
-    lbel.innerHTML=sorted.filter(function(p){ return p.cnt > 0; }).map(function(p){
-      var c=p.cnt;
-      return '<div class="prog-bar-wrap"><div class="prog-label"><span>'+p.name+(p.gf?' ⭐':'')+'</span><span>'+c+' delivered workshop'+(c!==1?'s':'')+'</span></div><div class="prog-track"><div class="prog-fill" style="width:'+Math.min(100,c/maxFac*100)+'%;background:linear-gradient(90deg,var(--ya-orange),var(--ya-gold))"></div></div></div>';
+      var total=getTotalFacilitatedCount(p.name);
+      var inApp=getFacilitatedWorkshopCount(p.name);
+      return {name:p.name,cnt:inApp,total:total,prior:p.prior_facilitated||0};
+    }).sort(function(a,b){ return b.total-a.total || a.name.localeCompare(b.name); });
+    var maxFac = sorted.length > 0 ? Math.max(sorted[0].total, 1) : 1;
+    lbel.innerHTML=sorted.filter(function(p){ return p.total > 0; }).map(function(p){
+      var priorNote = p.prior>0 ? ' ('+p.prior+' prior + '+p.cnt+' in-app)' : p.cnt+' in-app';
+      return '<div class="prog-bar-wrap"><div class="prog-label"><span>'+p.name+'</span><span>'+p.total+' total'+priorNote+'</span></div><div class="prog-track"><div class="prog-fill" style="width:'+Math.min(100,p.total/maxFac*100)+'%;background:linear-gradient(90deg,var(--ya-orange),var(--ya-gold))"></div></div></div>';
     }).join('');
   }
   var ctb=eid('admin-comp-tbody');
   if(ctb){
     var cd=[
-      {n:'Kim Sundset',vsc:'Valid',w:'✔',t:'Complete',l:'⭐ L3'},
-      {n:'Olga Korcheva',vsc:'Valid',w:'✔',t:'Complete',l:'In Progress'},
-      {n:'Connie Wu',vsc:'Valid',w:'✔',t:'Complete',l:'In Progress'},
-      {n:'Chloe Nayoung Kim',vsc:'Valid',w:'✗ Missing',t:'Partial',l:'—'},
-      {n:'BJ (Bolaji) Hammed',vsc:'Valid',w:'✔',t:'Complete',l:'—'},
-      {n:'Roberta Ehigiator',vsc:'Valid',w:'✔',t:'Complete',l:'In Progress'},
-      {n:'Julie Robertson',vsc:'Exp. soon',w:'✔',t:'Partial',l:'—'},
-      {n:'Tina Petrow',vsc:'Valid',w:'✔',t:'Complete',l:'In Progress'},
-      {n:'Mary-Beth Finney',vsc:'Valid',w:'✗ Missing',t:'Complete',l:'In Progress'},
-      {n:'Simisola Obasan',vsc:'Valid',w:'✔',t:'Complete',l:'In Progress'},
-      {n:'Tamanna Kaur',vsc:'Pending',w:'Pending',t:'Pending',l:'—'},
-      {n:'Bolaji Ajoke Hammed',vsc:'Pending',w:'Pending',t:'Pending',l:'—'},
-      {n:'Jollean Chapiel',vsc:'Pending',w:'Pending',t:'Pending',l:'—'},
-      {n:'Mimi Omoare',vsc:'Pending',w:'Pending',t:'Pending',l:'—'}
+      {n:'Kim Sundset',vsc:'Valid',w:'✔',t:'Complete'},
+      {n:'Olga Korcheva',vsc:'Valid',w:'✔',t:'Complete'},
+      {n:'Connie Wu',vsc:'Valid',w:'✔',t:'Complete'},
+      {n:'Chloe Nayoung Kim',vsc:'Valid',w:'✗ Missing',t:'Partial'},
+      {n:'BJ (Bolaji) Hammed',vsc:'Valid',w:'✔',t:'Complete'},
+      {n:'Roberta Ehigiator',vsc:'Valid',w:'✔',t:'Complete'},
+      {n:'Julie Robertson',vsc:'Exp. soon',w:'✔',t:'Partial'},
+      {n:'Tina Petrow',vsc:'Valid',w:'✔',t:'Complete'},
+      {n:'Mary-Beth Finney',vsc:'Valid',w:'✗ Missing',t:'Complete'},
+      {n:'Simisola Obasan',vsc:'Valid',w:'✔',t:'Complete'},
+      {n:'Tamanna Kaur',vsc:'Pending',w:'Pending',t:'Pending'},
+      {n:'Bolaji Ajoke Hammed',vsc:'Pending',w:'Pending',t:'Pending'},
+      {n:'Jollean Chapiel',vsc:'Pending',w:'Pending',t:'Pending'},
+      {n:'Mimi Omoare',vsc:'Pending',w:'Pending',t:'Pending'}
     ];
     ctb.innerHTML=cd.map(function(r){
-      return '<tr><td>'+r.n+'</td><td><span class="pill '+(r.vsc.includes('Exp')?'pill-amber':'pill-green')+'">'+r.vsc+'</span></td><td><span class="pill '+(r.w.includes('✗')?'pill-red':'pill-green')+'">'+r.w+'</span></td><td><span class="pill '+(r.t==='Complete'?'pill-green':'pill-amber')+'">'+r.t+'</span></td><td><span class="pill '+(r.l.includes('⭐')?'pill-gold':r.l==='—'?'pill-grey':'pill-blue')+'">'+r.l+'</span></td></tr>';
+      // Dynamic cert level
+      var prof=Object.values(FAC_PROFILES).find(function(p){return p.name.toLowerCase().includes(r.n.toLowerCase().split(' ')[0].toLowerCase());});
+      var lvlStr='—';
+      if(prof){var lvl=getFacLevel(getTotalFacilitatedCount(prof.name));lvlStr=lvl>0?'Level '+lvl:'In Progress';}
+      return '<tr><td>'+r.n+'</td><td><span class="pill '+(r.vsc.includes('Exp')?'pill-amber':r.vsc==='Pending'?'pill-grey':'pill-green')+'">'+r.vsc+'</span></td><td><span class="pill '+(r.w.includes('✗')?'pill-red':r.w==='Pending'?'pill-grey':'pill-green')+'">'+r.w+'</span></td><td><span class="pill '+(r.t==='Complete'?'pill-green':r.t==='Pending'?'pill-grey':'pill-amber')+'">'+r.t+'</span></td><td><span class="pill '+(lvlStr.includes('Level')?'pill-teal':'pill-grey')+'">'+lvlStr+'</span></td></tr>';
     }).join('');
   }
   renderAdminScrabble();
@@ -3606,10 +3891,11 @@ function _statsNow() {
   var d = new Date(); d.setHours(0,0,0,0); return d;
 }
 
-// ── calcWorkshopStats() ──────────────────────────────────────────────────
-// Returns { scheduled, delivered, cancelled }  (arrays of workshop objects)
-function calcWorkshopStats() {
-  var all = WORKSHOPS || [];
+// ── calcWorkshopStats() — multi-series aware ─────────────────────────────
+// If seriesId is provided, returns stats for that series only.
+// Otherwise returns stats across ALL series (default for summary cards).
+function calcWorkshopStats(seriesId) {
+  var all = seriesId ? getSeriesWsSessions(seriesId) : getAllWsSessions();
   return {
     all:       all,
     scheduled: all.filter(function(w){ return !w.cancelled; }),
@@ -3621,14 +3907,14 @@ function calcWorkshopStats() {
 // ── Workshop / Facilitator shared helpers ────────────────────────────────
 // Single source of truth for all views (Admin, Impact, Stats Audit, User View)
 
-// Returns array of delivered (conducted + not cancelled) WORKSHOPS
+// Returns array of delivered (conducted + not cancelled) sessions across ALL series
 function getDeliveredWorkshops() {
-  return (WORKSHOPS || []).filter(function(w){ return w.conducted && !w.cancelled; });
+  return getAllWsSessions().filter(function(w){ return w.conducted && !w.cancelled; });
 }
 
-// Returns array of scheduled (not cancelled) WORKSHOPS
+// Returns array of scheduled (not cancelled) sessions across ALL series
 function getScheduledWorkshops() {
-  return (WORKSHOPS || []).filter(function(w){ return !w.cancelled; });
+  return getAllWsSessions().filter(function(w){ return !w.cancelled; });
 }
 
 // Returns the canonical status string for a workshop
@@ -4004,7 +4290,7 @@ function getActiveAdultVolunteers() {
     var conductedFCount = getFacilitatedWorkshopCount(p.name);
     var conductedF = {length: conductedFCount}; // proxy for .length check
     var conductedV = (p.volunteered||[]).filter(function(id){
-      var w=WORKSHOPS.find(function(w){return w.id===id;});
+      var w=getAllWsSessions().find(function(w){return w.id===id;});
       return w && w.conducted && !w.cancelled;
     });
     var hasHrs = p.hours && p.hours > 0;
@@ -4196,7 +4482,7 @@ function renderStatsDiagnostic() {
   Object.values(FAC_PROFILES).forEach(function(p){
     if(!p||!p.name)return;
     var condFCount = getFacilitatedWorkshopCount(p.name);
-    var condV=(p.volunteered||[]).filter(function(id){var w=(WORKSHOPS||[]).find(function(w){return w.id===id;});return w&&w.conducted&&!w.cancelled;});
+    var condV=(p.volunteered||[]).filter(function(id){var w=getAllWsSessions().find(function(w){return w.id===id;});return w&&w.conducted&&!w.cancelled;});
     if(condFCount)addAdult(p.name,'Workshops (Facilitated)',condFCount+' conducted');
     if(condV.length)addAdult(p.name,'Workshops (Volunteered)',condV.length+' conducted');
     // FAC_PROFILES.hours is legacy annotation only — not used as an activity source
@@ -4246,7 +4532,7 @@ function renderStatsDiagnostic() {
   Object.values(FAC_PROFILES).forEach(function(p){
     if(!p||!p.name)return;
     var condFCount = getFacilitatedWorkshopCount(p.name);
-    var condV=(p.volunteered||[]).filter(function(id){var w=(WORKSHOPS||[]).find(function(w){return w.id===id;});return w&&w.conducted&&!w.cancelled;});
+    var condV=(p.volunteered||[]).filter(function(id){var w=getAllWsSessions().find(function(w){return w.id===id;});return w&&w.conducted&&!w.cancelled;});
     var wsHrs=(condFCount+condV.length)*2;
     if(wsHrs>0)addAdultHrs(p.name,'Workshops',wsHrs);
   });
@@ -4771,12 +5057,12 @@ function renderLandingCalendar(){
     });
   });
 
-  // ── 2. Next few upcoming Emerging Leaders workshops ──
-  var upcomingWs=WORKSHOPS.filter(function(w){
+  // ── 2. Next few upcoming Emerging Leaders workshops (all series) ──
+  var upcomingWs=getAllWsSessions().filter(function(w){
     if(w.cancelled||w.conducted) return false;
     var d=parseDate(w.date);
     return d&&d>=now;
-  }).slice(0,3);
+  }).sort(function(a,b){return wsParseDisplayDate(a.date)-wsParseDisplayDate(b.date);}).slice(0,3);
   upcomingWs.forEach(function(w){
     var d=parseDate(w.date);
     var soon=isSoon(d,14);
@@ -5140,33 +5426,35 @@ function renderScheduleTab(){
 
   var items = [];
 
-  // Workshops — Spring 2026
+  // Workshops — Winter 2026
   WORKSHOPS.forEach(function(w){
     var d = parseDate(w.date);
-    // Use getWsFacilitators so DB staffing overrides (WS_STAFFED_BY_DB) are respected
     var facList = getWsFacilitators(w).filter(function(n){ return n && n !== 'TBD'; });
     var facStr = facList.length ? facList.join(', ') : 'TBD';
     items.push({
       date: d, dateStr: w.date,
-      type: 'Workshop', sem: 'Spring 2026',
-      title: '#'+w.id+' '+w.name,
+      type: 'Workshop', sem: 'Winter 2026',
+      title: '#'+w.series_num+' '+w.name,
       detail: facStr,
       status: w.cancelled?'cancelled':w.conducted?'done':'upcoming',
       typeColor: 'var(--ya-teal)', typeIcon: '📚'
     });
   });
 
-  // Future Workshops — Fall 2026 + Winter/Spring 2027
-  FUTURE_WORKSHOPS.forEach(function(w){
+  // Workshops — Fall 2026 and any future DB series
+  getAllWsSessions().filter(function(w){ return w.series_id !== 'winter_2026'; }).forEach(function(w){
     var d = parseDate(w.date);
+    var ser = WS_SERIES[w.series_id] || WS_SERIES_DB[w.series_id] || {name: w.series_id, icon: '📅', color: 'var(--ya-blue)'};
+    var facList = getWsFacilitators(w).filter(function(n){ return n && n !== 'TBD'; });
+    var facStr = facList.length ? facList.join(', ') : 'TBD';
     items.push({
       date: d, dateStr: w.date,
-      type: 'Workshop', sem: w.semester,
-      title: w.name,
-      detail: w.semester + ' · Facilitator TBD',
-      status: 'scheduled',
-      typeColor: w.semester==='Fall 2026'?'var(--ya-orange)':'var(--ya-blue)',
-      typeIcon: w.semester==='Fall 2026'?'🍂':'❄️'
+      type: 'Workshop', sem: ser.name,
+      title: '#'+w.series_num+' '+w.name,
+      detail: facStr || (ser.name + ' · Facilitator TBD'),
+      status: w.cancelled?'cancelled':w.conducted?'done':'scheduled',
+      typeColor: ser.color || 'var(--ya-orange)',
+      typeIcon: ser.icon || '📅'
     });
   });
 
@@ -5428,7 +5716,7 @@ function renderImpactTab(){
     Object.values(FAC_PROFILES||{}).forEach(function(p){
       if (!p||!p.name) return;
       var condFCount = getFacilitatedWorkshopCount(p.name);
-      var condV = (p.volunteered||[]).filter(function(id){ var w=(WORKSHOPS||[]).find(function(w){return w.id===id;}); return w&&w.conducted&&!w.cancelled; });
+      var condV = (p.volunteered||[]).filter(function(id){ var w=getAllWsSessions().find(function(w){return w.id===id;}); return w&&w.conducted&&!w.cancelled; });
       t += (condFCount + condV.length) * 2;
     });
     return t;
@@ -5560,8 +5848,10 @@ function renderImpactTab(){
   html += '<div class="two-col">';
   html += '<div class="section-box" style="margin-bottom:0">';
   html += '<div class="section-title" style="margin-bottom:10px">📚 Emerging Leaders Workshops</div>';
-  html += statRow('Workshops delivered (Spring 2026)', conducted.length, 'pill-green');
-  html += statRow('Workshops scheduled (full year)',   scheduledWs.length,'pill-blue');
+  html += statRow('Workshops delivered (all series)', conducted.length, 'pill-green');
+  html += statRow('Winter 2026 delivered', calcWorkshopStats('winter_2026').delivered.length, 'pill-teal');
+  html += statRow('Fall 2026 delivered', calcWorkshopStats('fall_2026').delivered.length, 'pill-orange');
+  html += statRow('Workshops scheduled (all series)',   scheduledWs.length,'pill-blue');
   html += statRow('Workshop participants',             elParticipants.length, 'pill-teal');
   html += statRow('Total attendance instances',        totalAttendances,  'pill-orange');
   var avgAtt = conducted.length > 0 ? Math.round(totalAttendances/conducted.length*10)/10 : 0;
@@ -5716,15 +6006,15 @@ function renderImpactTab(){
   }
   html += impactHead('💡','Skills & Themes Delivered','var(--lavender)','Developmental competencies woven through workshop programming');
   html += '<div class="section-box">';
-  html += '<div style="font-size:.78rem;color:var(--text-muted);margin-bottom:14px">Topics covered across the '+conducted.length+' delivered workshops this semester:</div>';
+  html += '<div style="font-size:.78rem;color:var(--text-muted);margin-bottom:14px">Topics covered across '+conducted.length+' delivered workshops (all series):</div>';
   html += '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px">';
   THEMES.forEach(function(t){
     var cnt = themeCounts[t.label];
     if(cnt>0) html += themeTag(t.label+' &nbsp;·&nbsp; '+cnt, t.color);
   });
-  // Themes from scheduled-but-not-yet-delivered workshops
+  // Themes from upcoming workshops across all series
   var upcomingThemes = [];
-  WORKSHOPS.filter(function(w){ return !w.conducted && !w.cancelled; }).forEach(function(w){
+  getAllWsSessions().filter(function(w){ return !w.conducted && !w.cancelled; }).forEach(function(w){
     var n = w.name.toLowerCase();
     THEMES.forEach(function(t){
       if(t.words.some(function(kw){ return n.indexOf(kw)>=0; }) && upcomingThemes.indexOf(t.label)<0)
@@ -5733,7 +6023,7 @@ function renderImpactTab(){
   });
   html += '</div>';
   if(upcomingThemes.length){
-    html += '<div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Coming this semester:</div>';
+    html += '<div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Coming up (upcoming sessions):</div>';
     html += '<div style="display:flex;flex-wrap:wrap;gap:6px">';
     upcomingThemes.forEach(function(lbl){
       var t = THEMES.find(function(t2){ return t2.label===lbl; });
@@ -5742,7 +6032,7 @@ function renderImpactTab(){
     html += '</div>';
   }
   // Full workshop topic list
-  html += '<details style="margin-top:14px"><summary style="font-size:.78rem;font-weight:700;color:var(--ya-blue);cursor:pointer;padding:4px 0">📋 All workshop topics delivered this semester</summary>';
+  html += '<details style="margin-top:14px"><summary style="font-size:.78rem;font-weight:700;color:var(--ya-blue);cursor:pointer;padding:4px 0">📋 All workshop topics delivered (all series)</summary>';
   html += '<div style="margin-top:10px;display:flex;flex-direction:column;gap:4px">';
   conducted.forEach(function(w){
     html += '<div style="font-size:.81rem;color:var(--text-main);padding:4px 0;border-bottom:1px solid rgba(255,255,255,.04)">'+
@@ -8992,7 +9282,7 @@ function getWsFacilitators(ws) {
     return names;
   }
   // Not yet saved via modal — merge hardcoded defaults with FAC_PROFILES additions
-  var facNames = ws.facilitators.slice();
+  var facNames = (ws.facilitators || []).slice();
   Object.values(FAC_PROFILES).forEach(function(p) {
     if (p.facilitated && p.facilitated.indexOf(ws.id) >= 0 && facNames.indexOf(p.name) < 0) {
       facNames.push(p.name);
@@ -9020,16 +9310,12 @@ function getWsVolunteers(ws) {
 
 function getNextUpcomingWorkshop(){
   var now = new Date(); now.setHours(0,0,0,0);
-  var months={Jan:0,Feb:1,Mar:2,Apr:3,May:4,Jun:5,Jul:6,Aug:7,Sep:8,Oct:9,Nov:10,Dec:11};
-  return WORKSHOPS.filter(function(w){
+  return getAllWsSessions().filter(function(w){
     if(w.cancelled||w.conducted) return false;
-    var p = w.date.replace(',','').split(' ');
-    if(p.length < 3) return false;
-    var d = new Date(parseInt(p[2]), months[p[0]], parseInt(p[1]));
+    var d = wsParseDisplayDate(w.date);
     return d >= now;
   }).sort(function(a,b){
-    function toDate(s){var p=s.replace(',','').split(' ');return new Date(parseInt(p[2]),months[p[0]],parseInt(p[1]));}
-    return toDate(a.date)-toDate(b.date);
+    return wsParseDisplayDate(a.date) - wsParseDisplayDate(b.date);
   })[0] || null;
 }
 
@@ -9172,11 +9458,11 @@ function renderAdultEventHistory(name){
   if(facKey){
     var prof=FAC_PROFILES[facKey];
     prof.facilitated.forEach(function(id){
-      var ws=WORKSHOPS.find(function(w){return w.id===id;});
+      var ws=getAllWsSessions().find(function(w){return w.id===id;});
       if(ws&&ws.conducted) rows.push({type:'fac',name:'Facilitated: '+ws.name,date:ws.date,hrs:2,color:'var(--ya-orange)'});
     });
     prof.volunteered.forEach(function(id){
-      var ws=WORKSHOPS.find(function(w){return w.id===id;});
+      var ws=getAllWsSessions().find(function(w){return w.id===id;});
       if(ws&&ws.conducted) rows.push({type:'vol',name:'Volunteered: '+ws.name,date:ws.date,hrs:2,color:'var(--ya-blue)'});
     });
   }
@@ -9417,7 +9703,7 @@ function renderAdultScrabbleTable(){
 
 
 function toggleWsCancel(id){
-  var ws=WORKSHOPS.find(function(w){return w.id===id;});
+  var ws=getAllWsSessions().find(function(w){return w.id===id;});
   if(!ws) return;
   ws.adminCancelled=!ws.adminCancelled;
   if(ws.adminCancelled){
@@ -10222,17 +10508,18 @@ function showELInfo(){
   if(!modal) return;
   var list=document.getElementById('el-workshops-list');
   if(list && list.innerHTML===''){
-    list.innerHTML=EL_WORKSHOP_INFO.map(function(w){
-      var conducted=WORKSHOPS.find(function(ws){return ws.id===w.num&&ws.conducted;});
-      var badge=conducted?
-        '<span style="font-size:.68rem;padding:2px 8px;border-radius:6px;background:rgba(0,181,160,.15);color:var(--ya-teal);font-weight:700;margin-left:8px">✔ Delivered</span>':'';
+    var activeTemplates = WS_TEMPLATES.filter(function(t){ return t.active; }).sort(function(a,b){ return a.sort_order-b.sort_order; });
+    list.innerHTML=activeTemplates.map(function(t){
+      // Check if delivered in any series
+      var delivered = getDeliveredWorkshops().some(function(ws){ return ws.name === t.title || ws.template_id === t.workshop_id; });
+      var badge=delivered?'<span style="font-size:.68rem;padding:2px 8px;border-radius:6px;background:rgba(0,181,160,.15);color:var(--ya-teal);font-weight:700;margin-left:8px">✔ Delivered</span>':'';
       return '<div style="padding:14px 0;border-bottom:1px solid rgba(255,255,255,.06)">'+
         '<div style="display:flex;align-items:center;margin-bottom:6px">'+
-          '<div style="background:rgba(29,127,212,.15);border:1px solid rgba(29,127,212,.2);border-radius:8px;padding:3px 10px;font-size:.75rem;font-weight:800;color:var(--ya-blue);margin-right:10px;flex-shrink:0">#'+w.num+'</div>'+
-          '<div style="font-family:Nunito,sans-serif;font-size:.95rem;font-weight:800;color:var(--text-main)">'+w.name+'</div>'+
+          '<div style="background:rgba(29,127,212,.15);border:1px solid rgba(29,127,212,.2);border-radius:8px;padding:3px 10px;font-size:.75rem;font-weight:800;color:var(--ya-blue);margin-right:10px;flex-shrink:0">#'+t.sort_order+'</div>'+
+          '<div style="font-family:Nunito,sans-serif;font-size:.95rem;font-weight:800;color:var(--text-main)">'+t.title+'</div>'+
           badge+
         '</div>'+
-        '<div style="font-size:.82rem;color:var(--text-muted);line-height:1.55;padding-left:4px">'+w.desc+'</div>'+
+        '<div style="font-size:.82rem;color:var(--text-muted);line-height:1.55;padding-left:4px">'+t.description+'</div>'+
         '</div>';
     }).join('');
   }
@@ -10310,9 +10597,328 @@ function addELYouth(){
   renderAdmin();
 }
 
-// ══════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════════════════
+// WORKSHOP TEMPLATE LIBRARY & SERIES MANAGEMENT (ADMIN)
+// ══════════════════════════════════════════════════════════════════════════
+
+// Render the Template Library list in admin
+function renderWsTemplateList() {
+  var el = document.getElementById('ws-template-list');
+  if (!el) return;
+  var active = WS_TEMPLATES.filter(function(t){ return t.active; }).sort(function(a,b){ return a.sort_order - b.sort_order; });
+  var archived = WS_TEMPLATES.filter(function(t){ return !t.active; });
+  var html = '';
+  active.forEach(function(t) {
+    var defFacs = (t.default_facilitators||[]).filter(function(n){ return n && n !== 'TBD'; }).join(', ') || 'TBD';
+    html += '<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid rgba(255,255,255,.06)">' +
+      '<span style="font-size:.72rem;font-weight:800;color:var(--ya-teal);min-width:24px">#'+t.sort_order+'</span>' +
+      '<div style="flex:1">' +
+        '<div style="font-size:.83rem;font-weight:700">'+t.title+'</div>' +
+        '<div style="font-size:.72rem;color:var(--text-muted)">Default: '+defFacs+'</div>' +
+      '</div>' +
+      '<button onclick="wsTemplateMoveUp('+t.workshop_id+')" title="Move up" style="border:none;background:rgba(255,255,255,.06);border-radius:5px;padding:3px 7px;cursor:pointer;color:var(--text-muted);font-size:.75rem">↑</button>' +
+      '<button onclick="wsTemplateMoveDown('+t.workshop_id+')" title="Move down" style="border:none;background:rgba(255,255,255,.06);border-radius:5px;padding:3px 7px;cursor:pointer;color:var(--text-muted);font-size:.75rem">↓</button>' +
+      '<button onclick="wsTemplateEditFacilitator('+t.workshop_id+')" title="Edit default facilitator" style="border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.04);border-radius:5px;padding:3px 8px;cursor:pointer;color:var(--ya-blue);font-size:.72rem">✏️</button>' +
+      '<button onclick="wsTemplateArchive('+t.workshop_id+')" title="Archive" style="border:1px solid rgba(239,68,68,.3);background:rgba(239,68,68,.05);border-radius:5px;padding:3px 8px;cursor:pointer;color:var(--badge-red);font-size:.72rem">Archive</button>' +
+      '</div>';
+  });
+  if (archived.length) {
+    html += '<div style="font-size:.7rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;margin:10px 0 5px">Archived</div>';
+    archived.forEach(function(t) {
+      html += '<div style="display:flex;align-items:center;gap:8px;padding:5px 0;opacity:.6">' +
+        '<span style="font-size:.72rem;font-weight:800;color:var(--text-muted);min-width:24px">—</span>' +
+        '<div style="flex:1"><div style="font-size:.83rem;font-weight:700;text-decoration:line-through">'+t.title+'</div></div>' +
+        '<button onclick="wsTemplateRestore('+t.workshop_id+')" style="border:1px solid rgba(0,181,160,.4);background:rgba(0,181,160,.06);border-radius:5px;padding:3px 8px;cursor:pointer;color:var(--ya-teal);font-size:.72rem">Restore</button>' +
+        '</div>';
+    });
+  }
+  el.innerHTML = html || '<div style="color:var(--text-muted);font-size:.82rem">No templates defined.</div>';
+}
+
+function wsTemplateMoveUp(id) {
+  var t = WS_TEMPLATES.find(function(t){ return t.workshop_id === id; });
+  if (!t || t.sort_order <= 1) return;
+  var other = WS_TEMPLATES.filter(function(x){ return x.active; }).sort(function(a,b){ return a.sort_order-b.sort_order; });
+  var idx = other.findIndex(function(x){ return x.workshop_id === id; });
+  if (idx <= 0) return;
+  var prev = other[idx - 1];
+  var tmp = t.sort_order; t.sort_order = prev.sort_order; prev.sort_order = tmp;
+  saveWsTemplatesToDB();
+  renderWsTemplateList();
+}
+
+function wsTemplateMoveDown(id) {
+  var t = WS_TEMPLATES.find(function(t){ return t.workshop_id === id; });
+  if (!t) return;
+  var other = WS_TEMPLATES.filter(function(x){ return x.active; }).sort(function(a,b){ return a.sort_order-b.sort_order; });
+  var idx = other.findIndex(function(x){ return x.workshop_id === id; });
+  if (idx < 0 || idx >= other.length - 1) return;
+  var next = other[idx + 1];
+  var tmp = t.sort_order; t.sort_order = next.sort_order; next.sort_order = tmp;
+  saveWsTemplatesToDB();
+  renderWsTemplateList();
+}
+
+function wsTemplateArchive(id) {
+  var t = WS_TEMPLATES.find(function(t){ return t.workshop_id === id; });
+  if (!t || !confirm('Archive "'+t.title+'"? It won\'t be used in future series. Historical sessions are unaffected.')) return;
+  t.active = false;
+  saveWsTemplatesToDB();
+  renderWsTemplateList();
+}
+
+function wsTemplateRestore(id) {
+  var t = WS_TEMPLATES.find(function(t){ return t.workshop_id === id; });
+  if (!t) return;
+  t.active = true;
+  var maxOrder = Math.max.apply(null, WS_TEMPLATES.filter(function(x){ return x.active; }).map(function(x){ return x.sort_order||0; }));
+  t.sort_order = maxOrder + 1;
+  saveWsTemplatesToDB();
+  renderWsTemplateList();
+}
+
+function wsTemplateEditFacilitator(id) {
+  var t = WS_TEMPLATES.find(function(t){ return t.workshop_id === id; });
+  if (!t) return;
+  var allAdults = Object.values(FAC_PROFILES).map(function(p){ return p.name; }).sort();
+  var modal = document.createElement('div');
+  modal.style.cssText = 'position:fixed;inset:0;z-index:2000;background:rgba(0,0,0,.75);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;padding:20px';
+  modal.innerHTML = '<div style="background:var(--card-bg);border:1px solid var(--card-border);border-radius:16px;padding:24px;width:100%;max-width:420px">' +
+    '<div style="font-family:Nunito,sans-serif;font-weight:900;font-size:1rem;margin-bottom:14px">✏️ Edit Default Facilitator — '+t.title+'</div>' +
+    '<div style="font-size:.75rem;color:var(--text-muted);margin-bottom:10px">This sets the default for <strong>new series only</strong>. Existing sessions are unaffected.</div>' +
+    '<select id="ws-tmpl-fac-sel" style="width:100%;background:#0f1c2e;border:1px solid rgba(255,255,255,.15);border-radius:8px;padding:8px 12px;color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem;margin-bottom:16px">' +
+    '<option value="TBD">TBD</option>' +
+    allAdults.map(function(n){ return '<option value="'+n+'"'+(t.default_facilitators&&t.default_facilitators[0]===n?' selected':'')+'>'+n+'</option>'; }).join('') +
+    '</select>' +
+    '<div style="display:flex;gap:8px;justify-content:flex-end">' +
+    '<button onclick="this.closest(\'div[style*=fixed]\').remove()" style="padding:8px 16px;border-radius:9px;border:1px solid rgba(255,255,255,.15);background:transparent;color:var(--text-muted);font-family:Nunito,sans-serif;cursor:pointer">Cancel</button>' +
+    '<button onclick="(function(){var v=document.getElementById(\'ws-tmpl-fac-sel\').value;var t=WS_TEMPLATES.find(function(x){return x.workshop_id==='+id+';});if(t)t.default_facilitators=[v];saveWsTemplatesToDB();renderWsTemplateList();this.closest(\'div[style*=fixed]\').remove();}).call(this)" style="padding:8px 18px;border-radius:9px;border:none;background:var(--ya-teal);color:#fff;font-family:Nunito,sans-serif;font-weight:800;cursor:pointer">Save</button>' +
+    '</div></div>';
+  document.body.appendChild(modal);
+}
+
+function openAddTemplateModal() {
+  var modal = document.createElement('div');
+  modal.style.cssText = 'position:fixed;inset:0;z-index:2000;background:rgba(0,0,0,.75);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;padding:20px';
+  var allAdults = Object.values(FAC_PROFILES).map(function(p){ return p.name; }).sort();
+  modal.innerHTML = '<div style="background:var(--card-bg);border:1px solid var(--card-border);border-radius:16px;padding:24px;width:100%;max-width:460px">' +
+    '<div style="font-family:Nunito,sans-serif;font-weight:900;font-size:1rem;margin-bottom:16px">📚 Add Workshop Topic</div>' +
+    '<div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px">Title</div>' +
+    '<input id="ws-add-tmpl-title" type="text" placeholder="e.g. Environmental Stewardship" style="width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.15);border-radius:8px;padding:8px 12px;color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.88rem;box-sizing:border-box;margin-bottom:10px">' +
+    '<div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px">Description</div>' +
+    '<textarea id="ws-add-tmpl-desc" rows="2" placeholder="Brief workshop description..." style="width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.15);border-radius:8px;padding:8px 12px;color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem;resize:vertical;box-sizing:border-box;margin-bottom:10px"></textarea>' +
+    '<div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px">Default Facilitator</div>' +
+    '<select id="ws-add-tmpl-fac" style="width:100%;background:#0f1c2e;border:1px solid rgba(255,255,255,.15);border-radius:8px;padding:8px 12px;color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem;margin-bottom:16px">' +
+    '<option value="TBD">TBD</option>' + allAdults.map(function(n){ return '<option value="'+n+'">'+n+'</option>'; }).join('') +
+    '</select>' +
+    '<div id="ws-add-tmpl-err" style="font-size:.78rem;color:var(--badge-red);min-height:16px;margin-bottom:8px"></div>' +
+    '<div style="display:flex;gap:8px;justify-content:flex-end">' +
+    '<button onclick="this.closest(\'div[style*=fixed]\').remove()" style="padding:8px 16px;border-radius:9px;border:1px solid rgba(255,255,255,.15);background:transparent;color:var(--text-muted);font-family:Nunito,sans-serif;cursor:pointer">Cancel</button>' +
+    '<button onclick="addWsTemplate()" style="padding:8px 20px;border-radius:9px;border:none;background:var(--ya-teal);color:#fff;font-family:Nunito,sans-serif;font-weight:800;font-size:.88rem;cursor:pointer">＋ Add</button>' +
+    '</div></div>';
+  document.body.appendChild(modal);
+}
+
+function addWsTemplate() {
+  var title = (document.getElementById('ws-add-tmpl-title')||{}).value || '';
+  var desc  = (document.getElementById('ws-add-tmpl-desc')||{}).value || '';
+  var fac   = (document.getElementById('ws-add-tmpl-fac')||{}).value || 'TBD';
+  var err   = document.getElementById('ws-add-tmpl-err');
+  if (!title.trim()) { if(err) err.textContent = 'Title is required.'; return; }
+  var maxId    = Math.max.apply(null, WS_TEMPLATES.map(function(t){ return t.workshop_id||0; })) + 1;
+  var maxOrder = Math.max.apply(null, WS_TEMPLATES.filter(function(t){ return t.active; }).map(function(t){ return t.sort_order||0; })) + 1;
+  WS_TEMPLATES.push({ workshop_id: maxId, title: title.trim(), description: desc.trim(), default_facilitators: [fac], active: true, sort_order: maxOrder });
+  saveWsTemplatesToDB();
+  renderWsTemplateList();
+  var modal = document.querySelector('div[style*="position:fixed"][style*="z-index:2000"]');
+  if (modal && modal.querySelector('#ws-add-tmpl-title')) modal.remove();
+}
+
+function saveWsTemplatesToDB() {
+  // Persist template array to program_settings as JSON
+  var payload = { program_id: 'ws_templates', cert_notes: JSON.stringify(WS_TEMPLATES) };
+  fetch(SUPA_URL + '/rest/v1/program_settings?on_conflict=program_id', {
+    method: 'POST',
+    headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY,
+      'Content-Type': 'application/json', 'Prefer': 'resolution=merge-duplicates,return=minimal' },
+    body: JSON.stringify(payload)
+  }).then(function(r){ if(!r.ok) console.warn('saveWsTemplatesToDB failed'); });
+}
+
+// ── generateSeriesSessions — creates session objects from templates ────────
+// series: { id, name, meeting_day, icon, color, id_base }
+// startTemplateIdx: 0-based index into active sorted templates to start from
+// dates: array of non-holiday date strings (pre-computed or via generateMeetingDates)
+function generateSeriesSessions(series, startTemplateIdx, dates) {
+  var active = WS_TEMPLATES.filter(function(t){ return t.active; }).sort(function(a,b){ return a.sort_order-b.sort_order; });
+  return dates.map(function(date, i) {
+    var tIdx = (startTemplateIdx + i) % active.length;
+    var t = active[tIdx];
+    return {
+      id: series.id_base + i,
+      series_id: series.id,
+      series_num: i + 1,
+      name: t ? t.title : 'Workshop ' + (i + 1),
+      template_id: t ? t.workshop_id : null,
+      facilitators: (t && t.default_facilitators && t.default_facilitators.length) ? t.default_facilitators.slice() : ['TBD'],
+      volunteers: [],
+      date: date,
+      conducted: false,
+      cancelled: false
+    };
+  });
+}
+
+// Generate all non-holiday meeting dates between startDate and endDate for dayName
+function generateMeetingDates(startDateStr, endDateStr, dayName) {
+  var dayMap = {sunday:0,monday:1,tuesday:2,wednesday:3,thursday:4,friday:5,saturday:6};
+  var targetDay = dayMap[(dayName||'Monday').toLowerCase().trim()];
+  if (targetDay === undefined) targetDay = 1;
+  var mNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  var s = wsParseDisplayDate(startDateStr);
+  var e = wsParseDisplayDate(endDateStr);
+  if (isNaN(s.getTime()) || isNaN(e.getTime())) return [];
+  // Advance s to first targetDay on or after start
+  var offset = (targetDay - s.getDay() + 7) % 7;
+  s.setDate(s.getDate() + offset);
+  var dates = [];
+  while (s <= e) {
+    if (!isHoliday(s)) {
+      dates.push(mNames[s.getMonth()] + ' ' + s.getDate() + ', ' + s.getFullYear());
+    }
+    s.setDate(s.getDate() + 7);
+  }
+  return dates;
+}
+
+// ── Schedule Next Series modal ────────────────────────────────────────────
+function openScheduleNextSeriesModal() {
+  // Find next available id_base (use 1001+ for DB-created series)
+  var existingBases = Object.values(WS_SERIES_DB).map(function(s){ return s.id_base||0; });
+  var nextBase = existingBases.length ? Math.max.apply(null, existingBases) + 100 : 1001;
+  var dayOpts = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'].map(function(d){
+    return '<option value="'+d+'"'+(d==='Monday'?' selected':'')+'>'+d+'</option>';
+  }).join('');
+  var tmplOpts = WS_TEMPLATES.filter(function(t){ return t.active; }).sort(function(a,b){ return a.sort_order-b.sort_order; }).map(function(t){
+    return '<option value="'+t.sort_order+'">#'+t.sort_order+' '+t.title+'</option>';
+  }).join('');
+  var modal = document.createElement('div');
+  modal.id = 'schedule-series-modal';
+  modal.style.cssText = 'position:fixed;inset:0;z-index:2000;background:rgba(0,0,0,.75);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;padding:20px';
+  modal.innerHTML = '<div style="background:var(--card-bg);border:1px solid var(--card-border);border-radius:16px;padding:24px;width:100%;max-width:500px;max-height:90vh;overflow-y:auto">' +
+    '<div style="font-family:Nunito,sans-serif;font-weight:900;font-size:1.05rem;margin-bottom:4px">📅 Schedule Next Series</div>' +
+    '<div style="font-size:.78rem;color:var(--text-muted);margin-bottom:18px">Generates a complete new workshop series from the current Template Library. Historical data is unaffected.</div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">' +
+    '<div style="grid-column:1/-1"><div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px">Series Name</div><input id="sns-name" type="text" placeholder="e.g. Winter 2027" style="width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.15);border-radius:8px;padding:8px 12px;color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.88rem;box-sizing:border-box"></div>' +
+    '<div><div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px">Start Date</div><input id="sns-start" type="date" style="width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.15);border-radius:8px;padding:8px 12px;color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem;box-sizing:border-box"></div>' +
+    '<div><div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px">End Date</div><input id="sns-end" type="date" style="width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.15);border-radius:8px;padding:8px 12px;color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem;box-sizing:border-box"></div>' +
+    '<div><div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px">Meeting Day</div><select id="sns-day" style="width:100%;background:#0f1c2e;border:1px solid rgba(255,255,255,.15);border-radius:8px;padding:8px 12px;color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem">'+dayOpts+'</select></div>' +
+    '<div><div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px">Start from Template</div><select id="sns-tmpl" style="width:100%;background:#0f1c2e;border:1px solid rgba(255,255,255,.15);border-radius:8px;padding:8px 12px;color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem">'+tmplOpts+'</select></div>' +
+    '</div>' +
+    '<div id="sns-preview" style="font-size:.78rem;color:var(--text-muted);background:rgba(255,255,255,.04);border-radius:8px;padding:10px;min-height:32px;margin-bottom:14px">Set dates above to preview sessions…</div>' +
+    '<div id="sns-err" style="font-size:.78rem;color:var(--badge-red);min-height:16px;margin-bottom:8px"></div>' +
+    '<div style="display:flex;gap:8px;justify-content:flex-end">' +
+    '<button onclick="document.getElementById(\'schedule-series-modal\').remove()" style="padding:8px 16px;border-radius:9px;border:1px solid rgba(255,255,255,.15);background:transparent;color:var(--text-muted);font-family:Nunito,sans-serif;cursor:pointer">Cancel</button>' +
+    '<button onclick="previewScheduledSeries()" style="padding:8px 16px;border-radius:9px;border:1px solid var(--ya-blue);background:rgba(29,127,212,.1);color:var(--ya-blue);font-family:Nunito,sans-serif;font-weight:700;font-size:.85rem;cursor:pointer">Preview</button>' +
+    '<button onclick="saveScheduledSeries('+nextBase+')" style="padding:8px 20px;border-radius:9px;border:none;background:var(--ya-teal);color:#fff;font-family:Nunito,sans-serif;font-weight:800;font-size:.88rem;cursor:pointer">✅ Generate Series</button>' +
+    '</div></div>';
+  document.body.appendChild(modal);
+}
+
+function previewScheduledSeries() {
+  var name     = (document.getElementById('sns-name')||{}).value||'';
+  var startISO = (document.getElementById('sns-start')||{}).value||'';
+  var endISO   = (document.getElementById('sns-end')||{}).value||'';
+  var day      = (document.getElementById('sns-day')||{}).value||'Monday';
+  var tmplPos  = parseInt((document.getElementById('sns-tmpl')||{}).value||'1') - 1;
+  var preview  = document.getElementById('sns-preview');
+  if (!startISO || !endISO) { if(preview) preview.textContent = 'Set start and end dates to preview.'; return; }
+  var startStr = bookISOToDisplay(startISO);
+  var endStr   = bookISOToDisplay(endISO);
+  var dates = generateMeetingDates(startStr, endStr, day);
+  if (!dates.length) { if(preview) preview.innerHTML = '<span style="color:var(--badge-red)">No valid sessions found. Check dates and day.</span>'; return; }
+  var active = WS_TEMPLATES.filter(function(t){ return t.active; }).sort(function(a,b){ return a.sort_order-b.sort_order; });
+  var rows = dates.map(function(d, i) {
+    var t = active[(tmplPos + i) % active.length];
+    return '<div style="padding:2px 0">' + d + ' — <strong>' + (t?t.title:'Workshop '+(i+1)) + '</strong></div>';
+  }).join('');
+  if(preview) preview.innerHTML = '<strong>' + dates.length + ' sessions</strong> · Holidays skipped automatically<div style="margin-top:6px;max-height:160px;overflow-y:auto">' + rows + '</div>';
+}
+
+function saveScheduledSeries(idBase) {
+  var name     = ((document.getElementById('sns-name')||{}).value||'').trim();
+  var startISO = (document.getElementById('sns-start')||{}).value||'';
+  var endISO   = (document.getElementById('sns-end')||{}).value||'';
+  var day      = (document.getElementById('sns-day')||{}).value||'Monday';
+  var tmplPos  = parseInt((document.getElementById('sns-tmpl')||{}).value||'1') - 1;
+  var err      = document.getElementById('sns-err');
+  if (!name)    { if(err) err.textContent='Series name is required.'; return; }
+  if (!startISO||!endISO) { if(err) err.textContent='Start and end dates are required.'; return; }
+  var startStr = bookISOToDisplay(startISO);
+  var endStr   = bookISOToDisplay(endISO);
+  var dates = generateMeetingDates(startStr, endStr, day);
+  if (!dates.length) { if(err) err.textContent='No valid sessions found. Check dates.'; return; }
+  var seriesId = 'series_'+idBase;
+  var series = {
+    id: seriesId, name: name, start_date: startStr, end_date: endStr,
+    meeting_day: day, archived: false, id_base: idBase, id_max: idBase + 99,
+    icon: '📅', color: 'var(--ya-blue)'
+  };
+  WS_SERIES_DB[seriesId] = series;
+  var sessions = generateSeriesSessions(series, tmplPos, dates);
+  WS_FUTURE_SERIES_SESSIONS[seriesId] = sessions;
+  // Save series metadata to DB
+  var payload = { program_id: 'ws_series_'+seriesId, cert_notes: JSON.stringify({series: series, sessions: sessions}) };
+  fetch(SUPA_URL + '/rest/v1/program_settings?on_conflict=program_id', {
+    method: 'POST',
+    headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY,
+      'Content-Type': 'application/json', 'Prefer': 'resolution=merge-duplicates,return=minimal' },
+    body: JSON.stringify(payload)
+  }).then(function(r){ if(!r.ok) console.warn('saveScheduledSeries failed'); else console.log('Series saved:', name, sessions.length, 'sessions'); });
+  document.getElementById('schedule-series-modal').remove();
+  renderAdmin();
+  alert('✅ '+name+' created with '+sessions.length+' sessions. Holidays skipped automatically.');
+}
+
+// Load any admin-created series from program_settings on startup
+async function loadWsSeriesFromDB() {
+  try {
+    // Load template overrides
+    var tmplRow = await dbGet('program_settings', 'select=cert_notes&program_id=eq.ws_templates');
+    if (tmplRow && tmplRow.length && tmplRow[0].cert_notes) {
+      try {
+        var saved = JSON.parse(tmplRow[0].cert_notes);
+        if (Array.isArray(saved)) {
+          saved.forEach(function(s) {
+            var t = WS_TEMPLATES.find(function(t){ return t.workshop_id === s.workshop_id; });
+            if (t) { Object.assign(t, s); }
+            else WS_TEMPLATES.push(s);
+          });
+          WS_TEMPLATES_DB_LOADED = true;
+          console.log('WS_TEMPLATES loaded from DB');
+        }
+      } catch(e) { console.warn('WS_TEMPLATES parse error', e); }
+    }
+    // Load DB-created series
+    var seriesRows = await dbGet('program_settings', 'select=program_id,cert_notes&program_id=like.ws_series_series_%25');
+    if (seriesRows && seriesRows.length) {
+      seriesRows.forEach(function(row) {
+        try {
+          var data = JSON.parse(row.cert_notes);
+          if (data && data.series && data.sessions) {
+            WS_SERIES_DB[data.series.id] = data.series;
+            WS_FUTURE_SERIES_SESSIONS[data.series.id] = data.sessions;
+          }
+        } catch(e) { console.warn('Series parse error', row.program_id, e); }
+      });
+      console.log('WS_SERIES loaded from DB:', seriesRows.length, 'series');
+    }
+  } catch(e) { console.warn('loadWsSeriesFromDB error', e); }
+}
+
+// ══════════════════════════════════════════════════════════════════════════
 // YOUTH WORKSHOP ATTENDANCE TABLE (ADMIN)
-// ══════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════════════════
 
 var wsAttEditMode = false;
 
@@ -10341,15 +10947,20 @@ function toggleWsAttEditMode(){
 }
 
 function markWorkshopDone(wsId) {
-  var ws = WORKSHOPS.find(function(w){ return w.id === wsId; });
+  // Look up in all series
+  var ws = getAllWsSessions().find(function(w){ return w.id === wsId; });
   if(!ws) return;
   if(!confirm('Mark #'+wsId+' "'+ws.name+'" ('+ws.date+') as Done?\n\nThis will add it to the attendance tracker so you can enter youth attendance.')) return;
-  ws.conducted = true;
-  // Add to CONDUCTED_DATES if not already there
-  var months = {Jan:0,Feb:1,Mar:2,Apr:3,May:4,Jun:5,Jul:6,Aug:7,Sep:8,Oct:9,Nov:10,Dec:11};
-  var parts = ws.date.replace(',','').split(' ');
-  var normDate = parts[1]+'-'+parts[0]; // e.g. "30-Mar"
-  if(CONDUCTED_DATES.indexOf(normDate) < 0) CONDUCTED_DATES.push(normDate);
+  // Update in-memory: find in correct array
+  var inWinter = WORKSHOPS.find(function(w){ return w.id === wsId; });
+  var inFall   = WS_FALL_2026.find(function(w){ return w.id === wsId; });
+  if(inWinter) inWinter.conducted = true;
+  if(inFall)   { inFall.conducted = true; WS_FALL_2026_DB_OVERRIDES[wsId] = Object.assign(WS_FALL_2026_DB_OVERRIDES[wsId]||{}, {conducted:true}); }
+  // Update Future series if applicable
+  Object.keys(WS_FUTURE_SERIES_SESSIONS).forEach(function(sid){
+    var s = (WS_FUTURE_SERIES_SESSIONS[sid]||[]).find(function(w){ return w.id === wsId; });
+    if(s) s.conducted = true;
+  });
   // Persist to Supabase
   dbPost('workshop_conducted', { workshop_id: wsId, conducted: true, marked_at: new Date().toISOString() })
     .then(function(){ console.log('Workshop marked done in DB:', wsId); });
@@ -10358,7 +10969,7 @@ function markWorkshopDone(wsId) {
 }
 
 function openWsStaffEdit(wsId) {
-  var ws = WORKSHOPS.find(function(w){ return w.id === wsId; });
+  var ws = getAllWsSessions().find(function(w){ return w.id === wsId; });
   if(!ws) return;
 
   // Use helpers so DB staffing data fully overrides hardcoded defaults in the modal too
@@ -10433,7 +11044,7 @@ function wsRemoveStaff(type, name) {
 }
 
 function wsStaffSave(wsId) {
-  var ws = WORKSHOPS.find(function(w){ return w.id === wsId; });
+  var ws = getAllWsSessions().find(function(w){ return w.id === wsId; });
   if(!ws) return;
 
   var facList = document.getElementById('ws-fac-list');
@@ -10444,9 +11055,13 @@ function wsStaffSave(wsId) {
   // Mark this workshop as DB-staffed so hardcoded defaults are ignored everywhere
   WS_STAFFED_BY_DB.add(wsId);
 
-  // Update in-memory WORKSHOPS array (used for current session rendering)
+  // Update in-memory: mutate the session in whichever array it lives in
   ws.facilitators = newFac;
   ws.volunteers = newVol;
+  // Also track DB overrides for Fall 2026 array so regeneration-safe
+  if(ws.series_id === 'fall_2026') {
+    WS_FALL_2026_DB_OVERRIDES[wsId] = Object.assign(WS_FALL_2026_DB_OVERRIDES[wsId]||{}, {facilitators: newFac, volunteers: newVol});
+  }
 
   // Update FAC_PROFILES to reflect changes
   Object.keys(FAC_PROFILES).forEach(function(key){
@@ -11314,6 +11929,18 @@ async function initDB() {
       workshop_id integer primary key, conducted boolean default true,
       marked_at timestamptz default now()
     );
+    -- Workshop Template Library (persisted admin edits to master sequence)
+    -- Stored in program_settings as JSON under program_id = 'ws_templates'
+    -- Workshop Series (admin-created future series)
+    -- Stored in program_settings as JSON under program_id = 'ws_series_<id>'
+    -- These reuse the existing program_settings table via cert_notes JSON column.
+    -- Ensure program_settings has cert_notes column (already added in earlier migration)
+    alter table program_settings add column if not exists cert_notes text;
+    -- workshop_series_sessions: per-session DB overrides for non-winter series
+    -- (facilitator edits, conducted status for fall 2026+)
+    -- These are stored in the existing workshop_conducted + workshop_cancellations tables
+    -- using the session integer IDs (101-113 for fall 2026, 1001+ for future series).
+    -- No new tables required — existing schema is ID-namespace safe.
     create table if not exists scrabble_sessions (
       id bigserial primary key,
       player_name text not null,
@@ -12115,8 +12742,11 @@ async function loadWorkshopCancellations() {
   var rows = await dbGet('workshop_cancellations', 'select=workshop_id');
   if(!rows || !rows.length) return;
   rows.forEach(function(row){
-    var ws = WORKSHOPS.find(function(w){ return w.id === row.workshop_id; });
+    var ws = getAllWsSessions().find(function(w){ return w.id === row.workshop_id; });
     if(ws) ws.adminCancelled = true;
+    // Also mark the source array directly
+    var inFall = WS_FALL_2026.find(function(w){ return w.id === row.workshop_id; });
+    if(inFall) { inFall.adminCancelled = true; WS_FALL_2026_DB_OVERRIDES[row.workshop_id] = Object.assign(WS_FALL_2026_DB_OVERRIDES[row.workshop_id]||{}, {adminCancelled:true}); }
   });
   console.log('Workshop cancellations loaded:', rows.length, 'rows');
 }
@@ -12125,16 +12755,23 @@ async function loadWorkshopConducted() {
   var rows = await dbGet('workshop_conducted', 'select=workshop_id,conducted');
   if(!rows || !rows.length) return;
   rows.forEach(function(row){
-    var ws = WORKSHOPS.find(function(w){ return w.id === row.workshop_id; });
-    if(ws && row.conducted) {
-      ws.conducted = true;
-      // Add to CONDUCTED_DATES if not already there
-      var parts = ws.date.replace(',','').split(' ');
-      if(parts.length >= 2){
-        var normDate = parts[1]+'-'+parts[0];
-        if(CONDUCTED_DATES.indexOf(normDate) < 0) CONDUCTED_DATES.push(normDate);
-      }
+    // Apply to whichever array the ID belongs to
+    var inWinter = WORKSHOPS.find(function(w){ return w.id === row.workshop_id; });
+    var inFall   = WS_FALL_2026.find(function(w){ return w.id === row.workshop_id; });
+    if(inWinter && row.conducted) {
+      inWinter.conducted = true;
+      var parts = inWinter.date.replace(',','').split(' ');
+      if(parts.length >= 2){ var normDate=parts[1]+'-'+parts[0]; if(CONDUCTED_DATES.indexOf(normDate)<0) CONDUCTED_DATES.push(normDate); }
     }
+    if(inFall && row.conducted) {
+      inFall.conducted = true;
+      WS_FALL_2026_DB_OVERRIDES[row.workshop_id] = Object.assign(WS_FALL_2026_DB_OVERRIDES[row.workshop_id]||{}, {conducted:true});
+    }
+    // Apply to any DB-created future series
+    Object.keys(WS_FUTURE_SERIES_SESSIONS).forEach(function(sid){
+      var s=(WS_FUTURE_SERIES_SESSIONS[sid]||[]).find(function(w){ return w.id===row.workshop_id; });
+      if(s&&row.conducted) s.conducted=true;
+    });
   });
   console.log('Workshop conducted status loaded:', rows.length, 'rows');
 }
@@ -12672,6 +13309,7 @@ async function dbStartup() {
       loadEventVolunteers(),
       loadWorkshopConducted(),
       loadWorkshopCancellations(),
+      loadWsSeriesFromDB(),
       loadProgramData(),
       loadGardenData(),
       loadJysepBooks().then(function(){ return loadAllJysepData(); }),

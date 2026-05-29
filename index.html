@@ -2362,13 +2362,13 @@ var WORKSHOPS=[
   {"id":9, "series_id":"winter_2026","series_num":9, "template_id":9,  "name":"Seeing Differently",       "facilitators":["Roberta Ehigiator","Mary-Beth Finney (Ursa)"],"date":"Mar 16, 2026","conducted":true,"volunteers":["Julie Robertson","Mimi Omoare","Kim Sundset"]},
   {"id":10,"series_id":"winter_2026","series_num":10,"template_id":10, "name":"Tools for Resilience",     "facilitators":["Olga Korcheva"],                  "date":"Mar 23, 2026","conducted":true, "volunteers":["Roberta Ehigiator","Kim Sundset"]},
   {"id":11,"series_id":"winter_2026","series_num":11,"template_id":11, "name":"Digital Detoxing",         "facilitators":["Tina Petrow"],                   "date":"Mar 30, 2026","conducted":true, "volunteers":[]},
-  {"id":12,"series_id":"winter_2026","series_num":12,"template_id":12, "name":"Bullying Prevention",      "facilitators":["Olga Korcheva"],                  "date":"Apr 13, 2026","conducted":false,"volunteers":[]},
-  {"id":13,"series_id":"winter_2026","series_num":13,"template_id":13, "name":"Healthy Debating",         "facilitators":["Tina Petrow"],                   "date":"Apr 20, 2026","conducted":false,"volunteers":[]},
-  {"id":14,"series_id":"winter_2026","series_num":14,"template_id":14, "name":"Health & Fitness",         "facilitators":["Tina Petrow"],                   "date":"Apr 27, 2026","conducted":false,"volunteers":[]},
-  {"id":15,"series_id":"winter_2026","series_num":15,"template_id":15, "name":"Healthy Spending",         "facilitators":["Connie Wu"],                     "date":"May 4, 2026", "conducted":false,"volunteers":[]},
-  {"id":16,"series_id":"winter_2026","series_num":16,"template_id":16, "name":"Leveraging Differences",   "facilitators":["Roberta Ehigiator"],             "date":"May 11, 2026","conducted":false,"volunteers":[]},
+  {"id":12,"series_id":"winter_2026","series_num":12,"template_id":12, "name":"Bullying Prevention",      "facilitators":["Olga Korcheva"],                  "date":"Apr 13, 2026","conducted":true, "volunteers":[]},
+  {"id":13,"series_id":"winter_2026","series_num":13,"template_id":13, "name":"Healthy Debating",         "facilitators":["Tina Petrow"],                   "date":"Apr 20, 2026","conducted":true, "volunteers":[]},
+  {"id":14,"series_id":"winter_2026","series_num":14,"template_id":14, "name":"Health & Fitness",         "facilitators":["Tina Petrow"],                   "date":"Apr 27, 2026","conducted":true, "volunteers":[]},
+  {"id":15,"series_id":"winter_2026","series_num":15,"template_id":15, "name":"Healthy Spending",         "facilitators":["Connie Wu"],                     "date":"May 4, 2026", "conducted":true, "volunteers":[]},
+  {"id":16,"series_id":"winter_2026","series_num":16,"template_id":16, "name":"Leveraging Differences",   "facilitators":["Roberta Ehigiator"],             "date":"May 11, 2026","conducted":true, "volunteers":[]},
   {"id":17,"series_id":"winter_2026","series_num":17,"template_id":17, "name":"Joy of Accomplishment",    "facilitators":["TBD"],                           "date":"CANCELLED",   "conducted":false,"cancelled":true,"volunteers":[]},
-  {"id":18,"series_id":"winter_2026","series_num":18,"template_id":18, "name":"Public Speaking",          "facilitators":["TBD"],                           "date":"May 25, 2026","conducted":false,"volunteers":[]}
+  {"id":18,"series_id":"winter_2026","series_num":18,"template_id":18, "name":"Public Speaking",          "facilitators":["TBD"],                           "date":"May 25, 2026","conducted":true, "volunteers":[]}
 ];
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -2565,6 +2565,34 @@ function getYouthLevel(ws,hrs){
   if(ws>=6&&hrs>=2)return 1;
   return 0;
 }
+
+// ── getYouthConductedWorkshops(name) ────────────────────────────────────────
+// SINGLE SOURCE OF TRUTH for all workshop counting.
+// Returns only the workshop IDs in EL_YOUTH[name] that correspond to a
+// CONDUCTED, non-cancelled session across ALL series.
+// This filters out: unconducted future workshops, cancelled workshops,
+// and any stale/orphaned IDs that do not match any known session.
+// All counting (level progress, stats, impact, attendance table) must use this.
+function getYouthConductedWorkshops(name) {
+  var allIds = EL_YOUTH[name] || [];
+  if (!allIds.length) return [];
+  // Build conducted ID set lazily (cached per render cycle via _conductedIdCache)
+  var conducted = _getConductedIdSet();
+  return allIds.filter(function(id) { return conducted.has(id); });
+}
+
+// Cache for conducted workshop IDs — rebuilt once per page cycle via invalidateConductedCache()
+var _conductedIdCache = null;
+function _getConductedIdSet() {
+  if (_conductedIdCache) return _conductedIdCache;
+  _conductedIdCache = new Set(
+    getAllWsSessions().filter(function(w){ return w.conducted && !w.cancelled && !w.adminCancelled; })
+    .map(function(w){ return w.id; })
+  );
+  return _conductedIdCache;
+}
+function invalidateConductedCache() { _conductedIdCache = null; }
+
 // ── isHoliday(date) — Canadian federal statutory holidays ────────────────
 // Returns true if the given Date object falls on a federal stat holiday.
 // Used to skip sessions when generating new series.
@@ -2888,7 +2916,9 @@ function renderYouth(){
 
   // ── Hours: admin-verified only (from YOUTH_HOURS, not self-reported) ──
   var hrs=YOUTH_HOURS[name]||0;
-  var cnt=ws.size;
+  // cnt = conducted workshops only — used for level, cert banner, stat card
+  var conductedSet = _getConductedIdSet();
+  var cnt=Array.from(ws).filter(function(id){ return conductedSet.has(id); }).length;
   var lvl=getYouthLevel(cnt,hrs);
 
   // Page title
@@ -3384,7 +3414,7 @@ function renderAdmin(){
   // Called on tab open via switchTab, and also after closeOutEvent
 
   var allNames=Object.keys(EL_YOUTH);
-  var lvl1=allNames.filter(function(n){return EL_YOUTH[n].length>=6;}).length;
+  var lvl1=allNames.filter(function(n){return getYouthConductedWorkshops(n).length>=6;}).length;
   var eid=function(id){return document.getElementById(id);};
   if(eid('a-lvl1'))eid('a-lvl1').textContent=lvl1;
 
@@ -5742,17 +5772,17 @@ function renderImpactTab(){
   });
 
   // ── Youth counts ─────────────────────────────────────────────────────────
-  var elParticipants = allYouthNames.filter(function(n){ return (EL_YOUTH[n]||[]).length > 0; });
+  var elParticipants = allYouthNames.filter(function(n){ return getYouthConductedWorkshops(n).length > 0; });
   var allYouthSet    = calcYouthParticipants(); // shared: EL + Scrabble(both qtrs) + Programs + Events
 
   // ── Leadership pipeline ───────────────────────────────────────────────────
-  var lvl1Eligible = allYouthNames.filter(function(n){ var c=(EL_YOUTH[n]||[]).length,h=YOUTH_HOURS[n]||0; return getYouthLevel(c,h)>=1; });
-  var lvl2Eligible = allYouthNames.filter(function(n){ var c=(EL_YOUTH[n]||[]).length,h=YOUTH_HOURS[n]||0; return getYouthLevel(c,h)>=2; });
-  var lvl3Eligible = allYouthNames.filter(function(n){ var c=(EL_YOUTH[n]||[]).length,h=YOUTH_HOURS[n]||0; return getYouthLevel(c,h)>=3; });
-  var nearLvl1     = allYouthNames.filter(function(n){ var c=(EL_YOUTH[n]||[]).length; return c>=4 && getYouthLevel(c,YOUTH_HOURS[n]||0)<1; });
-  var tenPlusWs    = allYouthNames.filter(function(n){ return (EL_YOUTH[n]||[]).length>=10; });
+  var lvl1Eligible = allYouthNames.filter(function(n){ var c=getYouthConductedWorkshops(n).length,h=YOUTH_HOURS[n]||0; return getYouthLevel(c,h)>=1; });
+  var lvl2Eligible = allYouthNames.filter(function(n){ var c=getYouthConductedWorkshops(n).length,h=YOUTH_HOURS[n]||0; return getYouthLevel(c,h)>=2; });
+  var lvl3Eligible = allYouthNames.filter(function(n){ var c=getYouthConductedWorkshops(n).length,h=YOUTH_HOURS[n]||0; return getYouthLevel(c,h)>=3; });
+  var nearLvl1     = allYouthNames.filter(function(n){ var c=getYouthConductedWorkshops(n).length; return c>=4 && getYouthLevel(c,YOUTH_HOURS[n]||0)<1; });
+  var tenPlusWs    = allYouthNames.filter(function(n){ return getYouthConductedWorkshops(n).length>=10; });
   var multiProgram = allYouthNames.filter(function(n){
-    var inWs = (EL_YOUTH[n]||[]).length > 0;
+    var inWs = getYouthConductedWorkshops(n).length > 0;
     var inScr = Object.keys(SCRABBLE_SESSIONS||{}).some(function(k){ return k.toLowerCase().trim()===n.toLowerCase().trim() && Object.keys(SCRABBLE_SESSIONS[k]||{}).length>0; });
     var inEv  = (EVENTS_DATA||[]).some(function(ev){ return ['youth_5hrs','youth_4hrs','youth_2hrs'].some(function(b){ return (ev[b]||[]).some(function(k){ return k.toLowerCase().trim()===n.toLowerCase().trim(); }); }); });
     return [inWs,inScr,inEv].filter(Boolean).length >= 2;
@@ -11394,6 +11424,7 @@ function wsScheduleCancel(seriesId, wsId) {
   if (!confirm('Cancel session #'+ws.series_num+' "'+ws.name+'" ('+ws.date+')?\n\nThe session slot will remain in the schedule and be marked as Cancelled.')) return;
   ws.adminCancelled = true;
   ws.cancelled = true;
+  invalidateConductedCache();
   // Also update DB cancellations table for compatibility with existing cancel logic
   dbPost('workshop_cancellations', {workshop_id: wsId, cancelled_by: adultState ? adultState.name : 'admin', cancelled_at: new Date().toISOString()})
     .then(function(){ console.log('Session cancelled:', wsId); });
@@ -11409,6 +11440,7 @@ function wsScheduleUncancel(seriesId, wsId) {
   if (!ws) return;
   ws.adminCancelled = false;
   ws.cancelled = false;
+  invalidateConductedCache();
   dbDel('workshop_cancellations', 'workshop_id=eq.' + wsId)
     .then(function(){ console.log('Session un-cancelled:', wsId); });
   saveWsScheduleToDB(seriesId);
@@ -11642,6 +11674,7 @@ function markWorkshopDone(wsId) {
   // Persist to Supabase
   dbPost('workshop_conducted', { workshop_id: wsId, conducted: true, marked_at: new Date().toISOString() })
     .then(function(){ console.log('Workshop marked done in DB:', wsId); });
+  invalidateConductedCache();
   renderAdmin();
   alert('Workshop #'+wsId+' marked as Done! You can now enter attendance in the Workshops tab.');
 }
@@ -11803,7 +11836,7 @@ function renderYouthAttendanceTable(){
   var names = Object.keys(EL_YOUTH).sort();
 
   // ── Update summary pill in collapsible header ──
-  var activeCt = names.filter(function(n){ return (EL_YOUTH[n]||[]).length > 0 && !EL_ARCHIVED.has(n); }).length;
+  var activeCt = names.filter(function(n){ return getYouthConductedWorkshops(n).length > 0 && !EL_ARCHIVED.has(n); }).length;
   var archivedCt = EL_ARCHIVED.size;
   var pill = document.getElementById('youth-att-summary-pill');
   if (pill) pill.textContent = '(' + activeCt + ' active' + (archivedCt ? ' · ' + archivedCt + ' archived' : '') + ')';
@@ -11822,10 +11855,12 @@ function renderYouthAttendanceTable(){
     (wsAttArchiveMode ? '<th style="text-align:center;min-width:80px">Archive</th>' : '');
 
   // ── Body rows — skip archived and 0-attendance youth ──
-  var activeNames = names.filter(function(n){ return (EL_YOUTH[n]||[]).length > 0 && !EL_ARCHIVED.has(n); });
+  var activeNames = names.filter(function(n){ return getYouthConductedWorkshops(n).length > 0 && !EL_ARCHIVED.has(n); });
   tbody.innerHTML = activeNames.map(function(n){
     var attended = new Set(EL_YOUTH[n] || []);
-    var c = attended.size;
+    var conducted = _getConductedIdSet();
+    // c = conducted-only count — used for level, progress, status pills
+    var c = Array.from(attended).filter(function(id){ return conducted.has(id); }).length;
     var h = YOUTH_HOURS[n] || 0;
     var l = getYouthLevel(c, h);
     var ageStr = YOUTH_AGES[n] ? ' · Age '+YOUTH_AGES[n] : '';
@@ -13154,10 +13189,18 @@ async function loadYouthData() {
       ALL_YOUTH_NAMES.push(name);
       added++;
     }
-    // Restore EL_YOUTH entry
+    // Restore EL_YOUTH entry — only admit IDs for conducted, non-cancelled workshops
     var wsArr = row.workshops || [];
+    var conductedSet = _getConductedIdSet();
     var base = new Set(EL_YOUTH[name] || []);
-    wsArr.forEach(function(w){ base.add(w); });
+    wsArr.forEach(function(w){
+      var session = getAllWsSessions().find(function(s){ return s.id === w; });
+      if (session && session.conducted && !session.cancelled && !session.adminCancelled) {
+        base.add(w);
+      } else if (w) {
+        console.warn('loadYouthData: skipping unconducted ws', w, 'for', name);
+      }
+    });
     EL_YOUTH[name] = Array.from(base);
 
     // Restore age
@@ -13214,6 +13257,12 @@ async function saveYouthToDB(name, age, workshops) {
 }
 
 async function saveWorkshopAttendance(youthName, workshopId, attended) {
+  // Guard: never persist attendance for a workshop that hasn't been conducted
+  var ws = getAllWsSessions().find(function(s){ return s.id === workshopId; });
+  if (!ws || !ws.conducted || ws.cancelled || ws.adminCancelled) {
+    console.warn('saveWorkshopAttendance: blocked — ws', workshopId, 'is not conducted. Skipping save.');
+    return;
+  }
   var youthId = 'yn_' + youthName.toLowerCase().replace(/\s+/g,'_').replace(/[^a-z0-9_]/g,'');
 
   if (attended) {
@@ -13587,6 +13636,7 @@ async function loadWorkshopCancellations() {
     if(inFall) { inFall.adminCancelled = true; WS_FALL_2026_DB_OVERRIDES[row.workshop_id] = Object.assign(WS_FALL_2026_DB_OVERRIDES[row.workshop_id]||{}, {adminCancelled:true}); }
   });
   console.log('Workshop cancellations loaded:', rows.length, 'rows');
+  invalidateConductedCache();
 }
 
 async function loadWorkshopConducted() {
@@ -13612,6 +13662,7 @@ async function loadWorkshopConducted() {
     });
   });
   console.log('Workshop conducted status loaded:', rows.length, 'rows');
+  invalidateConductedCache(); // conducted set changed — rebuild on next access
 }
 
 async function loadEventRegistrations() {
@@ -14142,13 +14193,18 @@ async function dbStartup() {
     // loadEventStatus MUST run before loadEventVolunteers so event objects
     // exist before volunteers are populated into them (fixes race condition)
     await loadEventStatus();
+    // Workshop conducted/cancellation status MUST load before attendance,
+    // because loadAllWorkshopAttendance filters to conducted-only IDs.
+    await Promise.all([
+      loadWorkshopConducted(),
+      loadWorkshopCancellations(),
+      loadWsScheduleOverrides(),
+      loadWsSeriesFromDB(),
+    ]);
+    // Now load attendance (conducted set is accurate) and everything else in parallel
     await Promise.all([
       loadEventRegistrations(),
       loadEventVolunteers(),
-      loadWsScheduleOverrides(),
-      loadWorkshopConducted(),
-      loadWorkshopCancellations(),
-      loadWsSeriesFromDB(),
       loadArchivedYouth(),
       loadProgramData(),
       loadGardenData(),
@@ -14255,6 +14311,13 @@ async function loadAllWorkshopAttendance() {
     }
 
     if(!name) return;
+    // Only add IDs for workshops that are actually conducted and not cancelled.
+    // This prevents unconducted/future workshop IDs from inflating counts.
+    var ws = getAllWsSessions().find(function(s){ return s.id === row.workshop_id; });
+    if (!ws || !ws.conducted || ws.cancelled || ws.adminCancelled) {
+      console.warn('loadAllWorkshopAttendance: skipping unconducted ws', row.workshop_id, 'for', name);
+      return;
+    }
     resolved++;
     var base = new Set(EL_YOUTH[name] || []);
     base.add(row.workshop_id);

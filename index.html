@@ -11931,22 +11931,29 @@ function toggleYouthWsAdmin(name, wsId, cell){
     nowAttending = true;
   }
 
-  // Update cell immediately (no full re-render needed)
+  // Optimistic UI — update cell immediately
   cell.textContent = nowAttending ? '✔' : '—';
   cell.className = 'ws-att-cell editable ' + (nowAttending ? 'attended' : 'absent');
 
-  // Update the WS count in the same row
+  // Update the WS count in the same row.
+  // Use getAllWsSessions() so Fall 2026 + future-series workshops are included.
   var row = cell.parentNode;
-  var conductedWs = WORKSHOPS.filter(function(w){ return w.conducted && !w.cancelled; });
+  var conductedWs = getAllWsSessions().filter(function(w){ return w.conducted && !w.cancelled && !w.adminCancelled; });
   var newAttCount = conductedWs.filter(function(w){ return (EL_YOUTH[name]||[]).indexOf(w.id) >= 0; }).length;
-  // Last td is Attended count
   var tds = row.querySelectorAll('td');
+  // Last td is the "X / Y" attended tally for this row's visible columns.
+  // Recalculate Y against only the workshops shown in the header (conductedWs
+  // for the table's current series filter) so the fraction stays consistent.
   tds[tds.length-1].textContent = newAttCount + ' / ' + conductedWs.length;
-  // 2nd td (index 1) is WS count + progress bar
-  var newTotal = (EL_YOUTH[name]||[]).length;
-  tds[1].querySelector('strong').textContent = newTotal;
 
-  // Recalculate and refresh progress bar in col 1
+  // 2nd td (index 1) is WS count + progress bar.
+  // Use getYouthConductedWorkshops() — filters out unconducted / cancelled /
+  // orphaned IDs — so the count matches what all other views show.
+  var newTotal = getYouthConductedWorkshops(name).length;
+  var strongEl = tds[1].querySelector('strong');
+  if(strongEl) strongEl.textContent = newTotal;
+
+  // Recalculate and refresh progress bar
   var h = YOUTH_HOURS[name] || 0;
   var l = getYouthLevel(newTotal, h);
   var target = l<1?6:l<2?12:18;
@@ -11974,8 +11981,18 @@ function toggleYouthWsAdmin(name, wsId, cell){
   }
   tds[2].innerHTML = st;
 
-  // Persist to Supabase
-  saveWorkshopAttendance(name, wsId, nowAttending);
+  // Persist to Supabase — roll back the optimistic UI if the save fails
+  saveWorkshopAttendance(name, wsId, nowAttending).catch(function(err){
+    console.error('toggleYouthWsAdmin: save failed, rolling back UI', err);
+    // Undo in-memory change
+    if(nowAttending){
+      EL_YOUTH[name] = (EL_YOUTH[name]||[]).filter(function(id){ return id !== wsId; });
+    } else {
+      EL_YOUTH[name] = (EL_YOUTH[name]||[]).concat([wsId]);
+    }
+    // Re-render the whole table so everything is back in sync
+    renderYouthAttendanceTable();
+  });
 }
 
 // ══════════════════════════════════════════════════════════════════════════
@@ -13279,6 +13296,7 @@ async function saveWorkshopAttendance(youthName, workshopId, attended) {
     if (!r.ok) {
       const err = await r.text();
       console.warn('Attendance save failed:', r.status, err);
+      throw new Error('Attendance save failed: HTTP ' + r.status + ' — ' + err);
     } else {
       console.log('Attendance saved:', youthName, 'ws', workshopId);
     }
@@ -14328,25 +14346,48 @@ async function loadAllWorkshopAttendance() {
 
 
 async function loadWorkshopAttendance(youthName) {
-  // Query by stable yn_ youth_id — works with existing DB schema (no youth_name column needed)
+  // Primary stable key: yn_adam_choe
   var youthId = 'yn_' + youthName.toLowerCase().replace(/\s+/g,'_').replace(/[^a-z0-9_]/g,'');
-  const rows = await dbGet('workshop_attendance',
+
+  // Also build legacy index key (y_N) so old records are not missed
+  var legacyId = null;
+  var legacyIdx = ALL_YOUTH_NAMES.slice().sort().indexOf(youthName);
+  if(legacyIdx >= 0) legacyId = 'y_' + legacyIdx;
+
+  // Fetch both keys in parallel; ignore errors on the legacy fetch
+  var fetchPrimary = dbGet('workshop_attendance',
     'select=workshop_id&youth_id=eq.' + encodeURIComponent(youthId));
+  var fetchLegacy = legacyId
+    ? dbGet('workshop_attendance',
+        'select=workshop_id&youth_id=eq.' + encodeURIComponent(legacyId)).catch(function(){ return []; })
+    : Promise.resolve([]);
+
+  var results = await Promise.all([fetchPrimary, fetchLegacy]);
+
   // CRITICAL: check the current user hasn't changed while we were fetching
   if (!youthState || youthState.name !== youthName) {
     console.log('Session changed - ignoring stale workshop data for', youthName);
     return;
   }
-  if (!rows || rows.length === 0) {
+
+  var primaryRows = results[0] || [];
+  var legacyRows  = results[1] || [];
+  var allRows = primaryRows.concat(legacyRows);
+
+  if (allRows.length === 0) {
     console.log('No DB workshop records for', youthName);
     renderYouth();
     return;
   }
-  // Merge DB records with hardcoded base
+
+  // Merge DB records with hardcoded base; only add IDs for conducted workshops
+  var conducted = _getConductedIdSet();
   var baseWs = new Set(EL_YOUTH[youthName] || []);
-  rows.forEach(function(row) { baseWs.add(row.workshop_id); });
+  allRows.forEach(function(row) {
+    if(row.workshop_id && conducted.has(row.workshop_id)) baseWs.add(row.workshop_id);
+  });
   youthState.workshops = baseWs;
-  console.log('Workshop attendance loaded:', rows.length, 'DB records for', youthName,
+  console.log('Workshop attendance loaded:', allRows.length, 'DB records for', youthName,
     '— total:', youthState.workshops.size, 'workshops');
   renderYouth();
 }

@@ -1088,7 +1088,10 @@ tr:hover .grd-date-sticky { background: #1a2d47; }
             <div class="section-box">
               <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:8px">
                 <div class="section-title" style="margin-bottom:0">🍂 Fall 2026 Workshop Schedule</div>
-                <button id="ws-rearrange-btn-fall_2026" onclick="toggleWsRearrangeMode('fall_2026')" style="padding:5px 14px;border-radius:8px;border:1px solid rgba(232,98,10,.4);background:rgba(232,98,10,.08);color:var(--ya-orange);font-size:.75rem;font-weight:700;cursor:pointer;font-family:DM Sans,sans-serif">⇅ Rearrange</button>
+                <div style="display:flex;gap:6px;flex-wrap:wrap">
+                  <button onclick="openAddSessionModal('fall_2026')" style="padding:5px 14px;border-radius:8px;border:1px solid rgba(0,181,160,.4);background:rgba(0,181,160,.08);color:var(--ya-teal);font-size:.75rem;font-weight:700;cursor:pointer;font-family:DM Sans,sans-serif">＋ Add New Session</button>
+                  <button id="ws-rearrange-btn-fall_2026" onclick="toggleWsRearrangeMode('fall_2026')" style="padding:5px 14px;border-radius:8px;border:1px solid rgba(232,98,10,.4);background:rgba(232,98,10,.08);color:var(--ya-orange);font-size:.75rem;font-weight:700;cursor:pointer;font-family:DM Sans,sans-serif">⇅ Rearrange</button>
+                </div>
               </div>
               <div style="font-size:.75rem;color:var(--text-muted);margin-bottom:10px">Sep 14 – Dec 14, 2026 · Mondays · Labour Day &amp; Thanksgiving skipped</div>
               <div id="ws-rearrange-hint-fall_2026" style="display:none;font-size:.75rem;color:var(--ya-orange);background:rgba(232,98,10,.07);border:1px solid rgba(232,98,10,.2);border-radius:8px;padding:8px 12px;margin-bottom:10px">✏️ <strong>Rearrange mode:</strong> Use ↑↓ to reorder topics · <strong>Insert</strong> adds a session &amp; pushes subsequent dates out · <strong>Remove</strong> deletes a session &amp; pulls dates in · <strong>Cancel</strong> marks as cancelled (name stays)</div>
@@ -2285,24 +2288,24 @@ tr:hover .grd-date-sticky { background: #1a2d47; }
 // sort_order is 1-based; active:false = archived (removed from future generation)
 // ═══════════════════════════════════════════════════════════════════════════
 var WS_TEMPLATES = [
-  {workshop_id:1,  short_id:"BLEA", title:"Becoming a Leader",        description:"Learn about three different types of leaders and discover which style feels most like you.",              default_facilitators:["Kim Sundset"], active:true,  sort_order:1},
-  {workshop_id:2,  short_id:"JUFN", title:"Junior Finance",            description:"Find out how to build good money habits, make smart choices, and avoid debt as you get older.",          default_facilitators:["Connie Wu"],   active:true,  sort_order:2},
-  {workshop_id:3,  short_id:"EFCM", title:"Effective Communication",   description:"Explore the four personality styles and figure out which one matches you best.",                         default_facilitators:["Kim Sundset"], active:true,  sort_order:3},
-  {workshop_id:4,  short_id:"CNMG", title:"Conflict Management",       description:"Learn how to handle tough situations, stand up to bullies, and avoid toxic friendships.",                 default_facilitators:["Kim Sundset"], active:true,  sort_order:4},
-  {workshop_id:5,  short_id:"PLOR", title:"Planning and Organizing",   description:"Discover how to set goals, stay on top of your time, and learn the six habits of super organized people.",default_facilitators:["Tina Petrow"], active:true,  sort_order:5},
-  {workshop_id:6,  short_id:"LTBL", title:"Learn to Belong",           description:"Talk about privilege, bias, and the power of community in a safe and friendly space.",                    default_facilitators:["Kim Sundset"], active:true,  sort_order:6},
-  {workshop_id:7,  short_id:"BDCN", title:"Building Connections",      description:"Explores how human connections help people feel safe, valued, and supported.",                            default_facilitators:["Kim Sundset"], active:true,  sort_order:7},
-  {workshop_id:8,  short_id:"BSCP", title:"Building Social Capacity",  description:"Explore how social media shapes reputation and how online actions can have long-lasting impacts.",        default_facilitators:["Kim Sundset"], active:true,  sort_order:8},
-  {workshop_id:9,  short_id:"SEDF", title:"Seeing Differently",        description:"Helps youth understand how different life experiences shape how people see the world.",                   default_facilitators:["Roberta Ehigiator"], active:true, sort_order:9},
-  {workshop_id:10, short_id:"TORE", title:"Tools for Resilience",      description:"Helps youth understand stress and how it affects emotions, focus, and decision-making.",                  default_facilitators:["Olga Korcheva"],    active:true, sort_order:10},
-  {workshop_id:11, short_id:"DGDT", title:"Digital Detoxing",          description:"Explore how screens, gaming, sugar, and social media influence habits and attention.",                    default_facilitators:["Tina Petrow"],      active:true, sort_order:11},
-  {workshop_id:12, short_id:"BUPV", title:"Bullying Prevention",       description:"Explores how communities can work together to prevent bullying and create safer, more respectful spaces.", default_facilitators:["Olga Korcheva"],    active:true, sort_order:12},
-  {workshop_id:13, short_id:"HLDB", title:"Healthy Debating",          description:"Youth will practice sharing opinions respectfully while listening to different viewpoints.",               default_facilitators:["Tina Petrow"],      active:true, sort_order:13},
-  {workshop_id:14, short_id:"HLFT", title:"Health & Fitness",          description:"Explores how movement, nutrition, and rest support both physical and mental well-being.",                 default_facilitators:["Tina Petrow"],      active:true, sort_order:14},
-  {workshop_id:15, short_id:"HLSP", title:"Healthy Spending",          description:"Youth will learn how advertising, trends, and media influence spending habits and consumer debt.",         default_facilitators:["Connie Wu"],        active:true, sort_order:15},
-  {workshop_id:16, short_id:"LVDF", title:"Leveraging Differences",    description:"Helps youth see how differences in personality, skills, and experiences are strengths when working together.", default_facilitators:["Roberta Ehigiator"], active:true, sort_order:16},
+  {workshop_id:1,  short_id:"BLEA", title:"Becoming a Leader",        description:"Learn about three different types of leaders and discover which style feels most like you. Through fun activities and teamwork, you'll learn how to build confidence and lead in your own way.",              default_facilitators:["Kim Sundset"], active:true,  sort_order:1},
+  {workshop_id:2,  short_id:"JUFN", title:"Junior Finance",            description:"Find out how to build good money habits, make smart choices, and avoid debt as you get older. This workshop helps you feel confident about saving, spending, and planning for the future.",          default_facilitators:["Connie Wu"],   active:true,  sort_order:2},
+  {workshop_id:3,  short_id:"EFCM", title:"Effective Communication",   description:"Explore the four personality styles and figure out which one matches you best. You'll practice easy ways to communicate with different types of people and express yourself clearly.",                         default_facilitators:["Kim Sundset"], active:true,  sort_order:3},
+  {workshop_id:4,  short_id:"CNMG", title:"Conflict Management",       description:"Learn how to handle tough situations, stand up to bullies, and avoid toxic friendships. This workshop gives you the tools to build healthy relationships and help make your community safer and kinder.",                 default_facilitators:["Kim Sundset"], active:true,  sort_order:4},
+  {workshop_id:5,  short_id:"PLOR", title:"Planning and Organizing",   description:"Discover how to set goals, stay on top of your time, and learn the six habits of super organized people. You'll leave knowing practical tips to help you stay focused and get things done.",default_facilitators:["Tina Petrow"], active:true,  sort_order:5},
+  {workshop_id:6,  short_id:"LTBL", title:"Learn to Belong",           description:"Talk about privilege, bias, and the power of community in a safe and friendly space. This workshop helps you understand others better and feel more connected to the people around you.",                    default_facilitators:["Kim Sundset"], active:true,  sort_order:6},
+  {workshop_id:7,  short_id:"BDCN", title:"Building Connections",      description:"This workshop explores how human connections help people feel safe, valued, and supported. Youth learn how listening, responding, and including others builds trust, strengthens friendships, and helps leaders create welcoming spaces for everyone.",            default_facilitators:["Kim Sundset"], active:true,  sort_order:7},
+  {workshop_id:8,  short_id:"BSCP", title:"Building Social Capacity",  description:"Youth will explore how social media shapes reputation and how online actions can have long-lasting impacts. Through hands-on activities, they'll learn how to make smart choices online, protect their digital footprint, and build a positive reputation they can be proud of.",        default_facilitators:["Kim Sundset"], active:true,  sort_order:8},
+  {workshop_id:9,  short_id:"SEDF", title:"Seeing Differently",        description:"This workshop helps youth understand how different life experiences shape how people see the world. Youth will build empathy and leadership skills by learning how to challenge assumptions, appreciate different perspectives, and contribute to positive social change in their communities.",                   default_facilitators:["Roberta Ehigiator"], active:true, sort_order:9},
+  {workshop_id:10, short_id:"TORE", title:"Tools for Resilience",      description:"This session helps youth understand stress and how it affects emotions, focus, and decision-making. Youth will learn practical tools for calming their minds, handling challenges, and building support systems—because strong leaders know when to use tools and when to ask for help.",                  default_facilitators:["Olga Korcheva"],    active:true, sort_order:10},
+  {workshop_id:11, short_id:"DGDT", title:"Digital Detoxing",          description:"Youth will explore how screens, gaming, sugar, and social media influence habits and attention. This workshop focuses on building healthier balance through awareness, routines, and calming practices like breathing, meditation, and simple yoga—without guilt or shame.",                    default_facilitators:["Tina Petrow"],      active:true, sort_order:11},
+  {workshop_id:12, short_id:"BUPV", title:"Bullying Prevention",       description:"This workshop explores how communities can work together to prevent bullying and create safer, more respectful spaces. Youth will learn why recording and sharing bullying can cause harm, and how choosing to put phones away and walk away helps stop bullying instead of fueling it.", default_facilitators:["Olga Korcheva"],    active:true, sort_order:12},
+  {workshop_id:13, short_id:"HLDB", title:"Healthy Debating",          description:"Youth will practice sharing opinions respectfully while listening to different viewpoints. This workshop emphasizes critical thinking, research skills, and learning to question information rather than accepting popular opinions or social media content at face value.",               default_facilitators:["Tina Petrow"],      active:true, sort_order:13},
+  {workshop_id:14, short_id:"HLFT", title:"Health & Fitness",          description:"This workshop explores how movement, nutrition, and rest support both physical and mental well-being. Youth will learn simple, practical habits for staying energized and focused, with guidance from a guest expert in physical fitness or wellness.",                 default_facilitators:["Tina Petrow"],      active:true, sort_order:14},
+  {workshop_id:15, short_id:"HLSP", title:"Healthy Spending",          description:"Youth will learn how advertising, trends, and media influence spending habits and consumer debt. Through interactive activities, they'll build awareness of marketing tactics and learn how to make thoughtful spending choices that align with their goals.",         default_facilitators:["Connie Wu"],        active:true, sort_order:15},
+  {workshop_id:16, short_id:"LVDF", title:"Leveraging Differences",    description:"This workshop helps youth see how differences in personality, skills, and experiences are strengths when working together. Through team-based activities, youth will learn how leaders value diverse contributions and challenge unfair biases so everyone feels included and valued.", default_facilitators:["Roberta Ehigiator"], active:true, sort_order:16},
   {workshop_id:17, short_id:"JOAC", title:"Joy of Accomplishment",     description:"Celebrate progress, reflect on growth, and set intentions for continued leadership development.",         default_facilitators:["Kim Sundset"],      active:true, sort_order:17},
-  {workshop_id:18, short_id:"PBSP", title:"Public Speaking",           description:"Youth will build confidence speaking in front of others through fun, supportive activities.",             default_facilitators:["Kim Sundset"],      active:true, sort_order:18}
+  {workshop_id:18, short_id:"PBSP", title:"Public Speaking",           description:"Youth will build confidence speaking in front of others through fun, supportive activities like improv and peer teaching. This workshop helps youth practice clear expression, body language, and sharing ideas with confidence and impact.",             default_facilitators:["Kim Sundset"],      active:true, sort_order:18}
 ];
 // Runtime: DB-loaded template overrides (persisted edits, re-orders, additions)
 var WS_TEMPLATES_DB_LOADED = false;
@@ -3459,7 +3462,10 @@ function renderAdmin(){
         '<div style="margin-top:10px"><div class="section-box">' +
         '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:8px">' +
         '<div class="section-title" style="margin-bottom:0">'+ser.icon+' '+ser.name+'</div>' +
+        '<div style="display:flex;gap:6px;flex-wrap:wrap">' +
+        '<button onclick="openAddSessionModal(\''+sid+'\')" style="padding:5px 14px;border-radius:8px;border:1px solid rgba(0,181,160,.4);background:rgba(0,181,160,.08);color:var(--ya-teal);font-size:.75rem;font-weight:700;cursor:pointer;font-family:DM Sans,sans-serif">＋ Add New Session</button>' +
         '<button id="ws-rearrange-btn-'+sid+'" onclick="toggleWsRearrangeMode(\''+sid+'\')" style="padding:5px 14px;border-radius:8px;border:1px solid rgba(29,127,212,.4);background:rgba(29,127,212,.08);color:var(--ya-blue);font-size:.75rem;font-weight:700;cursor:pointer;font-family:DM Sans,sans-serif">⇅ Rearrange</button>' +
+        '</div>' +
         '</div>' +
         '<div id="ws-rearrange-hint-'+sid+'" style="display:none;font-size:.75rem;color:var(--ya-blue);background:rgba(29,127,212,.07);border:1px solid rgba(29,127,212,.2);border-radius:8px;padding:8px 12px;margin-bottom:10px">✏️ <strong>Rearrange mode:</strong> Use ↑↓ to reorder topics · <strong>＋</strong> inserts a session &amp; pushes subsequent dates out · <strong>✕</strong> removes &amp; pulls dates in · <strong>🚫</strong> cancels (name stays)</div>' +
         '<table class="data-table"><thead><tr><th>#</th><th>Workshop</th><th>Facilitator(s)</th><th>Volunteers</th><th>Date</th><th>Status</th><th>Attendance</th><th>Staff</th></tr></thead>' +
@@ -10665,20 +10671,30 @@ function renderWsTemplateList() {
   if (!el) return;
   var active = WS_TEMPLATES.filter(function(t){ return t.active; }).sort(function(a,b){ return a.sort_order - b.sort_order; });
   var archived = WS_TEMPLATES.filter(function(t){ return !t.active; });
+  var IS = 'width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.15);border-radius:8px;padding:7px 11px;color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem;box-sizing:border-box';
   var html = '';
   active.forEach(function(t) {
     var defFacs = (t.default_facilitators||[]).filter(function(n){ return n && n !== 'TBD'; }).join(', ') || 'TBD';
-    html += '<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid rgba(255,255,255,.06)">' +
-      '<span style="font-size:.72rem;font-weight:800;color:var(--ya-teal);min-width:24px">#'+t.sort_order+'</span>' +
-      '<div style="flex:1">' +
-        '<div style="font-size:.83rem;font-weight:700">'+t.title+'</div>' +
-        '<div style="font-size:.72rem;color:var(--text-muted)">Default: '+defFacs+'</div>' +
+    var desc = t.description || '';
+    var descSnip = desc.length > 80 ? desc.slice(0,80)+'…' : desc;
+    var sid = t.short_id || '????';
+    html += '<div style="display:flex;align-items:flex-start;gap:8px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.06)">' +
+      '<span style="font-size:.72rem;font-weight:800;color:var(--ya-teal);min-width:24px;margin-top:2px">#'+t.sort_order+'</span>' +
+      '<div style="flex:1;min-width:0">' +
+        '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">' +
+          '<span style="font-size:.83rem;font-weight:700">'+t.title+'</span>' +
+          '<span style="font-family:monospace;font-size:.68rem;background:rgba(0,181,160,.12);color:var(--ya-teal);border:1px solid rgba(0,181,160,.3);border-radius:4px;padding:1px 5px">'+sid+'</span>' +
+        '</div>' +
+        '<div style="font-size:.71rem;color:var(--text-muted);margin-top:2px">Default: '+defFacs+'</div>' +
+        (descSnip ? '<div style="font-size:.71rem;color:var(--text-muted);margin-top:3px;font-style:italic;line-height:1.4">'+descSnip+'</div>' : '') +
       '</div>' +
-      '<button onclick="wsTemplateMoveUp('+t.workshop_id+')" title="Move up" style="border:none;background:rgba(255,255,255,.06);border-radius:5px;padding:3px 7px;cursor:pointer;color:var(--text-muted);font-size:.75rem">↑</button>' +
-      '<button onclick="wsTemplateMoveDown('+t.workshop_id+')" title="Move down" style="border:none;background:rgba(255,255,255,.06);border-radius:5px;padding:3px 7px;cursor:pointer;color:var(--text-muted);font-size:.75rem">↓</button>' +
-      '<button onclick="wsTemplateEditFacilitator('+t.workshop_id+')" title="Edit default facilitator" style="border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.04);border-radius:5px;padding:3px 8px;cursor:pointer;color:var(--ya-blue);font-size:.72rem">✏️</button>' +
-      '<button onclick="wsTemplateArchive('+t.workshop_id+')" title="Archive" style="border:1px solid rgba(239,68,68,.3);background:rgba(239,68,68,.05);border-radius:5px;padding:3px 8px;cursor:pointer;color:var(--badge-red);font-size:.72rem">Archive</button>' +
-      '</div>';
+      '<div style="display:flex;gap:4px;flex-shrink:0;margin-top:2px">' +
+        '<button onclick="wsTemplateMoveUp('+t.workshop_id+')" title="Move up" style="border:none;background:rgba(255,255,255,.06);border-radius:5px;padding:3px 7px;cursor:pointer;color:var(--text-muted);font-size:.75rem">↑</button>' +
+        '<button onclick="wsTemplateMoveDown('+t.workshop_id+')" title="Move down" style="border:none;background:rgba(255,255,255,.06);border-radius:5px;padding:3px 7px;cursor:pointer;color:var(--text-muted);font-size:.75rem">↓</button>' +
+        '<button onclick="openEditTemplateModal('+t.workshop_id+')" title="Edit" style="border:1px solid rgba(29,127,212,.4);background:rgba(29,127,212,.08);border-radius:5px;padding:3px 8px;cursor:pointer;color:var(--ya-blue);font-size:.72rem">✏️ Edit</button>' +
+        '<button onclick="wsTemplateArchive('+t.workshop_id+')" title="Archive" style="border:1px solid rgba(239,68,68,.3);background:rgba(239,68,68,.05);border-radius:5px;padding:3px 8px;cursor:pointer;color:var(--badge-red);font-size:.72rem">Archive</button>' +
+      '</div>' +
+    '</div>';
   });
   if (archived.length) {
     html += '<div style="font-size:.7rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;margin:10px 0 5px">Archived</div>';
@@ -10735,61 +10751,119 @@ function wsTemplateRestore(id) {
   renderWsTemplateList();
 }
 
-function wsTemplateEditFacilitator(id) {
+function wsTemplateEditFacilitator(id) { openEditTemplateModal(id); } // legacy alias
+
+// ── Unified Edit Template Modal ──────────────────────────────────────────────
+function openEditTemplateModal(id) {
   var t = WS_TEMPLATES.find(function(t){ return t.workshop_id === id; });
   if (!t) return;
   var allAdults = Object.values(FAC_PROFILES).map(function(p){ return p.name; }).sort();
+  var IS = 'width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.15);border-radius:8px;padding:8px 12px;color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem;box-sizing:border-box';
   var modal = document.createElement('div');
+  modal.id = 'ws-edit-tmpl-modal';
   modal.style.cssText = 'position:fixed;inset:0;z-index:2000;background:rgba(0,0,0,.75);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;padding:20px';
-  modal.innerHTML = '<div style="background:var(--card-bg);border:1px solid var(--card-border);border-radius:16px;padding:24px;width:100%;max-width:420px">' +
-    '<div style="font-family:Nunito,sans-serif;font-weight:900;font-size:1rem;margin-bottom:14px">✏️ Edit Default Facilitator — '+t.title+'</div>' +
-    '<div style="font-size:.75rem;color:var(--text-muted);margin-bottom:10px">This sets the default for <strong>new series only</strong>. Existing sessions are unaffected.</div>' +
-    '<select id="ws-tmpl-fac-sel" style="width:100%;background:#0f1c2e;border:1px solid rgba(255,255,255,.15);border-radius:8px;padding:8px 12px;color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem;margin-bottom:16px">' +
+  modal.innerHTML =
+    '<div style="background:var(--card-bg);border:1px solid var(--card-border);border-radius:16px;padding:24px;width:100%;max-width:500px;max-height:90vh;overflow-y:auto">' +
+    '<div style="font-family:Nunito,sans-serif;font-weight:900;font-size:1.05rem;margin-bottom:4px">✏️ Edit Workshop Topic</div>' +
+    '<div style="font-size:.78rem;color:var(--text-muted);margin-bottom:18px">Changes apply to new series. Existing scheduled sessions are not affected.</div>' +
+    // Title
+    '<div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px">Title</div>' +
+    '<input id="ws-et-title" type="text" value="'+t.title.replace(/"/g,'&quot;')+'" style="'+IS+';margin-bottom:12px">' +
+    // Short ID
+    '<div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px">4-Letter Short ID <span style="color:var(--badge-red)">*</span></div>' +
+    '<input id="ws-et-sid" type="text" maxlength="4" value="'+(t.short_id||'')+'" placeholder="e.g. BLEA" style="'+IS+';margin-bottom:4px;text-transform:uppercase;font-family:monospace;letter-spacing:.1em">' +
+    '<div style="font-size:.7rem;color:var(--text-muted);margin-bottom:12px">Unique 4-letter identifier used across all tracking and stats.</div>' +
+    // Description
+    '<div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px">Description</div>' +
+    '<textarea id="ws-et-desc" rows="4" style="'+IS+';resize:vertical;margin-bottom:12px">'+((t.description||'').replace(/</g,'&lt;').replace(/>/g,'&gt;'))+'</textarea>' +
+    // Default Facilitator
+    '<div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px">Default Facilitator</div>' +
+    '<select id="ws-et-fac" style="width:100%;background:#0f1c2e;border:1px solid rgba(255,255,255,.15);border-radius:8px;padding:8px 12px;color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem;margin-bottom:16px">' +
     '<option value="TBD">TBD</option>' +
     allAdults.map(function(n){ return '<option value="'+n+'"'+(t.default_facilitators&&t.default_facilitators[0]===n?' selected':'')+'>'+n+'</option>'; }).join('') +
     '</select>' +
+    '<div id="ws-et-err" style="font-size:.78rem;color:var(--badge-red);min-height:16px;margin-bottom:8px"></div>' +
     '<div style="display:flex;gap:8px;justify-content:flex-end">' +
-    '<button onclick="this.closest(\'div[style*=fixed]\').remove()" style="padding:8px 16px;border-radius:9px;border:1px solid rgba(255,255,255,.15);background:transparent;color:var(--text-muted);font-family:Nunito,sans-serif;cursor:pointer">Cancel</button>' +
-    '<button onclick="(function(){var v=document.getElementById(\'ws-tmpl-fac-sel\').value;var t=WS_TEMPLATES.find(function(x){return x.workshop_id==='+id+';});if(t)t.default_facilitators=[v];saveWsTemplatesToDB();renderWsTemplateList();this.closest(\'div[style*=fixed]\').remove();}).call(this)" style="padding:8px 18px;border-radius:9px;border:none;background:var(--ya-teal);color:#fff;font-family:Nunito,sans-serif;font-weight:800;cursor:pointer">Save</button>' +
+      '<button onclick="document.getElementById(\'ws-edit-tmpl-modal\').remove()" style="padding:8px 16px;border-radius:9px;border:1px solid rgba(255,255,255,.15);background:transparent;color:var(--text-muted);font-family:Nunito,sans-serif;cursor:pointer">Cancel</button>' +
+      '<button onclick="saveEditTemplateModal('+id+')" style="padding:8px 20px;border-radius:9px;border:none;background:var(--ya-teal);color:#fff;font-family:Nunito,sans-serif;font-weight:800;font-size:.88rem;cursor:pointer">💾 Save</button>' +
     '</div></div>';
+  // Auto-uppercase Short ID input
+  modal.querySelector('#ws-et-sid').addEventListener('input', function(){ this.value = this.value.toUpperCase().replace(/[^A-Z0-9]/g,''); });
   document.body.appendChild(modal);
+}
+
+function saveEditTemplateModal(id) {
+  var t = WS_TEMPLATES.find(function(t){ return t.workshop_id === id; });
+  if (!t) return;
+  var titleEl = document.getElementById('ws-et-title');
+  var sidEl   = document.getElementById('ws-et-sid');
+  var descEl  = document.getElementById('ws-et-desc');
+  var facEl   = document.getElementById('ws-et-fac');
+  var errEl   = document.getElementById('ws-et-err');
+  var title = titleEl ? titleEl.value.trim() : t.title;
+  var sid   = sidEl   ? sidEl.value.trim().toUpperCase() : (t.short_id||'');
+  var desc  = descEl  ? descEl.value.trim() : (t.description||'');
+  var fac   = facEl   ? facEl.value : 'TBD';
+  if (!title)             { if(errEl) errEl.textContent = 'Title is required.'; return; }
+  if (!sid || sid.length !== 4) { if(errEl) errEl.textContent = 'Short ID must be exactly 4 characters.'; return; }
+  // Uniqueness check — allow matching itself
+  var dup = WS_TEMPLATES.find(function(x){ return x.short_id === sid && x.workshop_id !== id; });
+  if (dup) { if(errEl) errEl.textContent = 'Short ID "'+sid+'" is already used by "'+dup.title+'". Please choose a unique ID.'; return; }
+  t.title = title;
+  t.short_id = sid;
+  t.description = desc;
+  t.default_facilitators = [fac];
+  saveWsTemplatesToDB();
+  renderWsTemplateList();
+  document.getElementById('ws-edit-tmpl-modal').remove();
 }
 
 function openAddTemplateModal() {
   var modal = document.createElement('div');
+  modal.id = 'ws-add-tmpl-modal';
   modal.style.cssText = 'position:fixed;inset:0;z-index:2000;background:rgba(0,0,0,.75);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;padding:20px';
   var allAdults = Object.values(FAC_PROFILES).map(function(p){ return p.name; }).sort();
-  modal.innerHTML = '<div style="background:var(--card-bg);border:1px solid var(--card-border);border-radius:16px;padding:24px;width:100%;max-width:460px">' +
+  var IS = 'width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.15);border-radius:8px;padding:8px 12px;color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem;box-sizing:border-box';
+  modal.innerHTML =
+    '<div style="background:var(--card-bg);border:1px solid var(--card-border);border-radius:16px;padding:24px;width:100%;max-width:500px;max-height:90vh;overflow-y:auto">' +
     '<div style="font-family:Nunito,sans-serif;font-weight:900;font-size:1rem;margin-bottom:16px">📚 Add Workshop Topic</div>' +
-    '<div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px">Title</div>' +
-    '<input id="ws-add-tmpl-title" type="text" placeholder="e.g. Environmental Stewardship" style="width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.15);border-radius:8px;padding:8px 12px;color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.88rem;box-sizing:border-box;margin-bottom:10px">' +
+    '<div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px">Title <span style="color:var(--badge-red)">*</span></div>' +
+    '<input id="ws-add-tmpl-title" type="text" placeholder="e.g. Environmental Stewardship" style="'+IS+';margin-bottom:12px">' +
+    '<div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px">4-Letter Short ID <span style="color:var(--badge-red)">*</span></div>' +
+    '<input id="ws-add-tmpl-sid" type="text" maxlength="4" placeholder="e.g. ENVS" style="'+IS+';margin-bottom:4px;text-transform:uppercase;font-family:monospace;letter-spacing:.1em">' +
+    '<div style="font-size:.7rem;color:var(--text-muted);margin-bottom:12px">Unique 4-letter identifier — used in tracking tables and stats. No duplicates allowed.</div>' +
     '<div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px">Description</div>' +
-    '<textarea id="ws-add-tmpl-desc" rows="2" placeholder="Brief workshop description..." style="width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.15);border-radius:8px;padding:8px 12px;color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem;resize:vertical;box-sizing:border-box;margin-bottom:10px"></textarea>' +
+    '<textarea id="ws-add-tmpl-desc" rows="3" placeholder="Describe the workshop for participants…" style="'+IS+';resize:vertical;margin-bottom:12px"></textarea>' +
     '<div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px">Default Facilitator</div>' +
     '<select id="ws-add-tmpl-fac" style="width:100%;background:#0f1c2e;border:1px solid rgba(255,255,255,.15);border-radius:8px;padding:8px 12px;color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem;margin-bottom:16px">' +
     '<option value="TBD">TBD</option>' + allAdults.map(function(n){ return '<option value="'+n+'">'+n+'</option>'; }).join('') +
     '</select>' +
     '<div id="ws-add-tmpl-err" style="font-size:.78rem;color:var(--badge-red);min-height:16px;margin-bottom:8px"></div>' +
     '<div style="display:flex;gap:8px;justify-content:flex-end">' +
-    '<button onclick="this.closest(\'div[style*=fixed]\').remove()" style="padding:8px 16px;border-radius:9px;border:1px solid rgba(255,255,255,.15);background:transparent;color:var(--text-muted);font-family:Nunito,sans-serif;cursor:pointer">Cancel</button>' +
+    '<button onclick="document.getElementById(\'ws-add-tmpl-modal\').remove()" style="padding:8px 16px;border-radius:9px;border:1px solid rgba(255,255,255,.15);background:transparent;color:var(--text-muted);font-family:Nunito,sans-serif;cursor:pointer">Cancel</button>' +
     '<button onclick="addWsTemplate()" style="padding:8px 20px;border-radius:9px;border:none;background:var(--ya-teal);color:#fff;font-family:Nunito,sans-serif;font-weight:800;font-size:.88rem;cursor:pointer">＋ Add</button>' +
     '</div></div>';
+  modal.querySelector('#ws-add-tmpl-sid').addEventListener('input', function(){ this.value = this.value.toUpperCase().replace(/[^A-Z0-9]/g,''); });
   document.body.appendChild(modal);
 }
 
 function addWsTemplate() {
   var title = (document.getElementById('ws-add-tmpl-title')||{}).value || '';
+  var sid   = ((document.getElementById('ws-add-tmpl-sid')||{}).value || '').trim().toUpperCase();
   var desc  = (document.getElementById('ws-add-tmpl-desc')||{}).value || '';
   var fac   = (document.getElementById('ws-add-tmpl-fac')||{}).value || 'TBD';
   var err   = document.getElementById('ws-add-tmpl-err');
-  if (!title.trim()) { if(err) err.textContent = 'Title is required.'; return; }
+  if (!title.trim())         { if(err) err.textContent = 'Title is required.'; return; }
+  if (!sid || sid.length !== 4) { if(err) err.textContent = 'Short ID must be exactly 4 characters (letters/numbers).'; return; }
+  var dup = WS_TEMPLATES.find(function(x){ return x.short_id === sid; });
+  if (dup) { if(err) err.textContent = 'Short ID "'+sid+'" is already used by "'+dup.title+'". Please choose a unique ID.'; return; }
   var maxId    = Math.max.apply(null, WS_TEMPLATES.map(function(t){ return t.workshop_id||0; })) + 1;
   var maxOrder = Math.max.apply(null, WS_TEMPLATES.filter(function(t){ return t.active; }).map(function(t){ return t.sort_order||0; })) + 1;
-  WS_TEMPLATES.push({ workshop_id: maxId, title: title.trim(), description: desc.trim(), default_facilitators: [fac], active: true, sort_order: maxOrder });
+  WS_TEMPLATES.push({ workshop_id: maxId, short_id: sid, title: title.trim(), description: desc.trim(), default_facilitators: [fac], active: true, sort_order: maxOrder });
   saveWsTemplatesToDB();
   renderWsTemplateList();
-  var modal = document.querySelector('div[style*="position:fixed"][style*="z-index:2000"]');
-  if (modal && modal.querySelector('#ws-add-tmpl-title')) modal.remove();
+  var modal = document.getElementById('ws-add-tmpl-modal');
+  if (modal) modal.remove();
 }
 
 function saveWsTemplatesToDB() {
@@ -11001,6 +11075,165 @@ function wsScheduleInsertBefore(seriesId, wsId) {
     if (wrap) wrap.style.display = this.value === '_custom' ? 'block' : 'none';
   });
   document.body.appendChild(modal);
+}
+
+// ── Add New Session to a series (appends or inserts at chosen position) ──────
+// Only sessions at FUTURE dates are allowed. Default position = end of series.
+function openAddSessionModal(seriesId) {
+  var arr = _wsGetSeriesArr(seriesId);
+  if (!arr || !arr.length) { alert('No sessions found for this series.'); return; }
+  var ser = WS_SERIES[seriesId] || WS_SERIES_DB[seriesId] || {name: seriesId};
+  var allAdults = Object.values(FAC_PROFILES).map(function(p){ return p.name; }).sort();
+  var tmplOpts = WS_TEMPLATES.filter(function(t){ return t.active; }).sort(function(a,b){ return a.sort_order-b.sort_order; });
+  var now = new Date(); now.setHours(0,0,0,0);
+
+  // Build session position options — only positions whose date is in the future
+  // Position N means: insert BEFORE slot N (1-indexed), or append (= arr.length + 1)
+  // We show which date the slot would get (existing date at that position, or +1 week from last)
+  var posOpts = '';
+  var defaultPos = arr.length + 1; // default = append at end
+  for (var i = 1; i <= arr.length + 1; i++) {
+    var slotDate, label;
+    if (i <= arr.length) {
+      slotDate = wsParseDisplayDate(arr[i-1].date);
+      label = '#'+i+' — '+arr[i-1].date+(arr[i-1].name&&arr[i-1].name!=='TBD'?' (pushes "'+arr[i-1].name+'" out)':'');
+    } else {
+      // Append: date = last slot + 1 week
+      var lastDate = arr[arr.length-1].date;
+      var nextD = wsParseDisplayDate(lastDate);
+      nextD.setDate(nextD.getDate()+7);
+      var mN=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      slotDate = nextD;
+      label = '#'+i+' — '+mN[nextD.getMonth()]+' '+nextD.getDate()+', '+nextD.getFullYear()+' (new slot at end)';
+    }
+    var isPast = slotDate <= now;
+    posOpts += '<option value="'+i+'"'+(i===defaultPos?' selected':'')+(isPast?' style="color:var(--text-muted)"':'')+'>'+label+(isPast?' ⚠ past':'')+'</option>';
+  }
+
+  var modal = document.createElement('div');
+  modal.id = 'ws-add-session-modal';
+  modal.style.cssText = 'position:fixed;inset:0;z-index:2000;background:rgba(0,0,0,.75);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;padding:20px';
+  var IS = 'width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.15);border-radius:8px;padding:8px 12px;color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem';
+  modal.innerHTML =
+    '<div style="background:var(--card-bg);border:1px solid var(--card-border);border-radius:16px;padding:24px;width:100%;max-width:500px;max-height:90vh;overflow-y:auto">' +
+    '<div style="font-family:Nunito,sans-serif;font-weight:900;font-size:1.05rem;margin-bottom:4px">＋ Add New Session</div>' +
+    '<div style="font-size:.78rem;color:var(--text-muted);margin-bottom:18px">Adding to <strong>'+ser.name+'</strong>. Sessions can only be added at future dates. After saving you can rearrange topics using the ⇅ Rearrange button.</div>' +
+    // Topic
+    '<div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px">Workshop Topic <span style="color:var(--badge-red)">*</span></div>' +
+    '<select id="was-tmpl" style="'+IS+';background:#0f1c2e;margin-bottom:4px">' +
+    '<option value="">— Choose a topic —</option>' +
+    tmplOpts.map(function(t){ return '<option value="'+t.workshop_id+'">'+t.title+' ['+t.short_id+']'+'</option>'; }).join('') +
+    '</select>' +
+    '<div style="font-size:.7rem;color:var(--text-muted);margin-bottom:12px">Topic and default facilitator are pulled from the Template Library.</div>' +
+    // Position
+    '<div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px">Session Position <span style="color:var(--badge-red)">*</span></div>' +
+    '<select id="was-pos" style="'+IS+';background:#0f1c2e;margin-bottom:4px">' + posOpts + '</select>' +
+    '<div style="font-size:.7rem;color:var(--text-muted);margin-bottom:12px">Inserting before a past date is not allowed. Default places the session at the end.</div>' +
+    // Facilitator override
+    '<div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px">Facilitator Override (optional)</div>' +
+    '<select id="was-fac" style="'+IS+';background:#0f1c2e;margin-bottom:16px">' +
+    '<option value="">Use template default</option>' +
+    allAdults.map(function(n){ return '<option value="'+n+'">'+n+'</option>'; }).join('') +
+    '</select>' +
+    '<div id="was-err" style="font-size:.78rem;color:var(--badge-red);min-height:16px;margin-bottom:8px"></div>' +
+    '<div style="display:flex;gap:8px;justify-content:flex-end">' +
+      '<button onclick="document.getElementById(\'ws-add-session-modal\').remove()" style="padding:8px 16px;border-radius:9px;border:1px solid rgba(255,255,255,.15);background:transparent;color:var(--text-muted);font-family:Nunito,sans-serif;cursor:pointer">Cancel</button>' +
+      '<button onclick="_wsConfirmAddSession(\''+seriesId+'\')" style="padding:8px 20px;border-radius:9px;border:none;background:var(--ya-teal);color:#fff;font-family:Nunito,sans-serif;font-weight:800;font-size:.88rem;cursor:pointer">＋ Add Session</button>' +
+    '</div></div>';
+  document.body.appendChild(modal);
+}
+
+function _wsConfirmAddSession(seriesId) {
+  var arr = _wsGetSeriesArr(seriesId);
+  if (!arr) return;
+  var tmplSel = document.getElementById('was-tmpl');
+  var posSel  = document.getElementById('was-pos');
+  var facSel  = document.getElementById('was-fac');
+  var errEl   = document.getElementById('was-err');
+  var tmplVal = tmplSel ? tmplSel.value : '';
+  var posVal  = posSel  ? parseInt(posSel.value) : arr.length + 1;
+  var facOverride = facSel ? facSel.value : '';
+
+  if (!tmplVal) { if(errEl) errEl.textContent = 'Please choose a workshop topic.'; return; }
+  var t = WS_TEMPLATES.find(function(x){ return x.workshop_id === parseInt(tmplVal); });
+  if (!t) { if(errEl) errEl.textContent = 'Invalid topic.'; return; }
+
+  // Validate date at chosen position is in the future
+  var now = new Date(); now.setHours(0,0,0,0);
+  var isAppend = posVal > arr.length;
+  var slotDate;
+  if (!isAppend) {
+    slotDate = wsParseDisplayDate(arr[posVal-1].date);
+    if (slotDate <= now) {
+      if(errEl) errEl.textContent = '⚠ Session date is in the past — please try again with a future position.';
+      return;
+    }
+  } else {
+    // Appending: compute date = last slot + 1 week
+    var lastParsed = wsParseDisplayDate(arr[arr.length-1].date);
+    lastParsed.setDate(lastParsed.getDate()+7);
+    slotDate = lastParsed;
+    if (slotDate <= now) {
+      if(errEl) errEl.textContent = '⚠ Session date is in the past — please try again.';
+      return;
+    }
+  }
+
+  // Resolve facilitator
+  var facVal = facOverride || (t.default_facilitators && t.default_facilitators.length ? t.default_facilitators[0] : 'TBD');
+
+  // Determine new ID
+  var ser = WS_SERIES[seriesId] || WS_SERIES_DB[seriesId] || {};
+  var allIds = arr.map(function(w){ return w.id; });
+  var maxId = ser.id_max ? Math.max(ser.id_max, Math.max.apply(null, allIds)) : Math.max.apply(null, allIds);
+  var newId = maxId + 1;
+  if (ser.id_max) ser.id_max = newId;
+
+  var mN = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+  if (isAppend) {
+    // Simply push at end with computed date
+    arr.push({
+      id: newId, series_id: seriesId, series_num: arr.length + 1,
+      name: t.title, template_id: t.workshop_id,
+      facilitators: [facVal], volunteers: [],
+      date: mN[slotDate.getMonth()]+' '+slotDate.getDate()+', '+slotDate.getFullYear(),
+      conducted: false, cancelled: false
+    });
+  } else {
+    // Insert before posVal (0-indexed: posVal-1)
+    // Shift subsequent sessions' dates out +1 week
+    var origLastDate = arr[arr.length-1].date;
+    for (var i = arr.length - 1; i >= posVal - 1; i--) {
+      arr[i].date = wsAddWeek(arr[i].date);
+      arr[i].series_num = arr[i].series_num + 1;
+    }
+    // New session takes the original date of the slot we just shifted
+    var newDate = wsSubWeek(arr[posVal-1].date); // arr[posVal-1] is now +1 week
+    // Add new trailing slot at end
+    arr.splice(posVal - 1, 0, {
+      id: newId, series_id: seriesId, series_num: posVal,
+      name: t.title, template_id: t.workshop_id,
+      facilitators: [facVal], volunteers: [],
+      date: newDate, conducted: false, cancelled: false
+    });
+    // Add extra date slot at end
+    var newId2 = newId + 1;
+    if (ser.id_max) ser.id_max = newId2;
+    arr.push({
+      id: newId2, series_id: seriesId, series_num: arr.length + 1,
+      name: 'TBD', template_id: null, facilitators: ['TBD'], volunteers: [],
+      date: wsAddWeek(origLastDate), conducted: false, cancelled: false
+    });
+  }
+  // Resequence
+  arr.forEach(function(w,i){ w.series_num = i+1; });
+  if (ser.id_max) ser.id_max = Math.max(ser.id_max, arr[arr.length-1].id);
+
+  document.getElementById('ws-add-session-modal').remove();
+  saveWsScheduleToDB(seriesId);
+  _wsRerenderSeriesTable(seriesId);
+  renderAdmin();
 }
 
 function _wsConfirmInsert(seriesId, wsId) {

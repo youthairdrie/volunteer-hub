@@ -1086,8 +1086,12 @@ tr:hover .grd-date-sticky { background: #1a2d47; }
           <summary style="font-family:Nunito,sans-serif;font-weight:900;font-size:.95rem;color:var(--ya-orange);cursor:pointer;padding:10px 0;list-style:none;display:flex;align-items:center;gap:8px">🍂 Fall 2026 Workshop Schedule</summary>
           <div style="margin-top:10px">
             <div class="section-box">
-              <div class="section-title">🍂 Fall 2026 Workshop Schedule</div>
+              <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:8px">
+                <div class="section-title" style="margin-bottom:0">🍂 Fall 2026 Workshop Schedule</div>
+                <button id="ws-rearrange-btn-fall_2026" onclick="toggleWsRearrangeMode('fall_2026')" style="padding:5px 14px;border-radius:8px;border:1px solid rgba(232,98,10,.4);background:rgba(232,98,10,.08);color:var(--ya-orange);font-size:.75rem;font-weight:700;cursor:pointer;font-family:DM Sans,sans-serif">⇅ Rearrange</button>
+              </div>
               <div style="font-size:.75rem;color:var(--text-muted);margin-bottom:10px">Sep 14 – Dec 14, 2026 · Mondays · Labour Day &amp; Thanksgiving skipped</div>
+              <div id="ws-rearrange-hint-fall_2026" style="display:none;font-size:.75rem;color:var(--ya-orange);background:rgba(232,98,10,.07);border:1px solid rgba(232,98,10,.2);border-radius:8px;padding:8px 12px;margin-bottom:10px">✏️ <strong>Rearrange mode:</strong> Use ↑↓ to reorder topics · <strong>Insert</strong> adds a session &amp; pushes subsequent dates out · <strong>Remove</strong> deletes a session &amp; pulls dates in · <strong>Cancel</strong> marks as cancelled (name stays)</div>
               <table class="data-table"><thead><tr><th>#</th><th>Workshop</th><th>Facilitator(s)</th><th>Volunteers</th><th>Date</th><th>Status</th><th>Attendance</th><th>Staff</th></tr></thead><tbody id="admin-ws-fall-tbody"></tbody></table>
             </div>
           </div>
@@ -3369,19 +3373,38 @@ function renderAdmin(){
     var volNames = getWsVolunteers(w);
     var facStr = facNames.filter(function(n){return n&&n!=='TBD';}).join(', ') || '<span style="color:var(--text-muted)">TBD</span>';
     var volStr = volNames.length ? volNames.join(', ') : '<span style="color:var(--text-muted)">—</span>';
-    var statusCell = w.cancelled
+    var isCancelled = w.cancelled || w.adminCancelled;
+    var statusCell = isCancelled
       ? '<span class="pill pill-red">Cancelled</span>'
       : w.conducted
         ? '<span class="pill pill-green">Done</span>'
         : '<button onclick="markWorkshopDone('+w.id+')" style="padding:3px 10px;border-radius:6px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.06);color:var(--text-muted);font-size:.72rem;cursor:pointer;font-family:DM Sans,sans-serif">Mark Done</button>';
-    return '<tr id="ws-row-'+w.id+'">' +
-      '<td>'+w.series_num+'</td><td>'+w.name+'</td>' +
+    var rearrangeMode = WS_REARRANGE_MODE[w.series_id];
+    var actionCell;
+    if (rearrangeMode && w.series_id !== 'winter_2026') {
+      var isLocked = w.conducted || w.cancelled || w.adminCancelled;
+      var btnBase = 'padding:3px 7px;border-radius:6px;font-size:.68rem;cursor:pointer;font-family:DM Sans,sans-serif;border:1px solid ';
+      actionCell =
+        '<div style="display:flex;gap:4px;flex-wrap:wrap">' +
+        '<button onclick="wsScheduleMoveUp(\''+w.series_id+'\','+w.id+')" title="Move topic up" '+(isLocked?'disabled style="opacity:.35;cursor:not-allowed;':'')+' style="'+btnBase+'rgba(255,255,255,.2);background:rgba(255,255,255,.06);color:var(--text-muted)">↑</button>' +
+        '<button onclick="wsScheduleMoveDown(\''+w.series_id+'\','+w.id+')" title="Move topic down" '+(isLocked?'disabled style="opacity:.35;cursor:not-allowed;':'')+' style="'+btnBase+'rgba(255,255,255,.2);background:rgba(255,255,255,.06);color:var(--text-muted)">↓</button>' +
+        '<button onclick="wsScheduleInsertBefore(\''+w.series_id+'\','+w.id+')" title="Insert new session before this one" style="'+btnBase+'rgba(0,181,160,.4);background:rgba(0,181,160,.08);color:var(--ya-teal)">＋</button>' +
+        (!isLocked ? '<button onclick="wsScheduleRemove(\''+w.series_id+'\','+w.id+')" title="Remove session (pulls subsequent dates in)" style="'+btnBase+'rgba(239,68,68,.4);background:rgba(239,68,68,.06);color:var(--badge-red)">✕</button>' : '') +
+        (!isCancelled && !w.conducted ? '<button onclick="wsScheduleCancel(\''+w.series_id+'\','+w.id+')" title="Cancel session (keeps slot)" style="'+btnBase+'rgba(232,98,10,.4);background:rgba(232,98,10,.06);color:var(--ya-orange)">🚫</button>' : '') +
+        (isCancelled ? '<button onclick="wsScheduleUncancel(\''+w.series_id+'\','+w.id+')" title="Un-cancel session" style="'+btnBase+'rgba(0,181,160,.4);background:rgba(0,181,160,.06);color:var(--ya-teal)">↩</button>' : '') +
+        '</div>';
+    } else {
+      actionCell = '<button onclick="openWsStaffEdit('+w.id+')" style="padding:3px 10px;border-radius:6px;border:1px solid rgba(29,127,212,.4);background:rgba(29,127,212,.08);color:var(--ya-blue);font-size:.72rem;cursor:pointer;font-family:DM Sans,sans-serif">✏️ Edit</button>';
+    }
+    var rowStyle = isCancelled ? ' style="opacity:.55"' : '';
+    return '<tr id="ws-row-'+w.id+'"'+rowStyle+'>' +
+      '<td>'+w.series_num+'</td><td>'+(isCancelled?'<s>':'')+w.name+(isCancelled?'</s>':'')+'</td>' +
       '<td style="font-size:.75rem" id="ws-fac-'+w.id+'">'+facStr+'</td>' +
       '<td style="font-size:.75rem;color:var(--text-muted)" id="ws-vol-'+w.id+'">'+volStr+'</td>' +
       '<td style="font-size:.75rem">'+w.date+'</td>' +
       '<td>'+statusCell+'</td>' +
       '<td>'+(typeof cnt==='number'?cnt+' youth':'—')+'</td>' +
-      '<td><button onclick="openWsStaffEdit('+w.id+')" style="padding:3px 10px;border-radius:6px;border:1px solid rgba(29,127,212,.4);background:rgba(29,127,212,.08);color:var(--ya-blue);font-size:.72rem;cursor:pointer;font-family:DM Sans,sans-serif">✏️ Edit</button></td>' +
+      '<td>'+actionCell+'</td>' +
       '</tr>';
   }
 
@@ -3403,7 +3426,11 @@ function renderAdmin(){
       var tbId = 'admin-ws-'+sid+'-tbody';
       fsHtml += '<details open style="margin-bottom:14px"><summary style="font-family:Nunito,sans-serif;font-weight:900;font-size:.95rem;color:'+ser.color+';cursor:pointer;padding:10px 0;list-style:none;display:flex;align-items:center;gap:8px">'+ser.icon+' '+ser.name+' Workshop Schedule</summary>' +
         '<div style="margin-top:10px"><div class="section-box">' +
-        '<div class="section-title">'+ser.icon+' '+ser.name+'</div>' +
+        '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:8px">' +
+        '<div class="section-title" style="margin-bottom:0">'+ser.icon+' '+ser.name+'</div>' +
+        '<button id="ws-rearrange-btn-'+sid+'" onclick="toggleWsRearrangeMode(\''+sid+'\')" style="padding:5px 14px;border-radius:8px;border:1px solid rgba(29,127,212,.4);background:rgba(29,127,212,.08);color:var(--ya-blue);font-size:.75rem;font-weight:700;cursor:pointer;font-family:DM Sans,sans-serif">⇅ Rearrange</button>' +
+        '</div>' +
+        '<div id="ws-rearrange-hint-'+sid+'" style="display:none;font-size:.75rem;color:var(--ya-blue);background:rgba(29,127,212,.07);border:1px solid rgba(29,127,212,.2);border-radius:8px;padding:8px 12px;margin-bottom:10px">✏️ <strong>Rearrange mode:</strong> Use ↑↓ to reorder topics · <strong>＋</strong> inserts a session &amp; pushes subsequent dates out · <strong>✕</strong> removes &amp; pulls dates in · <strong>🚫</strong> cancels (name stays)</div>' +
         '<table class="data-table"><thead><tr><th>#</th><th>Workshop</th><th>Facilitator(s)</th><th>Volunteers</th><th>Date</th><th>Status</th><th>Attendance</th><th>Staff</th></tr></thead>' +
         '<tbody id="'+tbId+'">'+sessions.map(function(w){ return wsSessionRow(w, allNames); }).join('')+'</tbody></table>' +
         '</div></div></details>';
@@ -10745,6 +10772,347 @@ function saveWsTemplatesToDB() {
   }).then(function(r){ if(!r.ok) console.warn('saveWsTemplatesToDB failed'); });
 }
 
+// ══════════════════════════════════════════════════════════════════════════
+// WORKSHOP SCHEDULE REARRANGE — move, insert, remove, cancel per series
+// Works for fall_2026 and any DB-created future series.
+// Topic data (name, template_id, facilitators) moves; date slots stay fixed
+// unless a session is inserted (adds week at end) or removed (drops last).
+// ══════════════════════════════════════════════════════════════════════════
+
+// Get the live mutable sessions array for a rearrangeable series
+function _wsGetSeriesArr(seriesId) {
+  if (seriesId === 'fall_2026') return WS_FALL_2026;
+  if (WS_FUTURE_SERIES_SESSIONS[seriesId]) return WS_FUTURE_SERIES_SESSIONS[seriesId];
+  return null;
+}
+
+// Add one week (7 days) to a display-format date string "Mon D, YYYY"
+function wsAddWeek(dateStr) {
+  var d = wsParseDisplayDate(dateStr);
+  if (!d || d.getTime() === 0) return dateStr;
+  d.setDate(d.getDate() + 7);
+  var mNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return mNames[d.getMonth()] + ' ' + d.getDate() + ', ' + d.getFullYear();
+}
+
+// Subtract one week from a display-format date string
+function wsSubWeek(dateStr) {
+  var d = wsParseDisplayDate(dateStr);
+  if (!d || d.getTime() === 0) return dateStr;
+  d.setDate(d.getDate() - 7);
+  var mNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return mNames[d.getMonth()] + ' ' + d.getDate() + ', ' + d.getFullYear();
+}
+
+// Persist current series sessions to DB (program_settings key ws_schedule_<seriesId>)
+function saveWsScheduleToDB(seriesId) {
+  var arr = _wsGetSeriesArr(seriesId);
+  if (!arr) return;
+  var payload = {
+    program_id: 'ws_schedule_' + seriesId,
+    cert_notes: JSON.stringify(arr)
+  };
+  fetch(SUPA_URL + '/rest/v1/program_settings?on_conflict=program_id', {
+    method: 'POST',
+    headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY,
+      'Content-Type': 'application/json', 'Prefer': 'resolution=merge-duplicates,return=minimal' },
+    body: JSON.stringify(payload)
+  }).then(function(r){ if(!r.ok) console.warn('saveWsScheduleToDB failed for', seriesId); else console.log('Schedule saved for series:', seriesId); });
+}
+
+// Load persisted schedule overrides on startup
+async function loadWsScheduleOverrides() {
+  try {
+    // Load Fall 2026 override if exists
+    var rows = await dbGet('program_settings', 'select=program_id,cert_notes&program_id=like.ws_schedule_%25');
+    if (!rows || !rows.length) return;
+    rows.forEach(function(row) {
+      try {
+        var seriesId = row.program_id.replace('ws_schedule_', '');
+        // Skip DB-created series (those are stored in ws_series_series_* and handled elsewhere)
+        if (seriesId.startsWith('series_')) return;
+        var saved = JSON.parse(row.cert_notes);
+        if (!Array.isArray(saved)) return;
+        if (seriesId === 'fall_2026') {
+          // Replace WS_FALL_2026 contents in-place
+          WS_FALL_2026.length = 0;
+          saved.forEach(function(s){ WS_FALL_2026.push(s); });
+          console.log('WS_FALL_2026 schedule loaded from DB:', saved.length, 'sessions');
+        } else if (WS_FUTURE_SERIES_SESSIONS[seriesId]) {
+          WS_FUTURE_SERIES_SESSIONS[seriesId] = saved;
+          console.log('Future series schedule loaded from DB:', seriesId, saved.length, 'sessions');
+        }
+      } catch(e) { console.warn('loadWsScheduleOverrides parse error', row.program_id, e); }
+    });
+  } catch(e) { console.warn('loadWsScheduleOverrides error:', e); }
+}
+
+// Toggle rearrange mode for a series
+function toggleWsRearrangeMode(seriesId) {
+  WS_REARRANGE_MODE[seriesId] = !WS_REARRANGE_MODE[seriesId];
+  var btn = document.getElementById('ws-rearrange-btn-'+seriesId);
+  var hint = document.getElementById('ws-rearrange-hint-'+seriesId);
+  if (btn) {
+    if (WS_REARRANGE_MODE[seriesId]) {
+      btn.textContent = '✅ Done Rearranging';
+      btn.style.borderColor = 'var(--ya-orange)';
+      btn.style.color = 'var(--ya-orange)';
+      btn.style.background = 'rgba(232,98,10,.1)';
+      if (hint) hint.style.display = 'block';
+    } else {
+      btn.textContent = '⇅ Rearrange';
+      btn.style.borderColor = '';
+      btn.style.color = '';
+      btn.style.background = '';
+      if (hint) hint.style.display = 'none';
+    }
+  }
+  // Re-render just the tbody for this series
+  _wsRerenderSeriesTable(seriesId);
+}
+
+// Re-render the tbody for a specific series (avoids full renderAdmin() cost)
+function _wsRerenderSeriesTable(seriesId) {
+  var allNames = Object.keys(EL_YOUTH);
+  var arr = _wsGetSeriesArr(seriesId);
+  if (!arr) return;
+  var tbodyId = seriesId === 'fall_2026' ? 'admin-ws-fall-tbody' : 'admin-ws-'+seriesId+'-tbody';
+  var tbody = document.getElementById(tbodyId);
+  if (!tbody) {
+    // Full re-render needed (e.g. future series section not yet in DOM)
+    renderAdmin();
+    return;
+  }
+  tbody.innerHTML = arr.map(function(w){ return wsSessionRow(w, allNames); }).join('');
+}
+
+// Move topic UP in series (swap topic data with previous session)
+function wsScheduleMoveUp(seriesId, wsId) {
+  var arr = _wsGetSeriesArr(seriesId);
+  if (!arr) return;
+  var idx = arr.findIndex(function(w){ return w.id === wsId; });
+  if (idx <= 0) return;
+  // Find previous non-conducted, non-cancelled session (only swap topics between editable sessions)
+  var prev = arr[idx - 1];
+  var curr = arr[idx];
+  if (curr.conducted || curr.cancelled || curr.adminCancelled) { alert('Cannot move a session that is already done or cancelled.'); return; }
+  _wsSwapTopicData(curr, prev);
+  saveWsScheduleToDB(seriesId);
+  _wsRerenderSeriesTable(seriesId);
+}
+
+// Move topic DOWN in series
+function wsScheduleMoveDown(seriesId, wsId) {
+  var arr = _wsGetSeriesArr(seriesId);
+  if (!arr) return;
+  var idx = arr.findIndex(function(w){ return w.id === wsId; });
+  if (idx < 0 || idx >= arr.length - 1) return;
+  var curr = arr[idx];
+  var next = arr[idx + 1];
+  if (curr.conducted || curr.cancelled || curr.adminCancelled) { alert('Cannot move a session that is already done or cancelled.'); return; }
+  _wsSwapTopicData(curr, next);
+  saveWsScheduleToDB(seriesId);
+  _wsRerenderSeriesTable(seriesId);
+}
+
+// Swap topic data (name, template_id, facilitators, volunteers) between two sessions
+function _wsSwapTopicData(a, b) {
+  var fields = ['name', 'template_id', 'facilitators', 'volunteers'];
+  fields.forEach(function(f) {
+    var tmp = a[f];
+    a[f] = b[f];
+    b[f] = tmp;
+  });
+}
+
+// Insert a new session BEFORE the given wsId
+// Shifts all subsequent sessions' topic data down by 1 slot
+// Adds a new date slot at the end of the series (+7 days from last session)
+function wsScheduleInsertBefore(seriesId, wsId) {
+  var arr = _wsGetSeriesArr(seriesId);
+  if (!arr) return;
+  var idx = arr.findIndex(function(w){ return w.id === wsId; });
+  if (idx < 0) return;
+
+  // Prompt for the topic to insert
+  var allAdults = Object.values(FAC_PROFILES).map(function(p){ return p.name; }).sort();
+  var tmplOpts = WS_TEMPLATES.filter(function(t){ return t.active; }).sort(function(a,b){ return a.sort_order-b.sort_order; });
+  var modal = document.createElement('div');
+  modal.id = 'ws-insert-modal';
+  modal.style.cssText = 'position:fixed;inset:0;z-index:2000;background:rgba(0,0,0,.75);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;padding:20px';
+  modal.innerHTML =
+    '<div style="background:var(--card-bg);border:1px solid var(--card-border);border-radius:16px;padding:24px;width:100%;max-width:460px">' +
+    '<div style="font-family:Nunito,sans-serif;font-weight:900;font-size:1.05rem;margin-bottom:4px">＋ Insert Session</div>' +
+    '<div style="font-size:.78rem;color:var(--text-muted);margin-bottom:18px">Inserting before <strong>'+arr[idx].name+'</strong> (session #'+arr[idx].series_num+'). All sessions from this point forward will shift out by one week, and a new date will be added at the end.</div>' +
+    '<div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px">Workshop Topic</div>' +
+    '<select id="ws-insert-tmpl" style="width:100%;background:#0f1c2e;border:1px solid rgba(255,255,255,.15);border-radius:8px;padding:8px 12px;color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem;margin-bottom:12px;box-sizing:border-box">' +
+    '<option value="">— Choose a topic —</option>' +
+    tmplOpts.map(function(t){ return '<option value="'+t.workshop_id+'">#'+t.sort_order+' '+t.title+'</option>'; }).join('') +
+    '<option value="_custom">✏️ Custom title…</option>' +
+    '</select>' +
+    '<div id="ws-insert-custom-wrap" style="display:none;margin-bottom:12px">' +
+    '<div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px">Custom Title</div>' +
+    '<input id="ws-insert-custom-title" type="text" placeholder="e.g. Guest Speaker Session" style="width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.15);border-radius:8px;padding:8px 12px;color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.88rem;box-sizing:border-box">' +
+    '</div>' +
+    '<div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px">Default Facilitator (optional)</div>' +
+    '<select id="ws-insert-fac" style="width:100%;background:#0f1c2e;border:1px solid rgba(255,255,255,.15);border-radius:8px;padding:8px 12px;color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem;margin-bottom:16px;box-sizing:border-box">' +
+    '<option value="TBD">TBD</option>' +
+    allAdults.map(function(n){ return '<option value="'+n+'">'+n+'</option>'; }).join('') +
+    '</select>' +
+    '<div id="ws-insert-err" style="font-size:.78rem;color:var(--badge-red);min-height:16px;margin-bottom:8px"></div>' +
+    '<div style="display:flex;gap:8px;justify-content:flex-end">' +
+    '<button onclick="document.getElementById(\'ws-insert-modal\').remove()" style="padding:8px 16px;border-radius:9px;border:1px solid rgba(255,255,255,.15);background:transparent;color:var(--text-muted);font-family:Nunito,sans-serif;cursor:pointer">Cancel</button>' +
+    '<button onclick="_wsConfirmInsert(\''+seriesId+'\','+wsId+')" style="padding:8px 20px;border-radius:9px;border:none;background:var(--ya-teal);color:#fff;font-family:Nunito,sans-serif;font-weight:800;font-size:.88rem;cursor:pointer">＋ Insert</button>' +
+    '</div></div>';
+  // Show/hide custom input when "Custom title" selected
+  modal.querySelector('#ws-insert-tmpl').addEventListener('change', function() {
+    var wrap = document.getElementById('ws-insert-custom-wrap');
+    if (wrap) wrap.style.display = this.value === '_custom' ? 'block' : 'none';
+  });
+  document.body.appendChild(modal);
+}
+
+function _wsConfirmInsert(seriesId, wsId) {
+  var arr = _wsGetSeriesArr(seriesId);
+  if (!arr) return;
+  var idx = arr.findIndex(function(w){ return w.id === wsId; });
+  if (idx < 0) return;
+
+  var tmplSel = document.getElementById('ws-insert-tmpl');
+  var facSel  = document.getElementById('ws-insert-fac');
+  var errEl   = document.getElementById('ws-insert-err');
+  var tmplVal = tmplSel ? tmplSel.value : '';
+  var facVal  = facSel ? facSel.value : 'TBD';
+
+  var newName, newTmplId;
+  if (tmplVal === '_custom') {
+    var customInp = document.getElementById('ws-insert-custom-title');
+    newName = customInp ? customInp.value.trim() : '';
+    if (!newName) { if(errEl) errEl.textContent = 'Please enter a custom title.'; return; }
+    newTmplId = null;
+  } else if (tmplVal) {
+    var tmplId = parseInt(tmplVal);
+    var t = WS_TEMPLATES.find(function(x){ return x.workshop_id === tmplId; });
+    if (!t) { if(errEl) errEl.textContent = 'Invalid topic selected.'; return; }
+    newName = t.title;
+    newTmplId = t.workshop_id;
+    // Use template's default facilitator if admin left TBD
+    if (facVal === 'TBD' && t.default_facilitators && t.default_facilitators.length) facVal = t.default_facilitators[0];
+  } else {
+    if(errEl) errEl.textContent = 'Please choose a workshop topic.'; return;
+  }
+
+  // Determine a new unique ID (use id_max+1 if available, else max existing +1)
+  var ser = WS_SERIES[seriesId] || WS_SERIES_DB[seriesId] || {};
+  var allIds = arr.map(function(w){ return w.id; });
+  var maxId = ser.id_max ? Math.max(ser.id_max, Math.max.apply(null, allIds)) : Math.max.apply(null, allIds);
+  var newId = maxId + 1;
+  if (ser.id_max) ser.id_max = newId; // extend the range
+
+  // Compute the new last date (+7 days from current last)
+  var lastDate = arr[arr.length - 1].date;
+  var newLastDate = wsAddWeek(lastDate);
+
+  // Shift all sessions from idx onward: dates shift +1 week, series_num +1
+  for (var i = arr.length - 1; i >= idx; i--) {
+    arr[i].date = wsAddWeek(arr[i].date);
+    arr[i].series_num = arr[i].series_num + 1;
+  }
+
+  // Build the new session object and splice it in
+  // The inserted session takes the ORIGINAL date at idx (before the +1 week shift we applied above)
+  var newSession = {
+    id: newId,
+    series_id: seriesId,
+    series_num: idx + 1,
+    name: newName,
+    template_id: newTmplId,
+    facilitators: [facVal],
+    volunteers: [],
+    date: wsSubWeek(arr[idx].date), // arr[idx].date is now +1 week; subtract to get original
+    conducted: false,
+    cancelled: false
+  };
+
+  arr.splice(idx, 0, newSession);
+
+  // Add a new date slot at the end (+7 days from original last session)
+  arr.push({
+    id: newId + 1,
+    series_id: seriesId,
+    series_num: arr.length + 1,
+    name: 'TBD',
+    template_id: null,
+    facilitators: ['TBD'],
+    volunteers: [],
+    date: newLastDate,
+    conducted: false,
+    cancelled: false
+  });
+  // Fix series_num for everything
+  arr.forEach(function(w, i){ w.series_num = i + 1; });
+  if (ser.id_max) ser.id_max = Math.max(ser.id_max, arr[arr.length-1].id);
+
+  document.getElementById('ws-insert-modal').remove();
+  saveWsScheduleToDB(seriesId);
+  _wsRerenderSeriesTable(seriesId);
+  renderAdmin(); // refresh stats
+}
+
+// Remove a session from the series — pull subsequent dates in by one week
+function wsScheduleRemove(seriesId, wsId) {
+  var arr = _wsGetSeriesArr(seriesId);
+  if (!arr) return;
+  var idx = arr.findIndex(function(w){ return w.id === wsId; });
+  if (idx < 0) return;
+  var ws = arr[idx];
+  if (ws.conducted) { alert('Cannot remove a session that has already been conducted. Cancel it instead.'); return; }
+  if (!confirm('Remove session #'+ws.series_num+' "'+ws.name+'" ('+ws.date+')?\n\nAll subsequent sessions will shift one week earlier, and this session\'s slot will be removed. This cannot be undone.')) return;
+
+  // Shift all sessions AFTER idx: dates –1 week
+  for (var i = idx + 1; i < arr.length; i++) {
+    arr[i].date = wsSubWeek(arr[i].date);
+  }
+  // Remove the session
+  arr.splice(idx, 1);
+  // Resequence series_num
+  arr.forEach(function(w, i){ w.series_num = i + 1; });
+
+  saveWsScheduleToDB(seriesId);
+  _wsRerenderSeriesTable(seriesId);
+  renderAdmin();
+}
+
+// Cancel a session (marks adminCancelled, keeps slot, name and number remain)
+function wsScheduleCancel(seriesId, wsId) {
+  var arr = _wsGetSeriesArr(seriesId);
+  if (!arr) return;
+  var ws = arr.find(function(w){ return w.id === wsId; });
+  if (!ws) return;
+  if (!confirm('Cancel session #'+ws.series_num+' "'+ws.name+'" ('+ws.date+')?\n\nThe session slot will remain in the schedule and be marked as Cancelled.')) return;
+  ws.adminCancelled = true;
+  ws.cancelled = true;
+  // Also update DB cancellations table for compatibility with existing cancel logic
+  dbPost('workshop_cancellations', {workshop_id: wsId, cancelled_by: adultState ? adultState.name : 'admin', cancelled_at: new Date().toISOString()})
+    .then(function(){ console.log('Session cancelled:', wsId); });
+  saveWsScheduleToDB(seriesId);
+  _wsRerenderSeriesTable(seriesId);
+}
+
+// Un-cancel a session
+function wsScheduleUncancel(seriesId, wsId) {
+  var arr = _wsGetSeriesArr(seriesId);
+  if (!arr) return;
+  var ws = arr.find(function(w){ return w.id === wsId; });
+  if (!ws) return;
+  ws.adminCancelled = false;
+  ws.cancelled = false;
+  dbDel('workshop_cancellations', 'workshop_id=eq.' + wsId)
+    .then(function(){ console.log('Session un-cancelled:', wsId); });
+  saveWsScheduleToDB(seriesId);
+  _wsRerenderSeriesTable(seriesId);
+}
+
 // ── generateSeriesSessions — creates session objects from templates ────────
 // series: { id, name, meeting_day, icon, color, id_base }
 // startTemplateIdx: 0-based index into active sorted templates to start from
@@ -10921,6 +11289,8 @@ async function loadWsSeriesFromDB() {
 // ══════════════════════════════════════════════════════════════════════════
 
 var wsAttEditMode = false;
+// Track which series are in rearrange mode { series_id: true/false }
+var WS_REARRANGE_MODE = {};
 
 function toggleWsAttEditMode(){
   wsAttEditMode = !wsAttEditMode;
@@ -13307,6 +13677,7 @@ async function dbStartup() {
     await Promise.all([
       loadEventRegistrations(),
       loadEventVolunteers(),
+      loadWsScheduleOverrides(),
       loadWorkshopConducted(),
       loadWorkshopCancellations(),
       loadWsSeriesFromDB(),

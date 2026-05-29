@@ -1012,15 +1012,22 @@ tr:hover .grd-date-sticky { background: #1a2d47; }
           <div class="stat-card" style="--accent-color:var(--ya-green)"><div class="stat-label">Workshops Done</div><div class="stat-value" id="admin-ws-done-count">—</div><div class="stat-meta" id="admin-ws-done-meta">of — scheduled</div><div class="stat-icon">📚</div></div>
         </div>
         <div class="section-box"><div class="section-title">📈 Attendance by Workshop</div><div id="admin-ws-bars"></div></div>
-        <div class="section-box">
+        <details id="youth-att-details" style="margin-bottom:14px">
+          <summary style="font-family:Nunito,sans-serif;font-weight:900;font-size:.95rem;color:var(--ya-teal);cursor:pointer;padding:10px 0;list-style:none;display:flex;align-items:center;gap:8px">
+            🏆 Youth Certification Status &amp; Workshop Attendance
+            <span id="youth-att-summary-pill" style="font-size:.72rem;font-weight:400;color:var(--text-muted);font-family:DM Sans,sans-serif"></span>
+          </summary>
+        <div class="section-box" style="margin-top:10px">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:13px;flex-wrap:wrap;gap:8px">
             <div>
               <div class="section-title" style="margin-bottom:2px">🏆 Youth Certification Status &amp; Workshop Attendance</div>
               <div style="font-size:.78rem;color:var(--text-muted)">Progress columns first · then click any ✔/— cell to toggle attendance · saves instantly</div>
             </div>
-            <div style="display:flex;gap:8px;align-items:center">
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
               <button onclick="toggleAddELYouthPanel()" id="add-el-youth-btn" class="ws-btn" style="border-color:var(--ya-teal);color:var(--ya-teal);font-size:.75rem">+ Add Youth</button>
               <button id="ws-att-edit-btn" onclick="toggleWsAttEditMode()" class="ws-btn" style="border-color:var(--ya-teal);color:var(--ya-teal);font-size:.75rem">✏️ Edit Attendance</button>
+              <button onclick="toggleWsAttArchiveMode()" id="ws-att-archive-btn" class="ws-btn" style="border-color:var(--ya-orange);color:var(--ya-orange);font-size:.75rem">📦 Archive</button>
+              <button onclick="openRestoreArchivedModal()" class="ws-btn" style="border-color:var(--ya-blue);color:var(--ya-blue);font-size:.75rem">↩ Restore</button>
             </div>
           </div>
 
@@ -1046,6 +1053,9 @@ tr:hover .grd-date-sticky { background: #1a2d47; }
           <div id="ws-att-edit-hint" style="display:none;font-size:.78rem;color:var(--ya-teal);background:rgba(0,181,160,.07);border:1px solid rgba(0,181,160,.2);border-radius:8px;padding:8px 12px;margin-bottom:10px">
             ✏️ <strong>Edit mode active</strong> — Click any ✔ or — cell to toggle attendance. Changes save to the database instantly. Click <strong>✏️ Done</strong> to exit.
           </div>
+          <div id="ws-att-archive-hint" style="display:none;font-size:.78rem;color:var(--ya-orange);background:rgba(232,98,10,.07);border:1px solid rgba(232,98,10,.2);border-radius:8px;padding:8px 12px;margin-bottom:10px">
+            📦 <strong>Archive mode active</strong> — Click <strong>Archive</strong> on any row to hide that youth from this list. Their attendance history, workshop count, and all stats are fully preserved. Use <strong>↩ Restore</strong> to bring them back.
+          </div>
           <div style="overflow-x:auto">
             <table class="data-table" id="youth-ws-att-table" style="width:auto;min-width:100%">
               <thead><tr id="youth-ws-att-thead"></tr></thead>
@@ -1053,6 +1063,7 @@ tr:hover .grd-date-sticky { background: #1a2d47; }
             </table>
           </div>
         </div>
+        </details>
 
         <!-- Template Library + Schedule Next Series -->
         <details style="margin-bottom:14px" id="ws-template-details">
@@ -11555,6 +11566,8 @@ async function loadWsSeriesFromDB() {
 var wsAttEditMode = false;
 // Track which series are in rearrange mode { series_id: true/false }
 var WS_REARRANGE_MODE = {};
+// Set of youth names hidden from the attendance table (archived). Data is preserved.
+var EL_ARCHIVED = new Set();
 
 function toggleWsAttEditMode(){
   wsAttEditMode = !wsAttEditMode;
@@ -11758,8 +11771,13 @@ function renderYouthAttendanceTable(){
   var conductedWs = WORKSHOPS.filter(function(w){ return w.conducted && !w.cancelled; });
   var names = Object.keys(EL_YOUTH).sort();
 
+  // ── Update summary pill in collapsible header ──
+  var activeCt = names.filter(function(n){ return (EL_YOUTH[n]||[]).length > 0 && !EL_ARCHIVED.has(n); }).length;
+  var archivedCt = EL_ARCHIVED.size;
+  var pill = document.getElementById('youth-att-summary-pill');
+  if (pill) pill.textContent = '(' + activeCt + ' active' + (archivedCt ? ' · ' + archivedCt + ' archived' : '') + ')';
+
   // ── Header row ──
-  // Fixed columns: Name | # Workshops | Progress bar | Status pills | then one col per workshop
   thead.innerHTML =
     '<th class="ws-sticky ws-sticky-1">Name</th>' +
     '<th class="ws-sticky ws-sticky-2" style="text-align:center;min-width:90px">Workshops</th>' +
@@ -11769,10 +11787,11 @@ function renderYouthAttendanceTable(){
       var shortId = getWsShortId(w);
       return '<th style="text-align:center;font-size:.6rem;min-width:46px;padding:6px 3px" title="'+w.name+'"><span style="font-family:monospace;color:var(--ya-teal)">'+shortId+'</span><br><span style="font-weight:400;color:var(--text-muted)">'+shortDate+'</span></th>';
     }).join('') +
-    '<th style="text-align:center;min-width:60px">Attended</th>';
+    '<th style="text-align:center;min-width:60px">Attended</th>' +
+    (wsAttArchiveMode ? '<th style="text-align:center;min-width:80px">Archive</th>' : '');
 
-  // ── Body rows — skip youth with 0 attendance ──
-  var activeNames = names.filter(function(n){ return (EL_YOUTH[n]||[]).length > 0; });
+  // ── Body rows — skip archived and 0-attendance youth ──
+  var activeNames = names.filter(function(n){ return (EL_YOUTH[n]||[]).length > 0 && !EL_ARCHIVED.has(n); });
   tbody.innerHTML = activeNames.map(function(n){
     var attended = new Set(EL_YOUTH[n] || []);
     var c = attended.size;
@@ -11815,12 +11834,18 @@ function renderYouthAttendanceTable(){
     // Count attended of conducted workshops
     var attCount = conductedWs.filter(function(w){ return attended.has(w.id); }).length;
 
+    // Archive button cell
+    var archiveCell = wsAttArchiveMode
+      ? '<td style="text-align:center"><button onclick="archiveYouth(\''+n.replace(/'/g,"\\'")+'\''+')" style="padding:3px 10px;border-radius:6px;border:1px solid rgba(232,98,10,.5);background:rgba(232,98,10,.08);color:var(--ya-orange);font-size:.72rem;cursor:pointer;font-family:DM Sans,sans-serif;white-space:nowrap">📦 Archive</button></td>'
+      : '';
+
     return '<tr>'+
       '<td class="ws-sticky ws-sticky-1"><strong style="font-size:.83rem">'+n+'</strong><div style="font-size:.68rem;color:var(--text-muted)">'+h+' vol hrs'+ageStr+'</div></td>'+
       '<td class="ws-sticky ws-sticky-2" style="text-align:center;vertical-align:middle"><strong>'+c+'</strong><br>'+progressBar+'</td>'+
       '<td class="ws-sticky ws-sticky-3" style="vertical-align:middle">'+st+'</td>'+
       wsCells+
       '<td style="text-align:center;font-weight:700;color:var(--ya-teal)">'+attCount+' / '+conductedWs.length+'</td>'+
+      archiveCell+
       '</tr>';
   }).join('');
 }
@@ -11887,7 +11912,153 @@ function toggleYouthWsAdmin(name, wsId, cell){
   saveWorkshopAttendance(name, wsId, nowAttending);
 }
 
+// ══════════════════════════════════════════════════════════════════════════
+// YOUTH ATTENDANCE ARCHIVE / RESTORE
+// ══════════════════════════════════════════════════════════════════════════
 
+var wsAttArchiveMode = false;
+
+function toggleWsAttArchiveMode() {
+  wsAttArchiveMode = !wsAttArchiveMode;
+  var btn  = document.getElementById('ws-att-archive-btn');
+  var hint = document.getElementById('ws-att-archive-hint');
+  if (btn) {
+    if (wsAttArchiveMode) {
+      btn.textContent = '✅ Done Archiving';
+      btn.style.borderColor = 'var(--ya-orange)';
+      btn.style.color = 'var(--ya-orange)';
+      btn.style.background = 'rgba(232,98,10,.1)';
+      if (hint) hint.style.display = 'block';
+      // Exit edit mode if active
+      if (wsAttEditMode) toggleWsAttEditMode();
+    } else {
+      btn.textContent = '📦 Archive';
+      btn.style.borderColor = 'var(--ya-orange)';
+      btn.style.color = 'var(--ya-orange)';
+      btn.style.background = '';
+      if (hint) hint.style.display = 'none';
+    }
+  }
+  renderYouthAttendanceTable();
+}
+
+// Archive a single youth — hides from table, preserves all data
+function archiveYouth(name) {
+  if (!confirm('Archive "' + name + '"?\n\nThey will be hidden from the attendance list. All their workshop history, counts, and stats are fully preserved and continue to count toward program metrics. You can restore them at any time.')) return;
+  EL_ARCHIVED.add(name);
+  saveArchivedYouthToDB();
+  renderYouthAttendanceTable();
+}
+
+// Restore a single youth from archived set
+function restoreYouth(name) {
+  EL_ARCHIVED.delete(name);
+  saveArchivedYouthToDB();
+  renderYouthAttendanceTable();
+  _refreshRestoreModalList();
+}
+
+// Save archived names list to program_settings
+function saveArchivedYouthToDB() {
+  var payload = {
+    program_id: 'el_youth_archived',
+    cert_notes: JSON.stringify(Array.from(EL_ARCHIVED))
+  };
+  fetch(SUPA_URL + '/rest/v1/program_settings?on_conflict=program_id', {
+    method: 'POST',
+    headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY,
+      'Content-Type': 'application/json', 'Prefer': 'resolution=merge-duplicates,return=minimal' },
+    body: JSON.stringify(payload)
+  }).then(function(r){ if(!r.ok) console.warn('saveArchivedYouthToDB failed'); else console.log('Archived youth saved:', EL_ARCHIVED.size); });
+}
+
+// Load archived youth list from DB on startup
+async function loadArchivedYouth() {
+  try {
+    var rows = await dbGet('program_settings', 'select=cert_notes&program_id=eq.el_youth_archived');
+    if (rows && rows.length && rows[0].cert_notes) {
+      var saved = JSON.parse(rows[0].cert_notes);
+      if (Array.isArray(saved)) {
+        EL_ARCHIVED = new Set(saved);
+        console.log('Archived youth loaded:', EL_ARCHIVED.size);
+      }
+    }
+  } catch(e) { console.warn('loadArchivedYouth error:', e); }
+}
+
+// Open Restore modal — shows all archived youth with checkboxes
+function openRestoreArchivedModal() {
+  if (EL_ARCHIVED.size === 0) {
+    alert('No archived youth to restore. Archive youth first using the \u{1F4E6} Archive button.');
+    return;
+  }
+  // Remove any existing modal
+  var old = document.getElementById('ws-restore-modal');
+  if (old) old.remove();
+
+  var modal = document.createElement('div');
+  modal.id = 'ws-restore-modal';
+  modal.style.cssText = 'position:fixed;inset:0;z-index:2000;background:rgba(0,0,0,.75);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;padding:20px';
+  modal.innerHTML =
+    '<div style="background:var(--card-bg);border:1px solid var(--card-border);border-radius:16px;padding:24px;width:100%;max-width:480px;max-height:85vh;display:flex;flex-direction:column">' +
+    '<div style="font-family:Nunito,sans-serif;font-weight:900;font-size:1.05rem;margin-bottom:4px">\u21A9 Restore Archived Youth</div>' +
+    '<div style="font-size:.78rem;color:var(--text-muted);margin-bottom:14px">Select one or more youth to restore to the attendance list. All historical attendance will reappear immediately.</div>' +
+    '<div style="display:flex;gap:8px;margin-bottom:10px">' +
+      '<button onclick="_restoreModalSelectAll(true)" style="padding:4px 12px;border-radius:7px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.06);color:var(--text-muted);font-size:.75rem;cursor:pointer;font-family:DM Sans,sans-serif">Select All</button>' +
+      '<button onclick="_restoreModalSelectAll(false)" style="padding:4px 12px;border-radius:7px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.06);color:var(--text-muted);font-size:.75rem;cursor:pointer;font-family:DM Sans,sans-serif">Clear</button>' +
+    '</div>' +
+    '<div id="ws-restore-list" style="overflow-y:auto;flex:1;border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:6px;max-height:380px"></div>' +
+    '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">' +
+      '<button onclick="document.getElementById(\'ws-restore-modal\').remove()" style="padding:8px 16px;border-radius:9px;border:1px solid rgba(255,255,255,.15);background:transparent;color:var(--text-muted);font-family:Nunito,sans-serif;cursor:pointer">Cancel</button>' +
+      '<button onclick="_wsConfirmRestoreSelected()" style="padding:8px 22px;border-radius:9px;border:none;background:var(--ya-blue);color:#fff;font-family:Nunito,sans-serif;font-weight:800;font-size:.88rem;cursor:pointer">\u21A9 Restore Selected</button>' +
+    '</div></div>';
+  document.body.appendChild(modal);
+  _refreshRestoreModalList();
+}
+
+function _refreshRestoreModalList() {
+  var listEl = document.getElementById('ws-restore-list');
+  if (!listEl) return;
+  var archived = Array.from(EL_ARCHIVED).sort();
+  if (!archived.length) {
+    listEl.innerHTML = '<div style="color:var(--text-muted);font-size:.82rem;padding:12px;text-align:center">No archived youth.</div>';
+    return;
+  }
+  listEl.innerHTML = archived.map(function(name) {
+    var ws  = (EL_YOUTH[name] || []).length;
+    var h   = YOUTH_HOURS[name] || 0;
+    var age = YOUTH_AGES[name] ? ' \u00B7 Age ' + YOUTH_AGES[name] : '';
+    var safeId = 'restore-chk-' + name.replace(/[^a-zA-Z0-9]/g,'_');
+    return '<label style="display:flex;align-items:center;gap:10px;padding:9px 8px;border-radius:8px;cursor:pointer;transition:background .15s" onmouseover="this.style.background=\'rgba(255,255,255,.05)\'" onmouseout="this.style.background=\'\'">' +
+      '<input type="checkbox" id="' + safeId + '" value="' + name.replace(/"/g,'&quot;') + '" checked style="accent-color:var(--ya-blue);width:15px;height:15px;flex-shrink:0">' +
+      '<div style="flex:1;min-width:0">' +
+        '<div style="font-size:.85rem;font-weight:700">' + name + '</div>' +
+        '<div style="font-size:.71rem;color:var(--text-muted)">' + ws + ' workshop' + (ws !== 1 ? 's' : '') + ' \u00B7 ' + h + ' vol hr' + (h !== 1 ? 's' : '') + age + '</div>' +
+      '</div>' +
+      '<span style="font-size:.72rem;font-family:monospace;color:var(--ya-teal);background:rgba(0,181,160,.1);border:1px solid rgba(0,181,160,.25);border-radius:4px;padding:2px 6px">' + ws + ' ws</span>' +
+    '</label>';
+  }).join('');
+}
+
+function _restoreModalSelectAll(checked) {
+  var listEl = document.getElementById('ws-restore-list');
+  if (!listEl) return;
+  listEl.querySelectorAll('input[type=checkbox]').forEach(function(cb){ cb.checked = checked; });
+}
+
+function _wsConfirmRestoreSelected() {
+  var listEl = document.getElementById('ws-restore-list');
+  if (!listEl) return;
+  var selected = [];
+  listEl.querySelectorAll('input[type=checkbox]:checked').forEach(function(cb){ selected.push(cb.value); });
+  if (!selected.length) { alert('Please select at least one youth to restore.'); return; }
+  selected.forEach(function(name){ EL_ARCHIVED.delete(name); });
+  saveArchivedYouthToDB();
+  renderYouthAttendanceTable();
+  document.getElementById('ws-restore-modal').remove();
+  var n = selected.length;
+  alert('\u2714 ' + (n === 1 ? '"' + selected[0] + '" has been restored.' : n + ' youth have been restored.'));
+}
 
 var wordScoreEditMode = false;
 
@@ -13947,6 +14118,7 @@ async function dbStartup() {
       loadWorkshopConducted(),
       loadWorkshopCancellations(),
       loadWsSeriesFromDB(),
+      loadArchivedYouth(),
       loadProgramData(),
       loadGardenData(),
       loadJysepBooks().then(function(){ return loadAllJysepData(); }),

@@ -2285,24 +2285,24 @@ tr:hover .grd-date-sticky { background: #1a2d47; }
 // sort_order is 1-based; active:false = archived (removed from future generation)
 // ═══════════════════════════════════════════════════════════════════════════
 var WS_TEMPLATES = [
-  {workshop_id:1,  title:"Becoming a Leader",        description:"Learn about three different types of leaders and discover which style feels most like you.",              default_facilitators:["Kim Sundset"], active:true,  sort_order:1},
-  {workshop_id:2,  title:"Junior Finance",            description:"Find out how to build good money habits, make smart choices, and avoid debt as you get older.",          default_facilitators:["Connie Wu"],   active:true,  sort_order:2},
-  {workshop_id:3,  title:"Effective Communication",   description:"Explore the four personality styles and figure out which one matches you best.",                         default_facilitators:["Kim Sundset"], active:true,  sort_order:3},
-  {workshop_id:4,  title:"Conflict Management",       description:"Learn how to handle tough situations, stand up to bullies, and avoid toxic friendships.",                 default_facilitators:["Kim Sundset"], active:true,  sort_order:4},
-  {workshop_id:5,  title:"Planning and Organizing",   description:"Discover how to set goals, stay on top of your time, and learn the six habits of super organized people.",default_facilitators:["Tina Petrow"], active:true,  sort_order:5},
-  {workshop_id:6,  title:"Learn to Belong",           description:"Talk about privilege, bias, and the power of community in a safe and friendly space.",                    default_facilitators:["Kim Sundset"], active:true,  sort_order:6},
-  {workshop_id:7,  title:"Building Connections",      description:"Explores how human connections help people feel safe, valued, and supported.",                            default_facilitators:["Kim Sundset"], active:true,  sort_order:7},
-  {workshop_id:8,  title:"Building Social Capacity",  description:"Explore how social media shapes reputation and how online actions can have long-lasting impacts.",        default_facilitators:["Kim Sundset"], active:true,  sort_order:8},
-  {workshop_id:9,  title:"Seeing Differently",        description:"Helps youth understand how different life experiences shape how people see the world.",                   default_facilitators:["Roberta Ehigiator"], active:true, sort_order:9},
-  {workshop_id:10, title:"Tools for Resilience",      description:"Helps youth understand stress and how it affects emotions, focus, and decision-making.",                  default_facilitators:["Olga Korcheva"],    active:true, sort_order:10},
-  {workshop_id:11, title:"Digital Detoxing",          description:"Explore how screens, gaming, sugar, and social media influence habits and attention.",                    default_facilitators:["Tina Petrow"],      active:true, sort_order:11},
-  {workshop_id:12, title:"Bullying Prevention",       description:"Explores how communities can work together to prevent bullying and create safer, more respectful spaces.", default_facilitators:["Olga Korcheva"],    active:true, sort_order:12},
-  {workshop_id:13, title:"Healthy Debating",          description:"Youth will practice sharing opinions respectfully while listening to different viewpoints.",               default_facilitators:["Tina Petrow"],      active:true, sort_order:13},
-  {workshop_id:14, title:"Health & Fitness",          description:"Explores how movement, nutrition, and rest support both physical and mental well-being.",                 default_facilitators:["Tina Petrow"],      active:true, sort_order:14},
-  {workshop_id:15, title:"Healthy Spending",          description:"Youth will learn how advertising, trends, and media influence spending habits and consumer debt.",         default_facilitators:["Connie Wu"],        active:true, sort_order:15},
-  {workshop_id:16, title:"Leveraging Differences",    description:"Helps youth see how differences in personality, skills, and experiences are strengths when working together.", default_facilitators:["Roberta Ehigiator"], active:true, sort_order:16},
-  {workshop_id:17, title:"Joy of Accomplishment",     description:"Celebrate progress, reflect on growth, and set intentions for continued leadership development.",         default_facilitators:["Kim Sundset"],      active:true, sort_order:17},
-  {workshop_id:18, title:"Public Speaking",           description:"Youth will build confidence speaking in front of others through fun, supportive activities.",             default_facilitators:["Kim Sundset"],      active:true, sort_order:18}
+  {workshop_id:1,  short_id:"BLEA", title:"Becoming a Leader",        description:"Learn about three different types of leaders and discover which style feels most like you.",              default_facilitators:["Kim Sundset"], active:true,  sort_order:1},
+  {workshop_id:2,  short_id:"JUFN", title:"Junior Finance",            description:"Find out how to build good money habits, make smart choices, and avoid debt as you get older.",          default_facilitators:["Connie Wu"],   active:true,  sort_order:2},
+  {workshop_id:3,  short_id:"EFCM", title:"Effective Communication",   description:"Explore the four personality styles and figure out which one matches you best.",                         default_facilitators:["Kim Sundset"], active:true,  sort_order:3},
+  {workshop_id:4,  short_id:"CNMG", title:"Conflict Management",       description:"Learn how to handle tough situations, stand up to bullies, and avoid toxic friendships.",                 default_facilitators:["Kim Sundset"], active:true,  sort_order:4},
+  {workshop_id:5,  short_id:"PLOR", title:"Planning and Organizing",   description:"Discover how to set goals, stay on top of your time, and learn the six habits of super organized people.",default_facilitators:["Tina Petrow"], active:true,  sort_order:5},
+  {workshop_id:6,  short_id:"LTBL", title:"Learn to Belong",           description:"Talk about privilege, bias, and the power of community in a safe and friendly space.",                    default_facilitators:["Kim Sundset"], active:true,  sort_order:6},
+  {workshop_id:7,  short_id:"BDCN", title:"Building Connections",      description:"Explores how human connections help people feel safe, valued, and supported.",                            default_facilitators:["Kim Sundset"], active:true,  sort_order:7},
+  {workshop_id:8,  short_id:"BSCP", title:"Building Social Capacity",  description:"Explore how social media shapes reputation and how online actions can have long-lasting impacts.",        default_facilitators:["Kim Sundset"], active:true,  sort_order:8},
+  {workshop_id:9,  short_id:"SEDF", title:"Seeing Differently",        description:"Helps youth understand how different life experiences shape how people see the world.",                   default_facilitators:["Roberta Ehigiator"], active:true, sort_order:9},
+  {workshop_id:10, short_id:"TORE", title:"Tools for Resilience",      description:"Helps youth understand stress and how it affects emotions, focus, and decision-making.",                  default_facilitators:["Olga Korcheva"],    active:true, sort_order:10},
+  {workshop_id:11, short_id:"DGDT", title:"Digital Detoxing",          description:"Explore how screens, gaming, sugar, and social media influence habits and attention.",                    default_facilitators:["Tina Petrow"],      active:true, sort_order:11},
+  {workshop_id:12, short_id:"BUPV", title:"Bullying Prevention",       description:"Explores how communities can work together to prevent bullying and create safer, more respectful spaces.", default_facilitators:["Olga Korcheva"],    active:true, sort_order:12},
+  {workshop_id:13, short_id:"HLDB", title:"Healthy Debating",          description:"Youth will practice sharing opinions respectfully while listening to different viewpoints.",               default_facilitators:["Tina Petrow"],      active:true, sort_order:13},
+  {workshop_id:14, short_id:"HLFT", title:"Health & Fitness",          description:"Explores how movement, nutrition, and rest support both physical and mental well-being.",                 default_facilitators:["Tina Petrow"],      active:true, sort_order:14},
+  {workshop_id:15, short_id:"HLSP", title:"Healthy Spending",          description:"Youth will learn how advertising, trends, and media influence spending habits and consumer debt.",         default_facilitators:["Connie Wu"],        active:true, sort_order:15},
+  {workshop_id:16, short_id:"LVDF", title:"Leveraging Differences",    description:"Helps youth see how differences in personality, skills, and experiences are strengths when working together.", default_facilitators:["Roberta Ehigiator"], active:true, sort_order:16},
+  {workshop_id:17, short_id:"JOAC", title:"Joy of Accomplishment",     description:"Celebrate progress, reflect on growth, and set intentions for continued leadership development.",         default_facilitators:["Kim Sundset"],      active:true, sort_order:17},
+  {workshop_id:18, short_id:"PBSP", title:"Public Speaking",           description:"Youth will build confidence speaking in front of others through fun, supportive activities.",             default_facilitators:["Kim Sundset"],      active:true, sort_order:18}
 ];
 // Runtime: DB-loaded template overrides (persisted edits, re-orders, additions)
 var WS_TEMPLATES_DB_LOADED = false;
@@ -2619,6 +2619,23 @@ function getAllWsSeries() {
     // Sort by start_date ascending
     return wsParseDisplayDate(a.start_date) - wsParseDisplayDate(b.start_date);
   });
+}
+
+// ── getWsShortId — returns 4-letter ID for a session, falls back to computed ──
+// Looks up via template_id → WS_TEMPLATES[].short_id
+// For custom/inserted sessions without a template_id, derives from title initials
+function getWsShortId(w) {
+  if (!w) return '????';
+  // Prefer template short_id
+  if (w.template_id) {
+    var tmpl = WS_TEMPLATES.find(function(t){ return t.workshop_id === w.template_id; });
+    if (tmpl && tmpl.short_id) return tmpl.short_id;
+  }
+  // Fall back: take first letter of each word (up to 4), pad if needed
+  var words = (w.name || '').replace(/[^a-zA-Z ]/g,'').split(/\s+/).filter(Boolean);
+  var code = words.slice(0, 4).map(function(wd){ return wd[0].toUpperCase(); }).join('');
+  while (code.length < 4) code += 'X';
+  return code.slice(0, 4);
 }
 
 // Internal date parser for workshop date strings "Mon D, YYYY"
@@ -3357,13 +3374,27 @@ function renderAdmin(){
   var eid=function(id){return document.getElementById(id);};
   if(eid('a-lvl1'))eid('a-lvl1').textContent=lvl1;
 
-  // ── Attendance bars — Winter 2026 delivered workshops ───────────────────
+  // ── Attendance bars — by Series, collapsible, denominator = 20 ─────────────
   var bars=eid('admin-ws-bars');
-  if(bars)bars.innerHTML=WORKSHOPS.filter(function(w){return w.conducted&&!w.cancelled;}).map(function(w){
-    var cnt=allNames.filter(function(n){return (EL_YOUTH[n]||[]).includes(w.id);}).length;
-    var pct=Math.round(cnt/allNames.length*100);
-    return '<div class="prog-bar-wrap"><div class="prog-label"><span>#'+w.series_num+' '+w.name+'</span><span>'+cnt+' / '+allNames.length+' ('+pct+'%)</span></div><div class="prog-track"><div class="prog-fill" style="width:'+pct+'%;background:linear-gradient(90deg,var(--ya-teal),var(--ya-blue))"></div></div></div>';
-  }).join('');
+  if(bars){
+    var allSeries = getAllWsSeries();
+    var barsHtml = '';
+    allSeries.forEach(function(ser){
+      var sessions = getSeriesWsSessions(ser.id).filter(function(w){ return w.conducted && !w.cancelled && !w.adminCancelled; });
+      if (!sessions.length) return;
+      var CAPACITY = 20; // max participants per session
+      var serBars = sessions.map(function(w){
+        var cnt = allNames.filter(function(n){ return (EL_YOUTH[n]||[]).includes(w.id); }).length;
+        var pct = Math.round(cnt / CAPACITY * 100);
+        var shortId = getWsShortId(w);
+        var barColor = pct > 100 ? 'linear-gradient(90deg,var(--ya-orange),var(--badge-red))' : 'linear-gradient(90deg,var(--ya-teal),var(--ya-blue))';
+        var barW = Math.min(pct, 100); // visually cap at 100% but label shows actual
+        return '<div class="prog-bar-wrap"><div class="prog-label"><span><strong style="color:var(--ya-teal);font-size:.72rem;font-family:monospace">['+shortId+']</strong> '+w.name+'</span><span>'+cnt+' / '+CAPACITY+' ('+pct+'%)</span></div><div class="prog-track"><div class="prog-fill" style="width:'+barW+'%;background:'+barColor+'"></div></div></div>';
+      }).join('');
+      barsHtml += '<details style="margin-bottom:8px"><summary style="font-family:Nunito,sans-serif;font-weight:800;font-size:.85rem;color:'+ser.color+';cursor:pointer;padding:6px 0;list-style:none;display:flex;align-items:center;gap:6px">'+ser.icon+' '+ser.name+' <span style="font-size:.72rem;color:var(--text-muted);font-weight:400">('+sessions.length+' sessions)</span></summary><div style="margin-top:6px">'+serBars+'</div></details>';
+    });
+    bars.innerHTML = barsHtml || '<div style="color:var(--text-muted);font-size:.82rem">No conducted workshops yet.</div>';
+  }
   renderYouthAttendanceTable();
 
   // ── Helper to build a session row for any series schedule table ──────────
@@ -3479,10 +3510,10 @@ function renderAdmin(){
     var facRows=Object.values(FAC_PROFILES).map(function(p){
       var w26Ids = getSeriesWsSessions('winter_2026').filter(function(w){
         return w.conducted && !w.cancelled && getWorkshopFacilitatorNames(w).indexOf(p.name) >= 0;
-      }).map(function(w){ return '#'+w.series_num; });
+      }).map(function(w){ return getWsShortId(w); });
       var f26Ids = getSeriesWsSessions('fall_2026').filter(function(w){
         return w.conducted && !w.cancelled && getWorkshopFacilitatorNames(w).indexOf(p.name) >= 0;
-      }).map(function(w){ return '#'+w.series_num; });
+      }).map(function(w){ return getWsShortId(w); });
       var totalCount = getTotalFacilitatedCount(p.name);
       var lvl = getFacLevel(totalCount);
       return {name:p.name,w26:w26Ids,f26:f26Ids,total:totalCount,lvl:lvl,prior:p.prior_facilitated||0};
@@ -5100,7 +5131,7 @@ function renderLandingCalendar(){
       sort: d?d.getTime():9e12,
       html:'<div class="cal-card" style="--cc:var(--ya-teal)">'+
         '<span class="cal-date-badge '+(soon?'cal-date-soon':'cal-date-upcoming')+'">'+(soon?'🔥 Soon':'📅')+' '+w.date+'</span>'+
-        '<div class="cal-title">Workshop #'+w.id+': '+w.name+'</div>'+
+        '<div class="cal-title">Workshop #'+w.series_num+': '+w.name+'</div>'+
         '<div class="cal-host">🎤 '+facs+'</div>'+
         '<div class="cal-meta"><span>📚 Emerging Leaders Series</span></div>'+
         '<div style="margin-top:10px"><span class="cal-type ct-workshop">Workshop</span></div>'+
@@ -6063,7 +6094,7 @@ function renderImpactTab(){
   html += '<div style="margin-top:10px;display:flex;flex-direction:column;gap:4px">';
   conducted.forEach(function(w){
     html += '<div style="font-size:.81rem;color:var(--text-main);padding:4px 0;border-bottom:1px solid rgba(255,255,255,.04)">'+
-      '<span style="color:var(--text-muted);font-size:.72rem">#'+w.id+'&nbsp;</span>'+w.name+
+      '<span style="color:var(--ya-teal);font-size:.72rem;font-family:monospace">['+getWsShortId(w)+']&nbsp;</span>'+w.name+
       '<span style="font-size:.72rem;color:var(--text-muted)">&nbsp;·&nbsp;'+w.date+'</span></div>';
   });
   html += '</div></details>';
@@ -9439,7 +9470,7 @@ function renderNextWorkshopAlerts(){
   var dashAlert = document.getElementById('adult-next-workshop-alert');
   if(dashAlert){
     if(ws){
-      dashAlert.innerHTML = '📅 <div><strong>Next up — '+ws.date+':</strong> Workshop #'+ws.id+' "'+ws.name+'" with '+getWsFacilitators(ws).join(' &amp; ')+'</div>';
+      dashAlert.innerHTML = '📅 <div><strong>Next up — '+ws.date+':</strong> Workshop #'+ws.series_num+' "'+ws.name+'" with '+getWsFacilitators(ws).join(' &amp; ')+'</div>';
       dashAlert.style.display = '';
     } else {
       dashAlert.style.display = 'none';
@@ -9449,7 +9480,7 @@ function renderNextWorkshopAlerts(){
   var wsAlert = document.getElementById('adult-ws-next-alert');
   if(wsAlert){
     if(ws){
-      wsAlert.innerHTML = '✅ <div><strong>Next up — '+ws.date+':</strong> Workshop #'+ws.id+' "'+ws.name+'" with '+getWsFacilitators(ws).join(' &amp; ')+'.</div>';
+      wsAlert.innerHTML = '✅ <div><strong>Next up — '+ws.date+':</strong> Workshop #'+ws.series_num+' "'+ws.name+'" with '+getWsFacilitators(ws).join(' &amp; ')+'.</div>';
       wsAlert.style.display = '';
     } else {
       wsAlert.style.display = 'none';
@@ -11502,12 +11533,14 @@ function renderYouthAttendanceTable(){
     '<th class="ws-sticky ws-sticky-3" style="min-width:160px">Status</th>' +
     conductedWs.map(function(w){
       var shortDate = w.date.replace(', 2026','');
-      return '<th style="text-align:center;font-size:.6rem;min-width:42px;padding:6px 3px" title="'+w.name+'">#'+w.id+'<br><span style="font-weight:400;color:var(--text-muted)">'+shortDate+'</span></th>';
+      var shortId = getWsShortId(w);
+      return '<th style="text-align:center;font-size:.6rem;min-width:46px;padding:6px 3px" title="'+w.name+'"><span style="font-family:monospace;color:var(--ya-teal)">'+shortId+'</span><br><span style="font-weight:400;color:var(--text-muted)">'+shortDate+'</span></th>';
     }).join('') +
     '<th style="text-align:center;min-width:60px">Attended</th>';
 
-  // ── Body rows ──
-  tbody.innerHTML = names.map(function(n){
+  // ── Body rows — skip youth with 0 attendance ──
+  var activeNames = names.filter(function(n){ return (EL_YOUTH[n]||[]).length > 0; });
+  tbody.innerHTML = activeNames.map(function(n){
     var attended = new Set(EL_YOUTH[n] || []);
     var c = attended.size;
     var h = YOUTH_HOURS[n] || 0;

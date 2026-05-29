@@ -1033,18 +1033,16 @@ tr:hover .grd-date-sticky { background: #1a2d47; }
 
           <!-- ADD YOUTH TO EL PANEL -->
           <div id="add-el-youth-panel" style="display:none;background:rgba(0,181,160,.06);border:1px solid rgba(0,181,160,.25);border-radius:10px;padding:14px;margin-bottom:14px">
-            <div style="font-size:.82rem;font-weight:700;color:var(--ya-teal);margin-bottom:10px">Add Youth to Emerging Leaders</div>
-            <div style="display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:end">
-              <div>
-                <div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px">Full Name</div>
-                <input type="text" id="el-new-name" placeholder="e.g. Jordan Smith" style="width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.15);border-radius:8px;padding:8px 12px;color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.88rem">
+            <div style="font-size:.82rem;font-weight:700;color:var(--ya-teal);margin-bottom:4px">Add Existing Youth to Emerging Leaders</div>
+            <div style="font-size:.72rem;color:var(--text-muted);margin-bottom:10px">Select a youth from the roster. To add someone new, go to <strong style="color:var(--text-main)">Admin &#x2192; Users</strong> first.</div>
+            <div style="display:grid;grid-template-columns:1fr auto;gap:10px;align-items:end">
+              <div style="position:relative">
+                <div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px">Search by Name</div>
+                <input type="text" id="el-new-name" autocomplete="off" placeholder="Type to search&#x2026;" oninput="filterELYouthDropdown()" onfocus="filterELYouthDropdown()" style="width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.15);border-radius:8px;padding:8px 12px;color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.88rem;box-sizing:border-box">
+                <div id="el-youth-dropdown" style="display:none;position:absolute;z-index:300;left:0;right:0;top:calc(100% + 4px);background:#131f30;border:1px solid rgba(0,181,160,.35);border-radius:9px;max-height:220px;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,.45)"></div>
               </div>
-              <div>
-                <div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px">Age (opt.)</div>
-                <input type="number" id="el-new-age" min="5" max="25" placeholder="e.g. 13" style="width:80px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.15);border-radius:8px;padding:8px 12px;color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.88rem">
-              </div>
-              <div style="display:flex;gap:8px;align-items:center;padding-bottom:1px">
-                <button onclick="addELYouth()" style="padding:8px 18px;border-radius:8px;border:none;background:var(--ya-teal);color:#fff;font-family:Nunito,sans-serif;font-weight:800;font-size:.85rem;cursor:pointer;white-space:nowrap">✔ Add</button>
+              <div style="display:flex;gap:8px;align-items:flex-end;padding-bottom:1px">
+                <button onclick="addELYouth()" style="padding:8px 18px;border-radius:8px;border:none;background:var(--ya-teal);color:#fff;font-family:Nunito,sans-serif;font-weight:800;font-size:.85rem;cursor:pointer;white-space:nowrap">&#x2714; Add</button>
                 <button onclick="toggleAddELYouthPanel()" class="ws-btn">Cancel</button>
               </div>
             </div>
@@ -10643,6 +10641,9 @@ function closeELInfo(){
 // ADD YOUTH TO EMERGING LEADERS (ADMIN)
 // ══════════════════════════════════════════
 
+// -- Tracks the currently selected youth name in the Add-to-EL panel
+var _elPanelSelectedName = null;
+
 function toggleAddELYouthPanel(){
   var panel = document.getElementById('add-el-youth-panel');
   var btn   = document.getElementById('add-el-youth-btn');
@@ -10651,53 +10652,152 @@ function toggleAddELYouthPanel(){
   panel.style.display = isOpen ? 'none' : 'block';
   btn.textContent = isOpen ? '+ Add Youth' : '✕ Close';
   if(!isOpen){
-    document.getElementById('el-new-name').value = '';
-    document.getElementById('el-new-age').value = '';
-    document.getElementById('el-add-feedback').innerHTML = '';
-    document.getElementById('el-new-name').focus();
+    _elPanelSelectedName = null;
+    var nameEl = document.getElementById('el-new-name');
+    var fb     = document.getElementById('el-add-feedback');
+    var dd     = document.getElementById('el-youth-dropdown');
+    if(nameEl){ nameEl.value = ''; nameEl.focus(); }
+    if(fb)  fb.innerHTML = '';
+    if(dd)  dd.style.display = 'none';
   }
 }
 
+// Build the list of youth eligible to appear in the "add to EL" dropdown.
+// Returns [{name, label, isArchived, isAlreadyEL}] sorted: active non-EL first,
+// then archived, then already-EL (shown greyed-out/disabled).
+function _elDropdownCandidates(query) {
+  var q = (query || '').toLowerCase().trim();
+  return ALL_YOUTH_NAMES
+    .map(function(n){
+      var isArchived   = EL_ARCHIVED.has(n);
+      var isAlreadyEL  = !isArchived && (EL_YOUTH[n] !== undefined);
+      var label = n;
+      if(isArchived)  label += ' \u2014 \U0001F4E6 Archived';
+      if(isAlreadyEL) label += ' \u2014 already in EL';
+      return { name: n, label: label, isArchived: isArchived, isAlreadyEL: isAlreadyEL };
+    })
+    .filter(function(r){
+      if(q && r.name.toLowerCase().indexOf(q) < 0) return false;
+      return true;
+    })
+    .sort(function(a, b){
+      var pa = a.isAlreadyEL ? 2 : (a.isArchived ? 1 : 0);
+      var pb = b.isAlreadyEL ? 2 : (b.isArchived ? 1 : 0);
+      if(pa !== pb) return pa - pb;
+      return a.name.localeCompare(b.name);
+    });
+}
+
+function filterELYouthDropdown(){
+  var nameEl = document.getElementById('el-new-name');
+  var dd     = document.getElementById('el-youth-dropdown');
+  var fb     = document.getElementById('el-add-feedback');
+  if(!nameEl || !dd) return;
+
+  var q = nameEl.value.trim();
+  _elPanelSelectedName = null;
+
+  var candidates = _elDropdownCandidates(q);
+
+  if(!candidates.length){
+    dd.style.display = 'block';
+    dd.innerHTML = '<div style="padding:12px 14px;font-size:.82rem;color:var(--text-muted)">'
+      + '\u26a0 No youth found matching <strong style="color:var(--text-main)">&ldquo;' + q + '&rdquo;</strong>.<br>'
+      + '<span style="color:var(--ya-orange)">To add a new youth, go to <strong>Admin \u2192 Users</strong> first.</span>'
+      + '</div>';
+    if(fb) fb.innerHTML = '';
+    return;
+  }
+
+  dd.style.display = 'block';
+  dd.innerHTML = candidates.map(function(r){
+    var disabled = r.isAlreadyEL;
+    var color    = r.isAlreadyEL ? 'var(--text-muted)' : (r.isArchived ? 'var(--ya-orange)' : 'var(--text-main)');
+    var safeLabel = r.label.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+    var safeName  = r.name.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    return '<div onclick="' + (disabled ? '' : '_selectELYouthFromDropdown(\'' + safeName + '\')') + '"'
+      + ' style="padding:9px 14px;cursor:' + (disabled ? 'default' : 'pointer') + ';color:' + color + ';font-size:.84rem;'
+      + (disabled ? 'opacity:.45;' : '') + '"'
+      + (disabled ? '' : ' onmouseover="this.style.background=\'rgba(0,181,160,.1)\'" onmouseout="this.style.background=\'\'"')
+      + '>' + safeLabel + '</div>';
+  }).join('');
+}
+
+function _selectELYouthFromDropdown(name){
+  _elPanelSelectedName = name;
+  var nameEl = document.getElementById('el-new-name');
+  var dd     = document.getElementById('el-youth-dropdown');
+  var fb     = document.getElementById('el-add-feedback');
+  if(nameEl) nameEl.value = name;
+  if(dd)  dd.style.display = 'none';
+  if(fb){
+    if(EL_ARCHIVED.has(name)){
+      fb.innerHTML = '<span style="color:var(--ya-orange)">\U0001F4E6 This youth is archived. Adding them will restore their record and all historical attendance.</span>';
+    } else {
+      fb.innerHTML = '';
+    }
+  }
+}
+
+// Close dropdown when clicking outside the panel
+document.addEventListener('click', function(e){
+  var panel = document.getElementById('add-el-youth-panel');
+  var dd    = document.getElementById('el-youth-dropdown');
+  if(dd && panel && !panel.contains(e.target)) dd.style.display = 'none';
+});
+
 function addELYouth(){
   var nameEl = document.getElementById('el-new-name');
-  var ageEl  = document.getElementById('el-new-age');
   var fb     = document.getElementById('el-add-feedback');
-  var name   = nameEl.value.trim();
-  var age    = parseInt(ageEl.value) || null;
+  if(!nameEl || !fb) return;
 
-  if(!name){ fb.innerHTML = '<span style="color:var(--badge-red)">⚠ Please enter a name.</span>'; return; }
-
-  // Check for duplicates
-  var existing = ALL_YOUTH_NAMES.find(function(n){ return n.toLowerCase() === name.toLowerCase(); });
-  if(existing && EL_YOUTH[existing] !== undefined){
-    fb.innerHTML = '<span style="color:var(--badge-amber)">⚠ "'+existing+'" is already an Emerging Leaders member.</span>'; return;
+  // Resolve: prefer dropdown selection; fall back to typed text for case-insensitive match
+  var name = _elPanelSelectedName || null;
+  if(!name){
+    var typed = nameEl.value.trim();
+    if(!typed){ fb.innerHTML = '<span style="color:var(--badge-red)">\u26a0 Please search and select a youth from the list.</span>'; return; }
+    name = ALL_YOUTH_NAMES.find(function(n){ return n.toLowerCase() === typed.toLowerCase(); }) || null;
   }
 
-  // Add to ALL_YOUTH_NAMES if not already there
-  if(!existing){
-    ALL_YOUTH_NAMES.push(name);
-    ALL_YOUTH_NAMES.sort();
-    rebuildYouthLoginDropdown();
-  } else {
-    name = existing; // use existing casing
+  // No match at all -- do NOT create a new record
+  if(!name){
+    fb.innerHTML = '<span style="color:var(--badge-amber)">\u26a0 <strong>&ldquo;' + nameEl.value.trim() + '&rdquo;</strong> was not found in the youth roster.<br>'
+      + '<span style="color:var(--text-muted)">Please add this youth under <strong style="color:var(--text-main)">Admin \u2192 Users</strong>, then return here.</span></span>';
+    return;
   }
 
-  // Add to EL_YOUTH with empty workshop list
-  EL_YOUTH[name] = [];
+  // Already active in EL (not archived) -- nothing to do
+  if(!EL_ARCHIVED.has(name) && EL_YOUTH[name] !== undefined){
+    fb.innerHTML = '<span style="color:var(--badge-amber)">\u26a0 <strong>' + name + '</strong> is already an active Emerging Leaders member.</span>';
+    return;
+  }
 
-  // Age, hours, compliance placeholders
-  if(age) YOUTH_AGES[name] = age;
-  YOUTH_HOURS[name] = YOUTH_HOURS[name] || 0;
+  // Archived youth: restore, do not duplicate
+  if(EL_ARCHIVED.has(name)){
+    EL_ARCHIVED.delete(name);
+    saveArchivedYouthToDB();
+    // EL_YOUTH[name] already exists with full history -- no overwrite needed
+    fb.innerHTML = '<span style="color:var(--ya-teal)">\u2714 <strong>' + name + '</strong> has been restored to Emerging Leaders. All historical attendance is preserved.</span>';
+    nameEl.value = '';
+    _elPanelSelectedName = null;
+    renderYouthAttendanceTable();
+    renderAdmin();
+    return;
+  }
+
+  // Youth exists in ALL_YOUTH_NAMES but not yet enrolled in EL
+  // Add to EL with empty workshop list (no new youth record created here)
+  if(EL_YOUTH[name] === undefined) EL_YOUTH[name] = [];
+  YOUTH_HOURS[name]      = YOUTH_HOURS[name] || 0;
   if(!YOUTH_COMPLIANCE[name]) YOUTH_COMPLIANCE[name] = { waiver_date:'', waiver_on_file:false, photo_date:'', photo_on_file:false };
 
-  fb.innerHTML = '<span style="color:var(--ya-teal)">✔ <strong>'+name+'</strong> added to Emerging Leaders! They now appear in the attendance table.</span>';
+  fb.innerHTML = '<span style="color:var(--ya-teal)">\u2714 <strong>' + name + '</strong> added to Emerging Leaders. They now appear in the attendance table.</span>';
   nameEl.value = '';
-  ageEl.value  = '';
+  _elPanelSelectedName = null;
 
-  // Save to Supabase so name persists across reloads
-  saveYouthToDB(name, age, []);
+  // No saveYouthToDB here -- Admin -> Users is the authoritative create path.
+  // The youth record already exists; we only enrol them in EL in memory.
 
-  // Re-render table and bars immediately
   renderYouthAttendanceTable();
   renderAdmin();
 }
@@ -11922,54 +12022,45 @@ function toggleYouthWsAdmin(name, wsId, cell){
   var idx = attended.indexOf(wsId);
   var nowAttending;
   if(idx >= 0){
-    // Remove
     EL_YOUTH[name] = attended.filter(function(id){ return id !== wsId; });
     nowAttending = false;
   } else {
-    // Add
     EL_YOUTH[name] = attended.concat([wsId]);
     nowAttending = true;
   }
 
-  // Optimistic UI — update cell immediately
-  cell.textContent = nowAttending ? '✔' : '—';
-  cell.className = 'ws-att-cell editable ' + (nowAttending ? 'attended' : 'absent');
+  // Optimistic UI -- update cell immediately
+  cell.textContent = nowAttending ? "✔" : "—";
+  cell.className = "ws-att-cell editable " + (nowAttending ? "attended" : "absent");
 
-  // Update the WS count in the same row.
+  // Update the row counts.
   // Use getAllWsSessions() so Fall 2026 + future-series workshops are included.
   var row = cell.parentNode;
   var conductedWs = getAllWsSessions().filter(function(w){ return w.conducted && !w.cancelled && !w.adminCancelled; });
   var newAttCount = conductedWs.filter(function(w){ return (EL_YOUTH[name]||[]).indexOf(w.id) >= 0; }).length;
-  var tds = row.querySelectorAll('td');
-  // Last td is the "X / Y" attended tally for this row's visible columns.
-  // Recalculate Y against only the workshops shown in the header (conductedWs
-  // for the table's current series filter) so the fraction stays consistent.
-  tds[tds.length-1].textContent = newAttCount + ' / ' + conductedWs.length;
+  var tds = row.querySelectorAll("td");
+  tds[tds.length-1].textContent = newAttCount + " / " + conductedWs.length;
 
-  // 2nd td (index 1) is WS count + progress bar.
-  // Use getYouthConductedWorkshops() — filters out unconducted / cancelled /
-  // orphaned IDs — so the count matches what all other views show.
+  // Use getYouthConductedWorkshops() -- filters unconducted/cancelled/orphaned IDs.
   var newTotal = getYouthConductedWorkshops(name).length;
-  var strongEl = tds[1].querySelector('strong');
+  var strongEl = tds[1].querySelector("strong");
   if(strongEl) strongEl.textContent = newTotal;
 
-  // Recalculate and refresh progress bar
   var h = YOUTH_HOURS[name] || 0;
   var l = getYouthLevel(newTotal, h);
   var target = l<1?6:l<2?12:18;
   var bgPct = Math.min(100, Math.round(newTotal/target*100));
-  var barEl = tds[1].querySelector('.prog-fill');
-  if(barEl) barEl.style.width = bgPct + '%';
+  var barEl = tds[1].querySelector(".prog-fill");
+  if(barEl) barEl.style.width = bgPct + "%";
 
-  // Update status pills in col 2
-  var st = '';
+  var st = "";
   if(l>=1){
     for(var lv=1;lv<=l;lv++) st+='<span class="pill pill-green" style="margin:1px 2px;font-size:.65rem">L'+lv+' ✔</span>';
     if(l<3){
       var nw=[6,12,18][l],nh=[2,4,6][l];
       var wl=Math.max(0,nw-newTotal),hl=parseFloat(Math.max(0,nh-h).toFixed(1));
-      var pr=wl>0?(newTotal+'/'+nw+' ws'):hl>0?(h+'/'+nh+' hrs'):'Ready!';
-      st+='<span class="pill pill-amber" style="margin:1px 2px;font-size:.65rem">→L'+(l+1)+': '+pr+'</span>';
+      var pr=wl>0?(newTotal+"/"+nw+" ws"):hl>0?(h+"/"+nh+" hrs"):"Ready!";
+      st+='<span class="pill pill-amber" style="margin:1px 2px;font-size:.65rem">→L'+(l+1)+": "+pr+"</span>";
     } else {
       st+='<span class="pill pill-gold" style="margin:1px 2px;font-size:.65rem">Max ⭐</span>';
     }
@@ -11981,16 +12072,14 @@ function toggleYouthWsAdmin(name, wsId, cell){
   }
   tds[2].innerHTML = st;
 
-  // Persist to Supabase — roll back the optimistic UI if the save fails
+  // Persist to Supabase -- roll back optimistic UI if save fails
   saveWorkshopAttendance(name, wsId, nowAttending).catch(function(err){
-    console.error('toggleYouthWsAdmin: save failed, rolling back UI', err);
-    // Undo in-memory change
+    console.error("toggleYouthWsAdmin: save failed, rolling back UI", err);
     if(nowAttending){
       EL_YOUTH[name] = (EL_YOUTH[name]||[]).filter(function(id){ return id !== wsId; });
     } else {
       EL_YOUTH[name] = (EL_YOUTH[name]||[]).concat([wsId]);
     }
-    // Re-render the whole table so everything is back in sync
     renderYouthAttendanceTable();
   });
 }
@@ -14347,26 +14436,25 @@ async function loadAllWorkshopAttendance() {
 
 async function loadWorkshopAttendance(youthName) {
   // Primary stable key: yn_adam_choe
-  var youthId = 'yn_' + youthName.toLowerCase().replace(/\s+/g,'_').replace(/[^a-z0-9_]/g,'');
+  var youthId = "yn_" + youthName.toLowerCase().replace(/\s+/g,"_").replace(/[^a-z0-9_]/g,"");
 
   // Also build legacy index key (y_N) so old records are not missed
   var legacyId = null;
   var legacyIdx = ALL_YOUTH_NAMES.slice().sort().indexOf(youthName);
-  if(legacyIdx >= 0) legacyId = 'y_' + legacyIdx;
+  if(legacyIdx >= 0) legacyId = "y_" + legacyIdx;
 
-  // Fetch both keys in parallel; ignore errors on the legacy fetch
-  var fetchPrimary = dbGet('workshop_attendance',
-    'select=workshop_id&youth_id=eq.' + encodeURIComponent(youthId));
+  var fetchPrimary = dbGet("workshop_attendance",
+    "select=workshop_id&youth_id=eq." + encodeURIComponent(youthId));
   var fetchLegacy = legacyId
-    ? dbGet('workshop_attendance',
-        'select=workshop_id&youth_id=eq.' + encodeURIComponent(legacyId)).catch(function(){ return []; })
+    ? dbGet("workshop_attendance",
+        "select=workshop_id&youth_id=eq." + encodeURIComponent(legacyId)).catch(function(){ return []; })
     : Promise.resolve([]);
 
   var results = await Promise.all([fetchPrimary, fetchLegacy]);
 
-  // CRITICAL: check the current user hasn't changed while we were fetching
+  // CRITICAL: check the current user has not changed while we were fetching
   if (!youthState || youthState.name !== youthName) {
-    console.log('Session changed - ignoring stale workshop data for', youthName);
+    console.log("Session changed - ignoring stale workshop data for", youthName);
     return;
   }
 
@@ -14375,20 +14463,20 @@ async function loadWorkshopAttendance(youthName) {
   var allRows = primaryRows.concat(legacyRows);
 
   if (allRows.length === 0) {
-    console.log('No DB workshop records for', youthName);
+    console.log("No DB workshop records for", youthName);
     renderYouth();
     return;
   }
 
-  // Merge DB records with hardcoded base; only add IDs for conducted workshops
+  // Merge DB records with hardcoded base; filter to conducted-only IDs
   var conducted = _getConductedIdSet();
   var baseWs = new Set(EL_YOUTH[youthName] || []);
   allRows.forEach(function(row) {
     if(row.workshop_id && conducted.has(row.workshop_id)) baseWs.add(row.workshop_id);
   });
   youthState.workshops = baseWs;
-  console.log('Workshop attendance loaded:', allRows.length, 'DB records for', youthName,
-    '— total:', youthState.workshops.size, 'workshops');
+  console.log("Workshop attendance loaded:", allRows.length, "DB records for", youthName,
+    "-- total:", youthState.workshops.size, "workshops");
   renderYouth();
 }
 

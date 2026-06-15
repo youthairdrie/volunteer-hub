@@ -1622,6 +1622,99 @@ tr:hover .grd-date-sticky { background: #1a2d47; }
           <div id="jysep-book-trends-report"></div>
         </div>
 
+        <!-- ── JY Service Projects ── -->
+        <details id="jysep-sp-details" style="margin-bottom:14px">
+          <summary style="font-family:Nunito,sans-serif;font-weight:900;font-size:.95rem;color:var(--ya-green);cursor:pointer;padding:10px 0;list-style:none;display:flex;align-items:center;justify-content:space-between;gap:8px">
+            <span>🤝 JY Service Projects</span>
+            <button onclick="event.preventDefault();event.stopPropagation();openCreateServiceProjectModal()" class="ws-btn" style="border-color:var(--ya-green);color:var(--ya-green);font-size:.75rem;white-space:nowrap">➕ New Project</button>
+          </summary>
+          <div style="margin-top:10px">
+            <!-- Summary stat cards -->
+            <div class="cards-grid" id="jysep-sp-stat-cards" style="margin-bottom:14px"></div>
+            <!-- Project list -->
+            <div id="jysep-sp-list"></div>
+          </div>
+        </details>
+
+        <!-- ── Service Project Edit Modal ── -->
+        <div id="sp-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:1002;align-items:center;justify-content:center">
+          <div class="login-box" style="max-width:500px;width:100%;max-height:92vh;overflow-y:auto">
+            <div id="sp-modal-title" style="font-family:Nunito,sans-serif;font-weight:900;font-size:1rem;color:var(--ya-green);margin-bottom:14px">🤝 New Service Project</div>
+            <div style="display:grid;gap:10px">
+              <div>
+                <div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Project Name *</div>
+                <input id="sp-name" placeholder="e.g. Neighbourhood Clean-Up" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--card-border);background:rgba(255,255,255,.06);color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem;box-sizing:border-box">
+              </div>
+              <div>
+                <div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Description</div>
+                <textarea id="sp-description" rows="2" placeholder="Brief description of the project" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--card-border);background:rgba(255,255,255,.06);color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem;box-sizing:border-box;resize:vertical"></textarea>
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+                <div>
+                  <div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Date *</div>
+                  <input type="date" id="sp-date" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--card-border);background:rgba(20,32,48,1);color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem;box-sizing:border-box">
+                </div>
+                <div>
+                  <div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Start Time</div>
+                  <input id="sp-start-time" placeholder="e.g. 10:00 AM" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--card-border);background:rgba(255,255,255,.06);color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem;box-sizing:border-box">
+                </div>
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+                <div>
+                  <div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Location</div>
+                  <input id="sp-location" placeholder="e.g. Airdrie Community Park" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--card-border);background:rgba(255,255,255,.06);color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem;box-sizing:border-box">
+                </div>
+                <div>
+                  <div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Duration (hrs) *</div>
+                  <input type="number" id="sp-duration" min="0.5" step="0.5" value="2" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--card-border);background:rgba(255,255,255,.06);color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem;box-sizing:border-box">
+                </div>
+              </div>
+              <div>
+                <div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Notes (optional)</div>
+                <textarea id="sp-notes" rows="2" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--card-border);background:rgba(255,255,255,.06);color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem;box-sizing:border-box;resize:vertical"></textarea>
+              </div>
+            </div>
+            <div id="sp-modal-feedback" style="min-height:16px;font-size:.78rem;margin-top:10px;color:var(--ya-green)"></div>
+            <div style="display:flex;gap:10px;margin-top:14px;justify-content:flex-end">
+              <button onclick="document.getElementById('sp-modal').style.display='none'" style="padding:8px 18px;border-radius:9px;border:1px solid rgba(255,255,255,.15);background:transparent;color:var(--text-muted);font-family:Nunito,sans-serif;font-weight:700;cursor:pointer">Cancel</button>
+              <button id="sp-modal-save-btn" onclick="saveServiceProjectModal()" style="padding:8px 22px;border-radius:9px;border:none;background:var(--ya-green);color:#fff;font-family:Nunito,sans-serif;font-weight:800;cursor:pointer">💾 Save Project</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── Service Project Participants Modal ── -->
+        <div id="sp-part-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:1002;align-items:center;justify-content:center">
+          <div class="login-box" style="max-width:560px;width:100%;max-height:92vh;overflow-y:auto">
+            <div style="font-family:Nunito,sans-serif;font-weight:900;font-size:1rem;color:var(--ya-green);margin-bottom:4px">🤝 Participants</div>
+            <div id="sp-part-modal-subtitle" style="font-size:.78rem;color:var(--text-muted);margin-bottom:14px"></div>
+
+            <!-- Search / add -->
+            <div style="margin-bottom:12px">
+              <div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Add Participant</div>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+                <input id="sp-part-search" oninput="renderSpPartSearch()" placeholder="Search name…" autocomplete="off" style="flex:1;min-width:180px;padding:8px 12px;border-radius:8px;border:1px solid var(--card-border);background:rgba(255,255,255,.06);color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem;box-sizing:border-box">
+                <select id="sp-part-type" style="padding:8px 12px;border-radius:8px;border:1px solid var(--card-border);background:rgba(20,32,48,1);color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem">
+                  <option value="all">All</option>
+                  <option value="youth">Youth only</option>
+                  <option value="adult">Adults only</option>
+                </select>
+              </div>
+              <div id="sp-part-search-results" style="margin-top:6px;max-height:180px;overflow-y:auto;border:1px solid var(--card-border);border-radius:8px;background:rgba(255,255,255,.03);display:none"></div>
+              <div id="sp-part-not-found" style="display:none;margin-top:6px;font-size:.8rem;color:var(--ya-orange);padding:6px 10px;background:rgba(232,98,10,.08);border-radius:8px;border:1px solid rgba(232,98,10,.2)">
+                Name not found. Please add this person under <strong>Admin → Users</strong> first, then return to this service project.
+              </div>
+            </div>
+
+            <!-- Current participants table -->
+            <div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Current Participants</div>
+            <div id="sp-part-list" style="margin-bottom:14px"></div>
+
+            <div style="display:flex;gap:10px;justify-content:flex-end">
+              <button onclick="closeSpPartModal()" style="padding:8px 18px;border-radius:9px;border:1px solid rgba(255,255,255,.15);background:transparent;color:var(--text-muted);font-family:Nunito,sans-serif;font-weight:700;cursor:pointer">Done</button>
+            </div>
+          </div>
+        </div>
+
         <!-- ── JYSEP Book Edit Modal ── -->
         <div id="jysep-book-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:1001;align-items:center;justify-content:center">
           <div class="login-box" style="max-width:440px;width:100%;max-height:90vh;overflow-y:auto">
@@ -2462,8 +2555,9 @@ var JYSEP_BOOKS = [
   { id:'spirit',     title:'Spirit of Faith',                  focus:'Spiritual reality and purpose of life',                   archived:false },
   { id:'rays',       title:'Rays of Light',                    focus:'Spiritual qualities and service',                         archived:false }
 ];
-// Returns only active (non-archived) books for dropdowns
-function getActiveJysepBooks() {
+// ── JY Service Projects runtime cache (populated by loadServiceProjects) ─────
+var SERVICE_PROJECTS = []; // array of project objects
+var SERVICE_PROJECT_PARTICIPANTS = {}; // project_id -> array of participant objects
   return JYSEP_BOOKS.filter(function(b){ return !b.archived; });
 }
 // Helper: returns all JYSEP group program objects (active only by default)
@@ -3126,6 +3220,27 @@ function renderVolunteerHistoryYouth(containerId, personName){
   }
 
   if(!html2) html2='<div style="color:var(--text-muted);font-size:.83rem">No events recorded yet.</div>';
+  // JY Service Projects — append as a separate section
+  var spRows = [];
+  (SERVICE_PROJECTS || []).forEach(function(sp){
+    if (sp.archived) return;
+    var pts = SERVICE_PROJECT_PARTICIPANTS[sp.project_id] || [];
+    pts.forEach(function(pt){
+      if (pt.participant_type === 'youth' && pt.participant_name === personName)
+        spRows.push({ name: sp.project_name, date: sp.project_date, location: sp.location||'', hours: parseFloat(pt.hours)||0, role: pt.role_note||'' });
+    });
+  });
+  if (spRows.length > 0) {
+    spRows.sort(function(a,b){ return new Date(a.date)-new Date(b.date); });
+    html2 += '<div style="font-size:.75rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin:16px 0 8px">JY Service Projects</div>';
+    html2 += spRows.map(function(r){
+      return '<div class="activity-item" style="flex-wrap:wrap;align-items:center">'+
+        '<div class="activity-dot" style="background:var(--ya-green)"></div>'+
+        '<div style="flex:1;min-width:0"><div class="activity-name">🤝 '+r.name+'</div>'+
+        '<div class="activity-meta">'+(r.location||'Youth Airdrie')+' · '+r.date+(r.role?' · '+r.role:'')+'</div></div>'+
+        '<span class="pill pill-green">+'+r.hours+' hrs ✔</span></div>';
+    }).join('');
+  }
   el.innerHTML=html2;
 }
 
@@ -4156,6 +4271,14 @@ function calcYouthParticipants() {
       (ev[b] || []).forEach(function(n){ ySet.add(n.toLowerCase().trim()); });
     });
   });
+  // JY Service Projects
+  (SERVICE_PROJECTS || []).forEach(function(sp){
+    if (sp.archived) return;
+    var pts = SERVICE_PROJECT_PARTICIPANTS[sp.project_id] || [];
+    pts.forEach(function(pt){
+      if (pt.participant_type === 'youth') ySet.add(pt.participant_name.toLowerCase().trim());
+    });
+  });
   return ySet;
 }
 
@@ -4250,6 +4373,15 @@ function calcAdultVolunteerHours() {
     });
   });
 
+  // 5. JY Service Projects — adult participant hours
+  (SERVICE_PROJECTS || []).forEach(function(sp){
+    if (sp.archived) return;
+    var pts = SERVICE_PROJECT_PARTICIPANTS[sp.project_id] || [];
+    pts.forEach(function(pt){
+      if (pt.participant_type === 'adult') add(pt.participant_name, parseFloat(pt.hours) || 0);
+    });
+  });
+
   return Object.values(hrsMap).reduce(function(a,v){ return a + v; }, 0);
 }
 
@@ -4273,6 +4405,17 @@ function calcYouthVolunteerHours() {
         var k = n.toLowerCase().trim();
         if (!(k in yMap)) yMap[k] = h;
       });
+    });
+  });
+  // JY Service Projects — youth participant hours
+  (SERVICE_PROJECTS || []).forEach(function(sp){
+    if (sp.archived) return;
+    var pts = SERVICE_PROJECT_PARTICIPANTS[sp.project_id] || [];
+    pts.forEach(function(pt){
+      if (pt.participant_type === 'youth') {
+        var k = pt.participant_name.toLowerCase().trim();
+        yMap[k] = (yMap[k] || 0) + (parseFloat(pt.hours) || 0);
+      }
     });
   });
   return Object.values(yMap).reduce(function(a,v){ return a + v; }, 0);
@@ -4437,6 +4580,16 @@ function getActiveAdultVolunteers() {
       (ev[bucket] || []).forEach(function(name) {
         adultSet.add(name.toLowerCase().trim());
       });
+    });
+  });
+
+  // JY Service Projects — adult participants count as active volunteers
+  (SERVICE_PROJECTS || []).forEach(function(sp){
+    if (sp.archived) return;
+    var pts = SERVICE_PROJECT_PARTICIPANTS[sp.project_id] || [];
+    pts.forEach(function(pt){
+      if (pt.participant_type === 'adult' && (parseFloat(pt.hours)||0) > 0)
+        adultSet.add(pt.participant_name.toLowerCase().trim());
     });
   });
 
@@ -5474,6 +5627,28 @@ function renderVolunteerHistory(containerId, personName){
           actions+
         '</div>'+
         '</div>';
+    }).join('');
+  }
+
+  // JY Service Projects — adult participant entries
+  var spAdultRows = [];
+  (SERVICE_PROJECTS || []).forEach(function(sp){
+    if (sp.archived) return;
+    var pts = SERVICE_PROJECT_PARTICIPANTS[sp.project_id] || [];
+    pts.forEach(function(pt){
+      if (pt.participant_type === 'adult' && pt.participant_name === personName)
+        spAdultRows.push({ name: sp.project_name, date: sp.project_date, location: sp.location||'', hours: parseFloat(pt.hours)||0, role: pt.role_note||'' });
+    });
+  });
+  if (spAdultRows.length > 0) {
+    spAdultRows.sort(function(a,b){ return new Date(a.date)-new Date(b.date); });
+    html2 += '<div style="font-size:.75rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin:16px 0 8px">JY Service Projects</div>';
+    html2 += spAdultRows.map(function(r){
+      return '<div class="activity-item" style="flex-wrap:wrap;align-items:center">'+
+        '<div class="activity-dot" style="background:var(--ya-green)"></div>'+
+        '<div style="flex:1;min-width:0"><div class="activity-name">🤝 '+r.name+'</div>'+
+        '<div class="activity-meta">'+(r.location||'Youth Airdrie')+' · '+r.date+(r.role?' · '+r.role:'')+'</div></div>'+
+        '<span class="pill pill-green">+'+r.hours+' hrs ✔</span></div>';
     }).join('');
   }
 
@@ -7952,6 +8127,7 @@ function renderJysepStatCards() {
 function renderJysepAdmin() {
   renderJysepStatCards();
   renderJysepGroupStrip();
+  renderJysepServiceProjects();
   renderJysepBookLibrary();
   renderJysepYouthProgressReport();
   renderJysepBookTrendsReport();
@@ -13048,6 +13224,47 @@ async function initDB() {
     alter table program_settings add column if not exists group_end        text;
     alter table program_settings add column if not exists group_archived   boolean not null default false;
     alter table program_volunteers add column if not exists hours numeric default 2;
+    -- ── JY Service Projects (v14) ──
+    create table if not exists service_projects (
+      id             bigserial   primary key,
+      project_id     text        not null unique,
+      program_type   text        not null default 'jysep',
+      project_name   text        not null,
+      description    text,
+      location       text,
+      project_date   text        not null,
+      start_time     text,
+      duration_hours numeric     not null default 2,
+      created_by     text,
+      notes          text,
+      archived       boolean     not null default false,
+      created_at     timestamptz not null default now(),
+      updated_at     timestamptz not null default now()
+    );
+    alter table service_projects add column if not exists archived     boolean     not null default false;
+    alter table service_projects add column if not exists description  text;
+    alter table service_projects add column if not exists location     text;
+    alter table service_projects add column if not exists start_time   text;
+    alter table service_projects add column if not exists created_by   text;
+    alter table service_projects add column if not exists notes        text;
+    alter table service_projects disable row level security;
+    create table if not exists service_project_participants (
+      id               bigserial   primary key,
+      project_id       text        not null references service_projects(project_id) on delete cascade,
+      participant_name text        not null,
+      participant_type text        not null check (participant_type in ('youth','adult')),
+      hours            numeric     not null default 2,
+      role_note        text,
+      created_at       timestamptz not null default now(),
+      updated_at       timestamptz not null default now(),
+      unique(project_id, participant_name)
+    );
+    alter table service_project_participants add column if not exists role_note text;
+    alter table service_project_participants disable row level security;
+    create index if not exists sp_program_type_idx  on service_projects(program_type, project_date desc);
+    create index if not exists spp_project_id_idx   on service_project_participants(project_id);
+    create index if not exists spp_participant_name_idx on service_project_participants(participant_name);
+    create index if not exists spp_participant_type_idx on service_project_participants(participant_type);
   `;
   const r = await fetch(SUPA_URL + '/rest/v1/rpc/exec_sql', {
     method: 'POST',
@@ -14035,6 +14252,379 @@ async function loadGardenData() {
     'cert_min:', prog.cert_rules.cert_min_sessions);
 }
 
+// ══════════════════════════════════════════════════════════════════════════════
+// JY SERVICE PROJECTS — Data, Rendering, Modals, DB
+// ══════════════════════════════════════════════════════════════════════════════
+
+// ── Runtime state ─────────────────────────────────────────────────────────────
+var _spEditId    = ''; // project_id being edited ('' = new)
+var _spPartPid   = ''; // project_id whose participants modal is open
+
+// ── Slug generator ────────────────────────────────────────────────────────────
+function spSlug(name) {
+  return 'sp_jysep_' + Date.now().toString(36) + '_' +
+    name.toLowerCase().replace(/[^a-z0-9]+/g,'_').slice(0,20);
+}
+
+// ── Load from Supabase ────────────────────────────────────────────────────────
+async function loadServiceProjects() {
+  var spRows = await dbGet('service_projects',
+    'select=*&program_type=eq.jysep&archived=eq.false&order=project_date.desc');
+  if (!spRows) return;
+  SERVICE_PROJECTS = spRows;
+
+  // Load participants for all projects in parallel
+  if (SERVICE_PROJECTS.length === 0) { SERVICE_PROJECT_PARTICIPANTS = {}; return; }
+  var pids = SERVICE_PROJECTS.map(function(sp){ return sp.project_id; });
+  // PostgREST: project_id=in.(a,b,c)
+  var inClause = 'project_id=in.(' + pids.map(encodeURIComponent).join(',') + ')';
+  var ptRows = await dbGet('service_project_participants', 'select=*&' + inClause);
+  SERVICE_PROJECT_PARTICIPANTS = {};
+  if (ptRows) {
+    ptRows.forEach(function(pt){
+      if (!SERVICE_PROJECT_PARTICIPANTS[pt.project_id])
+        SERVICE_PROJECT_PARTICIPANTS[pt.project_id] = [];
+      SERVICE_PROJECT_PARTICIPANTS[pt.project_id].push(pt);
+    });
+  }
+}
+
+// ── Stat cards ────────────────────────────────────────────────────────────────
+function renderJysepSpStatCards() {
+  var el = document.getElementById('jysep-sp-stat-cards'); if (!el) return;
+  var totalProjects = SERVICE_PROJECTS.filter(function(sp){ return !sp.archived; }).length;
+  var youthSet = new Set(), adultSet = new Set();
+  var youthHrs = 0, adultHrs = 0;
+  SERVICE_PROJECTS.forEach(function(sp){
+    if (sp.archived) return;
+    var pts = SERVICE_PROJECT_PARTICIPANTS[sp.project_id] || [];
+    pts.forEach(function(pt){
+      if (pt.participant_type === 'youth') { youthSet.add(pt.participant_name); youthHrs += parseFloat(pt.hours)||0; }
+      else                                  { adultSet.add(pt.participant_name); adultHrs += parseFloat(pt.hours)||0; }
+    });
+  });
+  el.innerHTML =
+    '<div class="stat-card" style="--accent-color:var(--ya-green)"><div class="stat-label">Total Projects</div><div class="stat-value">'+totalProjects+'</div><div class="stat-meta">JY service projects</div><div class="stat-icon">🤝</div></div>'+
+    '<div class="stat-card" style="--accent-color:var(--ya-teal)"><div class="stat-label">Youth Participants</div><div class="stat-value">'+youthSet.size+'</div><div class="stat-meta">unique youth</div><div class="stat-icon">✨</div></div>'+
+    '<div class="stat-card" style="--accent-color:var(--ya-blue)"><div class="stat-label">Adult Participants</div><div class="stat-value">'+adultSet.size+'</div><div class="stat-meta">unique adults</div><div class="stat-icon">🌟</div></div>'+
+    '<div class="stat-card" style="--accent-color:var(--lavender)"><div class="stat-label">Youth Hours</div><div class="stat-value">'+youthHrs.toFixed(1)+'</div><div class="stat-meta">youth volunteer hrs</div><div class="stat-icon">⏱</div></div>'+
+    '<div class="stat-card" style="--accent-color:var(--ya-orange)"><div class="stat-label">Adult Hours</div><div class="stat-value">'+adultHrs.toFixed(1)+'</div><div class="stat-meta">adult volunteer hrs</div><div class="stat-icon">⏱</div></div>'+
+    '<div class="stat-card" style="--accent-color:var(--ya-gold)"><div class="stat-label">Total Hours</div><div class="stat-value">'+(youthHrs+adultHrs).toFixed(1)+'</div><div class="stat-meta">combined</div><div class="stat-icon">⭐</div></div>';
+}
+
+// ── Project list ──────────────────────────────────────────────────────────────
+function renderJysepServiceProjects() {
+  renderJysepSpStatCards();
+  var el = document.getElementById('jysep-sp-list'); if (!el) return;
+  var active = SERVICE_PROJECTS.filter(function(sp){ return !sp.archived; });
+  if (active.length === 0) {
+    el.innerHTML = '<div style="color:var(--text-muted);font-size:.83rem;padding:12px 0">No service projects logged yet. Use ➕ New Project to add one.</div>';
+    return;
+  }
+  el.innerHTML = active.map(function(sp){
+    var pts  = SERVICE_PROJECT_PARTICIPANTS[sp.project_id] || [];
+    var yPts = pts.filter(function(p){ return p.participant_type==='youth'; });
+    var aPts = pts.filter(function(p){ return p.participant_type==='adult'; });
+    var yHrs = yPts.reduce(function(s,p){ return s+(parseFloat(p.hours)||0); },0);
+    var aHrs = aPts.reduce(function(s,p){ return s+(parseFloat(p.hours)||0); },0);
+    return '<div class="section-box" style="margin-bottom:10px;border-color:rgba(45,184,75,.2)">'+
+      '<div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:8px">'+
+        '<div style="flex:1;min-width:0">'+
+          '<div style="font-family:Nunito,sans-serif;font-weight:800;font-size:.92rem;color:var(--ya-green)">🤝 '+sp.project_name+'</div>'+
+          '<div style="font-size:.76rem;color:var(--text-muted);margin-top:2px">'+
+            (sp.project_date||'')+(sp.location?' · 📍'+sp.location:'')+
+            (sp.start_time?' · ⏰'+sp.start_time:'')+
+          '</div>'+
+          (sp.description?'<div style="font-size:.78rem;color:var(--text-main);margin-top:4px;opacity:.8">'+sp.description+'</div>':'')+
+          '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px">'+
+            '<span style="font-size:.76rem;color:var(--ya-teal)">✨ '+yPts.length+' youth · '+yHrs.toFixed(1)+' hrs</span>'+
+            '<span style="font-size:.76rem;color:var(--ya-blue)">🌟 '+aPts.length+' adults · '+aHrs.toFixed(1)+' hrs</span>'+
+            '<span style="font-size:.76rem;color:var(--ya-gold)">⏱ Total: '+(yHrs+aHrs).toFixed(1)+' hrs</span>'+
+          '</div>'+
+        '</div>'+
+        '<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;flex-shrink:0">'+
+          '<button onclick="openSpPartModal(\''+sp.project_id+'\')" class="ws-btn" style="border-color:var(--ya-green);color:var(--ya-green);font-size:.72rem;white-space:nowrap">👥 Participants</button>'+
+          '<button onclick="openEditServiceProjectModal(\''+sp.project_id+'\')" class="ws-btn" style="border-color:var(--lavender);color:var(--lavender);font-size:.72rem;white-space:nowrap">✏️ Edit</button>'+
+          '<button onclick="archiveServiceProject(\''+sp.project_id+'\')" class="ws-btn" style="border-color:var(--badge-red);color:var(--badge-red);font-size:.72rem;white-space:nowrap" title="Archive project">📦 Archive</button>'+
+        '</div>'+
+      '</div>'+
+    '</div>';
+  }).join('');
+}
+
+// ── Create / edit modal ───────────────────────────────────────────────────────
+function openCreateServiceProjectModal() {
+  _spEditId = '';
+  document.getElementById('sp-modal-title').textContent = '🤝 New Service Project';
+  document.getElementById('sp-name').value       = '';
+  document.getElementById('sp-description').value= '';
+  document.getElementById('sp-date').value        = '';
+  document.getElementById('sp-start-time').value  = '';
+  document.getElementById('sp-location').value    = '';
+  document.getElementById('sp-duration').value    = '2';
+  document.getElementById('sp-notes').value       = '';
+  document.getElementById('sp-modal-feedback').textContent = '';
+  document.getElementById('sp-modal').style.display = 'flex';
+}
+
+function openEditServiceProjectModal(pid) {
+  var sp = SERVICE_PROJECTS.find(function(s){ return s.project_id===pid; });
+  if (!sp) return;
+  _spEditId = pid;
+  document.getElementById('sp-modal-title').textContent = '✏️ Edit Service Project';
+  document.getElementById('sp-name').value        = sp.project_name   || '';
+  document.getElementById('sp-description').value = sp.description    || '';
+  document.getElementById('sp-date').value         = sp.project_date  || '';
+  document.getElementById('sp-start-time').value   = sp.start_time    || '';
+  document.getElementById('sp-location').value     = sp.location      || '';
+  document.getElementById('sp-duration').value     = sp.duration_hours|| '2';
+  document.getElementById('sp-notes').value        = sp.notes         || '';
+  document.getElementById('sp-modal-feedback').textContent = '';
+  document.getElementById('sp-modal').style.display = 'flex';
+}
+
+async function saveServiceProjectModal() {
+  var name   = document.getElementById('sp-name').value.trim();
+  var date   = document.getElementById('sp-date').value.trim();
+  var dur    = parseFloat(document.getElementById('sp-duration').value) || 2;
+  var fb     = document.getElementById('sp-modal-feedback');
+  if (!name) { fb.style.color='var(--badge-red)'; fb.textContent='Project name is required.'; return; }
+  if (!date) { fb.style.color='var(--badge-red)'; fb.textContent='Date is required.'; return; }
+
+  var btn = document.getElementById('sp-modal-save-btn');
+  btn.disabled = true; btn.textContent = 'Saving…';
+
+  var pid = _spEditId || spSlug(name);
+  var payload = {
+    project_id:     pid,
+    program_type:   'jysep',
+    project_name:   name,
+    description:    document.getElementById('sp-description').value.trim() || null,
+    project_date:   date,
+    start_time:     document.getElementById('sp-start-time').value.trim() || null,
+    location:       document.getElementById('sp-location').value.trim()   || null,
+    duration_hours: dur,
+    notes:          document.getElementById('sp-notes').value.trim()      || null,
+    created_by:     (adultState && adultState.name) || 'Admin',
+    archived:       false,
+    updated_at:     new Date().toISOString()
+  };
+
+  // Upsert
+  var r = await fetch(SUPA_URL + '/rest/v1/service_projects?on_conflict=project_id', {
+    method: 'POST',
+    headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY,
+               'Content-Type': 'application/json', 'Prefer': 'resolution=merge-duplicates,return=minimal' },
+    body: JSON.stringify(payload)
+  });
+
+  btn.disabled = false; btn.textContent = '💾 Save Project';
+
+  if (!r.ok) {
+    var err = await r.text();
+    fb.style.color = 'var(--badge-red)'; fb.textContent = 'Save failed: ' + r.status + ' ' + err; return;
+  }
+
+  // Update in-memory
+  var existing = SERVICE_PROJECTS.findIndex(function(s){ return s.project_id===pid; });
+  if (existing >= 0) SERVICE_PROJECTS[existing] = Object.assign(SERVICE_PROJECTS[existing], payload);
+  else               SERVICE_PROJECTS.unshift(payload);
+  if (!SERVICE_PROJECT_PARTICIPANTS[pid]) SERVICE_PROJECT_PARTICIPANTS[pid] = [];
+
+  fb.style.color = 'var(--ya-green)'; fb.textContent = '✔ Saved!';
+  setTimeout(function(){
+    document.getElementById('sp-modal').style.display = 'none';
+    renderJysepServiceProjects();
+    updateLandingStats();
+  }, 500);
+}
+
+async function archiveServiceProject(pid) {
+  var sp = SERVICE_PROJECTS.find(function(s){ return s.project_id===pid; });
+  if (!sp) return;
+  if (!confirm('Archive "'+sp.project_name+'"?\n\nThe project will be hidden but all data is preserved.')) return;
+  var r = await fetch(SUPA_URL + '/rest/v1/service_projects?project_id=eq.'+encodeURIComponent(pid), {
+    method: 'PATCH',
+    headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY,
+               'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+    body: JSON.stringify({ archived: true, updated_at: new Date().toISOString() })
+  });
+  if (!r.ok) { alert('Archive failed.'); return; }
+  sp.archived = true;
+  renderJysepServiceProjects();
+  updateLandingStats();
+}
+
+// ── Participants modal ────────────────────────────────────────────────────────
+function openSpPartModal(pid) {
+  _spPartPid = pid;
+  var sp = SERVICE_PROJECTS.find(function(s){ return s.project_id===pid; });
+  document.getElementById('sp-part-modal-subtitle').textContent =
+    (sp ? sp.project_name : pid) + ' · ' + (sp ? sp.project_date : '');
+  document.getElementById('sp-part-search').value = '';
+  document.getElementById('sp-part-search-results').style.display = 'none';
+  document.getElementById('sp-part-not-found').style.display = 'none';
+  renderSpPartList();
+  document.getElementById('sp-part-modal').style.display = 'flex';
+}
+
+function closeSpPartModal() {
+  document.getElementById('sp-part-modal').style.display = 'none';
+  renderJysepServiceProjects();
+  updateLandingStats();
+}
+
+// Build the combined sorted list of all known people (youth + adults)
+function spGetAllPeople() {
+  var people = []; // { name, type }
+  // Youth: EL_YOUTH, PROGRAMS_DATA youth_participants, YOUTH_HOURS
+  var ySet = new Set();
+  Object.keys(EL_YOUTH || {}).forEach(function(n){ ySet.add(n); });
+  Object.keys(YOUTH_HOURS || {}).forEach(function(n){ ySet.add(n); });
+  Object.keys(PROGRAMS_DATA || {}).forEach(function(pid){
+    var prog = PROGRAMS_DATA[pid]; if (!prog) return;
+    Object.keys(prog.youth_participants || {}).forEach(function(n){ ySet.add(n); });
+  });
+  ySet.forEach(function(n){ people.push({ name: n, type: 'youth' }); });
+  // Adults: FAC_PROFILES
+  Object.values(FAC_PROFILES || {}).forEach(function(p){
+    if (p && p.name) people.push({ name: p.name, type: 'adult' });
+  });
+  people.sort(function(a,b){ return a.name.localeCompare(b.name); });
+  return people;
+}
+
+function renderSpPartSearch() {
+  var q      = document.getElementById('sp-part-search').value.trim().toLowerCase();
+  var ftype  = document.getElementById('sp-part-type').value;
+  var resEl  = document.getElementById('sp-part-search-results');
+  var nfEl   = document.getElementById('sp-part-not-found');
+  resEl.style.display = 'none'; nfEl.style.display = 'none';
+  if (!q) return;
+
+  var all = spGetAllPeople().filter(function(p){
+    if (ftype !== 'all' && p.type !== ftype) return false;
+    return p.name.toLowerCase().includes(q);
+  });
+
+  // Already enrolled in this project
+  var enrolled = (SERVICE_PROJECT_PARTICIPANTS[_spPartPid] || []).map(function(pt){ return pt.participant_name; });
+
+  if (all.length === 0) {
+    nfEl.style.display = 'block'; return;
+  }
+
+  resEl.innerHTML = all.slice(0, 20).map(function(p){
+    var already = enrolled.indexOf(p.name) >= 0;
+    return '<div style="display:flex;align-items:center;justify-content:space-between;padding:7px 12px;border-bottom:1px solid rgba(255,255,255,.06);font-size:.83rem">'+
+      '<span>'+p.name+' <span style="font-size:.7rem;color:var(--text-muted)">('+p.type+')</span></span>'+
+      (already
+        ? '<span style="font-size:.72rem;color:var(--ya-green)">✔ enrolled</span>'
+        : '<button onclick="spAddParticipant(\''+p.name.replace(/'/g,"\\'")+'\')" style="padding:3px 10px;border-radius:6px;border:1px solid var(--ya-green);background:transparent;color:var(--ya-green);font-size:.72rem;cursor:pointer;font-family:DM Sans,sans-serif">+ Add</button>'
+      )+
+    '</div>';
+  }).join('');
+  resEl.style.display = 'block';
+}
+
+async function spAddParticipant(name) {
+  var sp  = SERVICE_PROJECTS.find(function(s){ return s.project_id===_spPartPid; });
+  var dur = sp ? (parseFloat(sp.duration_hours)||2) : 2;
+  // Determine type
+  var isYouth = !!(EL_YOUTH[name] || YOUTH_HOURS[name] ||
+    Object.keys(PROGRAMS_DATA||{}).some(function(pid){
+      return PROGRAMS_DATA[pid].youth_participants && PROGRAMS_DATA[pid].youth_participants[name];
+    }));
+  var ptype = isYouth ? 'youth' : 'adult';
+
+  var payload = {
+    project_id:       _spPartPid,
+    participant_name: name,
+    participant_type: ptype,
+    hours:            dur,
+    updated_at:       new Date().toISOString()
+  };
+  var r = await fetch(SUPA_URL + '/rest/v1/service_project_participants?on_conflict=project_id,participant_name', {
+    method: 'POST',
+    headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY,
+               'Content-Type': 'application/json', 'Prefer': 'resolution=merge-duplicates,return=minimal' },
+    body: JSON.stringify(payload)
+  });
+  if (!r.ok) { alert('Add failed: ' + r.status); return; }
+  if (!SERVICE_PROJECT_PARTICIPANTS[_spPartPid]) SERVICE_PROJECT_PARTICIPANTS[_spPartPid] = [];
+  var existing = SERVICE_PROJECT_PARTICIPANTS[_spPartPid].findIndex(function(p){ return p.participant_name===name; });
+  if (existing >= 0) SERVICE_PROJECT_PARTICIPANTS[_spPartPid][existing] = Object.assign(SERVICE_PROJECT_PARTICIPANTS[_spPartPid][existing], payload);
+  else               SERVICE_PROJECT_PARTICIPANTS[_spPartPid].push(payload);
+  document.getElementById('sp-part-search').value = '';
+  document.getElementById('sp-part-search-results').style.display = 'none';
+  renderSpPartList();
+}
+
+function renderSpPartList() {
+  var el  = document.getElementById('sp-part-list'); if (!el) return;
+  var pts = SERVICE_PROJECT_PARTICIPANTS[_spPartPid] || [];
+  if (pts.length === 0) {
+    el.innerHTML = '<div style="color:var(--text-muted);font-size:.82rem;padding:8px 0">No participants yet. Search above to add.</div>';
+    return;
+  }
+  var sorted = pts.slice().sort(function(a,b){ return a.participant_name.localeCompare(b.participant_name); });
+  el.innerHTML = '<table class="data-table" style="width:100%"><thead><tr>'+
+    '<th>Name</th><th>Type</th><th>Hours</th><th>Role / Note</th><th></th></tr></thead><tbody>'+
+    sorted.map(function(pt){
+      return '<tr>'+
+        '<td style="font-size:.83rem">'+pt.participant_name+'</td>'+
+        '<td><span class="pill '+(pt.participant_type==='youth'?'pill-teal':'pill-blue')+'" style="font-size:.7rem">'+pt.participant_type+'</span></td>'+
+        '<td><input type="number" min="0" step="0.5" value="'+pt.hours+'" onchange="spUpdateHours(\''+pt.participant_name.replace(/'/g,"\\'")+'\')" data-name="'+pt.participant_name.replace(/"/g,'&quot;')+'" style="width:60px;padding:3px 6px;border-radius:6px;border:1px solid var(--card-border);background:rgba(255,255,255,.06);color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.82rem"></td>'+
+        '<td><input type="text" value="'+(pt.role_note||'')+'" onchange="spUpdateRole(\''+pt.participant_name.replace(/'/g,"\\'")+'\')" data-name="'+pt.participant_name.replace(/"/g,'&quot;')+'" placeholder="optional" style="width:100%;min-width:80px;padding:3px 6px;border-radius:6px;border:1px solid var(--card-border);background:rgba(255,255,255,.06);color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.82rem"></td>'+
+        '<td><button onclick="spRemoveParticipant(\''+pt.participant_name.replace(/'/g,"\\'")+'\',this)" style="padding:2px 8px;border-radius:6px;border:1px solid var(--badge-red);background:transparent;color:var(--badge-red);font-size:.7rem;cursor:pointer">✕</button></td>'+
+      '</tr>';
+    }).join('')+
+  '</tbody></table>';
+}
+
+async function spUpdateHours(name) {
+  // Find the input by data-name
+  var inputs = document.querySelectorAll('#sp-part-list input[type="number"]');
+  var hrs = 2;
+  inputs.forEach(function(inp){ if (inp.getAttribute('data-name')===name) hrs = parseFloat(inp.value)||0; });
+  var pts = SERVICE_PROJECT_PARTICIPANTS[_spPartPid] || [];
+  var pt  = pts.find(function(p){ return p.participant_name===name; }); if (!pt) return;
+  pt.hours = hrs;
+  await fetch(SUPA_URL + '/rest/v1/service_project_participants?project_id=eq.'+encodeURIComponent(_spPartPid)+'&participant_name=eq.'+encodeURIComponent(name), {
+    method: 'PATCH',
+    headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY,
+               'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+    body: JSON.stringify({ hours: hrs, updated_at: new Date().toISOString() })
+  });
+}
+
+async function spUpdateRole(name) {
+  var inputs = document.querySelectorAll('#sp-part-list input[type="text"]');
+  var role = '';
+  inputs.forEach(function(inp){ if (inp.getAttribute('data-name')===name) role = inp.value.trim(); });
+  var pts = SERVICE_PROJECT_PARTICIPANTS[_spPartPid] || [];
+  var pt  = pts.find(function(p){ return p.participant_name===name; }); if (!pt) return;
+  pt.role_note = role;
+  await fetch(SUPA_URL + '/rest/v1/service_project_participants?project_id=eq.'+encodeURIComponent(_spPartPid)+'&participant_name=eq.'+encodeURIComponent(name), {
+    method: 'PATCH',
+    headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY,
+               'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+    body: JSON.stringify({ role_note: role||null, updated_at: new Date().toISOString() })
+  });
+}
+
+async function spRemoveParticipant(name, btn) {
+  if (!confirm('Remove '+name+' from this project?')) return;
+  btn.disabled = true;
+  var r = await fetch(SUPA_URL + '/rest/v1/service_project_participants?project_id=eq.'+encodeURIComponent(_spPartPid)+'&participant_name=eq.'+encodeURIComponent(name), {
+    method: 'DELETE',
+    headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY, 'Prefer': 'return=minimal' }
+  });
+  if (!r.ok) { btn.disabled = false; alert('Remove failed.'); return; }
+  SERVICE_PROJECT_PARTICIPANTS[_spPartPid] = (SERVICE_PROJECT_PARTICIPANTS[_spPartPid]||[]).filter(function(p){ return p.participant_name!==name; });
+  renderSpPartList();
+}
+
 // ── JYSEP data loader — loads all JYSEP groups ──────────────────────────────
 async function loadAllJysepData() {
   // IMPORTANT: PostgREST `like` uses SQL LIKE syntax where % is the wildcard.
@@ -14321,6 +14911,7 @@ async function dbStartup() {
       loadGardenData(),
       loadJysepBooks().then(function(){ return loadAllJysepData(); }),
       loadSccBooks().then(function(){ return loadAllSccData(); }),
+      loadServiceProjects(),
       loadComplianceData(),
       loadPendingEntries(),
       loadScrabbleData(),

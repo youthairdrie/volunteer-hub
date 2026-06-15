@@ -1507,13 +1507,15 @@ tr:hover .grd-date-sticky { background: #1a2d47; }
         </div><!-- /jysep-group-detail -->
 
         <!-- ── Book / Text Library ── -->
-        <div class="section-box" style="margin-top:14px">
-          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:12px">
-            <div style="font-family:Nunito,sans-serif;font-weight:900;font-size:.95rem;color:var(--ya-gold)">📖 Book &amp; Text Library</div>
-            <button onclick="openJysepBookModal()" class="ws-btn" style="border-color:var(--ya-gold);color:var(--ya-gold);font-size:.75rem;white-space:nowrap">➕ Add Book / Text</button>
+        <details style="margin-bottom:14px">
+          <summary style="font-family:Nunito,sans-serif;font-weight:900;font-size:.95rem;color:var(--ya-gold);cursor:pointer;padding:10px 0;list-style:none;display:flex;align-items:center;justify-content:space-between;gap:8px">
+            <span>📖 Book &amp; Text Library</span>
+            <button onclick="event.preventDefault();event.stopPropagation();openJysepBookModal()" class="ws-btn" style="border-color:var(--ya-gold);color:var(--ya-gold);font-size:.75rem;white-space:nowrap">➕ Add Book / Text</button>
+          </summary>
+          <div style="margin-top:10px">
+            <div id="jysep-book-library-list"></div>
           </div>
-          <div id="jysep-book-library-list"></div>
-        </div>
+        </details>
 
         <!-- ── Session edit modal ── -->
         <div id="jysep-session-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:1000;align-items:center;justify-content:center">
@@ -1599,14 +1601,16 @@ tr:hover .grd-date-sticky { background: #1a2d47; }
         </div>
 
         <!-- ── Youth Progress Report ── -->
-        <div class="section-box" style="margin-top:14px">
-          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:4px">
-            <div style="font-family:Nunito,sans-serif;font-weight:900;font-size:.95rem;color:var(--ya-blue)">🧭 Youth Progress Report</div>
-            <div style="font-size:.72rem;color:var(--text-muted)">All groups · current &amp; archived</div>
+        <details style="margin-bottom:14px">
+          <summary style="font-family:Nunito,sans-serif;font-weight:900;font-size:.95rem;color:var(--ya-blue);cursor:pointer;padding:10px 0;list-style:none;display:flex;align-items:center;justify-content:space-between;gap:8px">
+            <span>🧭 Youth Progress Report</span>
+            <span style="font-size:.72rem;color:var(--text-muted);font-weight:400;font-family:DM Sans,sans-serif">All groups · current &amp; archived</span>
+          </summary>
+          <div style="margin-top:10px">
+            <div style="font-size:.73rem;color:var(--text-muted);margin-bottom:12px;font-style:italic">Each youth's history across every JYSEP group and booklet they have participated in.</div>
+            <div id="jysep-youth-progress-report"></div>
           </div>
-          <div style="font-size:.73rem;color:var(--text-muted);margin-bottom:12px;font-style:italic">Each youth's history across every JYSEP group and booklet they have participated in.</div>
-          <div id="jysep-youth-progress-report"></div>
-        </div>
+        </details>
 
         <!-- ── Book Trends Report ── -->
         <div class="section-box" style="margin-top:14px">

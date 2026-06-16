@@ -1665,8 +1665,17 @@ tr:hover .grd-date-sticky { background: #1a2d47; }
                   <input id="sp-location" placeholder="e.g. Airdrie Community Park" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--card-border);background:rgba(255,255,255,.06);color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem;box-sizing:border-box">
                 </div>
                 <div>
-                  <div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Duration (hrs) *</div>
-                  <input type="number" id="sp-duration" min="0.5" step="0.5" value="2" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--card-border);background:rgba(255,255,255,.06);color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem;box-sizing:border-box">
+                  <div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Default Hours Upon Completion *</div>
+                  <select id="sp-duration" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--card-border);background:#0f1c2e;color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem;box-sizing:border-box">
+                    <option value="1">1 hour</option>
+                    <option value="2" selected>2 hours</option>
+                    <option value="3">3 hours</option>
+                    <option value="4">4 hours</option>
+                    <option value="5">5 hours</option>
+                    <option value="6">6 hours</option>
+                    <option value="7">7 hours</option>
+                    <option value="8">8 hours</option>
+                  </select>
                 </div>
               </div>
               <div>
@@ -3152,10 +3161,7 @@ function renderVolunteerHistoryYouth(containerId, personName){
   // Completed events: show hours if admin-recorded (status=completed + in bucket)
   EVENTS_DATA.forEach(function(ev){
     if(ev.status!=='completed') return;
-    var hrs=0;
-    if((ev.youth_5hrs||[]).indexOf(personName)>=0) hrs=5;
-    else if((ev.youth_4hrs||[]).indexOf(personName)>=0) hrs=4;
-    else if((ev.youth_2hrs||[]).indexOf(personName)>=0) hrs=2;
+    var hrs = _evGetPersonHours(ev, personName, 'youth');
     pastEvents.push({name:ev.name,date:ev.date,host:ev.host||'Youth Airdrie',hrs:hrs,id:ev.id,verified:hrs>0});
   });
 
@@ -3362,10 +3368,7 @@ function renderAdult(){
     // Completed events
     EVENTS_DATA.forEach(function(ev){
       if(ev.status!=='completed') return;
-      var hrs=0;
-      if((ev.adult_5hrs||[]).indexOf(prof.name)>=0) hrs=5;
-      else if((ev.adult_4hrs||[]).indexOf(prof.name)>=0) hrs=4;
-      else if((ev.adult_2hrs||[]).indexOf(prof.name)>=0) hrs=2;
+      var hrs = _evGetPersonHours(ev, prof.name, 'adult');
       if(hrs>0) rows.push({label:'Event: '+ev.name,date:ev.date,hrs:hrs,color:'var(--ya-teal)'});
     });
     if(rows.length===0){
@@ -3487,8 +3490,8 @@ function renderAdmin(){
     pastEvs.sort(function(a,b){return new Date(a.date)-new Date(b.date);});
 
     function evRow(ev, isPast){
-      var yAll=(ev.youth_5hrs||[]).concat(ev.youth_4hrs||[]).concat(ev.youth_2hrs||[]);
-      var aAll=(ev.adult_5hrs||[]).concat(ev.adult_4hrs||[]).concat(ev.adult_2hrs||[]);
+      var yAll=_evAllBuckets('youth').reduce(function(a,b){return a.concat(ev[b]||[]);},[]);
+      var aAll=_evAllBuckets('adult').reduce(function(a,b){return a.concat(ev[b]||[]);},[]);
       var reg=(ev.youth_registered||[]);
       return '<div class="status-row" style="flex-wrap:wrap;gap:8px">'+
         '<div style="flex:1;min-width:180px">'+
@@ -4218,6 +4221,23 @@ function getVolunteeredWorkshopCount(adultName) {
 }
 // ────────────────────────────────────────────────────────────────────────────
 
+// ── _evAllBuckets(role) ───────────────────────────────────────────────────
+// Returns bucket key names for a given role ('youth' or 'adult') covering
+// all supported hour values 1–8. This replaces the old fixed [2,4,5] list.
+function _evAllBuckets(role) {
+  return [1,2,3,4,5,6,7,8].map(function(h){ return role+'_'+h+'hrs'; });
+}
+
+// ── _evGetPersonHours(ev, name, role) ────────────────────────────────────
+// Returns the hours recorded for `name` in the given completed event bucket.
+function _evGetPersonHours(ev, name, role) {
+  var buckets = _evAllBuckets(role);
+  for(var i=0;i<buckets.length;i++){
+    if((ev[buckets[i]]||[]).indexOf(name)>=0) return parseInt(buckets[i].replace(/\D/g,''));
+  }
+  return 0;
+}
+
 // ── calcEventStats() ─────────────────────────────────────────────────────
 // Returns { all, completed, upcoming, community, communityCompleted }
 function calcEventStats() {
@@ -4266,7 +4286,7 @@ function calcYouthParticipants() {
   // Events (completed only — youth who actually volunteered)
   (EVENTS_DATA || []).forEach(function(ev){
     if (ev.status !== 'completed') return;
-    ['youth_5hrs','youth_4hrs','youth_2hrs'].forEach(function(b){
+    _evAllBuckets('youth').forEach(function(b){
       (ev[b] || []).forEach(function(n){ ySet.add(n.toLowerCase().trim()); });
     });
   });
@@ -4366,7 +4386,7 @@ function calcAdultVolunteerHours() {
   // 4. Events (completed only)
   (EVENTS_DATA || []).forEach(function(ev){
     if (ev.status !== 'completed') return;
-    ['adult_5hrs','adult_4hrs','adult_2hrs'].forEach(function(b){
+    _evAllBuckets('adult').forEach(function(b){
       var h = parseInt(b.replace(/\D/g,''));
       (ev[b] || []).forEach(function(n){ add(n, h); });
     });
@@ -4398,7 +4418,7 @@ function calcYouthVolunteerHours() {
   // Supplement: event buckets (for any youth not yet in YOUTH_HOURS)
   (EVENTS_DATA || []).forEach(function(ev){
     if (ev.status !== 'completed') return;
-    ['youth_5hrs','youth_4hrs','youth_2hrs'].forEach(function(b){
+    _evAllBuckets('youth').forEach(function(b){
       var h = parseInt(b.replace(/\D/g,''));
       (ev[b] || []).forEach(function(n){
         var k = n.toLowerCase().trim();
@@ -4506,10 +4526,10 @@ function calcEventHours() {
   var yHrs = 0, aHrs = 0;
   (EVENTS_DATA || []).forEach(function(ev){
     if (ev.status !== 'completed') return;
-    ['youth_5hrs','youth_4hrs','youth_2hrs'].forEach(function(b){
+    _evAllBuckets('youth').forEach(function(b){
       var h = parseInt(b.replace(/\D/g,'')); (ev[b]||[]).forEach(function(){ yHrs += h; });
     });
-    ['adult_5hrs','adult_4hrs','adult_2hrs'].forEach(function(b){
+    _evAllBuckets('adult').forEach(function(b){
       var h = parseInt(b.replace(/\D/g,'')); (ev[b]||[]).forEach(function(){ aHrs += h; });
     });
   });
@@ -4575,7 +4595,7 @@ function getActiveAdultVolunteers() {
 
   // Event volunteering
   (EVENTS_DATA || []).forEach(function(ev) {
-    ['adult_5hrs','adult_4hrs','adult_2hrs'].forEach(function(bucket) {
+    _evAllBuckets('adult').forEach(function(bucket) {
       (ev[bucket] || []).forEach(function(name) {
         adultSet.add(name.toLowerCase().trim());
       });
@@ -4725,7 +4745,7 @@ function renderStatsDiagnostic() {
       Object.keys(prog.attendance||{}).forEach(function(d){ (prog.attendance[d]||[]).forEach(function(r){ if(r.type==='youth'&&r.attended) addYouth(r.name,prog.name,d); }); });
     }
   });
-  (EVENTS_DATA||[]).forEach(function(ev){if(ev.status!=='completed')return;['youth_5hrs','youth_4hrs','youth_2hrs'].forEach(function(b){var h=parseInt(b.replace(/\D/g,''));(ev[b]||[]).forEach(function(n){addYouth(n,'Events',ev.name+' ('+h+'h)');});});});
+  (EVENTS_DATA||[]).forEach(function(ev){if(ev.status!=='completed')return;_evAllBuckets('youth').forEach(function(b){var h=parseInt(b.replace(/\D/g,''));(ev[b]||[]).forEach(function(n){addYouth(n,'Events',ev.name+' ('+h+'h)');});});});
   var youthCount=calcYouthParticipants().size; // from shared layer — matches all other views
 
   // ── adult map (Active Adult Volunteers) ──────────────────────────────────
@@ -4770,7 +4790,7 @@ function renderStatsDiagnostic() {
     });
   });
   // Events
-  (EVENTS_DATA||[]).forEach(function(ev){if(ev.status!=='completed')return;['adult_5hrs','adult_4hrs','adult_2hrs'].forEach(function(b){var h=parseInt(b.replace(/\D/g,''));(ev[b]||[]).forEach(function(n){addAdult(n,'Events',ev.name+' ('+h+'h)');});});});
+  (EVENTS_DATA||[]).forEach(function(ev){if(ev.status!=='completed')return;_evAllBuckets('adult').forEach(function(b){var h=parseInt(b.replace(/\D/g,''));(ev[b]||[]).forEach(function(n){addAdult(n,'Events',ev.name+' ('+h+'h)');});});});
   var adultCount=calcAdultVolunteers().size; // from shared layer — matches all other views
 
   // ── adult hours map ───────────────────────────────────────────────────────
@@ -4828,7 +4848,7 @@ function renderStatsDiagnostic() {
   // 4. Event hours
   (EVENTS_DATA||[]).forEach(function(ev){
     if(ev.status!=='completed')return;
-    ['adult_5hrs','adult_4hrs','adult_2hrs'].forEach(function(b){
+    _evAllBuckets('adult').forEach(function(b){
       var h=parseInt(b.replace(/\D/g,''));
       (ev[b]||[]).forEach(function(n){addAdultHrs(n,'Event: '+ev.name,h);});
     });
@@ -4844,7 +4864,7 @@ function renderStatsDiagnostic() {
     var youthEventMap={}; // name.lower -> [{evName, h}]
     (EVENTS_DATA||[]).forEach(function(ev){
       if(ev.status!=='completed')return;
-      ['youth_5hrs','youth_4hrs','youth_2hrs'].forEach(function(b){
+      _evAllBuckets('youth').forEach(function(b){
         var h=parseInt(b.replace(/\D/g,''));
         (ev[b]||[]).forEach(function(n){
           var k=n.toLowerCase().trim();
@@ -4969,8 +4989,8 @@ function renderStatsDiagnostic() {
           +heading('All events ('+evAll.length+')','var(--ya-gold)')
           +evAll.map(function(ev){
             var sc=ev.status==='completed'?chip('Completed','#22c55e','rgba(34,197,94,.12)'):chip('Upcoming','#f5a623','rgba(245,162,35,.12)');
-            var yc=['youth_5hrs','youth_4hrs','youth_2hrs'].reduce(function(a,b){return a+(ev[b]||[]).length;},0);
-            var ac=['adult_5hrs','adult_4hrs','adult_2hrs'].reduce(function(a,b){return a+(ev[b]||[]).length;},0);
+            var yc=_evAllBuckets('youth').reduce(function(a,b){return a+(ev[b]||[]).length;},0);
+            var ac=_evAllBuckets('adult').reduce(function(a,b){return a+(ev[b]||[]).length;},0);
             return auditRow(ev.name,sc+chip(ev.date,'var(--text-muted)','rgba(255,255,255,.06)'),yc+' youth · '+ac+' adults');
           }).join('');
       }},
@@ -4979,11 +4999,11 @@ function renderStatsDiagnostic() {
         return heading('What counts','#7c83fd')
           +'<p style="font-size:.82rem;color:var(--text-muted);margin:0 0 8px">Events where status = "completed". Volunteer counts come from youth/adult bucket arrays.</p>'
           +sourcesLine(['EVENTS_DATA','event_registrations','event_volunteers'])
-          +infoBox('Hours split into buckets: adult_2hrs, adult_4hrs, adult_5hrs (and equivalent youth buckets).')
+          +infoBox('Hours stored per volunteer in event_volunteers table (1–8h). Bucket arrays updated on load.')
           +heading('Completed ('+evCompleted.length+')','#7c83fd')
           +evCompleted.map(function(ev){
-            var yc=['youth_5hrs','youth_4hrs','youth_2hrs'].reduce(function(a,b){return a+(ev[b]||[]).length;},0);
-            var ac=['adult_5hrs','adult_4hrs','adult_2hrs'].reduce(function(a,b){return a+(ev[b]||[]).length;},0);
+            var yc=_evAllBuckets('youth').reduce(function(a,b){return a+(ev[b]||[]).length;},0);
+            var ac=_evAllBuckets('adult').reduce(function(a,b){return a+(ev[b]||[]).length;},0);
             return auditRow(ev.name,chip(ev.date,'var(--text-muted)','rgba(255,255,255,.06)'),yc+' youth · '+ac+' adults');
           }).join('')
           +(evUpcoming.length?heading('Upcoming — not yet counted ('+evUpcoming.length+')','#f5a623')
@@ -5502,14 +5522,7 @@ function getMyEventHours(name){
   var total=0;
   var log=[];
   EVENTS_DATA.forEach(function(ev){
-    var hrs=0;
-    if((ev.adult_5hrs||[]).indexOf(name)>=0) hrs=5;
-    else if((ev.youth_5hrs||[]).indexOf(name)>=0) hrs=5;
-    else if((ev.youth_4hrs||[]).indexOf(name)>=0) hrs=4;
-    else if((ev.youth_2hrs||[]).indexOf(name)>=0) hrs=2;
-    else if((ev.adult_4hrs||[]).indexOf(name)>=0) hrs=4;
-    else if((ev.adult_2hrs||[]).indexOf(name)>=0) hrs=2;
-    else if((ev.adult_2hrs||[]).indexOf(name)>=0) hrs=2;
+    var hrs = _evGetPersonHours(ev, name, 'youth') || _evGetPersonHours(ev, name, 'adult');
     if(hrs>0){total+=hrs;log.push({name:ev.name,date:ev.date,hrs:hrs,host:ev.host});}
   });
   return {total:total,log:log};
@@ -5525,10 +5538,7 @@ function renderVolunteerHistory(containerId, personName){
   // Build past event log from status:'completed' events (admin-verified hours)
   EVENTS_DATA.forEach(function(ev){
     if(ev.status!=='completed') return;
-    var hrs=0;
-    if((ev.youth_5hrs||[]).indexOf(personName)>=0) hrs=5;
-    else if((ev.youth_4hrs||[]).indexOf(personName)>=0) hrs=4;
-    else if((ev.youth_2hrs||[]).indexOf(personName)>=0) hrs=2;
+    var hrs = _evGetPersonHours(ev, personName, 'youth');
     // Always show completed events in past section (with edit option if no hours)
     var hasPending = PENDING_ENTRIES.some(function(e){
       return e.youth_name===personName && e.type==='event_hours' && e.session_date===ev.date && e.status==='pending';
@@ -5960,7 +5970,7 @@ function renderImpactTab(){
   var multiProgram = allYouthNames.filter(function(n){
     var inWs = getYouthConductedWorkshops(n).length > 0;
     var inScr = Object.keys(SCRABBLE_SESSIONS||{}).some(function(k){ return k.toLowerCase().trim()===n.toLowerCase().trim() && Object.keys(SCRABBLE_SESSIONS[k]||{}).length>0; });
-    var inEv  = (EVENTS_DATA||[]).some(function(ev){ return ['youth_5hrs','youth_4hrs','youth_2hrs'].some(function(b){ return (ev[b]||[]).some(function(k){ return k.toLowerCase().trim()===n.toLowerCase().trim(); }); }); });
+    var inEv  = (EVENTS_DATA||[]).some(function(ev){ return _evAllBuckets('youth').some(function(b){ return (ev[b]||[]).some(function(k){ return k.toLowerCase().trim()===n.toLowerCase().trim(); }); }); });
     return [inWs,inScr,inEv].filter(Boolean).length >= 2;
   });
 
@@ -5986,8 +5996,8 @@ function renderImpactTab(){
   var youthVolSlots = 0, adultVolSlots = 0;
   (EVENTS_DATA||[]).forEach(function(ev){
     if (ev.status !== 'completed') return;
-    ['youth_5hrs','youth_4hrs','youth_2hrs'].forEach(function(b){ youthVolSlots += (ev[b]||[]).length; });
-    ['adult_5hrs','adult_4hrs','adult_2hrs'].forEach(function(b){ adultVolSlots += (ev[b]||[]).length; });
+    _evAllBuckets('youth').forEach(function(b){ youthVolSlots += (ev[b]||[]).length; });
+    _evAllBuckets('adult').forEach(function(b){ adultVolSlots += (ev[b]||[]).length; });
   });
 
   // Workshop facilitator hours (2h per conducted workshop per person — for display row)
@@ -9759,12 +9769,9 @@ function renderAdultEventHistory(name){
     rows.push({type:'scrabble',name:'Scrabble & Games Club',date:'2026 ('+sessionCount+' sessions)',hrs:scrTotal,color:'var(--ya-gold)'});
   }
 
-  // Events (all completed buckets including 5hr)
+  // Events (all completed buckets 1–8h)
   EVENTS_DATA.forEach(function(ev){
-    var hrs=0;
-    if((ev.adult_5hrs||[]).indexOf(name)>=0) hrs=5;
-    else if((ev.adult_4hrs||[]).indexOf(name)>=0) hrs=4;
-    else if((ev.adult_2hrs||[]).indexOf(name)>=0) hrs=2;
+    var hrs = _evGetPersonHours(ev, name, 'adult');
     if(hrs>0) rows.push({type:'event',name:ev.name,date:ev.date,hrs:hrs,color:'var(--ya-teal)'});
   });
 
@@ -14019,29 +14026,30 @@ async function loadEventVolunteers() {
   EVENTS_DATA.forEach(function(ev){
     // Always clear DB-managed events; for hardcoded events only clear if DB has data
     if(dbEventIds.has(ev.id) || ev.status === 'upcoming'){
-      ev.youth_5hrs = []; ev.youth_4hrs = []; ev.youth_2hrs = [];
-      ev.adult_5hrs = []; ev.adult_4hrs = []; ev.adult_2hrs = [];
+      ['1','2','3','4','5','6','7','8'].forEach(function(h){
+        ev['youth_'+h+'hrs'] = [];
+        ev['adult_'+h+'hrs'] = [];
+      });
     }
   });
-  // Populate from DB rows
-  // Track max hours per person per role for accurate totals
+  // Populate from DB rows — support any integer hours 1–8
   var youthHrMap = {}, adultHrMap = {};
   rows.forEach(function(row){
     var ev = EVENTS_DATA.find(function(e){ return e.id === row.event_id; });
     if(!ev) return;
-    var key = row.role + '_' + row.hours + 'hrs';
+    var h = Math.min(8, Math.max(1, Math.round(parseFloat(row.hours)||2)));
+    var key = row.role + '_' + h + 'hrs';
     ev[key] = ev[key] || [];
     if(ev[key].indexOf(row.name) < 0) ev[key].push(row.name);
     // Accumulate hours per person
     if(row.role === 'youth'){
-      youthHrMap[row.name] = (youthHrMap[row.name] || 0) + row.hours;
+      youthHrMap[row.name] = (youthHrMap[row.name] || 0) + (parseFloat(row.hours)||0);
     } else if(row.role === 'adult'){
-      adultHrMap[row.name] = (adultHrMap[row.name] || 0) + row.hours;
+      adultHrMap[row.name] = (adultHrMap[row.name] || 0) + (parseFloat(row.hours)||0);
     }
   });
-  // Sync YOUTH_HOURS from accumulated event hours
+  // Sync YOUTH_HOURS from accumulated event hours (only raise, never lower)
   Object.keys(youthHrMap).forEach(function(name){
-    // Only update if DB has a higher value (don't overwrite manually-added hours)
     if((youthHrMap[name] || 0) > (YOUTH_HOURS[name] || 0)){
       YOUTH_HOURS[name] = youthHrMap[name];
     }
@@ -14528,7 +14536,7 @@ function renderSpPartSearch() {
 
 async function spAddParticipant(name) {
   var sp  = SERVICE_PROJECTS.find(function(s){ return s.project_id===_spPartPid; });
-  var dur = sp ? (parseFloat(sp.duration_hours)||2) : 2;
+  var dur = sp ? Math.min(8, Math.max(1, Math.round(parseFloat(sp.duration_hours)||2))) : 2;
   // Determine type
   var isYouth = !!(EL_YOUTH[name] || YOUTH_HOURS[name] ||
     Object.keys(PROGRAMS_DATA||{}).some(function(pid){
@@ -14567,13 +14575,20 @@ function renderSpPartList() {
     return;
   }
   var sorted = pts.slice().sort(function(a,b){ return a.participant_name.localeCompare(b.participant_name); });
+  var hrsOpts = [1,2,3,4,5,6,7,8].map(function(h){
+    return '<option value="'+h+'">'+h+' hr'+(h===1?'':'s')+'</option>';
+  }).join('');
   el.innerHTML = '<table class="data-table" style="width:100%"><thead><tr>'+
     '<th>Name</th><th>Type</th><th>Hours</th><th>Role / Note</th><th></th></tr></thead><tbody>'+
     sorted.map(function(pt){
+      var curHrs = Math.min(8, Math.max(1, Math.round(parseFloat(pt.hours)||2)));
+      var opts = [1,2,3,4,5,6,7,8].map(function(h){
+        return '<option value="'+h+'"'+(h===curHrs?' selected':'')+'>'+h+' hr'+(h===1?'':'s')+'</option>';
+      }).join('');
       return '<tr>'+
         '<td style="font-size:.83rem">'+pt.participant_name+'</td>'+
         '<td><span class="pill '+(pt.participant_type==='youth'?'pill-teal':'pill-blue')+'" style="font-size:.7rem">'+pt.participant_type+'</span></td>'+
-        '<td><input type="number" min="0" step="0.5" value="'+pt.hours+'" onchange="spUpdateHours(\''+pt.participant_name.replace(/'/g,"\\'")+'\')" data-name="'+pt.participant_name.replace(/"/g,'&quot;')+'" style="width:60px;padding:3px 6px;border-radius:6px;border:1px solid var(--card-border);background:rgba(255,255,255,.06);color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.82rem"></td>'+
+        '<td><select onchange="spUpdateHours(\''+pt.participant_name.replace(/'/g,"\\'")+'\')" data-name="'+pt.participant_name.replace(/"/g,'&quot;')+'" style="width:80px;padding:3px 6px;border-radius:6px;border:1px solid var(--card-border);background:#0f1c2e;color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.82rem">'+opts+'</select></td>'+
         '<td><input type="text" value="'+(pt.role_note||'')+'" onchange="spUpdateRole(\''+pt.participant_name.replace(/'/g,"\\'")+'\')" data-name="'+pt.participant_name.replace(/"/g,'&quot;')+'" placeholder="optional" style="width:100%;min-width:80px;padding:3px 6px;border-radius:6px;border:1px solid var(--card-border);background:rgba(255,255,255,.06);color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.82rem"></td>'+
         '<td><button onclick="spRemoveParticipant(\''+pt.participant_name.replace(/'/g,"\\'")+'\',this)" style="padding:2px 8px;border-radius:6px;border:1px solid var(--badge-red);background:transparent;color:var(--badge-red);font-size:.7rem;cursor:pointer">✕</button></td>'+
       '</tr>';
@@ -14582,10 +14597,11 @@ function renderSpPartList() {
 }
 
 async function spUpdateHours(name) {
-  // Find the input by data-name
-  var inputs = document.querySelectorAll('#sp-part-list input[type="number"]');
+  // Find the select by data-name
+  var selects = document.querySelectorAll('#sp-part-list select[data-name]');
   var hrs = 2;
-  inputs.forEach(function(inp){ if (inp.getAttribute('data-name')===name) hrs = parseFloat(inp.value)||0; });
+  selects.forEach(function(sel){ if (sel.getAttribute('data-name')===name) hrs = parseInt(sel.value)||2; });
+  hrs = Math.min(8, Math.max(1, hrs));
   var pts = SERVICE_PROJECT_PARTICIPANTS[_spPartPid] || [];
   var pt  = pts.find(function(p){ return p.participant_name===name; }); if (!pt) return;
   pt.hours = hrs;
@@ -14595,6 +14611,8 @@ async function spUpdateHours(name) {
                'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
     body: JSON.stringify({ hours: hrs, updated_at: new Date().toISOString() })
   });
+  // Trigger stats refresh so home page / impact update
+  updateLandingStats();
 }
 
 async function spUpdateRole(name) {
@@ -14622,6 +14640,7 @@ async function spRemoveParticipant(name, btn) {
   if (!r.ok) { btn.disabled = false; alert('Remove failed.'); return; }
   SERVICE_PROJECT_PARTICIPANTS[_spPartPid] = (SERVICE_PROJECT_PARTICIPANTS[_spPartPid]||[]).filter(function(p){ return p.participant_name!==name; });
   renderSpPartList();
+  updateLandingStats();
 }
 
 // ── JYSEP data loader — loads all JYSEP groups ──────────────────────────────
@@ -16034,8 +16053,8 @@ function renderEventsLog(){
 
   var uniqueYouth = new Set(), uniqueAdult = new Set(), byYear = {};
   completedEvs.forEach(function(ev){
-    ['youth_5hrs','youth_4hrs','youth_2hrs'].forEach(function(b){ (ev[b]||[]).forEach(function(n){ uniqueYouth.add(n); }); });
-    ['adult_5hrs','adult_4hrs','adult_2hrs'].forEach(function(b){ (ev[b]||[]).forEach(function(n){ uniqueAdult.add(n); }); });
+    _evAllBuckets('youth').forEach(function(b){ (ev[b]||[]).forEach(function(n){ uniqueYouth.add(n); }); });
+    _evAllBuckets('adult').forEach(function(b){ (ev[b]||[]).forEach(function(n){ uniqueAdult.add(n); }); });
     var yr = (ev.date||'').match(/\b(20\d\d)\b/);
     var y = yr ? yr[1] : 'Other';
     byYear[y] = (byYear[y]||0)+1;
@@ -16081,6 +16100,19 @@ function renderEventsLog(){
 
   // ── Upcoming events section (shown above completed log) ──
   var upcomingEvs = EVENTS_DATA.filter(function(e){ return e.status !== 'completed'; });
+  // Sort ascending by date (soonest first)
+  upcomingEvs.sort(function(a, b){
+    function parseEvDate(d){
+      if(!d) return Infinity;
+      var months={January:0,February:1,March:2,April:3,May:4,June:5,July:6,August:7,September:8,October:9,November:10,December:11};
+      var m = d.match(/^([A-Za-z]+)\s+(\d+),\s+(\d{4})$/);
+      if(m && months[m[1]]!==undefined) return new Date(parseInt(m[3]), months[m[1]], parseInt(m[2])).getTime();
+      // ISO or other formats
+      var t = Date.parse(d);
+      return isNaN(t) ? Infinity : t;
+    }
+    return parseEvDate(a.date) - parseEvDate(b.date);
+  });
   var upcomingHtml = '';
   if(upcomingEvs.length){
     upcomingHtml = '<div style="font-family:Nunito,sans-serif;font-size:.85rem;font-weight:800;color:var(--ya-gold);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">📅 Upcoming Events</div>';
@@ -16117,10 +16149,10 @@ function renderEventsLog(){
   }
 
   evLogEl.innerHTML += completedEvs.map(function(ev){
-    var yAll=(ev.youth_5hrs||[]).concat(ev.youth_4hrs||[]).concat(ev.youth_2hrs||[]);
-    var aAll=(ev.adult_5hrs||[]).concat(ev.adult_4hrs||[]).concat(ev.adult_2hrs||[]);
-    var evHrs=(ev.youth_5hrs||[]).length*5+(ev.youth_4hrs||[]).length*4+(ev.youth_2hrs||[]).length*2+
-              (ev.adult_5hrs||[]).length*5+(ev.adult_4hrs||[]).length*4+(ev.adult_2hrs||[]).length*2;
+    var yAll=_evAllBuckets('youth').reduce(function(a,b){return a.concat(ev[b]||[]);},[]);
+    var aAll=_evAllBuckets('adult').reduce(function(a,b){return a.concat(ev[b]||[]);},[]);
+    var evHrs=_evAllBuckets('youth').reduce(function(s,b){var h=parseInt(b.replace(/\D/g,''));return s+(ev[b]||[]).length*h;},0)+
+              _evAllBuckets('adult').reduce(function(s,b){var h=parseInt(b.replace(/\D/g,''));return s+(ev[b]||[]).length*h;},0);
     var safeId = ev.id.replace(/[^a-z0-9_]/g,'_');
     var typeIcon = ev.type==='Meeting'?'📋':ev.host&&ev.host.indexOf('Welcoming')>=0?'🌍':'📅';
 
@@ -16129,11 +16161,11 @@ function renderEventsLog(){
       detail='<div style="margin-top:4px"><div style="font-size:.75rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Attendees</div>'+aAll.map(nameChip).join('')+'</div>';
     } else {
       var youthCols='', adultCols='';
-      [['youth_5hrs','5 hrs each'],['youth_4hrs','4 hrs each'],['youth_2hrs','2 hrs each']].forEach(function(b){
-        if((ev[b[0]]||[]).length) youthCols+='<div style="margin-bottom:10px"><div style="font-size:.73rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px">Youth — '+b[1]+'</div>'+(ev[b[0]]||[]).map(nameChip).join('')+'</div>';
+      _evAllBuckets('youth').forEach(function(b){
+        if((ev[b]||[]).length){ var h=parseInt(b.replace(/\D/g,'')); youthCols+='<div style="margin-bottom:10px"><div style="font-size:.73rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px">Youth — '+h+' hr'+(h===1?'':'s')+' each</div>'+(ev[b]||[]).map(nameChip).join('')+'</div>'; }
       });
-      [['adult_5hrs','5 hrs each'],['adult_4hrs','4 hrs each'],['adult_2hrs','2 hrs each']].forEach(function(b){
-        if((ev[b[0]]||[]).length) adultCols+='<div style="margin-bottom:10px"><div style="font-size:.73rem;font-weight:700;color:var(--ya-blue);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px">Adults — '+b[1]+'</div>'+(ev[b[0]]||[]).map(function(n){return '<span class="pill pill-blue" style="margin:2px">'+n+'</span>';}).join('')+'</div>';
+      _evAllBuckets('adult').forEach(function(b){
+        if((ev[b]||[]).length){ var h=parseInt(b.replace(/\D/g,'')); adultCols+='<div style="margin-bottom:10px"><div style="font-size:.73rem;font-weight:700;color:var(--ya-blue);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px">Adults — '+h+' hr'+(h===1?'':'s')+' each</div>'+(ev[b]||[]).map(function(n){return '<span class="pill pill-blue" style="margin:2px">'+n+'</span>';}).join('')+'</div>'; }
       });
       detail='<div class="two-col" style="margin-top:8px">'+
         (youthCols||'<div style="color:var(--text-muted);font-size:.82rem">No youth volunteers recorded.</div>')+
@@ -16228,8 +16260,9 @@ async function loadEventStatus(){
         eligible: 'all_youth',
         hours_on_completion: meta.hours_on_completion || 4,
         public: meta.public !== false,
-        youth_registered: [], youth_5hrs: [], youth_4hrs: [], youth_2hrs: [],
-        adult_5hrs: [], adult_4hrs: [], adult_2hrs: []
+        youth_registered: [],
+        youth_1hrs:[], youth_2hrs:[], youth_3hrs:[], youth_4hrs:[], youth_5hrs:[], youth_6hrs:[], youth_7hrs:[], youth_8hrs:[],
+        adult_1hrs:[], adult_2hrs:[], adult_3hrs:[], adult_4hrs:[], adult_5hrs:[], adult_6hrs:[], adult_7hrs:[], adult_8hrs:[]
       });
     }
     loaded++;
@@ -17641,11 +17674,16 @@ function toggleAdminVolunteerView(){
         <input id="ne-host" placeholder="e.g. Youth Airdrie" value="Youth Airdrie" style="width:100%;padding:9px 12px;border-radius:9px;border:1px solid var(--card-border);background:rgba(255,255,255,.06);color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.88rem">
       </div>
       <div>
-        <div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px">Volunteer Hours on Completion</div>
+        <div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px">Default Hours Upon Completion</div>
         <select id="ne-hours" style="width:100%;padding:9px 12px;border-radius:9px;border:1px solid var(--card-border);background:#0f1c2e;color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.88rem">
+          <option value="1">1 hour</option>
           <option value="2">2 hours</option>
+          <option value="3">3 hours</option>
           <option value="4" selected>4 hours</option>
           <option value="5">5 hours</option>
+          <option value="6">6 hours</option>
+          <option value="7">7 hours</option>
+          <option value="8">8 hours</option>
         </select>
       </div>
       <div>
@@ -17667,7 +17705,8 @@ function toggleAdminVolunteerView(){
   <div style="max-width:680px;margin:0 auto;background:var(--card-bg);border-radius:20px;border:1px solid var(--card-border);padding:28px;position:relative">
     <button onclick="closeEventEditor()" style="position:absolute;top:14px;right:14px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);border-radius:8px;padding:5px 13px;color:var(--text-muted);cursor:pointer;font-family:DM Sans,sans-serif;font-size:.85rem">✕ Close</button>
     <div id="event-editor-title" style="font-family:Nunito,sans-serif;font-size:1.2rem;font-weight:900;margin-bottom:4px"></div>
-    <div id="event-editor-sub" style="font-size:.8rem;color:var(--text-muted);margin-bottom:18px"></div>
+    <div id="event-editor-sub" style="font-size:.8rem;color:var(--text-muted);margin-bottom:4px"></div>
+    <div id="event-editor-default-hrs-note" style="font-size:.75rem;color:var(--ya-gold);margin-bottom:14px"></div>
     <div class="ya-stripe" style="margin-bottom:18px"></div>
 
     <!-- Youth volunteers -->
@@ -17678,10 +17717,15 @@ function toggleAdminVolunteerView(){
       <select id="ev-add-youth-name" style="flex:1;min-width:160px;padding:7px 10px;border-radius:8px;border:1px solid var(--card-border);background:#0f1c2e;color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem">
         <option value="">— Select youth —</option>
       </select>
-      <select id="ev-add-youth-hrs" style="width:90px;padding:7px 10px;border-radius:8px;border:1px solid var(--card-border);background:#0f1c2e;color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem">
+      <select id="ev-add-youth-hrs" style="width:100px;padding:7px 10px;border-radius:8px;border:1px solid var(--card-border);background:#0f1c2e;color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem">
+        <option value="1">1 hr</option>
         <option value="2">2 hrs</option>
+        <option value="3">3 hrs</option>
         <option value="4">4 hrs</option>
         <option value="5">5 hrs</option>
+        <option value="6">6 hrs</option>
+        <option value="7">7 hrs</option>
+        <option value="8">8 hrs</option>
       </select>
       <button onclick="evEditorAddYouth()" style="padding:7px 16px;border-radius:8px;border:none;background:var(--ya-teal);color:#fff;font-family:Nunito,sans-serif;font-weight:800;font-size:.85rem;cursor:pointer">+ Add</button>
     </div>
@@ -17694,10 +17738,15 @@ function toggleAdminVolunteerView(){
       <select id="ev-add-adult-name" style="flex:1;min-width:160px;padding:7px 10px;border-radius:8px;border:1px solid var(--card-border);background:#0f1c2e;color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem">
         <option value="">— Select adult —</option>
       </select>
-      <select id="ev-add-adult-hrs" style="width:90px;padding:7px 10px;border-radius:8px;border:1px solid var(--card-border);background:#0f1c2e;color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem">
+      <select id="ev-add-adult-hrs" style="width:100px;padding:7px 10px;border-radius:8px;border:1px solid var(--card-border);background:#0f1c2e;color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem">
+        <option value="1">1 hr</option>
         <option value="2">2 hrs</option>
+        <option value="3">3 hrs</option>
         <option value="4">4 hrs</option>
         <option value="5">5 hrs</option>
+        <option value="6">6 hrs</option>
+        <option value="7">7 hrs</option>
+        <option value="8">8 hrs</option>
       </select>
       <button onclick="evEditorAddAdult()" style="padding:7px 16px;border-radius:8px;border:none;background:var(--ya-blue);color:#fff;font-family:Nunito,sans-serif;font-weight:800;font-size:.85rem;cursor:pointer">+ Add</button>
     </div>
@@ -17711,14 +17760,42 @@ function toggleAdminVolunteerView(){
 
 <script>
 var _evEditorId = null;
+// Per-volunteer hours store: { name: hours } for youth and adult separately
+var _evEditorYouthHrs = {}; // name -> hours (number)
+var _evEditorAdultHrs = {}; // name -> hours (number)
+
+// Build a 1–8 hours <select> HTML string, pre-selecting the given value
+function _evHrsSelect(onChange, currentHrs) {
+  var opts = [1,2,3,4,5,6,7,8].map(function(h){
+    return '<option value="'+h+'"'+(h===currentHrs?' selected':'')+'>'+h+' hr'+(h===1?'':'s')+'</option>';
+  }).join('');
+  return '<select onchange="'+onChange+'" style="width:80px;padding:3px 6px;border-radius:6px;border:1px solid var(--card-border);background:#0f1c2e;color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.78rem">'+opts+'</select>';
+}
 
 function openEventEditor(eventId){
   var ev = EVENTS_DATA.find(function(e){ return e.id===eventId; });
   if(!ev) return;
   _evEditorId = eventId;
 
+  // Rebuild per-volunteer maps from current event buckets
+  _evEditorYouthHrs = {};
+  _evEditorAdultHrs = {};
+  ['1','2','3','4','5','6','7','8'].forEach(function(h){
+    (ev['youth_'+h+'hrs']||[]).forEach(function(n){ _evEditorYouthHrs[n] = parseInt(h); });
+    (ev['adult_'+h+'hrs']||[]).forEach(function(n){ _evEditorAdultHrs[n] = parseInt(h); });
+  });
+
   document.getElementById('event-editor-title').textContent = ev.name;
   document.getElementById('event-editor-sub').textContent = ev.date + (ev.time&&ev.time!=='—' ? ' · '+ev.time : '') + (ev.location ? ' · '+ev.location : '');
+  var defHrs = ev.hours_on_completion || 4;
+  document.getElementById('event-editor-default-hrs-note').textContent = '⏱ Default hours per volunteer: ' + defHrs + 'h  (change individually below)';
+
+  // Set add-dropdowns to default hours, clamped to 1–8
+  var clampedDef = Math.min(8, Math.max(1, defHrs));
+  var yhs = document.getElementById('ev-add-youth-hrs');
+  var ahs = document.getElementById('ev-add-adult-hrs');
+  if(yhs) yhs.value = String(clampedDef);
+  if(ahs) ahs.value = String(clampedDef);
 
   // Populate youth dropdown
   var ysel = document.getElementById('ev-add-youth-name');
@@ -17734,137 +17811,136 @@ function openEventEditor(eventId){
     asel.innerHTML += '<option value="'+p.name+'">'+p.name+'</option>';
   });
 
-  evEditorRenderYouth(ev);
-  evEditorRenderAdult(ev);
+  evEditorRenderYouth();
+  evEditorRenderAdult();
   document.getElementById('event-editor-modal').style.display = 'block';
 }
 
-function evEditorRenderYouth(ev){
-  ev = ev || EVENTS_DATA.find(function(e){ return e.id===_evEditorId; });
+function evEditorRenderYouth(){
   var el = document.getElementById('event-editor-youth');
-  var rows = [];
-  [[ev.youth_5hrs||[],'5 hrs','var(--ya-gold)'],[ev.youth_4hrs||[],'4 hrs','var(--ya-teal)'],[ev.youth_2hrs||[],'2 hrs','var(--ya-blue)']].forEach(function(bucket){
-    bucket[0].forEach(function(name){
-      rows.push('<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:rgba(255,255,255,.03);border-radius:8px;border:1px solid rgba(255,255,255,.07)">'+
-        '<span style="flex:1;font-size:.85rem">'+name+'</span>'+
-        '<span class="pill pill-teal" style="font-size:.7rem">'+bucket[1]+'</span>'+
-        '<select onchange="evEditorChangeYouthHrs(\''+name+'\',this.value)" style="padding:3px 6px;border-radius:6px;border:1px solid var(--card-border);background:#0f1c2e;color:var(--text-main);font-size:.78rem">'+
-          '<option value="2"'+(bucket[1]==='2 hrs'?' selected':'')+'>2 hrs</option>'+
-          '<option value="4"'+(bucket[1]==='4 hrs'?' selected':'')+'>4 hrs</option>'+
-          '<option value="5"'+(bucket[1]==='5 hrs'?' selected':'')+'>5 hrs</option>'+
-        '</select>'+
-        '<button onclick="evEditorRemoveYouth(\''+name+'\')" style="background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.3);border-radius:6px;color:var(--badge-red);padding:3px 9px;cursor:pointer;font-size:.8rem">✕</button>'+
-      '</div>');
-    });
-  });
-  el.innerHTML = rows.length ? rows.join('') : '<div style="color:var(--text-muted);font-size:.82rem;padding:4px 0">No youth volunteers yet.</div>';
+  var names = Object.keys(_evEditorYouthHrs).sort();
+  if(!names.length){
+    el.innerHTML = '<div style="color:var(--text-muted);font-size:.82rem;padding:4px 0">No youth volunteers yet.</div>';
+    return;
+  }
+  el.innerHTML = names.map(function(name){
+    var hrs = _evEditorYouthHrs[name];
+    var safeName = name.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    return '<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:rgba(255,255,255,.03);border-radius:8px;border:1px solid rgba(255,255,255,.07)">'+
+      '<span style="flex:1;font-size:.85rem">'+name+'</span>'+
+      _evHrsSelect('evEditorChangeYouthHrs(\''+safeName+'\',this.value)', hrs)+
+      '<button onclick="evEditorRemoveYouth(\''+safeName+'\')" style="background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.3);border-radius:6px;color:var(--badge-red);padding:3px 9px;cursor:pointer;font-size:.8rem">✕</button>'+
+    '</div>';
+  }).join('');
 }
 
-function evEditorRenderAdult(ev){
-  ev = ev || EVENTS_DATA.find(function(e){ return e.id===_evEditorId; });
+function evEditorRenderAdult(){
   var el = document.getElementById('event-editor-adult');
-  var rows = [];
-  [[ev.adult_5hrs||[],'5 hrs'],[ev.adult_4hrs||[],'4 hrs'],[ev.adult_2hrs||[],'2 hrs']].forEach(function(bucket){
-    bucket[0].forEach(function(name){
-      rows.push('<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:rgba(255,255,255,.03);border-radius:8px;border:1px solid rgba(255,255,255,.07)">'+
-        '<span style="flex:1;font-size:.85rem">'+name+'</span>'+
-        '<span class="pill pill-blue" style="font-size:.7rem">'+bucket[1]+'</span>'+
-        '<select onchange="evEditorChangeAdultHrs(\''+name+'\',this.value)" style="padding:3px 6px;border-radius:6px;border:1px solid var(--card-border);background:#0f1c2e;color:var(--text-main);font-size:.78rem">'+
-          '<option value="2"'+(bucket[1]==='2 hrs'?' selected':'')+'>2 hrs</option>'+
-          '<option value="4"'+(bucket[1]==='4 hrs'?' selected':'')+'>4 hrs</option>'+
-          '<option value="5"'+(bucket[1]==='5 hrs'?' selected':'')+'>5 hrs</option>'+
-        '</select>'+
-        '<button onclick="evEditorRemoveAdult(\''+name+'\')" style="background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.3);border-radius:6px;color:var(--badge-red);padding:3px 9px;cursor:pointer;font-size:.8rem">✕</button>'+
-      '</div>');
-    });
-  });
-  el.innerHTML = rows.length ? rows.join('') : '<div style="color:var(--text-muted);font-size:.82rem;padding:4px 0">No adult volunteers yet.</div>';
-}
-
-function _evRemoveName(ev, name, isYouth){
-  ['2hrs','4hrs','5hrs'].forEach(function(k){
-    var key = (isYouth?'youth_':'adult_')+k;
-    ev[key] = (ev[key]||[]).filter(function(n){return n!==name;});
-  });
-}
-
-function evEditorRemoveYouth(name){
-  var ev = EVENTS_DATA.find(function(e){ return e.id===_evEditorId; });
-  _evRemoveName(ev, name, true);
-  evEditorRenderYouth(ev);
-}
-
-function evEditorRemoveAdult(name){
-  var ev = EVENTS_DATA.find(function(e){ return e.id===_evEditorId; });
-  _evRemoveName(ev, name, false);
-  evEditorRenderAdult(ev);
+  var names = Object.keys(_evEditorAdultHrs).sort();
+  if(!names.length){
+    el.innerHTML = '<div style="color:var(--text-muted);font-size:.82rem;padding:4px 0">No adult volunteers yet.</div>';
+    return;
+  }
+  el.innerHTML = names.map(function(name){
+    var hrs = _evEditorAdultHrs[name];
+    var safeName = name.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    return '<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:rgba(255,255,255,.03);border-radius:8px;border:1px solid rgba(255,255,255,.07)">'+
+      '<span style="flex:1;font-size:.85rem">'+name+'</span>'+
+      _evHrsSelect('evEditorChangeAdultHrs(\''+safeName+'\',this.value)', hrs)+
+      '<button onclick="evEditorRemoveAdult(\''+safeName+'\')" style="background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.3);border-radius:6px;color:var(--badge-red);padding:3px 9px;cursor:pointer;font-size:.8rem">✕</button>'+
+    '</div>';
+  }).join('');
 }
 
 function evEditorChangeYouthHrs(name, newHrs){
+  _evEditorYouthHrs[name] = parseInt(newHrs);
+  // Update backing event bucket immediately so display stays in sync without full re-render
   var ev = EVENTS_DATA.find(function(e){ return e.id===_evEditorId; });
-  _evRemoveName(ev, name, true);
-  ev['youth_'+newHrs+'hrs'] = ev['youth_'+newHrs+'hrs'] || [];
-  if(ev['youth_'+newHrs+'hrs'].indexOf(name)<0) ev['youth_'+newHrs+'hrs'].push(name);
-  evEditorRenderYouth(ev);
+  if(ev) _evEditorSyncBuckets(ev);
 }
 
 function evEditorChangeAdultHrs(name, newHrs){
+  _evEditorAdultHrs[name] = parseInt(newHrs);
   var ev = EVENTS_DATA.find(function(e){ return e.id===_evEditorId; });
-  _evRemoveName(ev, name, false);
-  ev['adult_'+newHrs+'hrs'] = ev['adult_'+newHrs+'hrs'] || [];
-  if(ev['adult_'+newHrs+'hrs'].indexOf(name)<0) ev['adult_'+newHrs+'hrs'].push(name);
-  evEditorRenderAdult(ev);
+  if(ev) _evEditorSyncBuckets(ev);
+}
+
+function evEditorRemoveYouth(name){
+  delete _evEditorYouthHrs[name];
+  evEditorRenderYouth();
+}
+
+function evEditorRemoveAdult(name){
+  delete _evEditorAdultHrs[name];
+  evEditorRenderAdult();
 }
 
 function evEditorAddYouth(){
   var name = document.getElementById('ev-add-youth-name').value;
-  var hrs  = document.getElementById('ev-add-youth-hrs').value;
+  var hrs  = parseInt(document.getElementById('ev-add-youth-hrs').value) || 4;
   if(!name) return;
-  var ev = EVENTS_DATA.find(function(e){ return e.id===_evEditorId; });
-  // Remove from all buckets first to avoid duplicates
-  _evRemoveName(ev, name, true);
-  ev['youth_'+hrs+'hrs'] = ev['youth_'+hrs+'hrs'] || [];
-  ev['youth_'+hrs+'hrs'].push(name);
+  _evEditorYouthHrs[name] = hrs;
   document.getElementById('ev-add-youth-name').value = '';
-  evEditorRenderYouth(ev);
+  evEditorRenderYouth();
 }
 
 function evEditorAddAdult(){
   var name = document.getElementById('ev-add-adult-name').value;
-  var hrs  = document.getElementById('ev-add-adult-hrs').value;
+  var hrs  = parseInt(document.getElementById('ev-add-adult-hrs').value) || 4;
   if(!name) return;
-  var ev = EVENTS_DATA.find(function(e){ return e.id===_evEditorId; });
-  _evRemoveName(ev, name, false);
-  ev['adult_'+hrs+'hrs'] = ev['adult_'+hrs+'hrs'] || [];
-  ev['adult_'+hrs+'hrs'].push(name);
+  _evEditorAdultHrs[name] = hrs;
   document.getElementById('ev-add-adult-name').value = '';
-  evEditorRenderAdult(ev);
+  evEditorRenderAdult();
+}
+
+// Sync per-volunteer maps back into event's Nhrs buckets
+function _evEditorSyncBuckets(ev){
+  // Clear all buckets first
+  ['1','2','3','4','5','6','7','8'].forEach(function(h){
+    ev['youth_'+h+'hrs'] = [];
+    ev['adult_'+h+'hrs'] = [];
+  });
+  Object.keys(_evEditorYouthHrs).forEach(function(name){
+    var h = _evEditorYouthHrs[name];
+    ev['youth_'+h+'hrs'] = ev['youth_'+h+'hrs'] || [];
+    if(ev['youth_'+h+'hrs'].indexOf(name)<0) ev['youth_'+h+'hrs'].push(name);
+  });
+  Object.keys(_evEditorAdultHrs).forEach(function(name){
+    var h = _evEditorAdultHrs[name];
+    ev['adult_'+h+'hrs'] = ev['adult_'+h+'hrs'] || [];
+    if(ev['adult_'+h+'hrs'].indexOf(name)<0) ev['adult_'+h+'hrs'].push(name);
+  });
 }
 
 async function saveEventEditor(){
   var ev = EVENTS_DATA.find(function(e){ return e.id===_evEditorId; });
   if(!ev) return;
 
-  // Keep YOUTH_HOURS in sync
-  ['youth_5hrs','youth_4hrs','youth_2hrs'].forEach(function(key){
-    var hrs = parseInt(key.replace('youth_','').replace('hrs',''));
-    (ev[key]||[]).forEach(function(name){ YOUTH_HOURS[name] = hrs; });
+  // Sync buckets from per-volunteer maps
+  _evEditorSyncBuckets(ev);
+
+  // Keep YOUTH_HOURS in sync — only raise, never lower (don't overwrite manually-set higher values)
+  Object.keys(_evEditorYouthHrs).forEach(function(name){
+    var h = _evEditorYouthHrs[name];
+    if(h > (YOUTH_HOURS[name] || 0)) YOUTH_HOURS[name] = h;
   });
 
-  // Ensure table exists before writing (handles first-time use on existing DBs)
+  // Ensure table exists before writing
   var testGet = await dbGet('event_volunteers', 'select=id&limit=1');
   if(testGet === null){
     console.log('event_volunteers missing — running initDB to create it...');
     await initDB();
   }
 
-  // Delete all existing rows for this event then re-insert
+  // Delete all existing rows for this event then re-insert (upsert-by-delete pattern)
   await dbDel('event_volunteers', 'event_id=eq.'+encodeURIComponent(ev.id));
 
   var rows = [];
-  ['5','4','2'].forEach(function(h){
-    (ev['youth_'+h+'hrs']||[]).forEach(function(n){ rows.push({event_id:ev.id,name:n,role:'youth',hours:parseInt(h)}); });
-    (ev['adult_'+h+'hrs']||[]).forEach(function(n){ rows.push({event_id:ev.id,name:n,role:'adult',hours:parseInt(h)}); });
+  Object.keys(_evEditorYouthHrs).forEach(function(n){
+    rows.push({event_id:ev.id, name:n, role:'youth', hours:_evEditorYouthHrs[n]});
+  });
+  Object.keys(_evEditorAdultHrs).forEach(function(n){
+    rows.push({event_id:ev.id, name:n, role:'adult', hours:_evEditorAdultHrs[n]});
   });
   if(rows.length){
     var r = await fetch(SUPA_URL+'/rest/v1/event_volunteers', {
@@ -17877,7 +17953,6 @@ async function saveEventEditor(){
   }
 
   // Re-fetch event volunteers from Supabase and re-render all views
-  // so dashboards and stat cards update immediately after save
   await loadEventVolunteers();
   closeEventEditor();
   renderAdmin();
@@ -17890,6 +17965,8 @@ async function saveEventEditor(){
 function closeEventEditor(){
   document.getElementById('event-editor-modal').style.display = 'none';
   _evEditorId = null;
+  _evEditorYouthHrs = {};
+  _evEditorAdultHrs = {};
 }
 
 // ── NEW EVENT MODAL ──
@@ -17942,8 +18019,9 @@ async function saveNewEvent(){
     time: time || '—', location: location || undefined,
     type: type, status: 'upcoming',
     eligible: 'all_youth', hours_on_completion: hours, public: isPublic,
-    youth_registered: [], youth_5hrs: [], youth_4hrs: [], youth_2hrs: [],
-    adult_5hrs: [], adult_4hrs: [], adult_2hrs: []
+    youth_registered: [],
+    youth_1hrs:[], youth_2hrs:[], youth_3hrs:[], youth_4hrs:[], youth_5hrs:[], youth_6hrs:[], youth_7hrs:[], youth_8hrs:[],
+    adult_1hrs:[], adult_2hrs:[], adult_3hrs:[], adult_4hrs:[], adult_5hrs:[], adult_6hrs:[], adult_7hrs:[], adult_8hrs:[]
   };
   EVENTS_DATA.push(newEv);
 
@@ -18193,11 +18271,16 @@ function addAdultScrabbleVolunteer(){
         <input id="em-host" style="width:100%;padding:9px 12px;border-radius:9px;border:1px solid var(--card-border);background:rgba(255,255,255,.06);color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.88rem">
       </div>
       <div>
-        <div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px">Volunteer Hours on Completion</div>
+        <div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px">Default Hours Upon Completion</div>
         <select id="em-hours" style="width:100%;padding:9px 12px;border-radius:9px;border:1px solid var(--card-border);background:#0f1c2e;color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.88rem">
+          <option value="1">1 hour</option>
           <option value="2">2 hours</option>
+          <option value="3">3 hours</option>
           <option value="4">4 hours</option>
           <option value="5">5 hours</option>
+          <option value="6">6 hours</option>
+          <option value="7">7 hours</option>
+          <option value="8">8 hours</option>
         </select>
       </div>
       <label style="display:flex;align-items:center;gap:9px;cursor:pointer;font-size:.85rem">
@@ -18289,11 +18372,11 @@ window.evSyncTest = async function() {
   await dbDel('event_volunteers', 'event_id=eq.' + encodeURIComponent(evId));
   await loadEventVolunteers();
   ev = EVENTS_DATA.find(function(e){ return e.id === evId; });
-  var allEmpty = ['youth_5hrs','youth_4hrs','youth_2hrs','adult_5hrs','adult_4hrs','adult_2hrs']
+  var allEmpty = _evAllBuckets('youth').concat(_evAllBuckets('adult'))
     .every(function(k){ return !(ev[k] && ev[k].length); });
   log('Case 3: All volunteer buckets empty after delete + reload', allEmpty,
     allEmpty ? 'no hardcoded defaults leaked' : 'buckets: ' +
-      ['youth_5hrs','youth_4hrs','youth_2hrs','adult_5hrs','adult_4hrs','adult_2hrs']
+      _evAllBuckets('youth').concat(_evAllBuckets('adult'))
       .filter(function(k){ return ev[k] && ev[k].length; })
       .map(function(k){ return k + '=' + JSON.stringify(ev[k]); }).join(', '));
 
@@ -18311,7 +18394,7 @@ window.evSyncTest = async function() {
   var completedBefore = EVENTS_DATA.filter(function(e){ return e.status === 'completed'; }).length;
   var hrsBefore = 0;
   EVENTS_DATA.filter(function(e){ return e.status === 'completed'; }).forEach(function(e){
-    ['youth_5hrs','youth_4hrs','youth_2hrs','adult_5hrs','adult_4hrs','adult_2hrs'].forEach(function(k){
+    _evAllBuckets('youth').concat(_evAllBuckets('adult')).forEach(function(k){
       var mul = parseInt(k.replace(/\D/g,'')); hrsBefore += (e[k]||[]).length * mul;
     });
   });

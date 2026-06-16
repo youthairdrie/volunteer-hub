@@ -2555,11 +2555,10 @@ var JYSEP_BOOKS = [
   { id:'spirit',     title:'Spirit of Faith',                  focus:'Spiritual reality and purpose of life',                   archived:false },
   { id:'rays',       title:'Rays of Light',                    focus:'Spiritual qualities and service',                         archived:false }
 ];
+function getActiveJysepBooks() { return JYSEP_BOOKS.filter(function(b){ return !b.archived; }); }
 // ── JY Service Projects runtime cache (populated by loadServiceProjects) ─────
 var SERVICE_PROJECTS = []; // array of project objects
 var SERVICE_PROJECT_PARTICIPANTS = {}; // project_id -> array of participant objects
-  return JYSEP_BOOKS.filter(function(b){ return !b.archived; });
-}
 // Helper: returns all JYSEP group program objects (active only by default)
 function getJysepGroups(includeArchived) {
   return Object.keys(PROGRAMS_DATA || {})

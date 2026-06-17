@@ -3019,7 +3019,25 @@ function renderYouth(){
   var isScrOnly=!isEL&&isScrabbleMember(name);
 
   // ── Hours: admin-verified only (from YOUTH_HOURS, not self-reported) ──
-  var hrs=YOUTH_HOURS[name]||0;
+  // Also includes youth animator (JYSEP) and youth facilitator (SCC) hours
+  var hrs = YOUTH_HOURS[name] || 0;
+  // Add youth helper hours from JYSEP / SCC
+  (function(){
+    var nameLower = name.toLowerCase().trim();
+    Object.values(PROGRAMS_DATA || {}).forEach(function(prog){
+      if (!prog || !prog.program_type) return;
+      if (prog.program_type !== 'jysep' && prog.program_type !== 'spiritual_cc') return;
+      var cancelled = prog.cancellations || [];
+      Object.keys(prog.attendance || {}).forEach(function(d){
+        if (cancelled.indexOf(d) >= 0) return;
+        (prog.attendance[d] || []).forEach(function(r){
+          if (r.type !== 'youth_animator' && r.type !== 'youth_facilitator') return;
+          if (!r.attended || (r.name || '').toLowerCase().trim() !== nameLower) return;
+          hrs += parseFloat(r.hours) || 0;
+        });
+      });
+    });
+  })();
   // cnt = conducted workshops only — used for level, cert banner, stat card
   var conductedSet = _getConductedIdSet();
   var cnt=Array.from(ws).filter(function(id){ return conductedSet.has(id); }).length;
@@ -3051,7 +3069,7 @@ function renderYouth(){
         '<div class="stat-card" style="--accent-color:var(--ya-orange)"><div class="stat-label">My Rank</div><div class="stat-value">#'+myRank+'</div><div class="stat-meta">of '+lb.length+' players</div><div class="stat-icon">🏅</div></div>'+
         '<div class="stat-card" style="--accent-color:var(--ya-teal)"><div class="stat-label">Sessions Attended</div><div class="stat-value">'+Object.keys(SCRABBLE_SESSIONS[name]||{}).length+'</div><div class="stat-meta">out of '+SCRABBLE_DATES.length+' held</div><div class="stat-icon">📅</div></div>';
     }else{
-      var verifiedHrs=YOUTH_HOURS[name]||0; // admin-recorded only
+      var verifiedHrs = hrs; // includes YOUTH_HOURS + JYSEP/SCC helper hours
       var hasSc=isScrabbleMember(name);
       var lb2=Object.entries(SCRABBLE_TOTALS).sort(function(a,b){return b[1]-a[1];});
       var scCard=hasSc?
@@ -4942,6 +4960,41 @@ function renderStatsDiagnostic() {
         youthHrsMap[k]={display:d.display,hrs:total,events:d.events};
       }
     });
+    // Include youth animator (JYSEP) and youth facilitator (SCC) hours
+    Object.values(PROGRAMS_DATA || {}).forEach(function(prog){
+      if (!prog || !prog.program_type) return;
+      if (prog.program_type !== 'jysep' && prog.program_type !== 'spiritual_cc') return;
+      var cancelled = prog.cancellations || [];
+      var roleLabel = prog.program_type === 'jysep' ? 'JYSEP Animator' : 'SCC Facilitator';
+      Object.keys(prog.attendance || {}).forEach(function(d){
+        if (cancelled.indexOf(d) >= 0) return;
+        (prog.attendance[d] || []).forEach(function(r){
+          if (r.type !== 'youth_animator' && r.type !== 'youth_facilitator') return;
+          if (!r.attended || r.name === '_youth_helper_enrolled') return;
+          var h = parseFloat(r.hours) || 0;
+          if (h <= 0) return;
+          var k = r.name.toLowerCase().trim();
+          if (!youthHrsMap[k]) youthHrsMap[k] = { display: r.name, hrs: 0, events: [] };
+          youthHrsMap[k].hrs += h;
+          youthHrsMap[k].events = youthHrsMap[k].events || [];
+          youthHrsMap[k].events.push({ evName: roleLabel + ' · ' + d, h: h });
+        });
+      });
+    });
+    // JY Service Projects
+    (SERVICE_PROJECTS || []).forEach(function(sp){
+      if (sp.archived) return;
+      var pts = SERVICE_PROJECT_PARTICIPANTS[sp.project_id] || [];
+      pts.forEach(function(pt){
+        if (pt.participant_type !== 'youth') return;
+        var h = parseFloat(pt.hours) || 0;
+        if (!h) return;
+        var k = pt.participant_name.toLowerCase().trim();
+        if (!youthHrsMap[k]) youthHrsMap[k] = { display: pt.participant_name, hrs: 0, events: [] };
+        youthHrsMap[k].hrs += h;
+        youthHrsMap[k].events.push({ evName: 'JY Service Project: ' + sp.project_name, h: h });
+      });
+    });
   })();
   var totalYouthHrs=calcYouthVolunteerHours(); // from shared layer — matches all other views
 
@@ -5080,21 +5133,21 @@ function renderStatsDiagnostic() {
             return rows||'<div style="color:var(--text-muted);font-size:.82rem;padding:8px 0">No hours recorded.</div>';
           })();
       }},
-    {id:'youth-hrs',icon:'⏱',label:'Youth Volunteer Hours',value:totalYouthHrs.toFixed(0)+'h',color:'var(--ya-teal)',sub:'from YOUTH_HOURS',
+    {id:'youth-hrs',icon:'⏱',label:'Youth Volunteer Hours',value:totalYouthHrs.toFixed(0)+'h',color:'var(--ya-teal)',sub:'YOUTH_HOURS + JYSEP/SCC helper hrs',
       detail:function(){
         return heading('What counts','var(--ya-teal)')
-          +'<p style="font-size:.82rem;color:var(--text-muted);margin:0 0 8px">Youth volunteer hours from YOUTH_HOURS cross-referenced with EVENTS_DATA to show which event(s) each youth volunteered at.</p>'
-          +sourcesLine(['YOUTH_HOURS','EVENTS_DATA (youth_Nhrs)','event_registrations','event_volunteers'])
-          +infoBox('Scrabble Club and Garden Program attendance counts as participation, not volunteer hours, unless separately logged in YOUTH_HOURS.')
+          +'<p style="font-size:.82rem;color:var(--text-muted);margin:0 0 8px">Youth volunteer hours from YOUTH_HOURS, event buckets, JY Service Projects, plus youth animator hours (JYSEP) and youth facilitator hours (Spiritual CC) where admin has entered hours.</p>'
+          +sourcesLine(['YOUTH_HOURS','EVENTS_DATA (youth_Nhrs)','JY Service Projects','JYSEP program_attendance (youth_animator)','SCC program_attendance (youth_facilitator)'])
+          +infoBox('Scrabble Club and Garden Program attendance counts as participation, not volunteer hours. Youth participation attendance in JYSEP/SCC also does NOT count as volunteer hours — only explicitly-entered animator/facilitator hours do.')
           +heading('Youth with logged hours ('+Object.keys(youthHrsMap).length+')','var(--ya-teal)')
           +(function(){
             var rows='';
             Object.keys(youthHrsMap).sort().forEach(function(k){
               var e=youthHrsMap[k];
               // Show total hours chip + per-event chips (matching adult volunteer format)
-              var totalChip=chip(e.hrs+'h','#00b5a0','rgba(0,181,160,.2)');
-              var evChips=(e.events||[]).map(function(ev){return chip('Event: '+ev.evName+' ('+ev.h+'h)','#fff','rgba(232,98,10,.25)');}).join('');
-              rows+=auditRow(e.display, totalChip+evChips, e.hrs+'h total');
+              var totalChip=chip(e.hrs.toFixed(1)+'h','#00b5a0','rgba(0,181,160,.2)');
+              var evChips=(e.events||[]).map(function(ev){return chip(ev.evName+' ('+ev.h+'h)','#fff','rgba(232,98,10,.25)');}).join('');
+              rows+=auditRow(e.display, totalChip+evChips, e.hrs.toFixed(1)+'h total');
             });
             return rows||'<div style="color:var(--text-muted);font-size:.82rem;padding:8px 0">No youth hours recorded.</div>';
           })();

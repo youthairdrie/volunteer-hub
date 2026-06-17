@@ -5402,23 +5402,39 @@ function updateLandingStats() {
   var wsStats   = calcWorkshopStats();
   var evStats   = calcEventStats();
 
-  // ── Programs count — active groups across all program frameworks ──────────
-  // 1 EL (Workshops) + Scrabble seasons + Garden + JYSEP groups + SCC groups
-  var scrabblePids = Object.keys(PROGRAMS_DATA || {}).filter(function(pid){
+  // ── Programs count — unique program types with at least one active instance ─
+  // Each distinct program (EL, Scrabble, Garden, JYSEP, SCC) counts as 1,
+  // regardless of how many seasons, series, groups, or sessions it contains.
+  // A program is counted only if it has at least one active (non-archived) instance.
+  var programsCount = 0;
+
+  // 1. Emerging Leaders — present if there is at least one non-archived WS series
+  var hasEL = getAllWsSeries().length > 0;
+  if (hasEL) programsCount++;
+
+  // 2. Scrabble & Games Club — present if any non-archived scrabble entry in PROGRAMS_DATA
+  var hasScrabble = Object.keys(PROGRAMS_DATA || {}).some(function(pid){
     var p = PROGRAMS_DATA[pid];
-    return p && (pid.indexOf('scrabble') >= 0 || (p.name || '').toLowerCase().indexOf('scrabble') >= 0);
+    return p && !p.archived && !p.group_archived &&
+           (pid.indexOf('scrabble') >= 0 || (p.name || '').toLowerCase().indexOf('scrabble') >= 0);
   });
-  var gardenPids = Object.keys(PROGRAMS_DATA || {}).filter(function(pid){
+  if (hasScrabble) programsCount++;
+
+  // 3. Garden Program — present if any non-archived garden entry in PROGRAMS_DATA
+  var hasGarden = Object.keys(PROGRAMS_DATA || {}).some(function(pid){
     var p = PROGRAMS_DATA[pid];
-    return p && (pid === 'garden_2026' || (p.name || '').toLowerCase().indexOf('garden') >= 0);
+    return p && !p.archived && !p.group_archived &&
+           (pid.indexOf('garden') >= 0 || (p.name || '').toLowerCase().indexOf('garden') >= 0);
   });
-  // Active (non-archived) JYSEP and SCC groups
-  var jysepGids = getJysepGroupIds();   // excludes archived
-  var sccGids   = getSccGroupIds();     // excludes archived
-  // EL counts as 1 program (the workshop series)
-  var elCount = 1;
-  // Each scrabble season, garden program, jysep group, scc group counts separately
-  var programsCount = elCount + scrabblePids.length + gardenPids.length + jysepGids.length + sccGids.length;
+  if (hasGarden) programsCount++;
+
+  // 4. JYSEP — present if there is at least one active (non-archived) JYSEP group
+  var hasJysep = getJysepGroupIds().length > 0;  // already excludes archived
+  if (hasJysep) programsCount++;
+
+  // 5. Spiritual Children's Classes — present if at least one active (non-archived) SCC group
+  var hasScc = getSccGroupIds().length > 0;       // already excludes archived
+  if (hasScc) programsCount++;
 
   // ── Volunteer hours — use shared authoritative helpers ────────────────────
   var youthHrs = calcYouthVolunteerHours();
@@ -5442,7 +5458,9 @@ function updateLandingStats() {
 
   console.log('[Stats] Youth:', youthSet.size, '| Adults:', adultSet.size,
               '| Workshops:', wsStats.scheduled.length, '| Events:', evStats.all.length,
-              '| Programs:', programsCount, '| Youth hrs:', youthHrs.toFixed(1), '| Adult hrs:', adultHrs.toFixed(1));
+              '| Programs (unique types):', programsCount,
+              '(EL:', hasEL, '| Scrabble:', hasScrabble, '| Garden:', hasGarden, '| JYSEP:', hasJysep, '| SCC:', hasScc, ')',
+              '| Youth hrs:', youthHrs.toFixed(1), '| Adult hrs:', adultHrs.toFixed(1));
 }
 
 function renderLandingCalendar(){

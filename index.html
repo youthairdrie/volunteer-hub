@@ -1474,7 +1474,7 @@ tr:hover .grd-date-sticky { background: #1a2d47; }
                 <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
                   <div style="font-size:.78rem;color:var(--text-muted)">Hours per animator per session. Counts toward volunteer totals.</div>
                   <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-                    <button id="jgd-enroll-anim-btn" onclick="openProgramEnrollAdultModal(_jysepActiveGroup)" class="ws-btn" style="border-color:var(--ya-blue);color:var(--ya-blue);font-size:.75rem;white-space:nowrap">+ Enroll Animator</button>
+                    <button id="jgd-enroll-anim-btn" onclick="openProgramEnrollHelperModal(_jysepActiveGroup,'jysep')" class="ws-btn" style="border-color:var(--ya-blue);color:var(--ya-blue);font-size:.75rem;white-space:nowrap">+ Enroll Animator</button>
                     <button id="jysep-hrs-edit-btn" onclick="toggleJysepHrsEdit()" class="ws-btn" style="border-color:var(--ya-blue);color:var(--ya-blue);font-size:.75rem;white-space:nowrap">✏️ Edit Hours</button>
                   </div>
                 </div>
@@ -1820,7 +1820,7 @@ tr:hover .grd-date-sticky { background: #1a2d47; }
                 <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
                   <div style="font-size:.78rem;color:var(--text-muted)">Hours per facilitator per session. Counts toward volunteer totals.</div>
                   <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-                    <button onclick="openProgramEnrollAdultModal(_sccActiveGroup)" class="ws-btn" style="border-color:var(--ya-teal);color:var(--ya-teal);font-size:.75rem;white-space:nowrap">+ Enroll Facilitator</button>
+                    <button onclick="openProgramEnrollHelperModal(_sccActiveGroup,'scc')" class="ws-btn" style="border-color:var(--ya-teal);color:var(--ya-teal);font-size:.75rem;white-space:nowrap">+ Enroll Facilitator</button>
                     <button id="scc-hrs-edit-btn" onclick="toggleSccHrsEdit()" class="ws-btn" style="border-color:var(--ya-teal);color:var(--ya-teal);font-size:.75rem;white-space:nowrap">✏️ Edit Hours</button>
                   </div>
                 </div>
@@ -3246,6 +3246,40 @@ function renderVolunteerHistoryYouth(containerId, personName){
         '<span class="pill pill-green">+'+r.hours+' hrs ✔</span></div>';
     }).join('');
   }
+
+  // ── Youth Animator / Facilitator hours (JYSEP & SCC) ────────────────────
+  var helperRows = [];
+  Object.values(PROGRAMS_DATA || {}).forEach(function(prog){
+    if (!prog || !prog.program_type) return;
+    if (prog.program_type !== 'jysep' && prog.program_type !== 'spiritual_cc') return;
+    var cancelled = prog.cancellations || [];
+    var progHrs = 0;
+    var sessDates = [];
+    Object.keys(prog.attendance || {}).forEach(function(d){
+      if (cancelled.indexOf(d) >= 0) return;
+      (prog.attendance[d] || []).forEach(function(r){
+        if (r.type !== 'youth_animator' && r.type !== 'youth_facilitator') return;
+        if (!r.attended || r.name !== personName) return;
+        var h = parseFloat(r.hours) || 0;
+        if (h > 0) { progHrs += h; sessDates.push(d); }
+      });
+    });
+    if (progHrs > 0) {
+      var roleLabel = prog.program_type === 'jysep' ? 'Youth Animator' : 'Youth Facilitator';
+      helperRows.push({ name: prog.name, hrs: progHrs, sessions: sessDates.length, role: roleLabel });
+    }
+  });
+  if (helperRows.length > 0) {
+    html2 += '<div style="font-size:.75rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin:16px 0 8px">Animator / Facilitator Hours</div>';
+    html2 += helperRows.map(function(r){
+      return '<div class="activity-item" style="flex-wrap:wrap;align-items:center">'+
+        '<div class="activity-dot" style="background:var(--lavender)"></div>'+
+        '<div style="flex:1;min-width:0"><div class="activity-name">✨ '+r.name+'</div>'+
+        '<div class="activity-meta">'+r.role+' · '+r.sessions+' session'+(r.sessions!==1?'s':'')+'</div></div>'+
+        '<span class="pill" style="background:rgba(139,92,246,.15);color:var(--lavender)">+'+r.hrs.toFixed(1)+' hrs ✔</span></div>';
+    }).join('');
+  }
+
   el.innerHTML=html2;
 }
 
@@ -4406,7 +4440,8 @@ function calcAdultVolunteerHours() {
 
 // ── calcYouthVolunteerHours() ────────────────────────────────────────────
 // Returns total youth volunteer hours (number) from YOUTH_HOURS +
-// any event-bucket hours not yet in YOUTH_HOURS.
+// any event-bucket hours not yet in YOUTH_HOURS +
+// youth animator hours (JYSEP) + youth facilitator hours (Spiritual CC).
 // Youth Scrabble/Garden attendance does NOT count as volunteer hours.
 function calcYouthVolunteerHours() {
   var yMap = {}; // name.lower -> hours
@@ -4435,6 +4470,24 @@ function calcYouthVolunteerHours() {
         var k = pt.participant_name.toLowerCase().trim();
         yMap[k] = (yMap[k] || 0) + (parseFloat(pt.hours) || 0);
       }
+    });
+  });
+  // Youth animators (JYSEP) — hours from program_attendance where type='youth_animator'
+  // Youth facilitators (SCC) — hours from program_attendance where type='youth_facilitator'
+  Object.values(PROGRAMS_DATA || {}).forEach(function(prog){
+    if (!prog || !prog.program_type) return;
+    if (prog.program_type !== 'jysep' && prog.program_type !== 'spiritual_cc') return;
+    var cancelled = prog.cancellations || [];
+    Object.keys(prog.attendance || {}).forEach(function(d){
+      if (cancelled.indexOf(d) >= 0) return;
+      (prog.attendance[d] || []).forEach(function(r){
+        if (r.type !== 'youth_animator' && r.type !== 'youth_facilitator') return;
+        if (!r.attended || r.name === '_youth_helper_enrolled') return;
+        var h = parseFloat(r.hours) || 0;
+        if (h <= 0) return;
+        var k = r.name.toLowerCase().trim();
+        yMap[k] = (yMap[k] || 0) + h;
+      });
     });
   });
   return Object.values(yMap).reduce(function(a,v){ return a + v; }, 0);
@@ -6225,17 +6278,39 @@ function renderImpactTab(){
     Object.keys(jP.attendance||{}).forEach(function(d){
       if(_jCan.indexOf(d)>=0)return;
       var dt=new Date(d);if(isNaN(dt)||dt>_jNow2)return;
-      (jP.attendance[d]||[]).forEach(function(r){if(r.type==='adult'&&r.attended&&r.name!=='_adult_enrolled')jysepAdultSet.add(r.name);});
+      (jP.attendance[d]||[]).forEach(function(r){
+        if(r.type==='adult'&&r.attended&&r.name!=='_adult_enrolled')jysepAdultSet.add(r.name);
+      });
     });
     jysepGroupRows.push({ name: jP.name, sessions: jPast.length, enrolled: enrolled.length, youthAtt: grpYouthAtt, book: jP.group_book||'', age: jP.group_age_range||'Ages 10-14' });
   });
   if(jysepGids.length>0){
+    // Compute youth animator hrs across all jysep groups
+    var jysepYouthAnimHrs=0, jysepYouthAnimSet=new Set();
+    jysepGids.forEach(function(gid){
+      var jP=PROGRAMS_DATA[gid];if(!jP)return;
+      var _jCan=jP.cancellations||[];
+      Object.keys(jP.attendance||{}).forEach(function(d){
+        if(_jCan.indexOf(d)>=0)return;
+        (jP.attendance[d]||[]).forEach(function(r){
+          if(r.type==='youth_animator'&&r.attended&&r.name!=='_youth_helper_enrolled'){
+            jysepYouthAnimSet.add(r.name);
+            jysepYouthAnimHrs+=(parseFloat(r.hours)||0);
+          }
+        });
+      });
+      Object.keys(jP.youth_helper_participants||{}).forEach(function(n){jysepYouthAnimSet.add(n);});
+    });
     html += statRow('Active JYSEP groups', jysepGids.length, 'pill-blue');
     html += statRow('Total sessions held', jysepSessionsHeld, 'pill-blue');
     html += statRow('Total enrolled youth', jysepYouthSet.size, 'pill-teal');
     html += statRow('Total youth attendances', jysepYouthAtt, 'pill-blue');
-    html += statRow('Animators active', jysepAdultSet.size, 'pill-orange');
-    html += statRow('Animator hours', Math.round(jysepAdultHrs), 'pill-gold');
+    html += statRow('Adult animators', jysepAdultSet.size, 'pill-orange');
+    html += statRow('Adult animator hours', Math.round(jysepAdultHrs), 'pill-gold');
+    if(jysepYouthAnimSet.size>0||jysepYouthAnimHrs>0){
+      html += statRow('Youth animators', jysepYouthAnimSet.size, 'pill-teal');
+      html += statRow('Youth animator hours (→ youth vol.)', Math.round(jysepYouthAnimHrs), 'pill-green');
+    }
     if(jysepGroupRows.length>1){
       html += '<div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin:8px 0 4px">Per-group</div>';
       jysepGroupRows.forEach(function(g){
@@ -6245,7 +6320,7 @@ function renderImpactTab(){
         html += '<br><span style="color:var(--text-muted)">'+g.sessions+' sessions · '+g.enrolled+' youth · '+g.youthAtt+' attendances</span></div>';
       });
     }
-    html += '<div style="font-size:.7rem;color:var(--text-muted);margin-top:4px;font-style:italic">Youth attendance = participation only, not volunteer hours.</div>';
+    html += '<div style="font-size:.7rem;color:var(--text-muted);margin-top:4px;font-style:italic">Youth attendance = participation only. Youth animator hours count toward youth volunteer totals.</div>';
   } else {
     var jysepCount = Object.values(FAC_PROFILES).filter(function(p){ return p.role&&(p.role.toLowerCase().indexOf('jysep')>=0||p.role.toLowerCase().indexOf('animator')>=0); }).length;
     html += statRow('Animators active', jysepCount||'--', 'pill-blue');
@@ -6271,17 +6346,39 @@ function renderImpactTab(){
     Object.keys(sP.attendance||{}).forEach(function(d){
       if(_sCan.indexOf(d)>=0)return;
       var dt=new Date(d);if(isNaN(dt)||dt>_sNow)return;
-      (sP.attendance[d]||[]).forEach(function(r){if(r.type==='adult'&&r.attended&&r.name!=='_adult_enrolled')sccFacSet.add(r.name);});
+      (sP.attendance[d]||[]).forEach(function(r){
+        if(r.type==='adult'&&r.attended&&r.name!=='_adult_enrolled')sccFacSet.add(r.name);
+      });
     });
     sccGroupRows.push({name:sP.name,sessions:sPast.length,enrolled:enrolled.length,youthAtt:grpYouthAtt,book:sP.group_book||''});
   });
   if(sccGids.length>0){
+    // Compute youth facilitator hrs across all scc groups
+    var sccYouthFacHrs=0,sccYouthFacSet=new Set();
+    sccGids.forEach(function(gid){
+      var sP=PROGRAMS_DATA[gid];if(!sP)return;
+      var _sCan=sP.cancellations||[];
+      Object.keys(sP.attendance||{}).forEach(function(d){
+        if(_sCan.indexOf(d)>=0)return;
+        (sP.attendance[d]||[]).forEach(function(r){
+          if(r.type==='youth_facilitator'&&r.attended&&r.name!=='_youth_helper_enrolled'){
+            sccYouthFacSet.add(r.name);
+            sccYouthFacHrs+=(parseFloat(r.hours)||0);
+          }
+        });
+      });
+      Object.keys(sP.youth_helper_participants||{}).forEach(function(n){sccYouthFacSet.add(n);});
+    });
     html+=statRow('Active SCC groups',sccGids.length,'pill-blue');
     html+=statRow('Total sessions held',sccSessionsHeld,'pill-blue');
     html+=statRow('Total enrolled children',sccYouthSet.size,'pill-teal');
     html+=statRow('Total child attendances',sccYouthAtt,'pill-blue');
-    html+=statRow('Facilitators active',sccFacSet.size,'pill-orange');
-    html+=statRow('Facilitator hours',Math.round(sccFacHrs),'pill-gold');
+    html+=statRow('Adult facilitators',sccFacSet.size,'pill-orange');
+    html+=statRow('Adult facilitator hours',Math.round(sccFacHrs),'pill-gold');
+    if(sccYouthFacSet.size>0||sccYouthFacHrs>0){
+      html+=statRow('Youth facilitators',sccYouthFacSet.size,'pill-teal');
+      html+=statRow('Youth facilitator hours (→ youth vol.)',Math.round(sccYouthFacHrs),'pill-green');
+    }
     if(sccGroupRows.length>1){
       html+='<div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin:8px 0 4px">Per-group</div>';
       sccGroupRows.forEach(function(g){
@@ -6291,7 +6388,7 @@ function renderImpactTab(){
         html+='<br><span style="color:var(--text-muted)">'+g.sessions+' sessions · '+g.enrolled+' children · '+g.youthAtt+' attendances</span></div>';
       });
     }
-    html+='<div style="font-size:.7rem;color:var(--text-muted);margin-top:4px;font-style:italic">Child attendance = participation only, not volunteer hours.</div>';
+    html+='<div style="font-size:.7rem;color:var(--text-muted);margin-top:4px;font-style:italic">Child attendance = participation only. Youth facilitator hours count toward youth volunteer totals.</div>';
   } else {
     html+='<div style="font-size:.78rem;color:var(--text-muted);padding:4px 0">No Spiritual CC groups created yet.</div>';
   }
@@ -7582,6 +7679,16 @@ function removeJysepYouth(gid, name) {
   renderJysepAdmin();
 }
 
+async function removeJysepYouthHelper(gid, name) {
+  if (!confirm('Remove youth animator "' + name + '" from this JYSEP group?\n\nHour records will be preserved.')) return;
+  var p = jysepProg(gid); if (!p) return;
+  if (p.youth_helper_participants) delete p.youth_helper_participants[name];
+  await fetch(SUPA_URL+'/rest/v1/program_attendance?program_id=eq.'+encodeURIComponent(gid)+'&session_date=eq._youth_helper_enrolled&participant_name=eq.'+encodeURIComponent(name), {
+    method: 'DELETE', headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer '+SUPA_KEY, 'Prefer': 'return=minimal' }
+  });
+  renderJysepAdultHrsGrid();
+}
+
 // ── Animator hours grid ───────────────────────────────────────────────────────
 function toggleJysepHrsEdit() {
   var wasEditing = _jysepHrsEdit;
@@ -7604,19 +7711,26 @@ async function saveJysepAdultHrsFromInputs() {
   var gid = _jysepActiveGroup;
   var p = jysepProg(gid); if (!p) return;
   var pastDates = jysepPastDates(gid);
+
+  // Build combined helper set: adults + youth helpers
   var adultSet = new Set(Object.keys(p.adult_participants || {}));
+  var youthHelperSet = new Set(Object.keys(p.youth_helper_participants || {}));
   Object.keys(p.attendance || {}).forEach(function(d) {
     (p.attendance[d] || []).forEach(function(r) {
       if (r.type === 'adult' && r.attended && r.name !== '_adult_enrolled') adultSet.add(r.name);
+      if ((r.type === 'youth_animator') && r.attended && r.name !== '_youth_helper_enrolled') youthHelperSet.add(r.name);
     });
   });
   Object.keys(p.adult_volunteers || {}).forEach(function(d) {
     (p.adult_volunteers[d] || []).forEach(function(n) { adultSet.add(n); });
   });
   var adultNames = Array.from(adultSet).sort();
+  var youthHelperNames = Array.from(youthHelperSet).sort();
+  var allNames = adultNames.concat(youthHelperNames.filter(function(n){ return adultNames.indexOf(n) < 0; }));
+
   var snapshot = {};
   pastDates.forEach(function(d) {
-    adultNames.forEach(function(name) {
+    allNames.forEach(function(name) {
       var cellId = 'jhrs_' + name.replace(/\s+/g, '_').replace(/[^\w]/g, '_') + '_' + d.replace(/\W/g, '_');
       var inp = document.getElementById(cellId);
       if (!inp) return;
@@ -7629,18 +7743,23 @@ async function saveJysepAdultHrsFromInputs() {
   var promises = [];
   Object.keys(snapshot).forEach(function(key) {
     var parts = key.split('||'); var d = parts[0], name = parts[1]; var val = snapshot[key];
+    // Determine role type for this person
+    var isYouthHelper = youthHelperNames.indexOf(name) >= 0 && adultNames.indexOf(name) < 0;
+    var pType = isYouthHelper ? 'youth_animator' : 'adult';
     p.attendance = p.attendance || {};
     p.attendance[d] = p.attendance[d] || [];
     var rec = jysepAttRow(p, d, name);
-    if (rec) { rec.hours = val; rec.attended = true; }
-    else { p.attendance[d].push({ name: name, type: 'adult', attended: true, hours: val }); }
-    p.adult_volunteers = p.adult_volunteers || {};
-    p.adult_volunteers[d] = p.adult_volunteers[d] || [];
-    if (p.adult_volunteers[d].indexOf(name) < 0) p.adult_volunteers[d].push(name);
+    if (rec) { rec.hours = val; rec.attended = true; rec.type = pType; }
+    else { p.attendance[d].push({ name: name, type: pType, attended: true, hours: val }); }
+    if (!isYouthHelper) {
+      p.adult_volunteers = p.adult_volunteers || {};
+      p.adult_volunteers[d] = p.adult_volunteers[d] || [];
+      if (p.adult_volunteers[d].indexOf(name) < 0) p.adult_volunteers[d].push(name);
+    }
     promises.push(upsertProgramAttendance({
       program_id: gid, program_type: 'jysep',
       session_date: d, participant_name: name,
-      participant_type: 'adult', attended: true, volunteer_hours: val
+      participant_type: pType, attended: true, volunteer_hours: val
     }));
   });
   var results = await Promise.all(promises);
@@ -7657,35 +7776,49 @@ function renderJysepAdultHrsGrid() {
   var p = jysepProg(gid);
   if (!p) { thead.innerHTML = ''; tbody.innerHTML = ''; return; }
   var pastDates = jysepPastDates(gid);
+
+  // Build adult set
   var adultSet = new Set(Object.keys(p.adult_participants || {}));
+  // Build youth helper set
+  var youthHelperSet = new Set(Object.keys(p.youth_helper_participants || {}));
   Object.keys(p.attendance || {}).forEach(function(d) {
     (p.attendance[d] || []).forEach(function(r) {
       if (r.type === 'adult' && r.attended && r.name !== '_adult_enrolled') adultSet.add(r.name);
+      if (r.type === 'youth_animator' && r.attended && r.name !== '_youth_helper_enrolled') youthHelperSet.add(r.name);
     });
   });
   Object.keys(p.adult_volunteers || {}).forEach(function(d) {
     (p.adult_volunteers[d] || []).forEach(function(n) { adultSet.add(n); });
   });
   var adultNames = Array.from(adultSet).sort();
+  var youthHelperNames = Array.from(youthHelperSet).sort();
+  // Combined list: adults first, then youth helpers (no duplicates)
+  var allNames = adultNames.concat(youthHelperNames.filter(function(n){ return adultSet.has(n) ? false : true; }));
+
   if (pastDates.length === 0) {
     thead.innerHTML = ''; tbody.innerHTML = '<tr><td style="color:var(--text-muted);font-size:.82rem;padding:12px">No past sessions yet.</td></tr>'; return;
   }
-  if (adultNames.length === 0) {
+  if (allNames.length === 0) {
     thead.innerHTML = ''; tbody.innerHTML = '<tr><td style="color:var(--text-muted);font-size:.82rem;padding:12px">No animators enrolled yet. Use "+ Enroll Animator" above.</td></tr>'; return;
   }
   thead.innerHTML = '<th class="grd-date-sticky">Date</th>' +
-    adultNames.map(function(n){ return '<th style="font-size:.65rem;min-width:60px">' + n.split(' ')[0] + '</th>'; }).join('') +
+    allNames.map(function(n){
+      var isYH = youthHelperNames.indexOf(n) >= 0 && !adultSet.has(n);
+      var label = n.split(' ')[0];
+      var badge = isYH ? ' <span style="font-size:.55rem;color:var(--ya-teal);background:rgba(0,181,160,.12);border-radius:4px;padding:1px 4px">Youth</span>' : ' <span style="font-size:.55rem;color:var(--ya-blue);background:rgba(29,127,212,.12);border-radius:4px;padding:1px 4px">Adult</span>';
+      return '<th style="font-size:.65rem;min-width:70px">' + label + badge + '</th>';
+    }).join('') +
     '<th style="min-width:60px">Total</th>';
-  var adultTotals = {}; adultNames.forEach(function(n){ adultTotals[n] = 0; });
+  var allTotals = {}; allNames.forEach(function(n){ allTotals[n] = 0; });
   var grandTotal = 0;
   var rows = pastDates.map(function(d) {
     var meta = (p.session_meta || {})[d] || {};
     var defaultHrs = parseSessionHours(meta.start_time || '10:00 AM', meta.end_time || '12:00 PM');
     var sessionTotal = 0;
-    var cells = adultNames.map(function(name) {
+    var cells = allNames.map(function(name) {
       var rec = jysepAttRow(p, d, name);
       var hrs = rec && rec.attended ? (rec.hours || defaultHrs) : null;
-      if (hrs) { sessionTotal += hrs; adultTotals[name] += hrs; grandTotal += hrs; }
+      if (hrs) { sessionTotal += hrs; allTotals[name] += hrs; grandTotal += hrs; }
       var cellId = 'jhrs_' + name.replace(/\s+/g, '_').replace(/[^\w]/g, '_') + '_' + d.replace(/\W/g, '_');
       if (_jysepHrsEdit) {
         return '<td style="padding:3px"><input id="' + cellId + '" type="number" min="0" max="12" step="0.5" value="' + (hrs || '') + '" placeholder="—" ' +
@@ -7693,12 +7826,11 @@ function renderJysepAdultHrsGrid() {
       }
       return '<td style="text-align:center;color:'+(hrs?'var(--ya-teal)':'var(--text-muted)')+';font-weight:'+(hrs?'700':'400')+'">'+(hrs?hrs.toFixed(1):'—')+'</td>';
     }).join('');
-    var shortDate = d.replace(/, 20\d\d/, function(m){ return m; });
     return '<tr><td class="grd-date-sticky" style="font-weight:600;white-space:nowrap;font-size:.82rem">'+d.replace(/, 20\d\d/,'')+'</td>' + cells +
       '<td style="text-align:center;font-weight:700;color:var(--ya-teal)">'+(sessionTotal?sessionTotal.toFixed(1):'—')+'</td></tr>';
   }).join('');
   var totalsRow = '<tr style="border-top:2px solid var(--card-border)"><td class="grd-date-sticky" style="font-weight:800;font-size:.82rem">Total</td>' +
-    adultNames.map(function(n){ return '<td style="text-align:center;font-weight:800;color:var(--ya-teal)">'+(adultTotals[n]?adultTotals[n].toFixed(1):'—')+'</td>'; }).join('') +
+    allNames.map(function(n){ return '<td style="text-align:center;font-weight:800;color:var(--ya-teal)">'+(allTotals[n]?allTotals[n].toFixed(1):'—')+'</td>'; }).join('') +
     '<td style="text-align:center;font-weight:800;color:var(--ya-teal)">'+(grandTotal?grandTotal.toFixed(1):'—')+'</td></tr>';
   tbody.innerHTML = rows + totalsRow;
 }
@@ -8364,6 +8496,7 @@ async function loadSingleSccGroup(gid) {
   var prog=PROGRAMS_DATA[gid]; if(!prog) return;
   prog.session_meta={};prog.attendance={};
   prog.youth_participants={};prog.adult_participants={};
+  prog.youth_helper_participants={}; // youth facilitators enrolled as helpers
   prog.cancellations=[];
   var cancelRows=await dbGet('program_cancellations','select=session_date,reason&program_id=eq.'+encodeURIComponent(gid));
   if(cancelRows) cancelRows.forEach(function(row){
@@ -8389,6 +8522,14 @@ async function loadSingleSccGroup(gid) {
     if(row.session_date==='_adult_enrolled'&&row.participant_type==='adult'){
       prog.adult_participants=prog.adult_participants||{};
       if(!prog.adult_participants[row.participant_name]) prog.adult_participants[row.participant_name]=true;
+      return;
+    }
+    // Youth facilitator enrollment sentinel (youth helper role)
+    if(row.session_date==='_youth_helper_enrolled'&&
+        (row.participant_type==='youth_facilitator'||row.participant_type==='youth_animator')){
+      prog.youth_helper_participants=prog.youth_helper_participants||{};
+      if(!prog.youth_helper_participants[row.participant_name])
+        prog.youth_helper_participants[row.participant_name]=row.participant_type;
       return;
     }
     prog.attendance[row.session_date]=prog.attendance[row.session_date]||[];
@@ -8708,8 +8849,20 @@ function renderSccAdultHrsGrid(){
   var gid=_sccActiveGroup,p=sccProg(gid);
   if(!p){thead.innerHTML='';tbody.innerHTML='';return;}
   var pastDates=getActiveProgramSessions(gid);
-  var facilitators=Object.keys(p.adult_participants||{}).sort();
-  if(!facilitators.length){thead.innerHTML='';tbody.innerHTML='<tr><td colspan="3" style="color:var(--text-muted);font-size:.82rem;padding:12px">No facilitators enrolled yet.</td></tr>';return;}
+  // Adults (existing)
+  var adultSet=new Set(Object.keys(p.adult_participants||{}));
+  // Youth helpers
+  var youthHelperSet=new Set(Object.keys(p.youth_helper_participants||{}));
+  Object.keys(p.attendance||{}).forEach(function(d){
+    (p.attendance[d]||[]).forEach(function(r){
+      if(r.type==='adult'&&r.name!=='_adult_enrolled') adultSet.add(r.name);
+      if(r.type==='youth_facilitator'&&r.name!=='_youth_helper_enrolled') youthHelperSet.add(r.name);
+    });
+  });
+  var adultNames=Array.from(adultSet).sort();
+  var youthHelperNames=Array.from(youthHelperSet).filter(function(n){return!adultSet.has(n);}).sort();
+  var allNames=adultNames.concat(youthHelperNames);
+  if(!allNames.length){thead.innerHTML='';tbody.innerHTML='<tr><td colspan="3" style="color:var(--text-muted);font-size:.82rem;padding:12px">No facilitators enrolled yet.</td></tr>';return;}
   if(!pastDates.length){thead.innerHTML='';tbody.innerHTML='<tr><td colspan="3" style="color:var(--text-muted);font-size:.82rem;padding:12px">No past sessions yet.</td></tr>';return;}
   var shortDates=pastDates.map(function(d){return d.replace(/, 20\d\d/,'');});
   thead.innerHTML='<th class="grd-sticky grd-sticky-1" style="font-size:.72rem">Facilitator</th>'+
@@ -8718,25 +8871,33 @@ function renderSccAdultHrsGrid(){
     shortDates.map(function(sd,i){return '<th style="font-size:.6rem;min-width:52px;white-space:nowrap;text-align:center" title="'+pastDates[i]+'">'+sd+'</th>';}).join('');
   var timeParts=p.time?p.time.split(/\s*[\u2013\u2014\-]\s*/):[],defHrs=2;
   if(timeParts.length>=2){var s=parseFloat(timeParts[0]),e=parseFloat(timeParts[1]);if(!isNaN(s)&&!isNaN(e))defHrs=Math.abs(e-s)||2;}
-  var rows=facilitators.map(function(name){
+  var rows=allNames.map(function(name){
+    var isYH=youthHelperNames.indexOf(name)>=0;
     var eN=name.replace(/'/g,"\\'"),sG=gid.replace(/'/g,"\\'");
     var totalHrs=0,totalSess=0;
     var cells=pastDates.map(function(d){
-      var rec=(p.attendance[d]||[]).find(function(r){return r.name===name&&r.type==='adult';});
+      var recType=isYH?'youth_facilitator':'adult';
+      var rec=(p.attendance[d]||[]).find(function(r){return r.name===name&&(r.type===recType||r.type==='adult');});
       var hrs=rec?rec.hours:null;
       if(hrs!=null){totalHrs+=hrs;totalSess++;}
       var sD=d.replace(/'/g,"\\'");
       if(_sccHrsEdit){
         return '<td style="text-align:center;padding:3px 2px"><input type="number" step="0.5" min="0" max="24" value="'+(hrs!=null?hrs:'')+
-          '" placeholder="'+defHrs+'" data-gid="'+sG+'" data-name="'+eN+'" data-date="'+sD+'" '+
+          '" placeholder="'+defHrs+'" data-gid="'+sG+'" data-name="'+eN+'" data-date="'+sD+'" data-role="'+(isYH?'youth_facilitator':'adult')+'" '+
           'style="width:48px;padding:3px 4px;border-radius:5px;border:1px solid var(--card-border);background:rgba(255,255,255,.06);color:var(--text-main);font-size:.75rem;text-align:center;font-family:DM Sans,sans-serif" class="scc-hrs-input"></td>';
       }
       return '<td style="text-align:center;font-size:.78rem;color:'+(hrs!=null?'var(--ya-teal)':'var(--text-muted)')+'">'+
         (hrs!=null?hrs+'h':'—')+'</td>';
     }).join('');
+    var roleLabel=isYH?
+      '<span style="font-size:.6rem;color:var(--ya-teal);background:rgba(0,181,160,.12);border-radius:4px;padding:1px 4px;margin-left:4px">Youth</span>':
+      '<span style="font-size:.6rem;color:var(--ya-blue);background:rgba(29,127,212,.12);border-radius:4px;padding:1px 4px;margin-left:4px">Adult</span>';
+    var removeBtn=isYH?
+      '<button onclick="removeSccYouthHelper(\''+sG+'\',\''+eN+'\')" style="border:none;background:none;color:var(--badge-red);cursor:pointer;font-size:.65rem;padding:0;opacity:.6" title="Remove">✕ Remove</button>':
+      '<button onclick="removeSccFacilitator(\''+sG+'\',\''+eN+'\')" style="border:none;background:none;color:var(--badge-red);cursor:pointer;font-size:.65rem;padding:0;opacity:.6" title="Remove">✕ Remove</button>';
     return '<tr>'+
-      '<td class="grd-sticky grd-sticky-1" style="font-size:.82rem;font-weight:600">'+name+
-        '<div style="font-size:.65rem;color:var(--text-muted)"><button onclick="removeSccFacilitator(\''+sG+'\',\''+eN+'\')" style="border:none;background:none;color:var(--badge-red);cursor:pointer;font-size:.65rem;padding:0;opacity:.6" title="Remove">✕ Remove</button></div></td>'+
+      '<td class="grd-sticky grd-sticky-1" style="font-size:.82rem;font-weight:600">'+name+roleLabel+
+        '<div style="font-size:.65rem;color:var(--text-muted)">'+removeBtn+'</div></td>'+
       '<td class="grd-sticky grd-sticky-2" style="text-align:center;font-weight:700;color:var(--ya-teal)">'+totalHrs.toFixed(1)+'h</td>'+
       '<td class="grd-sticky grd-sticky-3" style="text-align:center;color:var(--text-muted)">'+totalSess+'</td>'+
       cells+'</tr>';
@@ -8755,14 +8916,15 @@ async function saveSccAdultHrsFromInputs(){
   var saves=[];
   inputs.forEach(function(inp){
     var gid=inp.dataset.gid,name=inp.dataset.name,d=inp.dataset.date;
+    var pType=inp.dataset.role||'adult'; // 'adult' or 'youth_facilitator'
     var hrs=inp.value!==''?parseFloat(inp.value):null;
     if(isNaN(hrs))hrs=null;
     var p=sccProg(gid);if(!p)return;
     p.attendance[d]=p.attendance[d]||[];
-    var rec=p.attendance[d].find(function(r){return r.name===name&&r.type==='adult';});
-    if(rec)rec.hours=hrs;
-    else p.attendance[d].push({name:name,type:'adult',attended:hrs!=null&&hrs>0,hours:hrs});
-    saves.push({program_id:gid,session_date:d,participant_name:name,participant_type:'adult',attended:hrs!=null&&hrs>0,volunteer_hours:hrs});
+    var rec=p.attendance[d].find(function(r){return r.name===name&&(r.type===pType||r.type==='adult');});
+    if(rec){rec.hours=hrs;rec.type=pType;}
+    else p.attendance[d].push({name:name,type:pType,attended:hrs!=null&&hrs>0,hours:hrs});
+    saves.push({program_id:gid,session_date:d,participant_name:name,participant_type:pType,attended:hrs!=null&&hrs>0,volunteer_hours:hrs});
   });
   if(saves.length){
     await fetch(SUPA_URL+'/rest/v1/program_attendance?on_conflict=program_id,session_date,participant_name',{
@@ -8778,6 +8940,15 @@ async function removeSccFacilitator(gid,name){
   if(!confirm('Remove facilitator "'+name+'" from this group?'))return;
   delete p.adult_participants[name];
   await fetch(SUPA_URL+'/rest/v1/program_attendance?program_id=eq.'+encodeURIComponent(gid)+'&participant_name=eq.'+encodeURIComponent(name),{
+    method:'DELETE',headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,'Prefer':'return=minimal'}});
+  renderSccAdultHrsGrid();renderSccStatCards();
+}
+
+async function removeSccYouthHelper(gid,name){
+  var p=sccProg(gid);if(!p)return;
+  if(!confirm('Remove youth facilitator "'+name+'" from this group?'))return;
+  if(p.youth_helper_participants) delete p.youth_helper_participants[name];
+  await fetch(SUPA_URL+'/rest/v1/program_attendance?program_id=eq.'+encodeURIComponent(gid)+'&session_date=eq._youth_helper_enrolled&participant_name=eq.'+encodeURIComponent(name),{
     method:'DELETE',headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,'Prefer':'return=minimal'}});
   renderSccAdultHrsGrid();renderSccStatCards();
 }
@@ -14754,10 +14925,11 @@ async function loadSingleJysepGroup(gid) {
   if (!prog) return;
   // Reset all per-session state before loading from DB — prevents stale
   // in-memory data from a previous session or a failed earlier load persisting.
-  prog.session_meta       = {};
-  prog.attendance         = {};
-  prog.youth_participants = {};   // reset so removed enrollments don't ghost
-  prog.adult_participants = {};
+  prog.session_meta            = {};
+  prog.attendance              = {};
+  prog.youth_participants      = {};   // reset so removed enrollments don't ghost
+  prog.adult_participants      = {};
+  prog.youth_helper_participants = {}; // youth animators/facilitators enrolled as helpers
 
   // ── Reset cancellations for this group before loading from DB ──────────────
   // This prevents any stale in-memory state from the JS seed or a previous
@@ -14815,6 +14987,14 @@ async function loadSingleJysepGroup(gid) {
       if (row.session_date === '_adult_enrolled' && row.participant_type === 'adult') {
         prog.adult_participants = prog.adult_participants || {};
         if (!prog.adult_participants[row.participant_name]) prog.adult_participants[row.participant_name] = true;
+        return;
+      }
+      // Youth animator/facilitator enrollment sentinel (youth helper role)
+      if (row.session_date === '_youth_helper_enrolled' &&
+          (row.participant_type === 'youth_animator' || row.participant_type === 'youth_facilitator')) {
+        prog.youth_helper_participants = prog.youth_helper_participants || {};
+        if (!prog.youth_helper_participants[row.participant_name])
+          prog.youth_helper_participants[row.participant_name] = row.participant_type;
         return;
       }
       prog.attendance[row.session_date] = prog.attendance[row.session_date] || [];
@@ -15837,6 +16017,212 @@ async function saveProgramEnrollAdultModal() {
   } else {
     fb.style.color = 'var(--badge-amber)';
     fb.textContent = 'All selected adults were already enrolled.';
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// MIXED HELPER ENROLL MODAL (JYSEP Animators & SCC Facilitators)
+// Allows enrolling adults OR youth as helpers. Uses the same peam modal
+// but populates from both FAC_PROFILES (adults) and YOUTH_PROFILES/roster (youth).
+// Stores adults with session_date='_adult_enrolled', participant_type='adult'
+// Stores youth helpers with session_date='_youth_helper_enrolled',
+//   participant_type='youth_animator' (jysep) or 'youth_facilitator' (scc)
+// ══════════════════════════════════════════════════════════════════════════════
+
+var _pehProgramId = '';   // currently-open programId for helper modal
+var _pehProgType  = '';   // 'jysep' or 'scc'
+
+function openProgramEnrollHelperModal(programId, progType) {
+  _pehProgramId = programId;
+  _pehProgType  = progType || 'jysep';
+  var prog = PROGRAMS_DATA[programId];
+  var progName = prog ? (prog.name || programId) : programId;
+  var helperLabel = _pehProgType === 'scc' ? 'Facilitator' : 'Animator';
+
+  document.getElementById('peam-title').textContent    = '+ Enroll ' + helperLabel + ' — ' + progName;
+  document.getElementById('peam-search').value         = '';
+  document.getElementById('peam-feedback').textContent = '';
+  document.getElementById('peam-count').textContent    = '0';
+
+  pehBuildList();
+  document.getElementById('program-enroll-adult-modal').style.display = 'flex';
+  // Override save button
+  var saveBtn = document.getElementById('peam-save-btn');
+  if (saveBtn) {
+    saveBtn.textContent = 'Enroll Selected →';
+    saveBtn.onclick = saveProgramEnrollHelperModal;
+  }
+  // Override search
+  var searchEl = document.getElementById('peam-search');
+  if (searchEl) searchEl.oninput = pehFilter;
+  setTimeout(function(){ if (searchEl) searchEl.focus(); }, 80);
+}
+
+function _getEnrolledHelpers(programId) {
+  var prog = PROGRAMS_DATA[programId];
+  if (!prog) return { adults: [], youthHelpers: [] };
+  return {
+    adults:       Object.keys(prog.adult_participants || {}),
+    youthHelpers: Object.keys(prog.youth_helper_participants || {})
+  };
+}
+
+function _getYouthRosterNames() {
+  // All youth known to the system — from YOUTH_PROFILES or EL roster
+  var names = new Set();
+  // EL members
+  Object.values(EL_YOUTH || {}).forEach(function(y){ if (y && y.name) names.add(y.name); });
+  // All PROGRAMS_DATA youth_participants
+  Object.values(PROGRAMS_DATA || {}).forEach(function(prog){
+    Object.keys(prog.youth_participants || {}).forEach(function(n){ if (n) names.add(n); });
+  });
+  // YOUTH_HOURS keys
+  Object.keys(YOUTH_HOURS || {}).forEach(function(n){ if (n) names.add(n); });
+  return Array.from(names).sort();
+}
+
+function pehBuildList() {
+  var list   = document.getElementById('peam-list');
+  var filter = (document.getElementById('peam-search').value || '').toLowerCase().trim();
+  var enrolled = _getEnrolledHelpers(_pehProgramId);
+  var helperLabel = _pehProgType === 'scc' ? 'Facilitator' : 'Animator';
+  var html = '';
+
+  // ── Section: Adults ─────────────────────────────────────────────────────
+  var adultNames = Object.keys(FAC_PROFILES).map(function(k){ return FAC_PROFILES[k].name; }).sort();
+  var filteredAdults = adultNames.filter(function(n){ return !filter || n.toLowerCase().indexOf(filter) >= 0; });
+  if (filteredAdults.length) {
+    html += '<div style="padding:6px 12px 4px;font-size:.68rem;font-weight:700;color:var(--ya-blue);text-transform:uppercase;letter-spacing:.07em;background:rgba(29,127,212,.06);border-bottom:1px solid rgba(255,255,255,.04)">Adult ' + helperLabel + 's</div>';
+    filteredAdults.forEach(function(name) {
+      var isEnrolled = enrolled.adults.indexOf(name) >= 0;
+      var cbId = 'peh-cb-a-' + name.replace(/\s+/g,'_').replace(/[^\w]/g,'_');
+      html +=
+        '<label for="'+cbId+'" style="display:flex;align-items:center;gap:10px;padding:8px 12px;cursor:'+(isEnrolled?'default':'pointer')+';border-bottom:1px solid rgba(255,255,255,.04);'+
+        (isEnrolled?'opacity:.5':'')+'">' +
+          '<input type="checkbox" id="'+cbId+'" value="adult||'+name+'" '+(isEnrolled?'disabled checked':'')+
+            ' onchange="peamUpdateCount()"' +
+            ' style="width:16px;height:16px;accent-color:var(--ya-blue);cursor:'+(isEnrolled?'default':'pointer')+'">'+
+          '<div>'+
+            '<div style="font-size:.85rem;font-weight:'+(isEnrolled?'600':'400')+';color:var(--text-main)">'+name+
+            (isEnrolled?' <span style="font-size:.7rem;color:var(--ya-blue)">✔ Adult '+helperLabel+'</span>':'')+'</div>'+
+            '<div style="font-size:.68rem;color:var(--text-muted)">Adult '+helperLabel+'</div>'+
+          '</div>'+
+        '</label>';
+    });
+  }
+
+  // ── Section: Youth ───────────────────────────────────────────────────────
+  var youthNames = _getYouthRosterNames();
+  // Exclude anyone already in FAC_PROFILES (they're adults)
+  var adultSet = new Set(adultNames.map(function(n){ return n.toLowerCase(); }));
+  youthNames = youthNames.filter(function(n){ return !adultSet.has(n.toLowerCase()); });
+  var filteredYouth = youthNames.filter(function(n){ return !filter || n.toLowerCase().indexOf(filter) >= 0; });
+  if (filteredYouth.length) {
+    html += '<div style="padding:6px 12px 4px;font-size:.68rem;font-weight:700;color:var(--ya-teal);text-transform:uppercase;letter-spacing:.07em;background:rgba(0,181,160,.06);border-bottom:1px solid rgba(255,255,255,.04)">Youth ' + helperLabel + 's</div>';
+    filteredYouth.forEach(function(name) {
+      var isEnrolled = enrolled.youthHelpers.indexOf(name) >= 0;
+      var cbId = 'peh-cb-y-' + name.replace(/\s+/g,'_').replace(/[^\w]/g,'_');
+      html +=
+        '<label for="'+cbId+'" style="display:flex;align-items:center;gap:10px;padding:8px 12px;cursor:'+(isEnrolled?'default':'pointer')+';border-bottom:1px solid rgba(255,255,255,.04);'+
+        (isEnrolled?'opacity:.5':'')+'">' +
+          '<input type="checkbox" id="'+cbId+'" value="youth||'+name+'" '+(isEnrolled?'disabled checked':'')+
+            ' onchange="peamUpdateCount()"' +
+            ' style="width:16px;height:16px;accent-color:var(--ya-teal);cursor:'+(isEnrolled?'default':'pointer')+'">'+
+          '<div>'+
+            '<div style="font-size:.85rem;font-weight:'+(isEnrolled?'600':'400')+';color:var(--text-main)">'+name+
+            (isEnrolled?' <span style="font-size:.7rem;color:var(--ya-teal)">✔ Youth '+helperLabel+'</span>':'')+'</div>'+
+            '<div style="font-size:.68rem;color:var(--ya-teal)">Youth '+helperLabel+'</div>'+
+          '</div>'+
+        '</label>';
+    });
+  }
+
+  if (!html) {
+    html = '<div style="padding:16px 12px;font-size:.82rem;color:var(--text-muted)">' +
+      (filter ? 'No one found matching "'+filter+'". If the person is not listed, add them under Admin → Users first.' :
+                'No adults or youth found. Add users under Admin → Users first.') + '</div>';
+  }
+  list.innerHTML = html;
+  peamUpdateCount();
+}
+
+function pehFilter() {
+  pehBuildList();
+}
+
+async function saveProgramEnrollHelperModal() {
+  var btn  = document.getElementById('peam-save-btn');
+  var fb   = document.getElementById('peam-feedback');
+  var selected = Array.from(document.querySelectorAll('#peam-list input[type=checkbox]:not(:disabled):checked'))
+    .map(function(cb){ return cb.value; });
+
+  if (!selected.length) {
+    fb.style.color = 'var(--badge-amber)'; fb.textContent = '⚠ No one selected.'; return;
+  }
+
+  btn.textContent = 'Enrolling…'; btn.style.opacity = '.6'; btn.disabled = true;
+  fb.textContent = '';
+
+  var prog = PROGRAMS_DATA[_pehProgramId];
+  if (!prog) { btn.textContent = 'Enroll Selected →'; btn.style.opacity = ''; btn.disabled = false; return; }
+  prog.adult_participants       = prog.adult_participants       || {};
+  prog.youth_helper_participants= prog.youth_helper_participants|| {};
+
+  var helperLabel  = _pehProgType === 'scc' ? 'facilitator' : 'animator';
+  var youthPType   = _pehProgType === 'scc' ? 'youth_facilitator' : 'youth_animator';
+  var enrolled = [], failed = [];
+
+  var promises = selected.map(function(val) {
+    var parts  = val.split('||');
+    var kind   = parts[0]; // 'adult' or 'youth'
+    var name   = parts[1];
+    if (kind === 'adult') {
+      if (prog.adult_participants[name]) return Promise.resolve({ skip: true });
+      return upsertProgramAttendance({
+        program_id: _pehProgramId, program_type: _pehProgType,
+        session_date: '_adult_enrolled', participant_name: name,
+        participant_type: 'adult', attended: false, volunteer_hours: null
+      }).then(function(ok) { return { ok: ok, kind: 'adult', name: name }; });
+    } else {
+      if (prog.youth_helper_participants[name]) return Promise.resolve({ skip: true });
+      return upsertProgramAttendance({
+        program_id: _pehProgramId, program_type: _pehProgType,
+        session_date: '_youth_helper_enrolled', participant_name: name,
+        participant_type: youthPType, attended: false, volunteer_hours: null
+      }).then(function(ok) { return { ok: ok, kind: 'youth', name: name }; });
+    }
+  });
+
+  var results = await Promise.all(promises);
+  results.forEach(function(r) {
+    if (!r || r.skip) return;
+    if (r.ok) {
+      if (r.kind === 'adult') prog.adult_participants[r.name] = true;
+      else prog.youth_helper_participants[r.name] = youthPType;
+      enrolled.push(r.name);
+    } else {
+      failed.push(r.name);
+    }
+  });
+
+  btn.textContent = 'Enroll Selected →'; btn.style.opacity = ''; btn.disabled = false;
+
+  if (failed.length) {
+    fb.style.color = 'var(--badge-red)';
+    fb.textContent = '⚠ '+failed.length+' failed: '+failed.join(', ')+'. Check console / RLS policy.';
+    return;
+  }
+  if (enrolled.length) {
+    fb.style.color = 'var(--ya-teal)';
+    fb.textContent = '✔ Enrolled: ' + enrolled.join(', ');
+    setTimeout(function() {
+      document.getElementById('program-enroll-adult-modal').style.display = 'none';
+      if (PROGRAMS_DATA[_pehProgramId] && PROGRAMS_DATA[_pehProgramId].program_type === 'jysep') { _jysepActiveGroup = _pehProgramId; renderJysepAdmin(); }
+      if (PROGRAMS_DATA[_pehProgramId] && PROGRAMS_DATA[_pehProgramId].program_type === 'spiritual_cc') { _sccActiveGroup = _pehProgramId; renderSccAdmin(); }
+    }, 1100);
+  } else {
+    fb.style.color = 'var(--badge-amber)';
+    fb.textContent = 'All selected helpers were already enrolled.';
   }
 }
 

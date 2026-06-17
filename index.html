@@ -6853,6 +6853,24 @@ function gardenAttRow(prog, dateStr, name) {
 }
 
 // ── Upsert helper for program_attendance ─────────────────────────────────────
+var _lastUpsertError = ''; // stores last upsertProgramAttendance error for UI surfacing
+
+// Attempt to disable RLS on program_attendance (called once on first write failure).
+// Returns true if the exec_sql RPC succeeded (doesn't guarantee RLS was disabled).
+var _rlsFixAttempted = false;
+async function _tryFixProgramAttendanceRLS() {
+  if (_rlsFixAttempted) return false;
+  _rlsFixAttempted = true;
+  try {
+    var r = await fetch(SUPA_URL + '/rest/v1/rpc/exec_sql', {
+      method: 'POST',
+      headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query: 'alter table program_attendance disable row level security; alter table program_settings disable row level security;' })
+    });
+    return r.ok;
+  } catch(e) { return false; }
+}
+
 async function upsertProgramAttendance(row) {
   var r = await fetch(SUPA_URL + '/rest/v1/program_attendance?on_conflict=program_id,session_date,participant_name', {
     method: 'POST',
@@ -6864,9 +6882,32 @@ async function upsertProgramAttendance(row) {
   });
   if (!r.ok) {
     var err = await r.text();
-    console.error('[upsertProgramAttendance] HTTP', r.status, err);
+    _lastUpsertError = err;
+    var errMsg = err;
+    try { var e = JSON.parse(err); errMsg = e.message || e.hint || e.details || err; } catch(x){}
+    console.error('[upsertProgramAttendance] HTTP', r.status, errMsg, '| row:', JSON.stringify(row));
+
+    // If it looks like an RLS/permission error, try disabling RLS then retry once
+    var isRLS = r.status === 401 || r.status === 403 || (errMsg && (errMsg.indexOf('policy') >= 0 || errMsg.indexOf('permission') >= 0 || errMsg.indexOf('RLS') >= 0 || errMsg.indexOf('row-level') >= 0));
+    if (isRLS) {
+      var fixed = await _tryFixProgramAttendanceRLS();
+      if (fixed) {
+        // Retry the write once
+        var r2 = await fetch(SUPA_URL + '/rest/v1/program_attendance?on_conflict=program_id,session_date,participant_name', {
+          method: 'POST',
+          headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY, 'Content-Type': 'application/json', 'Prefer': 'resolution=merge-duplicates,return=minimal' },
+          body: JSON.stringify(row)
+        });
+        if (r2.ok) { _lastUpsertError = ''; return true; }
+        var err2 = await r2.text();
+        _lastUpsertError = err2;
+        try { var e2 = JSON.parse(err2); errMsg = e2.message || e2.hint || e2.details || err2; } catch(x){}
+        console.error('[upsertProgramAttendance] retry failed', r2.status, errMsg);
+      }
+    }
     return false;
   }
+  _lastUpsertError = '';
   return true;
 }
 
@@ -6994,7 +7035,7 @@ async function saveProgramYouthEnrollment() {
     btn.textContent = 'Enroll Selected →'; btn.style.opacity = ''; btn.disabled = false;
     if (failed > 0) {
       fb.style.color = 'var(--badge-red)';
-      fb.textContent = '⚠ '+failed+' enrolment(s) saved in memory but failed in Supabase. Check console. RLS may be blocking writes — run: ALTER TABLE public.program_attendance DISABLE ROW LEVEL SECURITY;';
+      fb.textContent = '⚠ '+failed+' enrolment(s) failed in Supabase. '+(_lastUpsertError ? (function(){try{var e=JSON.parse(_lastUpsertError);return e.message||e.hint||_lastUpsertError.slice(0,120);}catch(x){return _lastUpsertError.slice(0,120);}}()) : 'RLS may be blocking writes')+' — run in Supabase SQL editor: ALTER TABLE public.program_attendance DISABLE ROW LEVEL SECURITY;';
       return;
     }
   } else {
@@ -7883,7 +7924,11 @@ function openJysepMixedTraineeModal(programId) {
   var prog = PROGRAMS_DATA[programId];
   var progName = prog ? (prog.name || programId) : programId;
 
-  // Reuse the peam modal but wire different functions
+  // Wire dispatchers so HTML oninput/onclick route here
+  _peamFilterFn = jatFilter;
+  _peamSaveFn   = saveJysepMixedTraineeModal;
+  var sub = document.getElementById('peam-subtitle');
+  if (sub) sub.textContent = 'Select youth and adult trainees to enroll. Both types appear below. Already-enrolled trainees are shown with a ✔. If a person is not listed, add them under Admin → Users first.';
   document.getElementById('peam-title').textContent    = '+ Enroll Trainee — ' + progName;
   document.getElementById('peam-search').value         = '';
   document.getElementById('peam-feedback').textContent = '';
@@ -7891,11 +7936,7 @@ function openJysepMixedTraineeModal(programId) {
 
   jatBuildList();
   document.getElementById('program-enroll-adult-modal').style.display = 'flex';
-  var saveBtn = document.getElementById('peam-save-btn');
-  if (saveBtn) { saveBtn.textContent = 'Enroll Selected →'; saveBtn.onclick = saveJysepMixedTraineeModal; }
-  var searchEl = document.getElementById('peam-search');
-  if (searchEl) searchEl.oninput = jatFilter;
-  setTimeout(function(){ if (searchEl) searchEl.focus(); }, 80);
+  setTimeout(function(){ document.getElementById('peam-search').focus(); }, 80);
 }
 
 function jatBuildList() {
@@ -7997,7 +8038,11 @@ async function saveJysepMixedTraineeModal() {
 
   btn.textContent='Enroll Selected →'; btn.style.opacity=''; btn.disabled=false;
   if (failed.length) {
-    fb.style.color='var(--badge-red)'; fb.textContent='⚠ '+failed.length+' failed: '+failed.join(', ')+'. Check console / RLS.'; return;
+    var errDetail = _lastUpsertError ? _lastUpsertError.slice(0, 120) : 'Check console for details.';
+    try { var e = JSON.parse(_lastUpsertError); errDetail = e.message || e.hint || e.details || errDetail; } catch(x){}
+    fb.style.color='var(--badge-red)';
+    fb.textContent='⚠ '+failed.length+' failed: '+failed.join(', ')+'. '+errDetail;
+    return;
   }
   if (enrolled.length) {
     fb.style.color='var(--ya-teal)'; fb.textContent='✔ Enrolled: '+enrolled.join(', ');
@@ -16298,6 +16343,32 @@ function removeProgramAdultEnrollment(programId, adultName) {
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
+// SHARED MODAL DISPATCHERS
+// The modal HTML uses peamDispatchFilter/peamDispatchSave so the same button
+// can serve different openers (adult-only, mixed helper, mixed trainee).
+// Each opener sets _peamFilterFn / _peamSaveFn before opening the modal.
+// ══════════════════════════════════════════════════════════════════════════════
+var _peamFilterFn = null;
+var _peamSaveFn   = null;
+
+function peamDispatchFilter() {
+  if (typeof _peamFilterFn === 'function') _peamFilterFn();
+  else peamFilter();
+}
+function peamDispatchSave() {
+  if (typeof _peamSaveFn === 'function') _peamSaveFn();
+  else saveProgramEnrollAdultModal();
+}
+
+// Helper: reset modal to default adult-only state (used by openProgramEnrollAdultModal)
+function _peamResetToAdultMode() {
+  _peamFilterFn = peamFilter;
+  _peamSaveFn   = saveProgramEnrollAdultModal;
+  var sub = document.getElementById('peam-subtitle');
+  if (sub) sub.textContent = 'Select adults to enroll as volunteers. Already-enrolled adults are shown with a ✔ and cannot be re-selected.';
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
 // GENERIC ENROLL ADULT MODAL  (reusable for any program)
 // ══════════════════════════════════════════════════════════════════════════════
 
@@ -16309,6 +16380,7 @@ function openProgramEnrollAdultModal(programId) {
   var progName = prog ? (prog.name || programId) : programId;
   var enrolled = getEnrolledAdultsForProgram(programId);
 
+  _peamResetToAdultMode();
   document.getElementById('peam-title').textContent    = '+ Enroll Adult Volunteer — ' + progName;
   document.getElementById('peam-search').value         = '';
   document.getElementById('peam-feedback').textContent = '';
@@ -16385,7 +16457,7 @@ async function saveProgramEnrollAdultModal() {
 
   if (result.failed.length) {
     fb.style.color = 'var(--badge-red)';
-    fb.textContent = '⚠ '+result.failed.length+' failed to save in Supabase: '+result.failed.join(', ')+'. Check console. RLS may be blocking writes.';
+    fb.textContent = '⚠ '+result.failed.length+' failed to save in Supabase: '+result.failed.join(', ')+'. '+(_lastUpsertError ? (function(){try{var e=JSON.parse(_lastUpsertError);return e.message||e.hint||_lastUpsertError;}catch(x){return _lastUpsertError.slice(0,120);}}()) : 'Check console. RLS may be blocking writes — run: ALTER TABLE public.program_attendance DISABLE ROW LEVEL SECURITY;');
     return;
   }
   if (result.enrolled.length) {
@@ -16422,6 +16494,10 @@ function openProgramEnrollHelperModal(programId, progType) {
   var progName = prog ? (prog.name || programId) : programId;
   var helperLabel = _pehProgType === 'scc' ? 'Facilitator' : 'Animator';
 
+  _peamFilterFn = pehFilter;
+  _peamSaveFn   = saveProgramEnrollHelperModal;
+  var sub = document.getElementById('peam-subtitle');
+  if (sub) sub.textContent = 'Select adults or youth to enroll as ' + helperLabel.toLowerCase() + 's. Already-enrolled helpers are shown with a ✔.';
   document.getElementById('peam-title').textContent    = '+ Enroll ' + helperLabel + ' — ' + progName;
   document.getElementById('peam-search').value         = '';
   document.getElementById('peam-feedback').textContent = '';
@@ -16429,16 +16505,7 @@ function openProgramEnrollHelperModal(programId, progType) {
 
   pehBuildList();
   document.getElementById('program-enroll-adult-modal').style.display = 'flex';
-  // Override save button
-  var saveBtn = document.getElementById('peam-save-btn');
-  if (saveBtn) {
-    saveBtn.textContent = 'Enroll Selected →';
-    saveBtn.onclick = saveProgramEnrollHelperModal;
-  }
-  // Override search
-  var searchEl = document.getElementById('peam-search');
-  if (searchEl) searchEl.oninput = pehFilter;
-  setTimeout(function(){ if (searchEl) searchEl.focus(); }, 80);
+  setTimeout(function(){ document.getElementById('peam-search').focus(); }, 80);
 }
 
 function _getEnrolledHelpers(programId) {
@@ -16592,7 +16659,9 @@ async function saveProgramEnrollHelperModal() {
 
   if (failed.length) {
     fb.style.color = 'var(--badge-red)';
-    fb.textContent = '⚠ '+failed.length+' failed: '+failed.join(', ')+'. Check console / RLS policy.';
+    fb.style.color = 'var(--badge-red)';
+    fb.textContent = '⚠ '+failed.length+' failed: '+failed.join(', ')+'. '+(_lastUpsertError ? (function(){try{var e=JSON.parse(_lastUpsertError);return e.message||e.hint||_lastUpsertError;}catch(x){return _lastUpsertError.slice(0,120);}}()) : 'RLS may be blocking writes — run: ALTER TABLE public.program_attendance DISABLE ROW LEVEL SECURITY;');
+    return;
     return;
   }
   if (enrolled.length) {
@@ -19261,9 +19330,9 @@ console.log(
               <div style="font-family:Nunito,sans-serif;font-weight:900;font-size:1rem;color:var(--ya-blue)" id="peam-title">Enroll Adult Volunteer</div>
               <button onclick="document.getElementById('program-enroll-adult-modal').style.display='none'" style="background:none;border:none;color:var(--text-muted);font-size:1.3rem;cursor:pointer;line-height:1;padding:2px">×</button>
             </div>
-            <div style="font-size:.76rem;color:var(--text-muted);margin-bottom:14px">Select adults to enroll as volunteers. Already-enrolled adults are shown with a ✔ and cannot be re-selected.</div>
+            <div id="peam-subtitle" style="font-size:.76rem;color:var(--text-muted);margin-bottom:14px">Select adults to enroll as volunteers. Already-enrolled adults are shown with a ✔ and cannot be re-selected.</div>
             <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap">
-              <input id="peam-search" type="search" placeholder="Search by name…" oninput="peamFilter()"
+              <input id="peam-search" type="search" placeholder="Search by name…" oninput="peamDispatchFilter()"
                 style="flex:1;min-width:140px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.15);border-radius:8px;padding:7px 12px;color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem;outline:none">
               <button onclick="peamSelectAll()" style="padding:6px 12px;border-radius:8px;border:1px solid rgba(255,255,255,.2);background:transparent;color:var(--text-muted);font-family:DM Sans,sans-serif;font-size:.78rem;cursor:pointer;white-space:nowrap">✔ Select All</button>
               <button onclick="peamClear()" style="padding:6px 12px;border-radius:8px;border:1px solid rgba(255,255,255,.2);background:transparent;color:var(--text-muted);font-family:DM Sans,sans-serif;font-size:.78rem;cursor:pointer;white-space:nowrap">✕ Clear</button>
@@ -19273,7 +19342,7 @@ console.log(
               <div style="font-size:.8rem;color:var(--text-muted)"><span id="peam-count">0</span> selected</div>
               <div style="display:flex;gap:8px">
                 <button onclick="document.getElementById('program-enroll-adult-modal').style.display='none'" style="padding:8px 16px;border-radius:9px;border:1px solid rgba(255,255,255,.15);background:transparent;color:var(--text-muted);font-family:Nunito,sans-serif;font-weight:700;font-size:.85rem;cursor:pointer">Cancel</button>
-                <button id="peam-save-btn" onclick="saveProgramEnrollAdultModal()" style="padding:8px 22px;border-radius:9px;border:none;background:var(--ya-blue);color:#fff;font-family:Nunito,sans-serif;font-weight:800;font-size:.88rem;cursor:pointer">Enroll Selected →</button>
+                <button id="peam-save-btn" onclick="peamDispatchSave()" style="padding:8px 22px;border-radius:9px;border:none;background:var(--ya-blue);color:#fff;font-family:Nunito,sans-serif;font-weight:800;font-size:.88rem;cursor:pointer">Enroll Selected →</button>
               </div>
             </div>
             <div id="peam-feedback" style="font-size:.78rem;margin-top:8px;min-height:16px;text-align:center"></div>

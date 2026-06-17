@@ -15723,8 +15723,12 @@ window.addEventListener('load', function() {
     }
   }
   renderLandingCalendar();
-  updateLandingStats(); // initial call with hardcoded data, will be refreshed after dbStartup
   renderLoginAlerts();
+  // updateLandingStats() is intentionally NOT called here.
+  // The stat cards default to "—" (set in HTML) and are populated once,
+  // correctly, after dbStartup() finishes loading JYSEP/SCC groups from DB.
+  // Calling it here with only hardcoded PROGRAMS_DATA produces a wrong count
+  // (no JYSEP/SCC groups yet) that visibly flashes before the correct value.
   dbStartup();
 });
 

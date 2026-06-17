@@ -589,6 +589,9 @@ tr:hover .grd-date-sticky { background: #1a2d47; }
       <div class="stat-strip-card"><div class="stat-strip-num" id="ls-workshops">18</div><div class="stat-strip-label">Workshops Scheduled</div></div>
       <div class="stat-strip-card"><div class="stat-strip-num" id="ls-adult">—</div><div class="stat-strip-label">Adult Volunteers</div></div>
       <div class="stat-strip-card"><div class="stat-strip-num" id="ls-events">4</div><div class="stat-strip-label">Community Events Planned</div></div>
+      <div class="stat-strip-card"><div class="stat-strip-num" id="ls-programs">—</div><div class="stat-strip-label">📚 Programs</div></div>
+      <div class="stat-strip-card"><div class="stat-strip-num" id="ls-youth-hrs">—</div><div class="stat-strip-label">👦 Youth Volunteer Hrs</div></div>
+      <div class="stat-strip-card"><div class="stat-strip-num" id="ls-adult-hrs">—</div><div class="stat-strip-label">👨 Adult Volunteer Hrs</div></div>
     </div>
 
     <!-- Upcoming calendar -->
@@ -5393,24 +5396,53 @@ function saOpenCard(id){
   try{ detail.scrollIntoView({block:'nearest'}); }catch(e){}
 }
 function updateLandingStats() {
-  // All calculations via shared layer — matches Stats Audit exactly
+  // All calculations via shared layer — matches Stats Audit and Impact exactly
   var youthSet  = calcYouthParticipants();   // EL + Scrabble(both qtrs) + Programs + Events
   var adultSet  = calcAdultVolunteers();     // workshops + scrabble + programs + events
   var wsStats   = calcWorkshopStats();
   var evStats   = calcEventStats();
 
-  var elYouth = document.getElementById('ls-youth');
-  var elAdult = document.getElementById('ls-adult');
-  var elWs    = document.getElementById('ls-workshops');
-  var elEv    = document.getElementById('ls-events');
+  // ── Programs count — active groups across all program frameworks ──────────
+  // 1 EL (Workshops) + Scrabble seasons + Garden + JYSEP groups + SCC groups
+  var scrabblePids = Object.keys(PROGRAMS_DATA || {}).filter(function(pid){
+    var p = PROGRAMS_DATA[pid];
+    return p && (pid.indexOf('scrabble') >= 0 || (p.name || '').toLowerCase().indexOf('scrabble') >= 0);
+  });
+  var gardenPids = Object.keys(PROGRAMS_DATA || {}).filter(function(pid){
+    var p = PROGRAMS_DATA[pid];
+    return p && (pid === 'garden_2026' || (p.name || '').toLowerCase().indexOf('garden') >= 0);
+  });
+  // Active (non-archived) JYSEP and SCC groups
+  var jysepGids = getJysepGroupIds();   // excludes archived
+  var sccGids   = getSccGroupIds();     // excludes archived
+  // EL counts as 1 program (the workshop series)
+  var elCount = 1;
+  // Each scrabble season, garden program, jysep group, scc group counts separately
+  var programsCount = elCount + scrabblePids.length + gardenPids.length + jysepGids.length + sccGids.length;
 
-  if (elYouth) elYouth.textContent = youthSet.size;
-  if (elAdult) elAdult.textContent = adultSet.size;
-  if (elWs)    elWs.textContent    = wsStats.scheduled.length;
-  if (elEv)    elEv.textContent    = evStats.all.length;
+  // ── Volunteer hours — use shared authoritative helpers ────────────────────
+  var youthHrs = calcYouthVolunteerHours();
+  var adultHrs = calcAdultVolunteerHours();
+
+  var elYouth    = document.getElementById('ls-youth');
+  var elAdult    = document.getElementById('ls-adult');
+  var elWs       = document.getElementById('ls-workshops');
+  var elEv       = document.getElementById('ls-events');
+  var elPrograms = document.getElementById('ls-programs');
+  var elYouthHrs = document.getElementById('ls-youth-hrs');
+  var elAdultHrs = document.getElementById('ls-adult-hrs');
+
+  if (elYouth)    elYouth.textContent    = youthSet.size;
+  if (elAdult)    elAdult.textContent    = adultSet.size;
+  if (elWs)       elWs.textContent       = wsStats.scheduled.length;
+  if (elEv)       elEv.textContent       = evStats.all.length;
+  if (elPrograms) elPrograms.textContent = programsCount;
+  if (elYouthHrs) elYouthHrs.textContent = Math.round(youthHrs);
+  if (elAdultHrs) elAdultHrs.textContent = Math.round(adultHrs);
 
   console.log('[Stats] Youth:', youthSet.size, '| Adults:', adultSet.size,
-              '| Workshops:', wsStats.scheduled.length, '| Events:', evStats.all.length);
+              '| Workshops:', wsStats.scheduled.length, '| Events:', evStats.all.length,
+              '| Programs:', programsCount, '| Youth hrs:', youthHrs.toFixed(1), '| Adult hrs:', adultHrs.toFixed(1));
 }
 
 function renderLandingCalendar(){

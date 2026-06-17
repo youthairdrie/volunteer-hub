@@ -7856,6 +7856,28 @@ async function removeJysepYouthHelper(gid, name) {
   renderJysepAdultHrsGrid();
 }
 
+/**
+ * Remove an adult animator (regular JYSEP) or trainer (AT group) from the hours grid.
+ * Deletes the _adult_enrolled sentinel row. Historical hours rows are preserved —
+ * the person will still appear in reporting if they have hours, but not as actively enrolled.
+ */
+async function removeJysepTrainer(gid, name) {
+  var p = jysepProg(gid); if (!p) return;
+  var isAT = p.group_subtype === 'animator_training';
+  var role = isAT ? 'trainer' : 'animator';
+  if (!confirm('Remove ' + role + ' "' + name + '" from this group?\n\nAny recorded hours will be preserved in the database for reporting but they will no longer appear as actively enrolled.')) return;
+  // Remove from in-memory active set
+  if (p.adult_participants) delete p.adult_participants[name];
+  // Remove the _adult_enrolled sentinel row only — historical hour rows remain
+  await fetch(
+    SUPA_URL + '/rest/v1/program_attendance?program_id=eq.' + encodeURIComponent(gid) +
+    '&session_date=eq._adult_enrolled&participant_name=eq.' + encodeURIComponent(name),
+    { method: 'DELETE', headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY, 'Prefer': 'return=minimal' } }
+  );
+  renderJysepAdultHrsGrid();
+  renderJysepStatCards();
+}
+
 // ── Adult trainee attendance toggle (Animator Training groups) ─────────────────
 async function toggleJysepAdultTraineeCell(gid, name, dateStr, btn) {
   var p = jysepProg(gid); if (!p) return;
@@ -7863,6 +7885,7 @@ async function toggleJysepAdultTraineeCell(gid, name, dateStr, btn) {
   p.attendance[dateStr] = p.attendance[dateStr] || [];
   var rec = jysepAttRow(p, dateStr, name);
   var newAtt = rec ? !rec.attended : true;
+  // In memory use 'adult_trainee' type so stats don't count as volunteer hours
   if (rec) { rec.attended = newAtt; }
   else { p.attendance[dateStr].push({ name: name, type: 'adult_trainee', attended: true, hours: null }); }
   btn.textContent = newAtt ? '✔' : '·';
@@ -7877,10 +7900,12 @@ async function toggleJysepAdultTraineeCell(gid, name, dateStr, btn) {
     if (tds[1]) tds[1].textContent = newCount;
     if (tds[2]) tds[2].textContent = (activeDates.length>0 ? Math.round(newCount/activeDates.length*100) : 0)+'%';
   }
+  // DB write: participant_type='adult' (satisfies CHECK constraint); role stored in notes
   await upsertProgramAttendance({
     program_id: gid, program_type: 'jysep',
     session_date: dateStr, participant_name: name,
-    participant_type: 'adult_trainee', attended: newAtt, volunteer_hours: null
+    participant_type: 'adult', attended: newAtt, volunteer_hours: null,
+    notes: 'role:at_trainee'
   });
 }
 
@@ -8021,7 +8046,8 @@ async function saveJysepMixedTraineeModal() {
       return upsertProgramAttendance({
         program_id: _jatProgramId, program_type: 'jysep',
         session_date: '_trainee_enrolled', participant_name: name,
-        participant_type: 'adult_trainee', attended: false, volunteer_hours: null
+        participant_type: 'adult', attended: false, volunteer_hours: null,
+        notes: 'role:at_trainee'
       }).then(function(ok){ return { ok:ok, kind:'adult', name:name }; });
     }
   });
@@ -8111,22 +8137,27 @@ async function saveJysepAdultHrsFromInputs() {
     var parts = key.split('||'); var d = parts[0], name = parts[1]; var val = snapshot[key];
     // Determine role type for this person
     var isYouthHelper = youthHelperNames.indexOf(name) >= 0 && adultNames.indexOf(name) < 0;
-    var pType = isYouthHelper ? 'youth_animator' : 'adult';
+    // In-memory type keeps semantic role; DB write uses only 'youth' or 'adult'
+    var memType = isYouthHelper ? 'youth_animator' : 'adult';
+    var dbType  = isYouthHelper ? 'youth' : 'adult';
+    var dbNotes = isYouthHelper ? 'role:jysep_animator' : null;
     p.attendance = p.attendance || {};
     p.attendance[d] = p.attendance[d] || [];
     var rec = jysepAttRow(p, d, name);
-    if (rec) { rec.hours = val; rec.attended = true; rec.type = pType; }
-    else { p.attendance[d].push({ name: name, type: pType, attended: true, hours: val }); }
+    if (rec) { rec.hours = val; rec.attended = true; rec.type = memType; }
+    else { p.attendance[d].push({ name: name, type: memType, attended: true, hours: val }); }
     if (!isYouthHelper) {
       p.adult_volunteers = p.adult_volunteers || {};
       p.adult_volunteers[d] = p.adult_volunteers[d] || [];
       if (p.adult_volunteers[d].indexOf(name) < 0) p.adult_volunteers[d].push(name);
     }
-    promises.push(upsertProgramAttendance({
+    var writeRow = {
       program_id: gid, program_type: 'jysep',
       session_date: d, participant_name: name,
-      participant_type: pType, attended: true, volunteer_hours: val
-    }));
+      participant_type: dbType, attended: true, volunteer_hours: val
+    };
+    if (dbNotes) writeRow.notes = dbNotes;
+    promises.push(upsertProgramAttendance(writeRow));
   });
   var results = await Promise.all(promises);
   var failCount = results.filter(function(ok){ return !ok; }).length;
@@ -8141,11 +8172,13 @@ function renderJysepAdultHrsGrid() {
   var gid = _jysepActiveGroup;
   var p = jysepProg(gid);
   if (!p) { thead.innerHTML = ''; tbody.innerHTML = ''; return; }
+  var isAT = p.group_subtype === 'animator_training';
+  var roleLabel = isAT ? 'trainer' : 'animator';
   var pastDates = jysepPastDates(gid);
 
-  // Build adult set
+  // Build adult set (animators / trainers)
   var adultSet = new Set(Object.keys(p.adult_participants || {}));
-  // Build youth helper set
+  // Build youth helper set (youth animators — only for regular JYSEP groups)
   var youthHelperSet = new Set(Object.keys(p.youth_helper_participants || {}));
   Object.keys(p.attendance || {}).forEach(function(d) {
     (p.attendance[d] || []).forEach(function(r) {
@@ -8157,21 +8190,23 @@ function renderJysepAdultHrsGrid() {
     (p.adult_volunteers[d] || []).forEach(function(n) { adultSet.add(n); });
   });
   var adultNames = Array.from(adultSet).sort();
-  var youthHelperNames = Array.from(youthHelperSet).sort();
-  // Combined list: adults first, then youth helpers (no duplicates)
-  var allNames = adultNames.concat(youthHelperNames.filter(function(n){ return adultSet.has(n) ? false : true; }));
+  // AT groups: trainers are adults only — no youth helpers in this grid
+  var youthHelperNames = isAT ? [] : Array.from(youthHelperSet).sort();
+  var allNames = adultNames.concat(youthHelperNames.filter(function(n){ return !adultSet.has(n); }));
 
   if (pastDates.length === 0) {
     thead.innerHTML = ''; tbody.innerHTML = '<tr><td style="color:var(--text-muted);font-size:.82rem;padding:12px">No past sessions yet.</td></tr>'; return;
   }
   if (allNames.length === 0) {
-    thead.innerHTML = ''; tbody.innerHTML = '<tr><td style="color:var(--text-muted);font-size:.82rem;padding:12px">No animators enrolled yet. Use "+ Enroll Animator" above.</td></tr>'; return;
+    thead.innerHTML = ''; tbody.innerHTML = '<tr><td style="color:var(--text-muted);font-size:.82rem;padding:12px">No '+roleLabel+'s enrolled yet. Use "+ Enroll '+(isAT?'Trainer':'Animator')+'" above.</td></tr>'; return;
   }
   thead.innerHTML = '<th class="grd-date-sticky">Date</th>' +
     allNames.map(function(n){
-      var isYH = youthHelperNames.indexOf(n) >= 0 && !adultSet.has(n);
+      var isYH = !isAT && youthHelperNames.indexOf(n) >= 0 && !adultSet.has(n);
       var label = n.split(' ')[0];
-      var badge = isYH ? ' <span style="font-size:.55rem;color:var(--ya-teal);background:rgba(0,181,160,.12);border-radius:4px;padding:1px 4px">Youth</span>' : ' <span style="font-size:.55rem;color:var(--ya-blue);background:rgba(29,127,212,.12);border-radius:4px;padding:1px 4px">Adult</span>';
+      var badge = isYH
+        ? ' <span style="font-size:.55rem;color:var(--ya-teal);background:rgba(0,181,160,.12);border-radius:4px;padding:1px 4px">Youth</span>'
+        : ' <span style="font-size:.55rem;color:var(--ya-blue);background:rgba(29,127,212,.12);border-radius:4px;padding:1px 4px">Adult</span>';
       return '<th style="font-size:.65rem;min-width:70px">' + label + badge + '</th>';
     }).join('') +
     '<th style="min-width:60px">Total</th>';
@@ -8195,8 +8230,17 @@ function renderJysepAdultHrsGrid() {
     return '<tr><td class="grd-date-sticky" style="font-weight:600;white-space:nowrap;font-size:.82rem">'+d.replace(/, 20\d\d/,'')+'</td>' + cells +
       '<td style="text-align:center;font-weight:700;color:var(--ya-teal)">'+(sessionTotal?sessionTotal.toFixed(1):'—')+'</td></tr>';
   }).join('');
+  // Totals row with remove buttons for each person
   var totalsRow = '<tr style="border-top:2px solid var(--card-border)"><td class="grd-date-sticky" style="font-weight:800;font-size:.82rem">Total</td>' +
-    allNames.map(function(n){ return '<td style="text-align:center;font-weight:800;color:var(--ya-teal)">'+(allTotals[n]?allTotals[n].toFixed(1):'—')+'</td>'; }).join('') +
+    allNames.map(function(n){
+      var isYH = !isAT && youthHelperNames.indexOf(n) >= 0 && !adultSet.has(n);
+      var safeGid = gid.replace(/'/g,"\\'");
+      var safeN = n.replace(/'/g,"\\'");
+      var removeBtn = isYH
+        ? '<button onclick="removeJysepYouthHelper(\''+safeGid+'\',\''+safeN+'\')" title="Remove youth animator" style="border:none;background:none;color:var(--badge-red);cursor:pointer;font-size:.6rem;padding:0;opacity:.65;display:block;margin:1px auto 0">✕</button>'
+        : '<button onclick="removeJysepTrainer(\''+safeGid+'\',\''+safeN+'\')" title="Remove '+(isAT?'trainer':'animator')+'" style="border:none;background:none;color:var(--badge-red);cursor:pointer;font-size:.6rem;padding:0;opacity:.65;display:block;margin:1px auto 0">✕</button>';
+      return '<td style="text-align:center;font-weight:800;color:var(--ya-teal)">'+(allTotals[n]?allTotals[n].toFixed(1):'—')+removeBtn+'</td>';
+    }).join('') +
     '<td style="text-align:center;font-weight:800;color:var(--ya-teal)">'+(grandTotal?grandTotal.toFixed(1):'—')+'</td></tr>';
   tbody.innerHTML = rows + totalsRow;
 }
@@ -8929,8 +8973,13 @@ async function loadSingleSccGroup(gid) {
     if(row.cancellation_reason&&prog.cancellations.indexOf(row.session_date)<0)
       prog.cancellations.push(row.session_date);
   });
-  var attRows=await dbGet('program_attendance','select=session_date,participant_name,participant_type,attended,volunteer_hours&program_id=eq.'+encodeURIComponent(gid)+'&order=session_date.asc');
+  var attRows=await dbGet('program_attendance','select=session_date,participant_name,participant_type,attended,volunteer_hours,notes&program_id=eq.'+encodeURIComponent(gid)+'&order=session_date.asc');
   if(attRows) attRows.forEach(function(row){
+    var role = (row.notes && row.notes.indexOf('role:') === 0) ? row.notes.slice(5) : null;
+    var memType = row.participant_type;
+    if (role === 'scc_facilitator') memType = 'youth_facilitator';
+    if (role === 'jysep_animator')  memType = 'youth_animator';
+
     if(row.session_date==='_enrolled'&&row.participant_type==='youth'){
       prog.youth_participants=prog.youth_participants||{};
       if(!prog.youth_participants[row.participant_name]) prog.youth_participants[row.participant_name]=[];
@@ -8941,18 +8990,19 @@ async function loadSingleSccGroup(gid) {
       if(!prog.adult_participants[row.participant_name]) prog.adult_participants[row.participant_name]=true;
       return;
     }
-    // Youth facilitator enrollment sentinel (youth helper role)
+    // Youth facilitator enrollment sentinel — participant_type='youth' + notes='role:scc_facilitator'
+    // Also accept legacy rows storing full type directly
     if(row.session_date==='_youth_helper_enrolled'&&
-        (row.participant_type==='youth_facilitator'||row.participant_type==='youth_animator')){
+        (row.participant_type==='youth'||row.participant_type==='youth_facilitator'||row.participant_type==='youth_animator')){
       prog.youth_helper_participants=prog.youth_helper_participants||{};
       if(!prog.youth_helper_participants[row.participant_name])
-        prog.youth_helper_participants[row.participant_name]=row.participant_type;
+        prog.youth_helper_participants[row.participant_name]=memType||row.participant_type;
       return;
     }
     prog.attendance[row.session_date]=prog.attendance[row.session_date]||[];
     var exists=prog.attendance[row.session_date].find(function(r){return r.name===row.participant_name;});
     if(!exists) prog.attendance[row.session_date].push({
-      name:row.participant_name,type:row.participant_type,attended:row.attended,
+      name:row.participant_name,type:memType,attended:row.attended,
       hours:row.volunteer_hours!=null?parseFloat(row.volunteer_hours):null
     });
   });
@@ -9333,15 +9383,20 @@ async function saveSccAdultHrsFromInputs(){
   var saves=[];
   inputs.forEach(function(inp){
     var gid=inp.dataset.gid,name=inp.dataset.name,d=inp.dataset.date;
-    var pType=inp.dataset.role||'adult'; // 'adult' or 'youth_facilitator'
+    var memRole=inp.dataset.role||'adult'; // 'adult' or 'youth_facilitator' (in-memory)
+    var isYH = memRole === 'youth_facilitator';
+    var dbType = isYH ? 'youth' : 'adult';  // DB must be 'youth' or 'adult' only
     var hrs=inp.value!==''?parseFloat(inp.value):null;
     if(isNaN(hrs))hrs=null;
     var p=sccProg(gid);if(!p)return;
     p.attendance[d]=p.attendance[d]||[];
-    var rec=p.attendance[d].find(function(r){return r.name===name&&(r.type===pType||r.type==='adult');});
-    if(rec){rec.hours=hrs;rec.type=pType;}
-    else p.attendance[d].push({name:name,type:pType,attended:hrs!=null&&hrs>0,hours:hrs});
-    saves.push({program_id:gid,session_date:d,participant_name:name,participant_type:pType,attended:hrs!=null&&hrs>0,volunteer_hours:hrs});
+    var rec=p.attendance[d].find(function(r){return r.name===name&&(r.type===memRole||r.type==='adult'||r.type==='youth');});
+    if(rec){rec.hours=hrs;rec.type=memRole;}
+    else p.attendance[d].push({name:name,type:memRole,attended:hrs!=null&&hrs>0,hours:hrs});
+    var saveRow={program_id:gid,session_date:d,participant_name:name,
+      participant_type:dbType,attended:hrs!=null&&hrs>0,volunteer_hours:hrs};
+    if(isYH) saveRow.notes='role:scc_facilitator';
+    saves.push(saveRow);
   });
   if(saves.length){
     await fetch(SUPA_URL+'/rest/v1/program_attendance?on_conflict=program_id,session_date,participant_name',{
@@ -13782,6 +13837,9 @@ async function initDB() {
       unique(program_id, session_date, participant_name)
     );
     alter table program_attendance disable row level security;
+    -- Drop the check constraint if it exists (it incorrectly limits participant_type to 'youth'/'adult';
+    -- the app now uses only those two values for DB writes, but older rows may have had other values).
+    alter table program_attendance drop constraint if exists program_attendance_participant_type_check;
     -- Program-level settings: cert rules + JYSEP group config columns.
     create table if not exists program_settings (
       id                bigserial primary key,
@@ -15398,9 +15456,18 @@ async function loadSingleJysepGroup(gid) {
 
   // ── Load attendance + enrollment sentinels, scoped to this gid ───────────
   var attRows = await dbGet('program_attendance',
-    'select=session_date,participant_name,participant_type,attended,volunteer_hours&program_id=eq.' + encodeURIComponent(gid) + '&order=session_date.asc');
+    'select=session_date,participant_name,participant_type,attended,volunteer_hours,notes&program_id=eq.' + encodeURIComponent(gid) + '&order=session_date.asc');
   if (attRows) {
     attRows.forEach(function(row) {
+      // Derive effective type from notes role tag (backwards-compat with old rows that stored full type)
+      var role = (row.notes && row.notes.indexOf('role:') === 0) ? row.notes.slice(5) : null;
+      // Map DB participant_type + notes → in-memory type
+      // Allowed DB values: 'youth', 'adult'. Role stored in notes.
+      var memType = row.participant_type; // default
+      if (role === 'jysep_animator')  memType = 'youth_animator';
+      if (role === 'scc_facilitator') memType = 'youth_facilitator';
+      if (role === 'at_trainee')      memType = 'adult_trainee';
+
       if (row.session_date === '_enrolled' && row.participant_type === 'youth') {
         prog.youth_participants = prog.youth_participants || {};
         if (!prog.youth_participants[row.participant_name]) prog.youth_participants[row.participant_name] = [];
@@ -15411,16 +15478,19 @@ async function loadSingleJysepGroup(gid) {
         if (!prog.adult_participants[row.participant_name]) prog.adult_participants[row.participant_name] = true;
         return;
       }
-      // Youth animator/facilitator enrollment sentinel (youth helper role)
+      // Youth animator/facilitator enrollment sentinel — stored as participant_type='youth' + notes='role:jysep_animator'
+      // Also accept legacy rows that stored the full type directly (pre-fix)
       if (row.session_date === '_youth_helper_enrolled' &&
-          (row.participant_type === 'youth_animator' || row.participant_type === 'youth_facilitator')) {
+          (row.participant_type === 'youth' || row.participant_type === 'youth_animator' || row.participant_type === 'youth_facilitator')) {
         prog.youth_helper_participants = prog.youth_helper_participants || {};
         if (!prog.youth_helper_participants[row.participant_name])
-          prog.youth_helper_participants[row.participant_name] = row.participant_type;
+          prog.youth_helper_participants[row.participant_name] = memType || row.participant_type;
         return;
       }
-      // Adult trainee enrollment sentinel (Animator Training groups)
-      if (row.session_date === '_trainee_enrolled' && row.participant_type === 'adult_trainee') {
+      // Adult trainee enrollment sentinel — stored as participant_type='adult' + notes='role:at_trainee'
+      // Also accept legacy 'adult_trainee' type (pre-fix)
+      if (row.session_date === '_trainee_enrolled' &&
+          (row.participant_type === 'adult' || row.participant_type === 'adult_trainee')) {
         prog.adult_trainees = prog.adult_trainees || {};
         if (!prog.adult_trainees[row.participant_name]) prog.adult_trainees[row.participant_name] = true;
         return;
@@ -15430,7 +15500,7 @@ async function loadSingleJysepGroup(gid) {
       if (!exists) {
         prog.attendance[row.session_date].push({
           name:    row.participant_name,
-          type:    row.participant_type,
+          type:    memType,
           attended:row.attended,
           hours:   row.volunteer_hours != null ? parseFloat(row.volunteer_hours) : null
         });
@@ -16619,7 +16689,7 @@ async function saveProgramEnrollHelperModal() {
   prog.youth_helper_participants= prog.youth_helper_participants|| {};
 
   var helperLabel  = _pehProgType === 'scc' ? 'facilitator' : 'animator';
-  var youthPType   = _pehProgType === 'scc' ? 'youth_facilitator' : 'youth_animator';
+  var youthRole    = _pehProgType === 'scc' ? 'role:scc_facilitator' : 'role:jysep_animator';
   var enrolled = [], failed = [];
 
   var promises = selected.map(function(val) {
@@ -16635,11 +16705,14 @@ async function saveProgramEnrollHelperModal() {
       }).then(function(ok) { return { ok: ok, kind: 'adult', name: name }; });
     } else {
       if (prog.youth_helper_participants[name]) return Promise.resolve({ skip: true });
+      // In memory store the semantic role; DB uses participant_type='youth' + notes for role
+      var youthMemType = _pehProgType === 'scc' ? 'youth_facilitator' : 'youth_animator';
       return upsertProgramAttendance({
         program_id: _pehProgramId, program_type: _pehProgType,
         session_date: '_youth_helper_enrolled', participant_name: name,
-        participant_type: youthPType, attended: false, volunteer_hours: null
-      }).then(function(ok) { return { ok: ok, kind: 'youth', name: name }; });
+        participant_type: 'youth', attended: false, volunteer_hours: null,
+        notes: youthRole
+      }).then(function(ok) { return { ok: ok, kind: 'youth', name: name, memType: youthMemType }; });
     }
   });
 
@@ -16648,7 +16721,7 @@ async function saveProgramEnrollHelperModal() {
     if (!r || r.skip) return;
     if (r.ok) {
       if (r.kind === 'adult') prog.adult_participants[r.name] = true;
-      else prog.youth_helper_participants[r.name] = youthPType;
+      else prog.youth_helper_participants[r.name] = r.memType;
       enrolled.push(r.name);
     } else {
       failed.push(r.name);

@@ -1443,16 +1443,16 @@ tr:hover .grd-date-sticky { background: #1a2d47; }
             </div>
           </div>
 
-          <!-- Youth attendance -->
+          <!-- Youth/Trainee attendance -->
           <details open style="margin-bottom:14px">
-            <summary style="font-family:Nunito,sans-serif;font-weight:900;font-size:.95rem;color:var(--lavender);cursor:pointer;padding:10px 0;list-style:none;display:flex;align-items:center;gap:8px">
-              ✨ Youth Attendance &amp; Participation
+            <summary style="font-family:Nunito,sans-serif;font-weight:900;font-size:.95rem;color:var(--lavender);cursor:pointer;padding:10px 0;list-style:none;display:flex;align-items:center;gap:8px" id="jgd-att-summary">
+              ✨ <span id="jgd-att-title">Youth Attendance &amp; Participation</span>
             </summary>
             <div style="margin-top:10px">
               <div class="section-box" style="margin-bottom:10px">
                 <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
-                  <div style="font-size:.78rem;color:var(--text-muted)">Only enrolled youth appear. Youth attendance = participation only — not volunteer hours.</div>
-                  <button id="jgd-enroll-youth-btn" onclick="openProgramEnrollYouthModal(_jysepActiveGroup)" class="ws-btn" style="border-color:var(--lavender);color:var(--lavender);font-size:.75rem;white-space:nowrap">+ Enroll Youth</button>
+                  <div style="font-size:.78rem;color:var(--text-muted)" id="jgd-att-desc">Only enrolled youth appear. Youth attendance = participation only — not volunteer hours.</div>
+                  <button id="jgd-enroll-youth-btn" onclick="openJysepEnrollTraineeModal(_jysepActiveGroup)" class="ws-btn" style="border-color:var(--lavender);color:var(--lavender);font-size:.75rem;white-space:nowrap">+ Enroll Youth</button>
                 </div>
               </div>
               <div style="overflow-x:auto">
@@ -1464,17 +1464,17 @@ tr:hover .grd-date-sticky { background: #1a2d47; }
             </div>
           </details>
 
-          <!-- Animator hours -->
+          <!-- Animator/Trainer hours -->
           <details open style="margin-bottom:14px">
             <summary style="font-family:Nunito,sans-serif;font-weight:900;font-size:.95rem;color:var(--ya-blue);cursor:pointer;padding:10px 0;list-style:none;display:flex;align-items:center;gap:8px">
-              🌟 Animator Hours
+              🌟 <span id="jgd-hrs-title">Animator Hours</span>
             </summary>
             <div style="margin-top:10px">
               <div class="section-box" style="margin-bottom:10px">
                 <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
-                  <div style="font-size:.78rem;color:var(--text-muted)">Hours per animator per session. Counts toward volunteer totals.</div>
+                  <div style="font-size:.78rem;color:var(--text-muted)" id="jgd-hrs-desc">Hours per animator per session. Counts toward volunteer totals.</div>
                   <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-                    <button id="jgd-enroll-anim-btn" onclick="openProgramEnrollHelperModal(_jysepActiveGroup,'jysep')" class="ws-btn" style="border-color:var(--ya-blue);color:var(--ya-blue);font-size:.75rem;white-space:nowrap">+ Enroll Animator</button>
+                    <button id="jgd-enroll-anim-btn" onclick="openJysepEnrollHelperModal(_jysepActiveGroup)" class="ws-btn" style="border-color:var(--ya-blue);color:var(--ya-blue);font-size:.75rem;white-space:nowrap">+ Enroll Animator</button>
                     <button id="jysep-hrs-edit-btn" onclick="toggleJysepHrsEdit()" class="ws-btn" style="border-color:var(--ya-blue);color:var(--ya-blue);font-size:.75rem;white-space:nowrap">✏️ Edit Hours</button>
                   </div>
                 </div>
@@ -1552,6 +1552,20 @@ tr:hover .grd-date-sticky { background: #1a2d47; }
           <div class="login-box" style="max-width:480px;width:100%;max-height:92vh;overflow-y:auto">
             <div id="jgm-title" style="font-family:Nunito,sans-serif;font-weight:900;font-size:1rem;color:var(--lavender);margin-bottom:14px">➕ New JYSEP Group</div>
             <div style="display:grid;gap:10px">
+              <!-- Group Type -->
+              <div>
+                <div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Group Type</div>
+                <div style="display:flex;gap:10px">
+                  <label style="display:flex;align-items:center;gap:7px;cursor:pointer;padding:8px 14px;border-radius:8px;border:2px solid var(--lavender);background:rgba(139,92,246,.1);flex:1" id="jgm-type-jysep-label">
+                    <input type="radio" id="jgm-type-jysep" name="jgm-subtype" value="jysep" checked onchange="updateJgmSubtypeUI()" style="accent-color:var(--lavender);width:15px;height:15px">
+                    <div><div style="font-size:.83rem;font-weight:700;color:var(--lavender)">JYSEP Group</div><div style="font-size:.68rem;color:var(--text-muted)">Youth participants · Youth/adult animators</div></div>
+                  </label>
+                  <label style="display:flex;align-items:center;gap:7px;cursor:pointer;padding:8px 14px;border-radius:8px;border:2px solid rgba(255,255,255,.12);background:transparent;flex:1" id="jgm-type-at-label">
+                    <input type="radio" id="jgm-type-animator_training" name="jgm-subtype" value="animator_training" onchange="updateJgmSubtypeUI()" style="accent-color:var(--ya-orange);width:15px;height:15px">
+                    <div><div style="font-size:.83rem;font-weight:700;color:var(--ya-orange)">Animator Training</div><div style="font-size:.68rem;color:var(--text-muted)">Youth/adult trainees · Adult trainers</div></div>
+                  </label>
+                </div>
+              </div>
               <div><div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Group Name *</div>
                 <input id="jgm-name" placeholder="e.g. Breezes Group · Ages 11–12" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--card-border);background:rgba(255,255,255,.06);color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem;box-sizing:border-box"></div>
               <div><div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Book / Text</div>
@@ -6335,7 +6349,7 @@ function renderImpactTab(){
         if(r.type==='adult'&&r.attended&&r.name!=='_adult_enrolled')jysepAdultSet.add(r.name);
       });
     });
-    jysepGroupRows.push({ name: jP.name, sessions: jPast.length, enrolled: enrolled.length, youthAtt: grpYouthAtt, book: jP.group_book||'', age: jP.group_age_range||'Ages 10-14' });
+    jysepGroupRows.push({ name: jP.name, sessions: jPast.length, enrolled: enrolled.length, youthAtt: grpYouthAtt, book: jP.group_book||'', age: jP.group_age_range||'Ages 10-14', isAT: jP.group_subtype==='animator_training', atTrainees: Object.keys(jP.adult_trainees||{}).length });
   });
   if(jysepGids.length>0){
     // Compute youth animator hrs across all jysep groups
@@ -6369,8 +6383,9 @@ function renderImpactTab(){
       jysepGroupRows.forEach(function(g){
         html += '<div style="font-size:.78rem;padding:4px 0;border-bottom:1px solid rgba(255,255,255,.05)">';
         html += '<span style="font-weight:700;color:var(--lavender)">'+g.name+'</span>';
-        if(g.book) html += ' · 📖 '+g.book;
-        html += '<br><span style="color:var(--text-muted)">'+g.sessions+' sessions · '+g.enrolled+' youth · '+g.youthAtt+' attendances</span></div>';
+        if (g.isAT) html += ' <span style="font-size:.6rem;color:var(--ya-orange);background:rgba(232,98,10,.15);border-radius:3px;padding:1px 5px">AT</span>';
+        else if (g.book) html += ' · 📖 '+g.book;
+        html += '<br><span style="color:var(--text-muted)">'+g.sessions+' sessions · '+g.enrolled+' youth'+(g.isAT?' · '+g.atTrainees+' adult trainees':'')+' · '+g.youthAtt+' attendances</span></div>';
       });
     }
     html += '<div style="font-size:.7rem;color:var(--text-muted);margin-top:4px;font-style:italic">Youth attendance = participation only. Youth animator hours count toward youth volunteer totals.</div>';
@@ -7575,13 +7590,15 @@ function renderJysepGroupStrip() {
   strip.innerHTML = gids.map(function(gid){
     var p = PROGRAMS_DATA[gid];
     var isActive = gid === _jysepActiveGroup;
-    var book = p.group_book ? '📖 ' + p.group_book : '📖 No book selected';
+    var isAT = p.group_subtype === 'animator_training';
+    var book = p.group_book ? '📖 ' + p.group_book : (isAT ? '🎓 Animator Training' : '📖 No book selected');
     var age  = p.group_age_range || 'Ages 10–14';
+    var subtypeBadge = isAT ? '<span style="font-size:.6rem;background:rgba(232,98,10,.18);color:var(--ya-orange);border-radius:4px;padding:1px 5px;margin-left:5px">AT</span>' : '';
     return '<button onclick="selectJysepGroup(\''+gid+'\')" style="'+
-      'padding:10px 14px;border-radius:10px;border:2px solid '+(isActive?'var(--lavender)':'rgba(255,255,255,.12)')+';'+
-      'background:'+(isActive?'rgba(139,92,246,.15)':'rgba(255,255,255,.04)')+';'+
-      'color:'+(isActive?'var(--lavender)':'var(--text-main)')+';cursor:pointer;text-align:left;min-width:160px;max-width:220px">'+
-      '<div style="font-weight:700;font-size:.85rem;margin-bottom:3px">'+p.name+'</div>'+
+      'padding:10px 14px;border-radius:10px;border:2px solid '+(isActive?(isAT?'var(--ya-orange)':'var(--lavender)'):'rgba(255,255,255,.12)')+';'+
+      'background:'+(isActive?(isAT?'rgba(232,98,10,.1)':'rgba(139,92,246,.15)'):'rgba(255,255,255,.04)')+';'+
+      'color:'+(isActive?(isAT?'var(--ya-orange)':'var(--lavender)'):'var(--text-main)')+';cursor:pointer;text-align:left;min-width:160px;max-width:220px">'+
+      '<div style="font-weight:700;font-size:.85rem;margin-bottom:3px">'+p.name+subtypeBadge+'</div>'+
       '<div style="font-size:.69rem;color:var(--text-muted)">'+age+'</div>'+
       '<div style="font-size:.69rem;color:var(--text-muted);margin-top:2px">'+book+'</div>'+
       '</button>';
@@ -7602,33 +7619,68 @@ function renderJysepGroupDetail() {
   if (!p) { detailEl.style.display = 'none'; return; }
   detailEl.style.display = 'block';
 
+  var isAT = p.group_subtype === 'animator_training';
+
   // Header
   var nameEl = document.getElementById('jgd-group-name');
   var metaEl = document.getElementById('jgd-group-meta');
-  if (nameEl) nameEl.textContent = p.name;
+  if (nameEl) {
+    var subtypePill = isAT ? ' <span style="font-size:.65rem;background:rgba(232,98,10,.18);color:var(--ya-orange);border-radius:5px;padding:2px 7px;vertical-align:middle">Animator Training</span>' : '';
+    nameEl.innerHTML = p.name + subtypePill;
+  }
   if (metaEl) metaEl.textContent = (p.group_age_range || 'Ages 10–14') + ' · ' + (p.day || 'Saturday') + 's · ' + (p.location || 'Youth Airdrie') + ' · ' + (p.time || '10:00 AM – 12:00 PM');
 
-  // Book display
+  // Dynamic labels for attendance section
+  var attTitle = document.getElementById('jgd-att-title');
+  var attDesc  = document.getElementById('jgd-att-desc');
+  var enrollBtn = document.getElementById('jgd-enroll-youth-btn');
+  if (attTitle) attTitle.textContent = isAT ? 'Trainee Attendance & Participation' : 'Youth Attendance & Participation';
+  if (attDesc)  attDesc.textContent  = isAT
+    ? 'Youth and adult trainees. Attendance = participation only — not volunteer hours.'
+    : 'Only enrolled youth appear. Youth attendance = participation only — not volunteer hours.';
+  if (enrollBtn) {
+    enrollBtn.textContent = isAT ? '+ Enroll Trainee' : '+ Enroll Youth';
+    enrollBtn.style.borderColor = isAT ? 'var(--ya-orange)' : 'var(--lavender)';
+    enrollBtn.style.color       = isAT ? 'var(--ya-orange)' : 'var(--lavender)';
+  }
+
+  // Dynamic labels for hours section
+  var hrsTitle  = document.getElementById('jgd-hrs-title');
+  var hrsDesc   = document.getElementById('jgd-hrs-desc');
+  var animBtn   = document.getElementById('jgd-enroll-anim-btn');
+  var hrsEditBtn = document.getElementById('jysep-hrs-edit-btn');
+  if (hrsTitle) hrsTitle.textContent = isAT ? 'Trainer Hours' : 'Animator Hours';
+  if (hrsDesc)  hrsDesc.textContent  = isAT
+    ? 'Hours per trainer per session. Counts toward adult volunteer totals.'
+    : 'Hours per animator per session. Counts toward volunteer totals.';
+  if (animBtn) {
+    animBtn.textContent = isAT ? '+ Enroll Trainer' : '+ Enroll Animator';
+  }
+
+  // Book display (hidden for Animator Training groups since they use a curriculum, not a booklet)
   var bookEl = document.getElementById('jgd-book-panel');
   if (bookEl) {
-    var bTitle = p.group_book || '';
-    var bObj = bTitle ? jysepBookByTitle(bTitle) : null;
-    var bookHtml = '';
-    if (bTitle) {
-      bookHtml = '<div style="font-weight:700;color:var(--text-main);font-size:.88rem">'+bTitle+'</div>';
-      if (bObj) bookHtml += '<div style="font-size:.75rem;color:var(--text-muted);margin-top:2px;font-style:italic">'+bObj.focus+'</div>';
-      if (p.group_book_start || p.group_book_end) {
-        bookHtml += '<div style="font-size:.74rem;color:var(--text-muted);margin-top:3px">';
-        if (p.group_book_start) bookHtml += 'Started: '+p.group_book_start;
-        if (p.group_book_start && p.group_book_end) bookHtml += ' · ';
-        if (p.group_book_end) bookHtml += 'Ends: '+p.group_book_end;
-        bookHtml += '</div>';
+    bookEl.style.display = isAT ? 'none' : '';
+    if (!isAT) {
+      var bTitle = p.group_book || '';
+      var bObj = bTitle ? jysepBookByTitle(bTitle) : null;
+      var bookHtml = '';
+      if (bTitle) {
+        bookHtml = '<div style="font-weight:700;color:var(--text-main);font-size:.88rem">'+bTitle+'</div>';
+        if (bObj) bookHtml += '<div style="font-size:.75rem;color:var(--text-muted);margin-top:2px;font-style:italic">'+bObj.focus+'</div>';
+        if (p.group_book_start || p.group_book_end) {
+          bookHtml += '<div style="font-size:.74rem;color:var(--text-muted);margin-top:3px">';
+          if (p.group_book_start) bookHtml += 'Started: '+p.group_book_start;
+          if (p.group_book_start && p.group_book_end) bookHtml += ' · ';
+          if (p.group_book_end) bookHtml += 'Ends: '+p.group_book_end;
+          bookHtml += '</div>';
+        }
+        if (p.group_notes) bookHtml += '<div style="font-size:.74rem;color:var(--text-muted);margin-top:2px">'+p.group_notes+'</div>';
+      } else {
+        bookHtml = '<div style="color:var(--text-muted);font-size:.82rem;font-style:italic">No book assigned yet — click "Edit Group" to set one.</div>';
       }
-      if (p.group_notes) bookHtml += '<div style="font-size:.74rem;color:var(--text-muted);margin-top:2px">'+p.group_notes+'</div>';
-    } else {
-      bookHtml = '<div style="color:var(--text-muted);font-size:.82rem;font-style:italic">No book assigned yet — click "Edit Group" to set one.</div>';
+      document.getElementById('jgd-book-display').innerHTML = bookHtml;
     }
-    document.getElementById('jgd-book-display').innerHTML = bookHtml;
   }
 
   renderJysepYouthGrid();
@@ -7637,7 +7689,7 @@ function renderJysepGroupDetail() {
   renderJysepBookCompletion();
 }
 
-// ── Youth attendance grid ─────────────────────────────────────────────────────
+// ── Youth/Trainee attendance grid ─────────────────────────────────────────────
 function renderJysepYouthGrid() {
   var thead = document.getElementById('jysep-youth-att-thead');
   var tbody = document.getElementById('jysep-youth-att-tbody');
@@ -7646,50 +7698,71 @@ function renderJysepYouthGrid() {
   var p = jysepProg(gid);
   if (!p) { thead.innerHTML = ''; tbody.innerHTML = ''; return; }
 
+  var isAT = p.group_subtype === 'animator_training';
   var pastDates = jysepPastDates(gid);
-  var enrolled  = Object.keys(p.youth_participants || {}).sort();
 
-  if (enrolled.length === 0) {
+  // For AT groups: show both youth trainees (youth_participants) AND adult trainees (adult_trainees)
+  var youthEnrolled = Object.keys(p.youth_participants || {}).sort();
+  var adultTrainees = isAT ? Object.keys(p.adult_trainees || {}).sort() : [];
+  var allEnrolled   = youthEnrolled.concat(adultTrainees.filter(function(n){ return youthEnrolled.indexOf(n) < 0; }));
+
+  var emptyMsg = isAT ? 'No trainees enrolled yet. Use "+ Enroll Trainee" above.' : 'No youth enrolled yet. Use "+ Enroll Youth" above.';
+
+  if (allEnrolled.length === 0) {
     thead.innerHTML = '';
-    tbody.innerHTML = '<tr><td colspan="3" style="color:var(--text-muted);font-size:.82rem;padding:12px">No youth enrolled yet. Use "+ Enroll Youth" above.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="3" style="color:var(--text-muted);font-size:.82rem;padding:12px">'+emptyMsg+'</td></tr>';
     return;
   }
   if (pastDates.length === 0) {
     thead.innerHTML = '';
-    tbody.innerHTML = '<tr><td colspan="3" style="color:var(--text-muted);font-size:.82rem;padding:12px">No past sessions yet — sessions begin Jan 10, 2026.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="3" style="color:var(--text-muted);font-size:.82rem;padding:12px">No past sessions yet.</td></tr>';
     return;
   }
 
+  var colLabel = isAT ? 'Trainee' : 'Youth';
   var shortDates = pastDates.map(function(d){ return d.replace(/, 20\d\d/,''); });
   thead.innerHTML =
-    '<th class="grd-sticky grd-sticky-1" style="font-size:.72rem">Youth</th>' +
+    '<th class="grd-sticky grd-sticky-1" style="font-size:.72rem">'+colLabel+'</th>' +
     '<th class="grd-sticky grd-sticky-2" style="font-size:.72rem">Attended</th>' +
     '<th class="grd-sticky grd-sticky-3" style="font-size:.72rem">Rate</th>' +
     shortDates.map(function(sd, i){
       return '<th style="font-size:.6rem;min-width:38px;white-space:nowrap;text-align:center" title="'+pastDates[i]+'">'+sd+'</th>';
     }).join('');
 
-  var rows = enrolled.map(function(name) {
+  var rows = allEnrolled.map(function(name) {
+    var isAdultTrainee = adultTrainees.indexOf(name) >= 0;
     var attCount = pastDates.filter(function(d){ var r = jysepAttRow(p, d, name); return r && r.attended; }).length;
     var pct = pastDates.length > 0 ? Math.round(attCount / pastDates.length * 100) : 0;
     var age = YOUTH_AGES[name] ? 'Age '+YOUTH_AGES[name] : '';
     var escapedName = name.replace(/'/g, "\\'");
     var safeGid = gid.replace(/'/g,"\\'");
+    // Role badge for AT groups
+    var roleBadge = isAT ? (isAdultTrainee
+      ? ' <span style="font-size:.58rem;color:var(--ya-blue);background:rgba(29,127,212,.12);border-radius:3px;padding:1px 4px">Adult</span>'
+      : ' <span style="font-size:.58rem;color:var(--ya-teal);background:rgba(0,181,160,.12);border-radius:3px;padding:1px 4px">Youth</span>') : '';
+    var removeBtn = isAT
+      ? (isAdultTrainee
+          ? '<button onclick="removeJysepAdultTrainee(\''+safeGid+'\',\''+escapedName+'\')" style="border:none;background:none;color:var(--badge-red);cursor:pointer;font-size:.65rem;padding:0;margin-left:2px;opacity:.6" title="Remove">✕</button>'
+          : '<button onclick="removeJysepYouth(\''+safeGid+'\',\''+escapedName+'\')" style="border:none;background:none;color:var(--badge-red);cursor:pointer;font-size:.65rem;padding:0;margin-left:2px;opacity:.6" title="Remove">✕</button>')
+      : '<button onclick="removeJysepYouth(\''+safeGid+'\',\''+escapedName+'\')" style="border:none;background:none;color:var(--badge-red);cursor:pointer;font-size:.65rem;padding:0;margin-left:2px;opacity:.6" title="Remove">✕</button>';
     var cells = pastDates.map(function(d) {
       var rec = jysepAttRow(p, d, name);
       var att = rec && rec.attended;
       var safeDate = d.replace(/'/g,"\\'");
+      // For adult trainees, use 'adult_trainee' type; for youth use 'youth'
+      var toggleFn = isAdultTrainee
+        ? 'toggleJysepAdultTraineeCell'
+        : 'toggleJysepYouthCell';
       return '<td style="text-align:center;padding:4px 2px">' +
-        '<button onclick="toggleJysepYouthCell(\''+safeGid+'\',\''+escapedName+'\',\''+safeDate+'\',this)" ' +
+        '<button onclick="'+toggleFn+'(\''+safeGid+'\',\''+escapedName+'\',\''+safeDate+'\',this)" ' +
         'style="width:28px;height:28px;border-radius:6px;border:1px solid '+(att?'var(--ya-teal)':'rgba(255,255,255,.15)')+
         ';background:'+(att?'rgba(0,181,160,.2)':'transparent')+
         ';color:'+(att?'var(--ya-teal)':'var(--text-muted)')+
         ';font-size:.75rem;cursor:pointer;transition:all .15s">'+(att?'✔':'·')+'</button></td>';
     }).join('');
     return '<tr>' +
-      '<td class="grd-sticky grd-sticky-1" style="font-size:.82rem;font-weight:600">' + name +
-        '<div style="font-size:.65rem;color:var(--text-muted);margin-top:1px">'+age+
-        ' <button onclick="removeJysepYouth(\''+safeGid+'\',\''+escapedName+'\')" style="border:none;background:none;color:var(--badge-red);cursor:pointer;font-size:.65rem;padding:0;margin-left:2px;opacity:.6" title="Remove">✕</button></div></td>' +
+      '<td class="grd-sticky grd-sticky-1" style="font-size:.82rem;font-weight:600">' + name + roleBadge +
+        '<div style="font-size:.65rem;color:var(--text-muted);margin-top:1px">'+age+removeBtn+'</div></td>' +
       '<td class="grd-sticky grd-sticky-2" style="text-align:center;font-weight:700;color:var(--ya-teal)">'+attCount+'</td>' +
       '<td class="grd-sticky grd-sticky-3" style="text-align:center;color:var(--text-muted);font-size:.75rem">'+pct+'%</td>' +
       cells + '</tr>';
@@ -7740,6 +7813,201 @@ async function removeJysepYouthHelper(gid, name) {
     method: 'DELETE', headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer '+SUPA_KEY, 'Prefer': 'return=minimal' }
   });
   renderJysepAdultHrsGrid();
+}
+
+// ── Adult trainee attendance toggle (Animator Training groups) ─────────────────
+async function toggleJysepAdultTraineeCell(gid, name, dateStr, btn) {
+  var p = jysepProg(gid); if (!p) return;
+  p.attendance = p.attendance || {};
+  p.attendance[dateStr] = p.attendance[dateStr] || [];
+  var rec = jysepAttRow(p, dateStr, name);
+  var newAtt = rec ? !rec.attended : true;
+  if (rec) { rec.attended = newAtt; }
+  else { p.attendance[dateStr].push({ name: name, type: 'adult_trainee', attended: true, hours: null }); }
+  btn.textContent = newAtt ? '✔' : '·';
+  btn.style.background  = newAtt ? 'rgba(0,181,160,.2)' : 'transparent';
+  btn.style.borderColor = newAtt ? 'var(--ya-teal)' : 'rgba(255,255,255,.15)';
+  btn.style.color       = newAtt ? 'var(--ya-teal)' : 'var(--text-muted)';
+  var row = btn.closest('tr');
+  if (row) {
+    var activeDates = jysepPastDates(gid);
+    var newCount = activeDates.filter(function(d){ var r2 = jysepAttRow(p, d, name); return r2 && r2.attended; }).length;
+    var tds = row.querySelectorAll('td');
+    if (tds[1]) tds[1].textContent = newCount;
+    if (tds[2]) tds[2].textContent = (activeDates.length>0 ? Math.round(newCount/activeDates.length*100) : 0)+'%';
+  }
+  await upsertProgramAttendance({
+    program_id: gid, program_type: 'jysep',
+    session_date: dateStr, participant_name: name,
+    participant_type: 'adult_trainee', attended: newAtt, volunteer_hours: null
+  });
+}
+
+// ── Remove adult trainee ───────────────────────────────────────────────────────
+async function removeJysepAdultTrainee(gid, name) {
+  if (!confirm('Remove trainee "' + name + '" from this Animator Training group?\n\nAttendance records will be preserved.')) return;
+  var p = jysepProg(gid); if (!p) return;
+  if (p.adult_trainees) delete p.adult_trainees[name];
+  await fetch(SUPA_URL+'/rest/v1/program_attendance?program_id=eq.'+encodeURIComponent(gid)+'&session_date=eq._trainee_enrolled&participant_name=eq.'+encodeURIComponent(name), {
+    method: 'DELETE', headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer '+SUPA_KEY, 'Prefer': 'return=minimal' }
+  });
+  renderJysepYouthGrid();
+}
+
+// ── Routing helpers: pick correct modal based on group subtype ─────────────────
+function openJysepEnrollTraineeModal(gid) {
+  var p = jysepProg(gid);
+  if (p && p.group_subtype === 'animator_training') {
+    openJysepMixedTraineeModal(gid);
+  } else {
+    openProgramEnrollYouthModal(gid);
+  }
+}
+
+function openJysepEnrollHelperModal(gid) {
+  // Trainers (AT groups) are adults only → use the existing adult-only modal for
+  // AT groups; regular JYSEP gets the mixed youth+adult animator modal.
+  var p = jysepProg(gid);
+  if (p && p.group_subtype === 'animator_training') {
+    openProgramEnrollAdultModal(gid); // trainers are adults only
+  } else {
+    openProgramEnrollHelperModal(gid, 'jysep'); // mixed youth+adult animators
+  }
+}
+
+// ── Mixed youth+adult trainee enrollment modal (Animator Training groups) ──────
+var _jatProgramId = ''; // currently-open AT trainee modal program id
+
+function openJysepMixedTraineeModal(programId) {
+  _jatProgramId = programId;
+  var prog = PROGRAMS_DATA[programId];
+  var progName = prog ? (prog.name || programId) : programId;
+
+  // Reuse the peam modal but wire different functions
+  document.getElementById('peam-title').textContent    = '+ Enroll Trainee — ' + progName;
+  document.getElementById('peam-search').value         = '';
+  document.getElementById('peam-feedback').textContent = '';
+  document.getElementById('peam-count').textContent    = '0';
+
+  jatBuildList();
+  document.getElementById('program-enroll-adult-modal').style.display = 'flex';
+  var saveBtn = document.getElementById('peam-save-btn');
+  if (saveBtn) { saveBtn.textContent = 'Enroll Selected →'; saveBtn.onclick = saveJysepMixedTraineeModal; }
+  var searchEl = document.getElementById('peam-search');
+  if (searchEl) searchEl.oninput = jatFilter;
+  setTimeout(function(){ if (searchEl) searchEl.focus(); }, 80);
+}
+
+function jatBuildList() {
+  var list   = document.getElementById('peam-list');
+  var filter = (document.getElementById('peam-search').value || '').toLowerCase().trim();
+  var prog   = PROGRAMS_DATA[_jatProgramId] || {};
+  var youthEnrolled  = Object.keys(prog.youth_participants  || {});
+  var adultEnrolled  = Object.keys(prog.adult_trainees || {});
+  var html = '';
+
+  // ── Youth trainees ──────────────────────────────────────────────────────────
+  var youthNames = _getYouthRosterNames().filter(function(n){
+    return !filter || n.toLowerCase().indexOf(filter) >= 0;
+  });
+  if (youthNames.length) {
+    html += '<div style="padding:6px 12px 4px;font-size:.68rem;font-weight:700;color:var(--ya-teal);text-transform:uppercase;letter-spacing:.07em;background:rgba(0,181,160,.06);border-bottom:1px solid rgba(255,255,255,.04)">Youth Trainees</div>';
+    youthNames.forEach(function(name) {
+      var isEnrolled = youthEnrolled.indexOf(name) >= 0;
+      var cbId = 'jat-cb-y-' + name.replace(/\s+/g,'_').replace(/[^\w]/g,'_');
+      html += '<label for="'+cbId+'" style="display:flex;align-items:center;gap:10px;padding:8px 12px;cursor:'+(isEnrolled?'default':'pointer')+';border-bottom:1px solid rgba(255,255,255,.04);'+(isEnrolled?'opacity:.5':'')+'">'+
+        '<input type="checkbox" id="'+cbId+'" value="youth||'+name+'" '+(isEnrolled?'disabled checked':'')+
+          ' onchange="peamUpdateCount()" style="width:16px;height:16px;accent-color:var(--ya-teal);cursor:'+(isEnrolled?'default':'pointer')+'">'+
+        '<div><div style="font-size:.85rem;font-weight:'+(isEnrolled?'600':'400')+';color:var(--text-main)">'+name+(isEnrolled?' <span style="font-size:.7rem;color:var(--ya-teal)">✔ enrolled</span>':'')+'</div>'+
+          '<div style="font-size:.68rem;color:var(--ya-teal)">Youth Trainee</div></div></label>';
+    });
+  }
+
+  // ── Adult trainees ──────────────────────────────────────────────────────────
+  var adultNames = Object.keys(FAC_PROFILES).map(function(k){ return FAC_PROFILES[k].name; })
+    .filter(function(n){ return !filter || n.toLowerCase().indexOf(filter) >= 0; })
+    .sort();
+  if (adultNames.length) {
+    html += '<div style="padding:6px 12px 4px;font-size:.68rem;font-weight:700;color:var(--ya-blue);text-transform:uppercase;letter-spacing:.07em;background:rgba(29,127,212,.06);border-bottom:1px solid rgba(255,255,255,.04)">Adult Trainees</div>';
+    adultNames.forEach(function(name) {
+      var isEnrolled = adultEnrolled.indexOf(name) >= 0;
+      var cbId = 'jat-cb-a-' + name.replace(/\s+/g,'_').replace(/[^\w]/g,'_');
+      html += '<label for="'+cbId+'" style="display:flex;align-items:center;gap:10px;padding:8px 12px;cursor:'+(isEnrolled?'default':'pointer')+';border-bottom:1px solid rgba(255,255,255,.04);'+(isEnrolled?'opacity:.5':'')+'">'+
+        '<input type="checkbox" id="'+cbId+'" value="adult||'+name+'" '+(isEnrolled?'disabled checked':'')+
+          ' onchange="peamUpdateCount()" style="width:16px;height:16px;accent-color:var(--ya-blue);cursor:'+(isEnrolled?'default':'pointer')+'">'+
+        '<div><div style="font-size:.85rem;font-weight:'+(isEnrolled?'600':'400')+';color:var(--text-main)">'+name+(isEnrolled?' <span style="font-size:.7rem;color:var(--ya-blue)">✔ enrolled</span>':'')+'</div>'+
+          '<div style="font-size:.68rem;color:var(--ya-blue)">Adult Trainee</div></div></label>';
+    });
+  }
+
+  if (!html) {
+    html = '<div style="padding:16px 12px;font-size:.82rem;color:var(--text-muted)">'+(filter
+      ? 'No one found matching "'+filter+'". If the person is not listed, add them under Admin → Users first.'
+      : 'No youth or adults found. Add users under Admin → Users first.')+'</div>';
+  }
+  list.innerHTML = html;
+  peamUpdateCount();
+}
+
+function jatFilter() { jatBuildList(); }
+
+async function saveJysepMixedTraineeModal() {
+  var btn  = document.getElementById('peam-save-btn');
+  var fb   = document.getElementById('peam-feedback');
+  var selected = Array.from(document.querySelectorAll('#peam-list input[type=checkbox]:not(:disabled):checked'))
+    .map(function(cb){ return cb.value; });
+  if (!selected.length) { fb.style.color='var(--badge-amber)'; fb.textContent='⚠ No trainees selected.'; return; }
+
+  btn.textContent='Enrolling…'; btn.style.opacity='.6'; btn.disabled=true; fb.textContent='';
+
+  var prog = PROGRAMS_DATA[_jatProgramId];
+  if (!prog) { btn.textContent='Enroll Selected →'; btn.style.opacity=''; btn.disabled=false; return; }
+  prog.youth_participants = prog.youth_participants || {};
+  prog.adult_trainees     = prog.adult_trainees     || {};
+
+  var enrolled = [], failed = [];
+  var promises = selected.map(function(val) {
+    var parts = val.split('||'), kind = parts[0], name = parts[1];
+    if (kind === 'youth') {
+      if (prog.youth_participants[name]) return Promise.resolve({ skip: true });
+      return upsertProgramAttendance({
+        program_id: _jatProgramId, program_type: 'jysep',
+        session_date: '_enrolled', participant_name: name,
+        participant_type: 'youth', attended: false, volunteer_hours: null
+      }).then(function(ok){ return { ok:ok, kind:'youth', name:name }; });
+    } else {
+      if (prog.adult_trainees[name]) return Promise.resolve({ skip: true });
+      return upsertProgramAttendance({
+        program_id: _jatProgramId, program_type: 'jysep',
+        session_date: '_trainee_enrolled', participant_name: name,
+        participant_type: 'adult_trainee', attended: false, volunteer_hours: null
+      }).then(function(ok){ return { ok:ok, kind:'adult', name:name }; });
+    }
+  });
+
+  var results = await Promise.all(promises);
+  results.forEach(function(r) {
+    if (!r || r.skip) return;
+    if (r.ok) {
+      if (r.kind === 'youth') prog.youth_participants[r.name] = [];
+      else prog.adult_trainees[r.name] = true;
+      enrolled.push(r.name);
+    } else { failed.push(r.name); }
+  });
+
+  btn.textContent='Enroll Selected →'; btn.style.opacity=''; btn.disabled=false;
+  if (failed.length) {
+    fb.style.color='var(--badge-red)'; fb.textContent='⚠ '+failed.length+' failed: '+failed.join(', ')+'. Check console / RLS.'; return;
+  }
+  if (enrolled.length) {
+    fb.style.color='var(--ya-teal)'; fb.textContent='✔ Enrolled: '+enrolled.join(', ');
+    setTimeout(function(){
+      document.getElementById('program-enroll-adult-modal').style.display='none';
+      _jysepActiveGroup = _jatProgramId; renderJysepAdmin();
+    }, 1100);
+  } else {
+    fb.style.color='var(--badge-amber)'; fb.textContent='All selected trainees were already enrolled.';
+  }
 }
 
 // ── Animator hours grid ───────────────────────────────────────────────────────
@@ -8080,6 +8348,12 @@ function openCreateJysepGroupModal() {
   document.getElementById('jgm-location').value = 'Youth Airdrie';
   document.getElementById('jgm-notes').value    = '';
   document.getElementById('jgm-feedback').textContent = '';
+  // Default: JYSEP Group
+  var radioJysep = document.getElementById('jgm-type-jysep');
+  var radioAT    = document.getElementById('jgm-type-animator_training');
+  if (radioJysep) radioJysep.checked = true;
+  if (radioAT)    radioAT.checked    = false;
+  updateJgmSubtypeUI();
   populateBookSelect('jgm-book', '');
   document.getElementById('jgm-book').onchange = function(){ updateJgmBookFocus(); };
   document.getElementById('jgm-book-focus').textContent = '';
@@ -8099,8 +8373,14 @@ function openEditJysepGroupModal(gid) {
   document.getElementById('jgm-location').value = p.location || 'Youth Airdrie';
   document.getElementById('jgm-notes').value    = p.group_notes || '';
   document.getElementById('jgm-feedback').textContent = '';
+  // Restore subtype radio
+  var subtype = p.group_subtype || 'jysep';
+  var radioJysep = document.getElementById('jgm-type-jysep');
+  var radioAT    = document.getElementById('jgm-type-animator_training');
+  if (radioJysep) radioJysep.checked = (subtype !== 'animator_training');
+  if (radioAT)    radioAT.checked    = (subtype === 'animator_training');
+  updateJgmSubtypeUI();
   // Convert stored display string ("Jan 10, 2026") → ISO for type=date input.
-  // p.group_start is always the authoritative scalar; p.dates[0] is last resort.
   var storedStart = p.group_start || (p.dates && p.dates.length ? p.dates[0] : '');
   var storedEnd   = p.group_end   || (p.dates && p.dates.length ? p.dates[p.dates.length-1] : '');
   document.getElementById('jgm-start').value = jgmDisplayToISO(storedStart) || storedStart;
@@ -8121,6 +8401,27 @@ function updateJgmBookFocus() {
   focusEl.textContent = bObj ? bObj.focus : '';
 }
 
+function updateJgmSubtypeUI() {
+  var radioAT = document.getElementById('jgm-type-animator_training');
+  var isAT = radioAT && radioAT.checked;
+  // Visual highlight of selected radio card
+  var labelJysep = document.getElementById('jgm-type-jysep-label');
+  var labelAT    = document.getElementById('jgm-type-at-label');
+  if (labelJysep) {
+    labelJysep.style.borderColor = isAT ? 'rgba(255,255,255,.12)' : 'var(--lavender)';
+    labelJysep.style.background  = isAT ? 'transparent' : 'rgba(139,92,246,.1)';
+  }
+  if (labelAT) {
+    labelAT.style.borderColor = isAT ? 'var(--ya-orange)' : 'rgba(255,255,255,.12)';
+    labelAT.style.background  = isAT ? 'rgba(232,98,10,.1)' : 'transparent';
+  }
+  // Hide book selector for Animator Training groups (they don't use JYSEP booklets)
+  var bookRow = document.getElementById('jgm-book') && document.getElementById('jgm-book').closest('div[class=""]') || null;
+  // Find the book row by its label sibling
+  var bookWrap = document.getElementById('jgm-book') ? document.getElementById('jgm-book').parentElement : null;
+  if (bookWrap) bookWrap.style.display = isAT ? 'none' : '';
+}
+
 async function saveJysepGroupModal() {
   var fb  = document.getElementById('jgm-feedback');
   var btn = document.getElementById('jgm-save-btn');
@@ -8137,6 +8438,8 @@ async function saveJysepGroupModal() {
   var time      = (document.getElementById('jgm-time').value || '10:00 AM – 12:00 PM').trim();
   var location  = (document.getElementById('jgm-location').value || 'Youth Airdrie').trim();
   var notes     = (document.getElementById('jgm-notes').value || '').trim();
+  var radioAT   = document.getElementById('jgm-type-animator_training');
+  var subtype   = (radioAT && radioAT.checked) ? 'animator_training' : 'jysep';
 
   // jgm-start and jgm-end are type=date → value is "YYYY-MM-DD" or "".
   var startISO = (document.getElementById('jgm-start').value || '').trim();
@@ -8186,9 +8489,10 @@ async function saveJysepGroupModal() {
     group_day:        day,
     group_location:   location,
     group_notes:      notes,
-    group_start:      startD,   // stored as "Jan 10, 2026" — exact format buildWeeklyDates expects
+    group_start:      startD,
     group_end:        endD,
-    group_archived:   existingArchived
+    group_archived:   existingArchived,
+    group_subtype:    subtype
   };
 
   // Use return=representation so Supabase sends back the actual saved row.
@@ -8253,6 +8557,8 @@ async function saveJysepGroupModal() {
       adult_volunteers: {},
       youth_participants: {},
       adult_participants: {},
+      adult_trainees: {},
+      youth_helper_participants: {},
       color: 'var(--lavender)', program_type: 'jysep', animator_label: 'Animator'
     };
   }
@@ -8264,10 +8570,12 @@ async function saveJysepGroupModal() {
   prog.day             = confirmedDay;
   prog.location        = confirmedLoc;
   prog.group_notes     = (savedRow && savedRow.group_notes !== undefined) ? savedRow.group_notes : notes;
-  prog.group_start     = confirmedStart;   // authoritative scalar — used by openEditJysepGroupModal
-  prog.group_end       = confirmedEnd;     // authoritative scalar
-  prog.dates           = confirmedDates;   // freshly generated from confirmed DB values
+  prog.group_start     = confirmedStart;
+  prog.group_end       = confirmedEnd;
+  prog.dates           = confirmedDates;
   prog.season          = 'Year-round';
+  prog.group_subtype   = (savedRow && savedRow.group_subtype) ? savedRow.group_subtype : subtype;
+  prog.adult_trainees  = prog.adult_trainees || {};
 
   // ── Show confirmed result and refresh all affected UI ────────────────────────
   fb.style.color='var(--ya-teal)';
@@ -8290,14 +8598,24 @@ function renderJysepStatCards() {
   var gids = getJysepGroupIds();
   var totalGroups = gids.length;
   var totalSessions = 0, totalEnrolled = 0, totalYouthAtt = 0, totalAnimHrs = 0;
+  var totalATGroups = 0, totalTrainees = 0;
   var animSet = new Set();
   gids.forEach(function(gid) {
     var p = PROGRAMS_DATA[gid]; if (!p) return;
+    var isAT = p.group_subtype === 'animator_training';
     var pastDates = getActiveProgramSessions(gid);
     totalSessions += pastDates.length;
     var enrolled = Object.keys(p.youth_participants || {});
-    totalEnrolled += enrolled.length;
-    enrolled.forEach(function(name) {
+    var adultTrainees = Object.keys(p.adult_trainees || {});
+    if (isAT) {
+      totalATGroups++;
+      totalTrainees += enrolled.length + adultTrainees.length;
+    } else {
+      totalEnrolled += enrolled.length;
+    }
+    // Youth attendance (for regular groups = participants; for AT = trainees)
+    var allTrackable = enrolled.concat(adultTrainees.filter(function(n){ return enrolled.indexOf(n)<0; }));
+    allTrackable.forEach(function(name) {
       pastDates.forEach(function(d){ var r = jysepAttRow(p, d, name); if (r && r.attended) totalYouthAtt++; });
     });
     var ps = calcProgramStats()[gid] || {};
@@ -8309,12 +8627,13 @@ function renderJysepStatCards() {
       (p.attendance[d]||[]).forEach(function(r){ if(r.type==='adult'&&r.attended&&r.name!=='_adult_enrolled') animSet.add(r.name); });
     });
   });
+  var atLabel = totalATGroups > 0 ? ' <span style="font-size:.6rem;color:var(--ya-orange);background:rgba(232,98,10,.12);border-radius:4px;padding:1px 5px">incl. '+totalATGroups+' AT</span>' : '';
   statsEl.innerHTML =
-    '<div class="stat-card" style="--accent-color:var(--lavender)"><div class="stat-label">Active Groups</div><div class="stat-value">'+totalGroups+'</div><div class="stat-meta">JYSEP cohorts</div><div class="stat-icon">✨</div></div>'+
-    '<div class="stat-card" style="--accent-color:var(--ya-teal)"><div class="stat-label">Enrolled Youth</div><div class="stat-value">'+totalEnrolled+'</div><div class="stat-meta">across all groups</div><div class="stat-icon">👥</div></div>'+
+    '<div class="stat-card" style="--accent-color:var(--lavender)"><div class="stat-label">Active Groups</div><div class="stat-value">'+totalGroups+'</div><div class="stat-meta">JYSEP cohorts'+atLabel+'</div><div class="stat-icon">✨</div></div>'+
+    '<div class="stat-card" style="--accent-color:var(--ya-teal)"><div class="stat-label">Enrolled Youth</div><div class="stat-value">'+totalEnrolled+'</div><div class="stat-meta">regular JYSEP groups'+(totalATGroups?' · '+totalTrainees+' trainees in AT':'')+'</div><div class="stat-icon">👥</div></div>'+
     '<div class="stat-card" style="--accent-color:var(--ya-blue)"><div class="stat-label">Sessions Held</div><div class="stat-value">'+totalSessions+'</div><div class="stat-meta">total this year</div><div class="stat-icon">✅</div></div>'+
-    '<div class="stat-card" style="--accent-color:var(--ya-orange)"><div class="stat-label">Youth Attendances</div><div class="stat-value">'+totalYouthAtt+'</div><div class="stat-meta">all groups combined</div><div class="stat-icon">📋</div></div>'+
-    '<div class="stat-card" style="--accent-color:var(--ya-gold)"><div class="stat-label">Animator Hours</div><div class="stat-value">'+Math.round(totalAnimHrs)+'</div><div class="stat-meta">'+animSet.size+' animators</div><div class="stat-icon">⏱</div></div>';
+    '<div class="stat-card" style="--accent-color:var(--ya-orange)"><div class="stat-label">Attendances</div><div class="stat-value">'+totalYouthAtt+'</div><div class="stat-meta">all groups combined</div><div class="stat-icon">📋</div></div>'+
+    '<div class="stat-card" style="--accent-color:var(--ya-gold)"><div class="stat-label">Animator/Trainer Hrs</div><div class="stat-value">'+Math.round(totalAnimHrs)+'</div><div class="stat-meta">'+animSet.size+' animators/trainers</div><div class="stat-icon">⏱</div></div>';
 }
 
 // ── Main JYSEP admin render ───────────────────────────────────────────────────
@@ -13453,6 +13772,7 @@ async function initDB() {
     alter table program_settings add column if not exists group_start      text;
     alter table program_settings add column if not exists group_end        text;
     alter table program_settings add column if not exists group_archived   boolean not null default false;
+    alter table program_settings add column if not exists group_subtype    text not null default 'jysep';
     alter table program_volunteers add column if not exists hours numeric default 2;
     -- ── JY Service Projects (v14) ──
     create table if not exists service_projects (
@@ -14919,7 +15239,9 @@ async function loadAllJysepData() {
           group_book_end:   s.group_book_end   || '',
           group_age_range:  s.group_age_range  || 'Ages 10–14',
           group_notes:      s.group_notes      || '',
-          group_archived:   s.group_archived === true || s.group_archived === 'true'
+          group_archived:   s.group_archived === true || s.group_archived === 'true',
+          group_subtype:    s.group_subtype    || 'jysep',
+          adult_trainees:   {}
         };
         console.log('[loadAllJysepData] NEW group created:', gid,
           '| dates:', dates.length, dates[0], '→', dates[dates.length-1]);
@@ -14934,6 +15256,7 @@ async function loadAllJysepData() {
         p.group_age_range= s.group_age_range || p.group_age_range || 'Ages 10–14';
         p.group_notes    = (s.group_notes    !== undefined && s.group_notes    !== null) ? s.group_notes    : (p.group_notes    || '');
         p.group_archived = (s.group_archived === true || s.group_archived === 'true');
+        p.group_subtype  = s.group_subtype   || p.group_subtype || 'jysep';
         p.time           = s.group_time     || p.time     || '10:00 AM – 12:00 PM';
         p.location       = s.group_location || p.location || 'Youth Airdrie';
         p.day            = s.group_day      || p.day      || 'Saturday';
@@ -14983,6 +15306,7 @@ async function loadSingleJysepGroup(gid) {
   prog.youth_participants      = {};   // reset so removed enrollments don't ghost
   prog.adult_participants      = {};
   prog.youth_helper_participants = {}; // youth animators/facilitators enrolled as helpers
+  prog.adult_trainees          = {};   // adult trainees in Animator Training groups
 
   // ── Reset cancellations for this group before loading from DB ──────────────
   // This prevents any stale in-memory state from the JS seed or a previous
@@ -15048,6 +15372,12 @@ async function loadSingleJysepGroup(gid) {
         prog.youth_helper_participants = prog.youth_helper_participants || {};
         if (!prog.youth_helper_participants[row.participant_name])
           prog.youth_helper_participants[row.participant_name] = row.participant_type;
+        return;
+      }
+      // Adult trainee enrollment sentinel (Animator Training groups)
+      if (row.session_date === '_trainee_enrolled' && row.participant_type === 'adult_trainee') {
+        prog.adult_trainees = prog.adult_trainees || {};
+        if (!prog.adult_trainees[row.participant_name]) prog.adult_trainees[row.participant_name] = true;
         return;
       }
       prog.attendance[row.session_date] = prog.attendance[row.session_date] || [];

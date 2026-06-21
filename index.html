@@ -3196,8 +3196,22 @@ function renderVolunteerHistoryYouth(containerId, personName){
   // Completed events: show hours if admin-recorded (status=completed + in bucket)
   EVENTS_DATA.forEach(function(ev){
     if(ev.status!=='completed') return;
-    var hrs = _evGetPersonHours(ev, personName, 'youth');
-    pastEvents.push({name:ev.name,date:ev.date,host:ev.host||'Youth Airdrie',hrs:hrs,id:ev.id,verified:hrs>0});
+    // For multi-slot events, compute total and gather per-slot breakdown
+    var slots = ev.timeslots && ev.timeslots.length ? ev.timeslots : null;
+    var slotBreakdown = [];
+    var totalHrs = 0;
+    if(slots && ev._slotYouth){
+      slots.forEach(function(slot){
+        var slotMap = ev._slotYouth[slot.id] || {};
+        if(slotMap[personName]){
+          var h = slotMap[personName];
+          totalHrs += h;
+          slotBreakdown.push({ label: slot.label, time: slot.time||'', hours: h });
+        }
+      });
+    }
+    if(!totalHrs) totalHrs = _evGetPersonHours(ev, personName, 'youth');
+    pastEvents.push({name:ev.name,date:ev.date,host:ev.host||'Youth Airdrie',hrs:totalHrs,id:ev.id,verified:totalHrs>0,slotBreakdown:slotBreakdown});
   });
 
   // Upcoming events (all_youth eligible, truly in the future)
@@ -3227,10 +3241,18 @@ function renderVolunteerHistoryYouth(containerId, personName){
     html2+=pastEvents.map(function(e){
       var pill=e.verified?'<span class="pill pill-green">+'+e.hrs+' hrs ✔</span>':
         '<span class="pill pill-grey" style="font-size:.7rem">No hours recorded</span>';
-      return '<div class="activity-item" style="flex-wrap:wrap;align-items:center">'+
-        '<div class="activity-dot" style="background:'+(e.verified?'var(--ya-teal)':'rgba(255,255,255,.15)')+'"></div>'+
+      var slotDetail = '';
+      if(e.slotBreakdown && e.slotBreakdown.length > 1){
+        slotDetail = '<div style="margin-top:4px;display:flex;flex-wrap:wrap;gap:4px">'+
+          e.slotBreakdown.map(function(s){
+            return '<span style="font-size:.69rem;background:rgba(0,181,160,.1);border:1px solid rgba(0,181,160,.25);border-radius:5px;padding:1px 7px;color:var(--ya-teal)">'+
+              s.label+(s.time?' · '+s.time:'')+' · +'+s.hours+'h</span>';
+          }).join('')+'</div>';
+      }
+      return '<div class="activity-item" style="flex-wrap:wrap;align-items:flex-start">'+
+        '<div class="activity-dot" style="background:'+(e.verified?'var(--ya-teal)':'rgba(255,255,255,.15)')+';margin-top:3px"></div>'+
         '<div style="flex:1;min-width:0"><div class="activity-name">'+e.name+'</div>'+
-        '<div class="activity-meta">'+e.host+' · '+e.date+'</div></div>'+
+        '<div class="activity-meta">'+e.host+' · '+e.date+'</div>'+slotDetail+'</div>'+
         pill+'</div>';
     }).join('');
   } else {
@@ -3434,19 +3456,37 @@ function renderAdult(){
       });
       if(sessCount>0) rows.push({label:prog.name+' ('+sessCount+' sessions)',date:'2026',hrs:sessCount*2,color:'var(--ya-green)'});
     });
-    // Completed events
+    // Completed events — multi-slot events show per-slot breakdown
     EVENTS_DATA.forEach(function(ev){
       if(ev.status!=='completed') return;
-      var hrs = _evGetPersonHours(ev, prof.name, 'adult');
-      if(hrs>0) rows.push({label:'Event: '+ev.name,date:ev.date,hrs:hrs,color:'var(--ya-teal)'});
+      var slots = ev.timeslots && ev.timeslots.length ? ev.timeslots : null;
+      var totalHrs = 0;
+      var slotBreakdown = [];
+      if(slots && ev._slotAdult){
+        slots.forEach(function(slot){
+          var slotMap = ev._slotAdult[slot.id] || {};
+          var h = slotMap[prof.name] || 0;
+          if(h){ totalHrs += h; slotBreakdown.push({ label: slot.label, time: slot.time||'', hours: h }); }
+        });
+      }
+      if(!totalHrs) totalHrs = _evGetPersonHours(ev, prof.name, 'adult');
+      if(totalHrs > 0) rows.push({label:'Event: '+ev.name,date:ev.date,hrs:totalHrs,color:'var(--ya-teal)',slotBreakdown:slotBreakdown});
     });
     if(rows.length===0){
       volHist.innerHTML='<div style="color:var(--text-muted);font-size:.83rem">No volunteer hours recorded yet. Hours are recorded by the admin after each activity.</div>';
     } else {
       var total=rows.reduce(function(s,r){return s+r.hrs;},0);
       volHist.innerHTML=rows.map(function(r){
-        return '<div class="activity-item"><div class="activity-dot" style="background:'+r.color+'"></div>'+
-          '<div style="flex:1"><div class="activity-name">'+r.label+'</div><div class="activity-meta">'+r.date+'</div></div>'+
+        var slotDetail = '';
+        if(r.slotBreakdown && r.slotBreakdown.length > 1){
+          slotDetail = '<div style="margin-top:3px;display:flex;flex-wrap:wrap;gap:3px">'+
+            r.slotBreakdown.map(function(s){
+              return '<span style="font-size:.68rem;background:rgba(0,181,160,.1);border:1px solid rgba(0,181,160,.2);border-radius:5px;padding:1px 6px;color:var(--ya-teal)">'+
+                s.label+(s.time?' · '+s.time:'')+' · +'+s.hours+'h</span>';
+            }).join('')+'</div>';
+        }
+        return '<div class="activity-item" style="align-items:flex-start"><div class="activity-dot" style="background:'+r.color+';margin-top:3px"></div>'+
+          '<div style="flex:1"><div class="activity-name">'+r.label+'</div><div class="activity-meta">'+r.date+'</div>'+slotDetail+'</div>'+
           '<span class="pill pill-teal">'+r.hrs+' hrs</span></div>';
       }).join('')+
       '<div style="border-top:1px solid rgba(255,255,255,.08);margin-top:10px;padding-top:10px;display:flex;justify-content:space-between;font-size:.82rem">'+
@@ -5708,12 +5748,20 @@ function renderVolunteerHistory(containerId, personName){
   // Build past event log from status:'completed' events (admin-verified hours)
   EVENTS_DATA.forEach(function(ev){
     if(ev.status!=='completed') return;
-    var hrs = _evGetPersonHours(ev, personName, 'youth');
+    var slots = ev.timeslots && ev.timeslots.length ? ev.timeslots : null;
+    var totalHrs = 0, slotBreakdown = [];
+    if(slots && ev._slotYouth){
+      slots.forEach(function(slot){
+        var h = (ev._slotYouth[slot.id]||{})[personName] || 0;
+        if(h){ totalHrs += h; slotBreakdown.push({label:slot.label,time:slot.time||'',hours:h}); }
+      });
+    }
+    if(!totalHrs) totalHrs = _evGetPersonHours(ev, personName, 'youth');
     // Always show completed events in past section (with edit option if no hours)
     var hasPending = PENDING_ENTRIES.some(function(e){
       return e.youth_name===personName && e.type==='event_hours' && e.session_date===ev.date && e.status==='pending';
     });
-    pastEvents.push({name:ev.name,date:ev.date,host:ev.host||'Youth Airdrie',hrs:hrs,id:ev.id,verified:hrs>0,hasPending:hasPending,editable:true,eligibleHrs:ev.hours_on_completion||hrs||2});
+    pastEvents.push({name:ev.name,date:ev.date,host:ev.host||'Youth Airdrie',hrs:totalHrs,id:ev.id,verified:totalHrs>0,hasPending:hasPending,editable:true,eligibleHrs:ev.hours_on_completion||totalHrs||2,slotBreakdown:slotBreakdown});
   });
 
   // Build upcoming events — split into truly upcoming vs past-dated
@@ -5771,11 +5819,19 @@ function renderVolunteerHistory(containerId, personName){
           '<button class="ws-btn" data-eid="'+e.id+'" data-pname="'+personName+'" data-hrs="'+e.eligibleHrs+'" data-evname="'+e.name+'" onclick="logEventHours(this)" style="flex-shrink:0;border-color:var(--ya-teal);color:var(--ya-teal)">'+
             '&#128338; Log hours</button>';
       }
-      return '<div class="activity-item" style="flex-wrap:wrap;align-items:center">'+
-        '<div class="activity-dot" style="background:'+(e.verified?'var(--ya-teal)':e.hasPending?'var(--ya-gold)':'var(--ya-orange)')+'"></div>'+
+      var slotChips = (e.slotBreakdown && e.slotBreakdown.length > 1)
+        ? '<div style="margin-top:4px;display:flex;flex-wrap:wrap;gap:4px">'+
+            e.slotBreakdown.map(function(s){
+              return '<span style="font-size:.68rem;background:rgba(0,181,160,.1);border:1px solid rgba(0,181,160,.25);border-radius:5px;padding:1px 6px;color:var(--ya-teal)">'+
+                s.label+(s.time?' · '+s.time:'')+' · +'+s.hours+'h</span>';
+            }).join('')+'</div>'
+        : '';
+      return '<div class="activity-item" style="flex-wrap:wrap;align-items:flex-start">'+
+        '<div class="activity-dot" style="background:'+(e.verified?'var(--ya-teal)':e.hasPending?'var(--ya-gold)':'var(--ya-orange)')+';margin-top:3px"></div>'+
         '<div style="flex:1;min-width:0">'+
           '<div class="activity-name">'+e.name+'</div>'+
           '<div class="activity-meta">'+e.host+' · '+e.date+'</div>'+
+          slotChips+
         '</div>'+
         rightSide+
         '</div>';
@@ -10462,10 +10518,19 @@ function renderAdultEventHistory(name){
     rows.push({type:'scrabble',name:'Scrabble & Games Club',date:'2026 ('+sessionCount+' sessions)',hrs:scrTotal,color:'var(--ya-gold)'});
   }
 
-  // Events (all completed buckets 1–8h)
+  // Events (all completed buckets 1–8h, multi-slot aware)
   EVENTS_DATA.forEach(function(ev){
-    var hrs = _evGetPersonHours(ev, name, 'adult');
-    if(hrs>0) rows.push({type:'event',name:ev.name,date:ev.date,hrs:hrs,color:'var(--ya-teal)'});
+    if(ev.status !== 'completed') return;
+    var slots = ev.timeslots && ev.timeslots.length ? ev.timeslots : null;
+    var totalHrs = 0, slotBreakdown = [];
+    if(slots && ev._slotAdult){
+      slots.forEach(function(slot){
+        var h = (ev._slotAdult[slot.id]||{})[name] || 0;
+        if(h){ totalHrs += h; slotBreakdown.push({label:slot.label,time:slot.time||'',hours:h}); }
+      });
+    }
+    if(!totalHrs) totalHrs = _evGetPersonHours(ev, name, 'adult');
+    if(totalHrs>0) rows.push({type:'event',name:ev.name,date:ev.date,hrs:totalHrs,color:'var(--ya-teal)',slotBreakdown:slotBreakdown});
   });
 
   if(rows.length===0){
@@ -10475,10 +10540,17 @@ function renderAdultEventHistory(name){
 
   // Sort by date roughly (facilitation first, then events)
   el.innerHTML=rows.map(function(r){
-    return '<div class="activity-item">'+
-      '<div class="activity-dot" style="background:'+r.color+'"></div>'+
+    var slotChips = (r.slotBreakdown && r.slotBreakdown.length > 1)
+      ? '<div style="margin-top:3px;display:flex;flex-wrap:wrap;gap:3px">'+
+          r.slotBreakdown.map(function(s){
+            return '<span style="font-size:.68rem;background:rgba(0,181,160,.1);border:1px solid rgba(0,181,160,.2);border-radius:5px;padding:1px 6px;color:var(--ya-teal)">'+
+              s.label+(s.time?' · '+s.time:'')+' · +'+s.hours+'h</span>';
+          }).join('')+'</div>'
+      : '';
+    return '<div class="activity-item" style="align-items:flex-start">'+
+      '<div class="activity-dot" style="background:'+r.color+';margin-top:3px"></div>'+
       '<div style="flex:1"><div class="activity-name">'+r.name+'</div>'+
-      '<div class="activity-meta">'+r.date+'</div></div>'+
+      '<div class="activity-meta">'+r.date+'</div>'+slotChips+'</div>'+
       '<span class="pill pill-teal">'+r.hrs+' hrs</span>'+
       '</div>';
   }).join('');
@@ -13739,9 +13811,29 @@ async function initDB() {
     create table if not exists event_volunteers (
       id bigserial primary key, event_id text not null, name text not null,
       role text not null, hours integer not null,
+      timeslot_id text default null,
       updated_at timestamptz default now(),
-      unique(event_id, name)
+      unique(event_id, name, timeslot_id)
     );
+    -- Migration: add timeslot_id to existing event_volunteers tables
+    alter table event_volunteers add column if not exists timeslot_id text default null;
+    -- Drop the old (event_id, name) unique constraint if it exists and replace with
+    -- (event_id, name, timeslot_id) so one person can appear in multiple timeslots.
+    do $$ begin
+      if exists (
+        select 1 from pg_constraint
+        where conname = 'event_volunteers_event_id_name_key'
+          and conrelid = 'event_volunteers'::regclass
+      ) then
+        alter table event_volunteers drop constraint event_volunteers_event_id_name_key;
+        begin
+          alter table event_volunteers add constraint event_volunteers_event_id_name_timeslot_key
+            unique(event_id, name, timeslot_id);
+        exception when duplicate_table then null;
+        end;
+      end if;
+    end $$;
+    alter table event_volunteers disable row level security;
     create table if not exists event_status (
       event_id text primary key, status text not null default 'upcoming',
       closed_at timestamptz
@@ -14713,53 +14805,99 @@ async function loadEventRegistrations() {
 }
 
 async function loadEventVolunteers() {
-  const rows = await dbGet('event_volunteers', 'select=event_id,name,role,hours');
+  const rows = await dbGet('event_volunteers', 'select=event_id,name,role,hours,timeslot_id');
   if (!rows || rows.length === 0) return;
   // Clear volunteer buckets for ALL non-hardcoded events before repopulating.
-  // This ensures deleted volunteers don't linger from hardcoded defaults.
-  // For hardcoded completed events (Taste of Nations, Board Meeting), we only
-  // override if the DB actually has rows for them.
   var dbEventIds = new Set(rows.map(function(r){ return r.event_id; }));
   EVENTS_DATA.forEach(function(ev){
-    // Always clear DB-managed events; for hardcoded events only clear if DB has data
     if(dbEventIds.has(ev.id) || ev.status === 'upcoming'){
       ['1','2','3','4','5','6','7','8'].forEach(function(h){
         ev['youth_'+h+'hrs'] = [];
         ev['adult_'+h+'hrs'] = [];
       });
+      // Clear per-slot volunteer maps
+      ev._slotYouth = {}; // slotId -> { name: hours }
+      ev._slotAdult = {}; // slotId -> { name: hours }
     }
   });
   // Populate from DB rows — support any integer hours 1–8
+  // A person may appear in multiple rows (one per timeslot) for the same event.
+  // _Nhrs buckets accumulate totals; _slotYouth/_slotAdult track per-slot detail.
   var youthHrMap = {}, adultHrMap = {};
   rows.forEach(function(row){
     var ev = EVENTS_DATA.find(function(e){ return e.id === row.event_id; });
     if(!ev) return;
-    var h = Math.min(8, Math.max(1, Math.round(parseFloat(row.hours)||2)));
-    var key = row.role + '_' + h + 'hrs';
-    ev[key] = ev[key] || [];
-    if(ev[key].indexOf(row.name) < 0) ev[key].push(row.name);
-    // Accumulate hours per person
+    var hrs = parseFloat(row.hours) || 2;
+    var hBucket = Math.min(8, Math.max(1, Math.round(hrs)));
+    var slotId = row.timeslot_id || '__default__';
+
+    // Per-slot maps (used by editor and detail view)
     if(row.role === 'youth'){
-      youthHrMap[row.name] = (youthHrMap[row.name] || 0) + (parseFloat(row.hours)||0);
+      ev._slotYouth = ev._slotYouth || {};
+      ev._slotYouth[slotId] = ev._slotYouth[slotId] || {};
+      // If person already in slot (shouldn't happen), keep higher value
+      ev._slotYouth[slotId][row.name] = Math.max(
+        ev._slotYouth[slotId][row.name] || 0, hrs
+      );
     } else if(row.role === 'adult'){
-      adultHrMap[row.name] = (adultHrMap[row.name] || 0) + (parseFloat(row.hours)||0);
+      ev._slotAdult = ev._slotAdult || {};
+      ev._slotAdult[slotId] = ev._slotAdult[slotId] || {};
+      ev._slotAdult[slotId][row.name] = Math.max(
+        ev._slotAdult[slotId][row.name] || 0, hrs
+      );
+    }
+
+    // Bucket arrays: track per-person total hours across all slots.
+    // Clear any existing bucket entry for this name first (from prior slots)
+    // then re-insert at the correct accumulated total bucket.
+    if(row.role === 'youth'){
+      youthHrMap[row.name] = (youthHrMap[row.name] || 0) + hrs;
+    } else if(row.role === 'adult'){
+      adultHrMap[row.name] = (adultHrMap[row.name] || 0) + hrs;
     }
   });
-  // Sync YOUTH_HOURS from accumulated event hours (only raise, never lower)
-  Object.keys(youthHrMap).forEach(function(name){
-    if((youthHrMap[name] || 0) > (YOUTH_HOURS[name] || 0)){
-      YOUTH_HOURS[name] = youthHrMap[name];
-    }
-  });
-  // Sync FAC_PROFILES event volunteer hours
-  Object.keys(adultHrMap).forEach(function(name){
-    var profileKey = Object.keys(FAC_PROFILES).find(function(k){
-      return FAC_PROFILES[k].name === name;
+
+  // Now write totals into _Nhrs buckets (one entry per person, total across slots)
+  var writeIntoBucket = function(ev, role, name, totalHrs){
+    // Remove name from all buckets first
+    ['1','2','3','4','5','6','7','8'].forEach(function(h){
+      var k = role+'_'+h+'hrs';
+      var idx = (ev[k]||[]).indexOf(name);
+      if(idx>=0) ev[k].splice(idx,1);
     });
-    if(profileKey && adultHrMap[name] > 0){
-      // Merge event hours into profile — don't overwrite manually-tracked hours
-      FAC_PROFILES[profileKey]._eventHours = adultHrMap[name];
+    var hBucket = Math.min(8, Math.max(1, Math.round(totalHrs)));
+    var key = role+'_'+hBucket+'hrs';
+    ev[key] = ev[key] || [];
+    if(ev[key].indexOf(name)<0) ev[key].push(name);
+  };
+
+  // Re-process to build per-event per-person totals correctly
+  var evYouthTotals = {}, evAdultTotals = {};
+  rows.forEach(function(row){
+    var hrs = parseFloat(row.hours) || 2;
+    if(row.role === 'youth'){
+      evYouthTotals[row.event_id] = evYouthTotals[row.event_id] || {};
+      evYouthTotals[row.event_id][row.name] = (evYouthTotals[row.event_id][row.name]||0) + hrs;
+    } else if(row.role === 'adult'){
+      evAdultTotals[row.event_id] = evAdultTotals[row.event_id] || {};
+      evAdultTotals[row.event_id][row.name] = (evAdultTotals[row.event_id][row.name]||0) + hrs;
     }
+  });
+  EVENTS_DATA.forEach(function(ev){
+    var yt = evYouthTotals[ev.id] || {};
+    Object.keys(yt).forEach(function(n){ writeIntoBucket(ev,'youth',n,yt[n]); });
+    var at = evAdultTotals[ev.id] || {};
+    Object.keys(at).forEach(function(n){ writeIntoBucket(ev,'adult',n,at[n]); });
+  });
+
+  // Sync YOUTH_HOURS (only raise, never lower)
+  Object.keys(youthHrMap).forEach(function(name){
+    if(youthHrMap[name] > (YOUTH_HOURS[name] || 0)) YOUTH_HOURS[name] = youthHrMap[name];
+  });
+  // Sync FAC_PROFILES event hours
+  Object.keys(adultHrMap).forEach(function(name){
+    var profileKey = Object.keys(FAC_PROFILES).find(function(k){ return FAC_PROFILES[k].name === name; });
+    if(profileKey && adultHrMap[name] > 0) FAC_PROFILES[profileKey]._eventHours = adultHrMap[name];
   });
   console.log('Event volunteers loaded:', rows.length, 'rows');
 }
@@ -17125,17 +17263,53 @@ function renderEventsLog(){
     if(ev.type==='Meeting'){
       detail='<div style="margin-top:4px"><div style="font-size:.75rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Attendees</div>'+aAll.map(nameChip).join('')+'</div>';
     } else {
-      var youthCols='', adultCols='';
-      _evAllBuckets('youth').forEach(function(b){
-        if((ev[b]||[]).length){ var h=parseInt(b.replace(/\D/g,'')); youthCols+='<div style="margin-bottom:10px"><div style="font-size:.73rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px">Youth — '+h+' hr'+(h===1?'':'s')+' each</div>'+(ev[b]||[]).map(nameChip).join('')+'</div>'; }
-      });
-      _evAllBuckets('adult').forEach(function(b){
-        if((ev[b]||[]).length){ var h=parseInt(b.replace(/\D/g,'')); adultCols+='<div style="margin-bottom:10px"><div style="font-size:.73rem;font-weight:700;color:var(--ya-blue);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px">Adults — '+h+' hr'+(h===1?'':'s')+' each</div>'+(ev[b]||[]).map(function(n){return '<span class="pill pill-blue" style="margin:2px">'+n+'</span>';}).join('')+'</div>'; }
-      });
-      detail='<div class="two-col" style="margin-top:8px">'+
-        (youthCols||'<div style="color:var(--text-muted);font-size:.82rem">No youth volunteers recorded.</div>')+
-        (adultCols||'<div style="color:var(--text-muted);font-size:.82rem">No adult volunteers recorded.</div>')+
-      '</div>';
+      var slots = (ev.timeslots && ev.timeslots.length) ? ev.timeslots : null;
+      if(slots){
+        // Multi-slot: render each slot as a sub-section
+        detail = '<div style="margin-top:8px;display:grid;gap:14px">';
+        slots.forEach(function(slot){
+          var sid = slot.id;
+          var slotY = (ev._slotYouth && ev._slotYouth[sid]) ? ev._slotYouth[sid] : {};
+          var slotA = (ev._slotAdult && ev._slotAdult[sid]) ? ev._slotAdult[sid] : {};
+          var yNames = Object.keys(slotY);
+          var aNames = Object.keys(slotA);
+          if(!yNames.length && !aNames.length) return;
+          detail += '<div style="border:1px solid rgba(245,166,35,.18);border-radius:10px;padding:10px 12px;background:rgba(245,166,35,.04)">';
+          detail += '<div style="font-family:Nunito,sans-serif;font-size:.84rem;font-weight:800;color:var(--ya-gold);margin-bottom:6px">'+slot.label+(slot.time?' <span style="font-weight:400;color:var(--text-muted);font-size:.76rem">· '+slot.time+'</span>':'')+'</div>';
+          if(yNames.length){
+            detail += '<div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px">Youth</div>';
+            // Group by hours within slot
+            var yByHrs = {};
+            yNames.forEach(function(n){ var h=slotY[n]; yByHrs[h]=(yByHrs[h]||[]); yByHrs[h].push(n); });
+            Object.keys(yByHrs).sort().forEach(function(h){
+              detail += '<div style="margin-bottom:4px"><span style="font-size:.7rem;color:var(--text-muted)">'+h+' hr'+(parseInt(h)===1?'':'s')+': </span>'+yByHrs[h].map(nameChip).join('')+'</div>';
+            });
+          }
+          if(aNames.length){
+            detail += '<div style="font-size:.72rem;font-weight:700;color:var(--ya-blue);text-transform:uppercase;letter-spacing:.05em;margin:'+(yNames.length?'8px':'0')+' 0 5px">Adults</div>';
+            var aByHrs = {};
+            aNames.forEach(function(n){ var h=slotA[n]; aByHrs[h]=(aByHrs[h]||[]); aByHrs[h].push(n); });
+            Object.keys(aByHrs).sort().forEach(function(h){
+              detail += '<div style="margin-bottom:4px"><span style="font-size:.7rem;color:var(--text-muted)">'+h+' hr'+(parseInt(h)===1?'':'s')+': </span>'+aByHrs[h].map(function(n){return '<span class="pill pill-blue" style="margin:2px">'+n+'</span>';}).join('')+'</div>';
+            });
+          }
+          detail += '</div>';
+        });
+        detail += '</div>';
+      } else {
+        // Single-slot: original grouped-by-hours view
+        var youthCols='', adultCols='';
+        _evAllBuckets('youth').forEach(function(b){
+          if((ev[b]||[]).length){ var h=parseInt(b.replace(/\D/g,'')); youthCols+='<div style="margin-bottom:10px"><div style="font-size:.73rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px">Youth — '+h+' hr'+(h===1?'':'s')+' each</div>'+(ev[b]||[]).map(nameChip).join('')+'</div>'; }
+        });
+        _evAllBuckets('adult').forEach(function(b){
+          if((ev[b]||[]).length){ var h=parseInt(b.replace(/\D/g,'')); adultCols+='<div style="margin-bottom:10px"><div style="font-size:.73rem;font-weight:700;color:var(--ya-blue);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px">Adults — '+h+' hr'+(h===1?'':'s')+' each</div>'+(ev[b]||[]).map(function(n){return '<span class="pill pill-blue" style="margin:2px">'+n+'</span>';}).join('')+'</div>'; }
+        });
+        detail='<div class="two-col" style="margin-top:8px">'+
+          (youthCols||'<div style="color:var(--text-muted);font-size:.82rem">No youth volunteers recorded.</div>')+
+          (adultCols||'<div style="color:var(--text-muted);font-size:.82rem">No adult volunteers recorded.</div>')+
+        '</div>';
+      }
     }
 
     return '<div class="section-box" style="margin-bottom:12px">'+
@@ -17209,8 +17383,17 @@ async function loadEventStatus(){
     if(!meta || !meta.id) return;
     var ev = EVENTS_DATA.find(function(e){ return e.id === meta.id; });
     if(ev){
-      // Update status of existing hardcoded event
+      // Update existing event with all persisted meta (including timeslots)
       ev.status = meta.status || ev.status;
+      if(meta.name)  ev.name  = meta.name;
+      if(meta.host)  ev.host  = meta.host;
+      if(meta.date)  ev.date  = meta.date;
+      if(meta.time)  ev.time  = meta.time;
+      ev.location = meta.location || ev.location;
+      if(meta.type)  ev.type  = meta.type;
+      if(meta.hours_on_completion) ev.hours_on_completion = meta.hours_on_completion;
+      ev.public = meta.public !== false;
+      ev.timeslots = meta.timeslots || [];
     } else if(meta.name && meta.date){
       // Reconstruct a user-created event
       EVENTS_DATA.push({
@@ -17225,6 +17408,7 @@ async function loadEventStatus(){
         eligible: 'all_youth',
         hours_on_completion: meta.hours_on_completion || 4,
         public: meta.public !== false,
+        timeslots: meta.timeslots || [],
         youth_registered: [],
         youth_1hrs:[], youth_2hrs:[], youth_3hrs:[], youth_4hrs:[], youth_5hrs:[], youth_6hrs:[], youth_7hrs:[], youth_8hrs:[],
         adult_1hrs:[], adult_2hrs:[], adult_3hrs:[], adult_4hrs:[], adult_5hrs:[], adult_6hrs:[], adult_7hrs:[], adult_8hrs:[]
@@ -18667,56 +18851,23 @@ function toggleAdminVolunteerView(){
 </div>
 
 <div id="event-editor-modal" style="display:none;position:fixed;inset:0;z-index:2000;background:rgba(0,0,0,.75);backdrop-filter:blur(4px);overflow-y:auto;padding:20px">
-  <div style="max-width:680px;margin:0 auto;background:var(--card-bg);border-radius:20px;border:1px solid var(--card-border);padding:28px;position:relative">
+  <div style="max-width:720px;margin:0 auto;background:var(--card-bg);border-radius:20px;border:1px solid var(--card-border);padding:28px;position:relative">
     <button onclick="closeEventEditor()" style="position:absolute;top:14px;right:14px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);border-radius:8px;padding:5px 13px;color:var(--text-muted);cursor:pointer;font-family:DM Sans,sans-serif;font-size:.85rem">✕ Close</button>
     <div id="event-editor-title" style="font-family:Nunito,sans-serif;font-size:1.2rem;font-weight:900;margin-bottom:4px"></div>
     <div id="event-editor-sub" style="font-size:.8rem;color:var(--text-muted);margin-bottom:4px"></div>
     <div id="event-editor-default-hrs-note" style="font-size:.75rem;color:var(--ya-gold);margin-bottom:14px"></div>
     <div class="ya-stripe" style="margin-bottom:18px"></div>
 
-    <!-- Youth volunteers -->
-    <div style="font-family:Nunito,sans-serif;font-weight:800;font-size:.9rem;color:var(--ya-teal);margin-bottom:10px">🧑 Youth Volunteers</div>
-    <div id="event-editor-youth" style="display:grid;gap:6px;margin-bottom:18px"></div>
-    <!-- Add youth -->
-    <div style="display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap">
-      <select id="ev-add-youth-name" style="flex:1;min-width:160px;padding:7px 10px;border-radius:8px;border:1px solid var(--card-border);background:#0f1c2e;color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem">
-        <option value="">— Select youth —</option>
-      </select>
-      <select id="ev-add-youth-hrs" style="width:100px;padding:7px 10px;border-radius:8px;border:1px solid var(--card-border);background:#0f1c2e;color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem">
-        <option value="1">1 hr</option>
-        <option value="2">2 hrs</option>
-        <option value="3">3 hrs</option>
-        <option value="4">4 hrs</option>
-        <option value="5">5 hrs</option>
-        <option value="6">6 hrs</option>
-        <option value="7">7 hrs</option>
-        <option value="8">8 hrs</option>
-      </select>
-      <button onclick="evEditorAddYouth()" style="padding:7px 16px;border-radius:8px;border:none;background:var(--ya-teal);color:#fff;font-family:Nunito,sans-serif;font-weight:800;font-size:.85rem;cursor:pointer">+ Add</button>
+    <!-- Slot tabs (hidden when single-slot) -->
+    <div id="ev-slot-tabs-wrap" style="display:none;margin-bottom:18px">
+      <div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Timeslot</div>
+      <div id="ev-slot-tabs" style="display:flex;flex-wrap:wrap;gap:6px"></div>
     </div>
 
-    <!-- Adult volunteers -->
-    <div style="font-family:Nunito,sans-serif;font-weight:800;font-size:.9rem;color:var(--ya-blue);margin-bottom:10px">👩‍💼 Adult Volunteers</div>
-    <div id="event-editor-adult" style="display:grid;gap:6px;margin-bottom:18px"></div>
-    <!-- Add adult -->
-    <div style="display:flex;gap:8px;margin-bottom:24px;flex-wrap:wrap">
-      <select id="ev-add-adult-name" style="flex:1;min-width:160px;padding:7px 10px;border-radius:8px;border:1px solid var(--card-border);background:#0f1c2e;color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem">
-        <option value="">— Select adult —</option>
-      </select>
-      <select id="ev-add-adult-hrs" style="width:100px;padding:7px 10px;border-radius:8px;border:1px solid var(--card-border);background:#0f1c2e;color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem">
-        <option value="1">1 hr</option>
-        <option value="2">2 hrs</option>
-        <option value="3">3 hrs</option>
-        <option value="4">4 hrs</option>
-        <option value="5">5 hrs</option>
-        <option value="6">6 hrs</option>
-        <option value="7">7 hrs</option>
-        <option value="8">8 hrs</option>
-      </select>
-      <button onclick="evEditorAddAdult()" style="padding:7px 16px;border-radius:8px;border:none;background:var(--ya-blue);color:#fff;font-family:Nunito,sans-serif;font-weight:800;font-size:.85rem;cursor:pointer">+ Add</button>
-    </div>
+    <!-- Per-slot volunteer section (rendered dynamically) -->
+    <div id="ev-slot-section"></div>
 
-    <div style="display:flex;gap:10px;justify-content:flex-end">
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:6px">
       <button onclick="closeEventEditor()" style="padding:10px 20px;border-radius:10px;border:1px solid var(--card-border);background:transparent;color:var(--text-muted);font-family:DM Sans,sans-serif;cursor:pointer">Cancel</button>
       <button onclick="saveEventEditor()" style="padding:10px 24px;border-radius:10px;border:none;background:linear-gradient(135deg,var(--ya-orange),#c94a00);color:#fff;font-family:Nunito,sans-serif;font-weight:800;cursor:pointer">💾 Save Changes</button>
     </div>
@@ -18724,10 +18875,18 @@ function toggleAdminVolunteerView(){
 </div>
 
 <script>
-var _evEditorId = null;
-// Per-volunteer hours store: { name: hours } for youth and adult separately
-var _evEditorYouthHrs = {}; // name -> hours (number)
-var _evEditorAdultHrs = {}; // name -> hours (number)
+// ══════════════════════════════════════════════════════════════════════════════
+// EVENT EDITOR — timeslot-aware volunteer management
+// ══════════════════════════════════════════════════════════════════════════════
+// State
+var _evEditorId      = null;
+var _evEditorSlots   = []; // copy of ev.timeslots (may be empty = single default slot)
+var _evEditorActive  = '__default__'; // id of currently selected slot
+// Per-slot, per-role volunteer maps: { slotId: { name: hours } }
+var _evEditorYouthHrs = {}; // slotId -> { name: hours }
+var _evEditorAdultHrs = {}; // slotId -> { name: hours }
+
+// ── Helpers ─────────────────────────────────────────────────────────────────
 
 // Build a 1–8 hours <select> HTML string, pre-selecting the given value
 function _evHrsSelect(onChange, currentHrs) {
@@ -18737,175 +18896,291 @@ function _evHrsSelect(onChange, currentHrs) {
   return '<select onchange="'+onChange+'" style="width:80px;padding:3px 6px;border-radius:6px;border:1px solid var(--card-border);background:#0f1c2e;color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.78rem">'+opts+'</select>';
 }
 
+function _evActiveSlot(){
+  if(!_evEditorSlots.length) return { id:'__default__', label:'Default', time:'', hours: 4 };
+  return _evEditorSlots.find(function(s){ return s.id===_evEditorActive; }) || _evEditorSlots[0];
+}
+
+function _evSlotDefaultHrs(){
+  var slot = _evActiveSlot();
+  var ev   = EVENTS_DATA.find(function(e){ return e.id===_evEditorId; });
+  return slot.hours || (ev && ev.hours_on_completion) || 4;
+}
+
+// ── Open ─────────────────────────────────────────────────────────────────────
+
 function openEventEditor(eventId){
   var ev = EVENTS_DATA.find(function(e){ return e.id===eventId; });
   if(!ev) return;
-  _evEditorId = eventId;
-
-  // Rebuild per-volunteer maps from current event buckets
+  _evEditorId     = eventId;
+  _evEditorSlots  = (ev.timeslots || []).map(function(s){
+    return { id:s.id, label:s.label, time:s.time||'', hours:s.hours||4 };
+  });
+  _evEditorActive = _evEditorSlots.length ? _evEditorSlots[0].id : '__default__';
   _evEditorYouthHrs = {};
   _evEditorAdultHrs = {};
-  ['1','2','3','4','5','6','7','8'].forEach(function(h){
-    (ev['youth_'+h+'hrs']||[]).forEach(function(n){ _evEditorYouthHrs[n] = parseInt(h); });
-    (ev['adult_'+h+'hrs']||[]).forEach(function(n){ _evEditorAdultHrs[n] = parseInt(h); });
-  });
 
+  // Load existing per-slot volunteer data from ev._slotYouth / ev._slotAdult
+  // (populated by loadEventVolunteers). Fall back to bucket arrays for
+  // single-slot / legacy events.
+  var hasSlotData = ev._slotYouth && Object.keys(ev._slotYouth).length;
+  if(hasSlotData){
+    // Copy slot maps
+    Object.keys(ev._slotYouth||{}).forEach(function(sid){
+      _evEditorYouthHrs[sid] = Object.assign({}, ev._slotYouth[sid]);
+    });
+    Object.keys(ev._slotAdult||{}).forEach(function(sid){
+      _evEditorAdultHrs[sid] = Object.assign({}, ev._slotAdult[sid]);
+    });
+  } else {
+    // Legacy single-slot: read from _Nhrs buckets
+    var yMap = {}, aMap = {};
+    ['1','2','3','4','5','6','7','8'].forEach(function(h){
+      (ev['youth_'+h+'hrs']||[]).forEach(function(n){ yMap[n] = parseInt(h); });
+      (ev['adult_'+h+'hrs']||[]).forEach(function(n){ aMap[n] = parseInt(h); });
+    });
+    if(Object.keys(yMap).length || Object.keys(aMap).length){
+      _evEditorYouthHrs['__default__'] = yMap;
+      _evEditorAdultHrs['__default__'] = aMap;
+    }
+  }
+
+  // Header
   document.getElementById('event-editor-title').textContent = ev.name;
-  document.getElementById('event-editor-sub').textContent = ev.date + (ev.time&&ev.time!=='—' ? ' · '+ev.time : '') + (ev.location ? ' · '+ev.location : '');
+  document.getElementById('event-editor-sub').textContent =
+    ev.date + (ev.time&&ev.time!=='—' ? ' · '+ev.time : '') + (ev.location ? ' · '+ev.location : '');
   var defHrs = ev.hours_on_completion || 4;
-  document.getElementById('event-editor-default-hrs-note').textContent = '⏱ Default hours per volunteer: ' + defHrs + 'h  (change individually below)';
+  document.getElementById('event-editor-default-hrs-note').textContent =
+    '⏱ Default hours per volunteer: ' + defHrs + 'h  (override per volunteer or per slot below)';
 
-  // Set add-dropdowns to default hours, clamped to 1–8
-  var clampedDef = Math.min(8, Math.max(1, defHrs));
-  var yhs = document.getElementById('ev-add-youth-hrs');
-  var ahs = document.getElementById('ev-add-adult-hrs');
-  if(yhs) yhs.value = String(clampedDef);
-  if(ahs) ahs.value = String(clampedDef);
-
-  // Populate youth dropdown
-  var ysel = document.getElementById('ev-add-youth-name');
-  ysel.innerHTML = '<option value="">— Select youth —</option>';
-  ALL_YOUTH_NAMES.forEach(function(n){
-    ysel.innerHTML += '<option value="'+n+'">'+n+'</option>';
-  });
-
-  // Populate adult dropdown
-  var asel = document.getElementById('ev-add-adult-name');
-  asel.innerHTML = '<option value="">— Select adult —</option>';
-  Object.values(FAC_PROFILES).sort(function(a,b){return a.name.localeCompare(b.name);}).forEach(function(p){
-    asel.innerHTML += '<option value="'+p.name+'">'+p.name+'</option>';
-  });
-
-  evEditorRenderYouth();
-  evEditorRenderAdult();
+  // Render tabs + section
+  evEditorRenderTabs();
+  evEditorRenderSlotSection();
   document.getElementById('event-editor-modal').style.display = 'block';
 }
 
-function evEditorRenderYouth(){
-  var el = document.getElementById('event-editor-youth');
-  var names = Object.keys(_evEditorYouthHrs).sort();
-  if(!names.length){
-    el.innerHTML = '<div style="color:var(--text-muted);font-size:.82rem;padding:4px 0">No youth volunteers yet.</div>';
+// ── Tabs ─────────────────────────────────────────────────────────────────────
+
+function evEditorRenderTabs(){
+  var wrap = document.getElementById('ev-slot-tabs-wrap');
+  var tabs = document.getElementById('ev-slot-tabs');
+  if(!wrap || !tabs) return;
+  if(!_evEditorSlots.length){
+    wrap.style.display = 'none';
     return;
   }
-  el.innerHTML = names.map(function(name){
-    var hrs = _evEditorYouthHrs[name];
-    var safeName = name.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
-    return '<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:rgba(255,255,255,.03);border-radius:8px;border:1px solid rgba(255,255,255,.07)">'+
-      '<span style="flex:1;font-size:.85rem">'+name+'</span>'+
-      _evHrsSelect('evEditorChangeYouthHrs(\''+safeName+'\',this.value)', hrs)+
-      '<button onclick="evEditorRemoveYouth(\''+safeName+'\')" style="background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.3);border-radius:6px;color:var(--badge-red);padding:3px 9px;cursor:pointer;font-size:.8rem">✕</button>'+
-    '</div>';
+  wrap.style.display = 'block';
+  tabs.innerHTML = _evEditorSlots.map(function(s){
+    var active = s.id === _evEditorActive;
+    var safeId = s.id.replace(/'/g,"\\'");
+    return '<button onclick="evEditorSwitchSlot(\''+safeId+'\')" style="'+
+      'padding:6px 14px;border-radius:8px;cursor:pointer;font-family:Nunito,sans-serif;font-size:.82rem;font-weight:700;'+
+      'border:1px solid '+(active?'var(--ya-gold)':'rgba(255,255,255,.15)')+';'+
+      'background:'+(active?'rgba(245,166,35,.15)':'transparent')+';'+
+      'color:'+(active?'var(--ya-gold)':'var(--text-muted)')+'">'+
+      s.label + (s.time?'<span style="font-weight:400;font-size:.73rem;margin-left:5px">'+s.time+'</span>':'') +
+    '</button>';
   }).join('');
 }
 
-function evEditorRenderAdult(){
-  var el = document.getElementById('event-editor-adult');
-  var names = Object.keys(_evEditorAdultHrs).sort();
-  if(!names.length){
-    el.innerHTML = '<div style="color:var(--text-muted);font-size:.82rem;padding:4px 0">No adult volunteers yet.</div>';
-    return;
-  }
-  el.innerHTML = names.map(function(name){
-    var hrs = _evEditorAdultHrs[name];
-    var safeName = name.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
-    return '<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:rgba(255,255,255,.03);border-radius:8px;border:1px solid rgba(255,255,255,.07)">'+
-      '<span style="flex:1;font-size:.85rem">'+name+'</span>'+
-      _evHrsSelect('evEditorChangeAdultHrs(\''+safeName+'\',this.value)', hrs)+
-      '<button onclick="evEditorRemoveAdult(\''+safeName+'\')" style="background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.3);border-radius:6px;color:var(--badge-red);padding:3px 9px;cursor:pointer;font-size:.8rem">✕</button>'+
-    '</div>';
-  }).join('');
+function evEditorSwitchSlot(slotId){
+  _evEditorActive = slotId;
+  evEditorRenderTabs();
+  evEditorRenderSlotSection();
 }
+
+// ── Slot section (youth + adult panels for active slot) ───────────────────────
+
+function evEditorRenderSlotSection(){
+  var slotId  = _evEditorActive;
+  var slot    = _evActiveSlot();
+  var defHrs  = Math.min(8, Math.max(1, slot.hours || _evSlotDefaultHrs()));
+  var section = document.getElementById('ev-slot-section');
+  if(!section) return;
+
+  var yMap = _evEditorYouthHrs[slotId] || {};
+  var aMap = _evEditorAdultHrs[slotId] || {};
+  var yNames = Object.keys(yMap).sort();
+  var aNames = Object.keys(aMap).sort();
+
+  var yRows = yNames.length
+    ? yNames.map(function(name){
+        var hrs = yMap[name];
+        var sn  = name.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+        return '<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:rgba(255,255,255,.03);border-radius:8px;border:1px solid rgba(255,255,255,.07)">'+
+          '<span style="flex:1;font-size:.85rem">'+name+'</span>'+
+          _evHrsSelect('evEditorChangeYouthHrs(\''+sn+'\',this.value)', hrs)+
+          '<button onclick="evEditorRemoveYouth(\''+sn+'\')" style="background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.3);border-radius:6px;color:var(--badge-red);padding:3px 9px;cursor:pointer;font-size:.8rem">✕</button>'+
+        '</div>';
+      }).join('')
+    : '<div style="color:var(--text-muted);font-size:.82rem;padding:4px 0">No youth volunteers yet.</div>';
+
+  var aRows = aNames.length
+    ? aNames.map(function(name){
+        var hrs = aMap[name];
+        var sn  = name.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+        return '<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:rgba(255,255,255,.03);border-radius:8px;border:1px solid rgba(255,255,255,.07)">'+
+          '<span style="flex:1;font-size:.85rem">'+name+'</span>'+
+          _evHrsSelect('evEditorChangeAdultHrs(\''+sn+'\',this.value)', hrs)+
+          '<button onclick="evEditorRemoveAdult(\''+sn+'\')" style="background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.3);border-radius:6px;color:var(--badge-red);padding:3px 9px;cursor:pointer;font-size:.8rem">✕</button>'+
+        '</div>';
+      }).join('')
+    : '<div style="color:var(--text-muted);font-size:.82rem;padding:4px 0">No adult volunteers yet.</div>';
+
+  var hrsOpts = [1,2,3,4,5,6,7,8].map(function(h){
+    return '<option value="'+h+'"'+(h===defHrs?' selected':'')+'>'+h+' hr'+(h===1?'':'s')+'</option>';
+  }).join('');
+
+  var youthList   = '<select id="ev-add-youth-name" style="flex:1;min-width:150px;padding:7px 10px;border-radius:8px;border:1px solid var(--card-border);background:#0f1c2e;color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.84rem"><option value="">— Select youth —</option>';
+  ALL_YOUTH_NAMES.forEach(function(n){ youthList += '<option value="'+n+'">'+n+'</option>'; });
+  youthList += '</select>';
+
+  var adultList = '<select id="ev-add-adult-name" style="flex:1;min-width:150px;padding:7px 10px;border-radius:8px;border:1px solid var(--card-border);background:#0f1c2e;color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.84rem"><option value="">— Select adult —</option>';
+  Object.values(FAC_PROFILES).sort(function(a,b){ return a.name.localeCompare(b.name); }).forEach(function(p){
+    adultList += '<option value="'+p.name+'">'+p.name+'</option>';
+  });
+  adultList += '</select>';
+
+  var hrsSelY = '<select id="ev-add-youth-hrs" style="width:96px;padding:7px 10px;border-radius:8px;border:1px solid var(--card-border);background:#0f1c2e;color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.84rem">'+hrsOpts+'</select>';
+  var hrsSelA = '<select id="ev-add-adult-hrs" style="width:96px;padding:7px 10px;border-radius:8px;border:1px solid var(--card-border);background:#0f1c2e;color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.84rem">'+hrsOpts+'</select>';
+
+  section.innerHTML =
+    '<div style="font-family:Nunito,sans-serif;font-weight:800;font-size:.9rem;color:var(--ya-teal);margin-bottom:10px">🧑 Youth Volunteers</div>'+
+    '<div style="display:grid;gap:6px;margin-bottom:12px">'+yRows+'</div>'+
+    '<div style="display:flex;gap:8px;margin-bottom:22px;flex-wrap:wrap">'+
+      youthList+hrsSelY+
+      '<button onclick="evEditorAddYouth()" style="padding:7px 14px;border-radius:8px;border:none;background:var(--ya-teal);color:#fff;font-family:Nunito,sans-serif;font-weight:800;font-size:.84rem;cursor:pointer">+ Add</button>'+
+    '</div>'+
+    '<div style="font-family:Nunito,sans-serif;font-weight:800;font-size:.9rem;color:var(--ya-blue);margin-bottom:10px">👩‍💼 Adult Volunteers</div>'+
+    '<div style="display:grid;gap:6px;margin-bottom:12px">'+aRows+'</div>'+
+    '<div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">'+
+      adultList+hrsSelA+
+      '<button onclick="evEditorAddAdult()" style="padding:7px 14px;border-radius:8px;border:none;background:var(--ya-blue);color:#fff;font-family:Nunito,sans-serif;font-weight:800;font-size:.84rem;cursor:pointer">+ Add</button>'+
+    '</div>';
+}
+
+// ── Change / remove / add handlers ───────────────────────────────────────────
 
 function evEditorChangeYouthHrs(name, newHrs){
-  _evEditorYouthHrs[name] = parseInt(newHrs);
-  // Update backing event bucket immediately so display stays in sync without full re-render
-  var ev = EVENTS_DATA.find(function(e){ return e.id===_evEditorId; });
-  if(ev) _evEditorSyncBuckets(ev);
+  var sid = _evEditorActive;
+  _evEditorYouthHrs[sid] = _evEditorYouthHrs[sid] || {};
+  _evEditorYouthHrs[sid][name] = parseInt(newHrs);
 }
 
 function evEditorChangeAdultHrs(name, newHrs){
-  _evEditorAdultHrs[name] = parseInt(newHrs);
-  var ev = EVENTS_DATA.find(function(e){ return e.id===_evEditorId; });
-  if(ev) _evEditorSyncBuckets(ev);
+  var sid = _evEditorActive;
+  _evEditorAdultHrs[sid] = _evEditorAdultHrs[sid] || {};
+  _evEditorAdultHrs[sid][name] = parseInt(newHrs);
 }
 
 function evEditorRemoveYouth(name){
-  delete _evEditorYouthHrs[name];
-  evEditorRenderYouth();
+  var sid = _evEditorActive;
+  if(_evEditorYouthHrs[sid]) delete _evEditorYouthHrs[sid][name];
+  evEditorRenderSlotSection();
 }
 
 function evEditorRemoveAdult(name){
-  delete _evEditorAdultHrs[name];
-  evEditorRenderAdult();
+  var sid = _evEditorActive;
+  if(_evEditorAdultHrs[sid]) delete _evEditorAdultHrs[sid][name];
+  evEditorRenderSlotSection();
 }
 
 function evEditorAddYouth(){
   var name = document.getElementById('ev-add-youth-name').value;
   var hrs  = parseInt(document.getElementById('ev-add-youth-hrs').value) || 4;
   if(!name) return;
-  _evEditorYouthHrs[name] = hrs;
-  document.getElementById('ev-add-youth-name').value = '';
-  evEditorRenderYouth();
+  var sid = _evEditorActive;
+  _evEditorYouthHrs[sid] = _evEditorYouthHrs[sid] || {};
+  _evEditorYouthHrs[sid][name] = hrs;
+  evEditorRenderSlotSection();
 }
 
 function evEditorAddAdult(){
   var name = document.getElementById('ev-add-adult-name').value;
   var hrs  = parseInt(document.getElementById('ev-add-adult-hrs').value) || 4;
   if(!name) return;
-  _evEditorAdultHrs[name] = hrs;
-  document.getElementById('ev-add-adult-name').value = '';
-  evEditorRenderAdult();
+  var sid = _evEditorActive;
+  _evEditorAdultHrs[sid] = _evEditorAdultHrs[sid] || {};
+  _evEditorAdultHrs[sid][name] = hrs;
+  evEditorRenderSlotSection();
 }
 
-// Sync per-volunteer maps back into event's Nhrs buckets
+// ── Sync buckets (for immediate in-memory display consistency) ────────────────
+
 function _evEditorSyncBuckets(ev){
-  // Clear all buckets first
+  // Compute per-person totals across all slots, then write into _Nhrs buckets
   ['1','2','3','4','5','6','7','8'].forEach(function(h){
     ev['youth_'+h+'hrs'] = [];
     ev['adult_'+h+'hrs'] = [];
   });
-  Object.keys(_evEditorYouthHrs).forEach(function(name){
-    var h = _evEditorYouthHrs[name];
-    ev['youth_'+h+'hrs'] = ev['youth_'+h+'hrs'] || [];
-    if(ev['youth_'+h+'hrs'].indexOf(name)<0) ev['youth_'+h+'hrs'].push(name);
+  var yTotals = {}, aTotals = {};
+  Object.keys(_evEditorYouthHrs).forEach(function(sid){
+    Object.keys(_evEditorYouthHrs[sid]||{}).forEach(function(n){
+      yTotals[n] = (yTotals[n]||0) + (_evEditorYouthHrs[sid][n]||0);
+    });
   });
-  Object.keys(_evEditorAdultHrs).forEach(function(name){
-    var h = _evEditorAdultHrs[name];
+  Object.keys(_evEditorAdultHrs).forEach(function(sid){
+    Object.keys(_evEditorAdultHrs[sid]||{}).forEach(function(n){
+      aTotals[n] = (aTotals[n]||0) + (_evEditorAdultHrs[sid][n]||0);
+    });
+  });
+  Object.keys(yTotals).forEach(function(n){
+    var h = Math.min(8, Math.max(1, Math.round(yTotals[n])));
+    ev['youth_'+h+'hrs'] = ev['youth_'+h+'hrs'] || [];
+    if(ev['youth_'+h+'hrs'].indexOf(n)<0) ev['youth_'+h+'hrs'].push(n);
+  });
+  Object.keys(aTotals).forEach(function(n){
+    var h = Math.min(8, Math.max(1, Math.round(aTotals[n])));
     ev['adult_'+h+'hrs'] = ev['adult_'+h+'hrs'] || [];
-    if(ev['adult_'+h+'hrs'].indexOf(name)<0) ev['adult_'+h+'hrs'].push(name);
+    if(ev['adult_'+h+'hrs'].indexOf(n)<0) ev['adult_'+h+'hrs'].push(n);
   });
 }
+
+// ── Save ─────────────────────────────────────────────────────────────────────
 
 async function saveEventEditor(){
   var ev = EVENTS_DATA.find(function(e){ return e.id===_evEditorId; });
   if(!ev) return;
 
-  // Sync buckets from per-volunteer maps
+  // Sync in-memory buckets
   _evEditorSyncBuckets(ev);
 
-  // Keep YOUTH_HOURS in sync — only raise, never lower (don't overwrite manually-set higher values)
-  Object.keys(_evEditorYouthHrs).forEach(function(name){
-    var h = _evEditorYouthHrs[name];
-    if(h > (YOUTH_HOURS[name] || 0)) YOUTH_HOURS[name] = h;
+  // Keep YOUTH_HOURS in sync — only raise, never lower
+  Object.keys(_evEditorYouthHrs).forEach(function(sid){
+    Object.keys(_evEditorYouthHrs[sid]||{}).forEach(function(name){
+      var h = _evEditorYouthHrs[sid][name] || 0;
+      if(h > (YOUTH_HOURS[name] || 0)) YOUTH_HOURS[name] = h;
+    });
   });
 
-  // Ensure table exists before writing
+  // Ensure table exists
   var testGet = await dbGet('event_volunteers', 'select=id&limit=1');
   if(testGet === null){
     console.log('event_volunteers missing — running initDB to create it...');
     await initDB();
   }
 
-  // Delete all existing rows for this event then re-insert (upsert-by-delete pattern)
+  // Delete all existing rows for this event then re-insert
   await dbDel('event_volunteers', 'event_id=eq.'+encodeURIComponent(ev.id));
 
   var rows = [];
-  Object.keys(_evEditorYouthHrs).forEach(function(n){
-    rows.push({event_id:ev.id, name:n, role:'youth', hours:_evEditorYouthHrs[n]});
+  Object.keys(_evEditorYouthHrs).forEach(function(sid){
+    Object.keys(_evEditorYouthHrs[sid]||{}).forEach(function(n){
+      rows.push({
+        event_id: ev.id, name: n, role: 'youth',
+        hours: _evEditorYouthHrs[sid][n],
+        timeslot_id: sid === '__default__' ? null : sid
+      });
+    });
   });
-  Object.keys(_evEditorAdultHrs).forEach(function(n){
-    rows.push({event_id:ev.id, name:n, role:'adult', hours:_evEditorAdultHrs[n]});
+  Object.keys(_evEditorAdultHrs).forEach(function(sid){
+    Object.keys(_evEditorAdultHrs[sid]||{}).forEach(function(n){
+      rows.push({
+        event_id: ev.id, name: n, role: 'adult',
+        hours: _evEditorAdultHrs[sid][n],
+        timeslot_id: sid === '__default__' ? null : sid
+      });
+    });
   });
   if(rows.length){
     var r = await fetch(SUPA_URL+'/rest/v1/event_volunteers', {
@@ -18914,14 +19189,12 @@ async function saveEventEditor(){
       body: JSON.stringify(rows)
     });
     if(!r.ok) console.warn('saveEventEditor failed:', r.status, await r.text());
-    else console.log('Event volunteers saved:', rows.length, 'rows');
+    else console.log('Event volunteers saved:', rows.length, 'rows across', Object.keys(_evEditorYouthHrs).length + Object.keys(_evEditorAdultHrs).length, 'slots');
   }
 
-  // Re-fetch event volunteers from Supabase and re-render all views
   await loadEventVolunteers();
   closeEventEditor();
   renderAdmin();
-  // If the events log tab is open, refresh it too
   var evLogTab = document.getElementById('tab-events-log');
   if(evLogTab && evLogTab.style.display !== 'none') renderEventsLog();
   updateLandingStats();
@@ -18929,7 +19202,9 @@ async function saveEventEditor(){
 
 function closeEventEditor(){
   document.getElementById('event-editor-modal').style.display = 'none';
-  _evEditorId = null;
+  _evEditorId      = null;
+  _evEditorSlots   = [];
+  _evEditorActive  = '__default__';
   _evEditorYouthHrs = {};
   _evEditorAdultHrs = {};
 }
@@ -19015,6 +19290,7 @@ async function persistEventMeta(ev) {
       time: ev.time, location: ev.location, type: ev.type,
       status: ev.status, hours_on_completion: ev.hours_on_completion,
       public: ev.public !== false,
+      timeslots: ev.timeslots || [],
       updated_at: new Date().toISOString()
     }),
     updated_at: new Date().toISOString()
@@ -19030,6 +19306,59 @@ async function persistEventMeta(ev) {
 }
 
 // ── EDIT EXISTING EVENT METADATA ──
+// ── In-memory timeslots for the Edit Details modal ──
+var _editMetaId = null;
+var _emSlots = []; // array of { id, label, time, hours }
+
+function _emGenSlotId(){
+  return 'slot_' + Date.now() + '_' + Math.floor(Math.random()*1000);
+}
+
+function emRenderSlots(){
+  var el = document.getElementById('em-slots-list');
+  if(!el) return;
+  if(!_emSlots.length){
+    el.innerHTML = '<div style="font-size:.8rem;color:var(--text-muted);padding:2px 0">No timeslots added — event will use a single default slot.</div>';
+    return;
+  }
+  el.innerHTML = _emSlots.map(function(s, idx){
+    var safeId = s.id.replace(/'/g,"\\'");
+    return '<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:rgba(255,255,255,.04);border-radius:8px;border:1px solid rgba(245,166,35,.2)">' +
+      '<div style="flex:1;min-width:0">' +
+        '<span style="font-size:.84rem;font-weight:700;color:var(--ya-gold)">' + s.label + '</span>' +
+        (s.time ? '<span style="font-size:.77rem;color:var(--text-muted);margin-left:8px">' + s.time + '</span>' : '') +
+        '<span style="font-size:.73rem;color:var(--text-muted);margin-left:8px">· ' + s.hours + ' hr' + (s.hours===1?'':'s') + '</span>' +
+      '</div>' +
+      '<button onclick="emMoveSlot(' + idx + ',-1)" ' + (idx===0?'disabled':'') + ' style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:5px;color:var(--text-muted);padding:2px 8px;cursor:pointer;font-size:.8rem">↑</button>' +
+      '<button onclick="emMoveSlot(' + idx + ',1)" ' + (idx===_emSlots.length-1?'disabled':'') + ' style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:5px;color:var(--text-muted);padding:2px 8px;cursor:pointer;font-size:.8rem">↓</button>' +
+      '<button onclick="emRemoveSlot(\'' + safeId + '\')" style="background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);border-radius:6px;color:var(--badge-red);padding:3px 9px;cursor:pointer;font-size:.78rem">✕</button>' +
+    '</div>';
+  }).join('');
+}
+
+function emAddSlot(){
+  var label = (document.getElementById('em-slot-label').value||'').trim();
+  var time  = (document.getElementById('em-slot-time').value||'').trim();
+  var hrs   = parseInt(document.getElementById('em-slot-hrs').value) || 4;
+  if(!label){ alert('Please enter a label for the timeslot.'); return; }
+  _emSlots.push({ id: _emGenSlotId(), label: label, time: time, hours: hrs });
+  document.getElementById('em-slot-label').value = '';
+  document.getElementById('em-slot-time').value  = '';
+  emRenderSlots();
+}
+
+function emRemoveSlot(slotId){
+  _emSlots = _emSlots.filter(function(s){ return s.id !== slotId; });
+  emRenderSlots();
+}
+
+function emMoveSlot(idx, dir){
+  var target = idx + dir;
+  if(target < 0 || target >= _emSlots.length) return;
+  var tmp = _emSlots[idx]; _emSlots[idx] = _emSlots[target]; _emSlots[target] = tmp;
+  emRenderSlots();
+}
+
 function openEditEventMeta(eventId){
   var ev = EVENTS_DATA.find(function(e){ return e.id===eventId; });
   if(!ev) return;
@@ -19053,9 +19382,13 @@ function openEditEventMeta(eventId){
   document.getElementById('em-hours').value = ev.hours_on_completion || 4;
   document.getElementById('em-public').checked = ev.public !== false;
   document.getElementById('em-error').textContent = '';
+  // Load timeslots
+  _emSlots = (ev.timeslots || []).map(function(s){
+    return { id: s.id || _emGenSlotId(), label: s.label || '', time: s.time || '', hours: s.hours || 4 };
+  });
+  emRenderSlots();
   document.getElementById('edit-event-meta-modal').style.display = 'block';
 }
-var _editMetaId = null;
 
 async function saveEditEventMeta(){
   var ev = EVENTS_DATA.find(function(e){ return e.id===_editMetaId; });
@@ -19078,6 +19411,7 @@ async function saveEditEventMeta(){
   ev.name = name; ev.date = dateFormatted; ev.time = time||'—';
   ev.location = location||undefined; ev.host = host;
   ev.type = type; ev.hours_on_completion = hours; ev.public = isPublic;
+  ev.timeslots = _emSlots.slice(); // persist current slot list
   // Persist
   var ok = await persistEventMeta(ev);
   if(!ok) errEl.textContent = '⚠️ Saved locally but DB write failed.';
@@ -19253,6 +19587,33 @@ function addAdultScrabbleVolunteer(){
         Show on public landing page calendar
       </label>
     </div>
+
+    <!-- ── Timeslots manager ── -->
+    <div style="margin-bottom:16px;border:1px solid rgba(245,166,35,.2);border-radius:12px;padding:14px 16px;background:rgba(245,166,35,.04)">
+      <div style="font-family:Nunito,sans-serif;font-size:.85rem;font-weight:800;color:var(--ya-gold);margin-bottom:4px">📅 Timeslots <span style="font-weight:400;font-size:.75rem;color:var(--text-muted);font-family:DM Sans,sans-serif"> — optional shifts or sub-sessions</span></div>
+      <div style="font-size:.72rem;color:var(--text-muted);margin-bottom:10px">Add timeslots when volunteers sign up for different time windows. Each slot can have its own volunteers and hour count. If no timeslots are added, the event uses one default slot.</div>
+      <div id="em-slots-list" style="display:grid;gap:6px;margin-bottom:10px"></div>
+      <div style="display:flex;gap:7px;flex-wrap:wrap;align-items:flex-end">
+        <div style="flex:1;min-width:130px">
+          <div style="font-size:.68rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Label *</div>
+          <input id="em-slot-label" placeholder="e.g. Morning Shift" style="width:100%;padding:6px 10px;border-radius:7px;border:1px solid var(--card-border);background:rgba(255,255,255,.06);color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.83rem">
+        </div>
+        <div style="flex:1;min-width:150px">
+          <div style="font-size:.68rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Time (optional)</div>
+          <input id="em-slot-time" placeholder="e.g. 9:00 AM – 12:00 PM" style="width:100%;padding:6px 10px;border-radius:7px;border:1px solid var(--card-border);background:rgba(255,255,255,.06);color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.83rem">
+        </div>
+        <div>
+          <div style="font-size:.68rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Hours</div>
+          <select id="em-slot-hrs" style="width:88px;padding:6px 8px;border-radius:7px;border:1px solid var(--card-border);background:#0f1c2e;color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.83rem">
+            <option value="1">1 hr</option><option value="2">2 hrs</option><option value="3">3 hrs</option>
+            <option value="4" selected>4 hrs</option><option value="5">5 hrs</option>
+            <option value="6">6 hrs</option><option value="7">7 hrs</option><option value="8">8 hrs</option>
+          </select>
+        </div>
+        <button onclick="emAddSlot()" style="padding:6px 14px;border-radius:7px;border:none;background:var(--ya-gold);color:#0d1520;font-family:Nunito,sans-serif;font-weight:800;font-size:.83rem;cursor:pointer;white-space:nowrap">+ Add Slot</button>
+      </div>
+    </div>
+
     <div id="em-error" style="font-size:.78rem;color:var(--badge-red);min-height:18px;margin-bottom:8px"></div>
     <div style="display:flex;gap:10px;justify-content:flex-end">
       <button onclick="document.getElementById('edit-event-meta-modal').style.display='none'" style="padding:10px 20px;border-radius:10px;border:1px solid var(--card-border);background:transparent;color:var(--text-muted);font-family:DM Sans,sans-serif;cursor:pointer">Cancel</button>

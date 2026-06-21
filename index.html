@@ -14806,8 +14806,10 @@ async function loadEventRegistrations() {
 
 async function loadEventVolunteers() {
   const rows = await dbGet('event_volunteers', 'select=event_id,name,role,hours,timeslot_id');
-  if (!rows || rows.length === 0) return;
-  // Clear volunteer buckets for ALL non-hardcoded events before repopulating.
+  // NOTE: do NOT early-return on empty rows — we must still clear stale in-memory
+  // data so that deleted volunteers don't linger after a save.
+  if (!rows) return; // null means a network/DB error; bail out.
+  // Clear volunteer buckets for ALL upcoming/DB-tracked events before repopulating.
   var dbEventIds = new Set(rows.map(function(r){ return r.event_id; }));
   EVENTS_DATA.forEach(function(ev){
     if(dbEventIds.has(ev.id) || ev.status === 'upcoming'){
@@ -14824,7 +14826,7 @@ async function loadEventVolunteers() {
   // A person may appear in multiple rows (one per timeslot) for the same event.
   // _Nhrs buckets accumulate totals; _slotYouth/_slotAdult track per-slot detail.
   var youthHrMap = {}, adultHrMap = {};
-  rows.forEach(function(row){
+  if (rows.length > 0) { rows.forEach(function(row){
     var ev = EVENTS_DATA.find(function(e){ return e.id === row.event_id; });
     if(!ev) return;
     var hrs = parseFloat(row.hours) || 2;
@@ -14855,7 +14857,7 @@ async function loadEventVolunteers() {
     } else if(row.role === 'adult'){
       adultHrMap[row.name] = (adultHrMap[row.name] || 0) + hrs;
     }
-  });
+  }); } // end if(rows.length > 0)
 
   // Now write totals into _Nhrs buckets (one entry per person, total across slots)
   var writeIntoBucket = function(ev, role, name, totalHrs){
@@ -19183,6 +19185,7 @@ async function saveEventEditor(){
     });
   });
   if(rows.length){
+    console.log('Saving slot volunteers', ev.id, rows);
     var r = await fetch(SUPA_URL+'/rest/v1/event_volunteers', {
       method:'POST',
       headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,'Content-Type':'application/json','Prefer':'return=minimal'},
@@ -19193,6 +19196,9 @@ async function saveEventEditor(){
   }
 
   await loadEventVolunteers();
+  // Log reloaded state for the saved event
+  var _evReloaded = EVENTS_DATA.find(function(e){ return e.id===ev.id; });
+  if(_evReloaded) console.log('Reloaded slot volunteers', _evReloaded._slotYouth, _evReloaded._slotAdult);
   closeEventEditor();
   renderAdmin();
   var evLogTab = document.getElementById('tab-events-log');

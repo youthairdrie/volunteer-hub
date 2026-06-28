@@ -9816,7 +9816,16 @@ function calculateYouthProgressData(programType) {
 
 // Optional bookLookupFn: function(title) → { focus: '...' } | null
 // Allows each program to supply its own book metadata store.
-// Returns: { bookTitle: [ { gid, groupName, dateRange, groupStart, enrolled, totalSessions, avgPct, animators, archived } ] }
+// Returns: { bookTitle: [ { gid, groupName, dateRange, groupStart, enrolled, totalSessions, avgPct, adults, archived } ] }
+//
+// For JYSEP groups the "enrolled" count and avgPct include ALL roles:
+//   Regular JYSEP  → JY Participants + Youth Animators + Adult Animators
+//   Animator Training → Youth Trainees + Adult Trainees + Trainers
+// No person is double-counted within a single group.
+// avgPct = mean of each enrolled person's individual session-completion %.
+// Attendance is checked via the attendance record (attended flag), matching the
+// role type already written by the attendance/hours entry workflows.
+// This function is read-only; no attendance or hour data is modified.
 function calculateBookTrendsData(programType, bookLookupFn) {
   var gids    = getProgramGroupIds(programType, true);
   var bookMap = {};
@@ -9827,19 +9836,12 @@ function calculateBookTrendsData(programType, bookLookupFn) {
     if (!book) return;
 
     var eligible = programAllGroupSessions(gid);
-    var enrolled = Object.keys(p.youth_participants || {});
     var total    = eligible.length;
 
-    // Average participation = mean of each youth's individual completion %
-    var avgPct = 0;
-    if (enrolled.length > 0 && total > 0) {
-      var sumPct = enrolled.reduce(function(s, name) {
-        return s + (programYouthAttendedCount(p, eligible, name) / total * 100);
-      }, 0);
-      avgPct = Math.round(sumPct / enrolled.length);
-    }
+    // ── Build role-separated name sets (JYSEP-aware) ───────────────────────
+    var isAT = (p.group_subtype === 'animator_training');
 
-    // Adults: from adult_participants registry + attendance records
+    // Shared helper: build adult/trainer set from adult_participants + attendance + adult_volunteers
     var adultSet = new Set();
     Object.keys(p.adult_participants || {}).forEach(function(n) { adultSet.add(n); });
     Object.keys(p.attendance || {}).forEach(function(d) {
@@ -9847,6 +9849,111 @@ function calculateBookTrendsData(programType, bookLookupFn) {
         if (r.type === 'adult' && r.name && r.name !== '_adult_enrolled') adultSet.add(r.name);
       });
     });
+    Object.keys(p.adult_volunteers || {}).forEach(function(d) {
+      (p.adult_volunteers[d] || []).forEach(function(n) { if (n) adultSet.add(n); });
+    });
+
+    // Role lists per subtype
+    var jyNames, secondaryNames, adultNames;
+    if (isAT) {
+      // Youth trainees
+      jyNames        = Object.keys(p.youth_participants || {});
+      // Adult trainees
+      var atSet = new Set(Object.keys(p.adult_trainees || {}));
+      Object.keys(p.attendance || {}).forEach(function(d) {
+        (p.attendance[d] || []).forEach(function(r) {
+          if (r.type === 'adult_trainee' && r.name && r.name !== '_adult_trainee_enrolled') atSet.add(r.name);
+        });
+      });
+      secondaryNames = Array.from(atSet);
+      // Trainers (already in adultSet)
+      adultNames     = Array.from(adultSet);
+    } else {
+      // JY participants
+      jyNames        = Object.keys(p.youth_participants || {});
+      // Youth animators
+      var yaSet = new Set(Object.keys(p.youth_helper_participants || {}));
+      Object.keys(p.attendance || {}).forEach(function(d) {
+        (p.attendance[d] || []).forEach(function(r) {
+          if (r.type === 'youth_animator' && r.name && r.name !== '_youth_helper_enrolled') yaSet.add(r.name);
+        });
+      });
+      secondaryNames = Array.from(yaSet);
+      // Adult animators (already in adultSet)
+      adultNames     = Array.from(adultSet);
+    }
+
+    // Deduplicate across roles within this group (a person in two roles counts once)
+    var allParticipants = new Set();
+    jyNames.forEach(function(n)        { allParticipants.add(n); });
+    secondaryNames.forEach(function(n) { allParticipants.add(n); });
+    adultNames.forEach(function(n)     { allParticipants.add(n); });
+
+    // ── Average participation % across ALL enrolled people ─────────────────
+    // Each person's completion = sessions they attended / total eligible sessions.
+    // Attendance is read from p.attendance[date] records (the same data used
+    // everywhere else). Role-specific attended checks:
+    //   jyNames        → any record with attended=true (excl. youth_animator type)
+    //   secondaryNames → youth_animator type (regular) or adult_trainee type (AT)
+    //   adultNames     → adult type (regular animators / trainers)
+    // avgPct = mean of every individual's completion %, not a group aggregate.
+    var avgPct = 0;
+    var participantCount = allParticipants.size;
+    if (participantCount > 0 && total > 0) {
+      var sumPct = 0;
+
+      // JY participants / youth trainees — type 'youth' (not 'youth_animator')
+      jyNames.forEach(function(name) {
+        var attended = eligible.filter(function(d) {
+          var rec = ((p.attendance || {})[d] || []).find(function(r) { return r.name === name; });
+          return rec && rec.attended && rec.type !== 'youth_animator';
+        }).length;
+        sumPct += (attended / total * 100);
+      });
+
+      if (isAT) {
+        // Adult trainees — type 'adult_trainee'
+        secondaryNames.forEach(function(name) {
+          // skip if already counted as a JY name (shouldn't happen but guard)
+          if (allParticipants.has(name) && jyNames.indexOf(name) >= 0) return;
+          var attended = eligible.filter(function(d) {
+            var rec = ((p.attendance || {})[d] || []).find(function(r) { return r.name === name; });
+            return rec && rec.attended && rec.type === 'adult_trainee';
+          }).length;
+          sumPct += (attended / total * 100);
+        });
+        // Trainers — type 'adult' (hours-based; attended flag set when hours entered)
+        adultNames.forEach(function(name) {
+          if (jyNames.indexOf(name) >= 0 || secondaryNames.indexOf(name) >= 0) return;
+          var attended = eligible.filter(function(d) {
+            var rec = ((p.attendance || {})[d] || []).find(function(r) { return r.name === name; });
+            return rec && rec.attended && (rec.type === 'adult' || rec.type === 'adult_animator') && rec.name !== '_adult_enrolled';
+          }).length;
+          sumPct += (attended / total * 100);
+        });
+      } else {
+        // Youth animators — type 'youth_animator'
+        secondaryNames.forEach(function(name) {
+          if (jyNames.indexOf(name) >= 0) return; // already counted
+          var attended = eligible.filter(function(d) {
+            var rec = ((p.attendance || {})[d] || []).find(function(r) { return r.name === name; });
+            return rec && rec.attended && rec.type === 'youth_animator';
+          }).length;
+          sumPct += (attended / total * 100);
+        });
+        // Adult animators — type 'adult' (hours-based; attended flag set when hours entered)
+        adultNames.forEach(function(name) {
+          if (jyNames.indexOf(name) >= 0 || secondaryNames.indexOf(name) >= 0) return;
+          var attended = eligible.filter(function(d) {
+            var rec = ((p.attendance || {})[d] || []).find(function(r) { return r.name === name; });
+            return rec && rec.attended && (rec.type === 'adult' || rec.type === 'adult_animator') && rec.name !== '_adult_enrolled';
+          }).length;
+          sumPct += (attended / total * 100);
+        });
+      }
+
+      avgPct = Math.round(sumPct / participantCount);
+    }
 
     var groupStart = p.group_start || (p.dates && p.dates.length ? p.dates[0] : '');
     var groupEnd   = p.group_end   || (p.dates && p.dates.length ? p.dates[p.dates.length - 1] : '');
@@ -9862,10 +9969,10 @@ function calculateBookTrendsData(programType, bookLookupFn) {
       groupName:     p.name,
       dateRange:     dateRange,
       groupStart:    groupStart,
-      enrolled:      enrolled.length,
+      enrolled:      allParticipants.size,  // all roles, deduplicated
       totalSessions: total,
       avgPct:        avgPct,
-      adults:        [...adultSet].sort(),
+      adults:        Array.from(adultSet).sort(),
       archived:      p.group_archived || false
     });
   });
@@ -10003,7 +10110,7 @@ function renderBookTrendsReport(containerId, programType, bookLookupFn, opts) {
     html += '<th style="font-size:.7rem;text-align:left">'+cfg.groupLabel+'</th>';
     html += '<th style="font-size:.7rem;text-align:left">Dates</th>';
     html += '<th style="font-size:.7rem;text-align:center">Sessions</th>';
-    html += '<th style="font-size:.7rem;text-align:center">Youth</th>';
+    html += '<th style="font-size:.7rem;text-align:center">Participants</th>';
     html += '<th style="font-size:.7rem;text-align:center">Avg %</th>';
     html += '<th style="font-size:.7rem;text-align:left">'+cfg.adultRoleLabel+'</th>';
     html += '</tr></thead><tbody>';

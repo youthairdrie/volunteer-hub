@@ -1497,10 +1497,10 @@ tr:hover .grd-date-sticky { background: #1a2d47; }
             <div id="jysep-sessions-list" style="margin-top:10px"></div>
           </details>
 
-          <!-- ── Youth Book Completion Summary ── -->
+          <!-- ── Book Completion Summary ── -->
           <details style="margin-bottom:14px">
             <summary style="font-family:Nunito,sans-serif;font-weight:900;font-size:.95rem;color:var(--ya-teal);cursor:pointer;padding:10px 0;list-style:none;display:flex;align-items:center;gap:8px">
-              📚 Youth Book Completion Summary
+              📚 Book Completion Summary
             </summary>
             <div id="jysep-book-completion-panel" style="margin-top:10px"></div>
           </details>
@@ -10204,16 +10204,82 @@ function renderJysepBookCompletion() {
   // Attach _gid so period helpers can call getActiveProgramSessions
   p._gid = gid;
 
-  var enrolled = Object.keys(p.youth_participants || {}).sort();
-  if (enrolled.length === 0) {
-    el.innerHTML = '<div style="color:var(--text-muted);font-size:.82rem;padding:8px">No youth enrolled yet.</div>'; return;
+  var isAT = p.group_subtype === 'animator_training';
+
+  // ── Resolve role-based name lists ─────────────────────────────────────────
+  // Regular JYSEP:
+  //   jyParticipants  — youth_participants (attendance type 'youth')
+  //   youthAnimators  — youth_helper_participants + attendance type 'youth_animator'
+  //   adultAnimators  — adult_participants + attendance type 'adult' (excl. _adult_enrolled sentinel)
+  //
+  // Animator Training:
+  //   youthTrainees   — youth_participants (attendance type 'youth')
+  //   adultTrainees   — adult_trainees (attendance type 'adult_trainee')
+  //   trainers        — adult_participants + attendance type 'adult' (excl. _adult_enrolled sentinel)
+
+  var jyParticipants = [], youthAnimators = [], adultAnimators = [];
+  var youthTrainees  = [], adultTrainees  = [], trainers        = [];
+
+  if (isAT) {
+    // Youth trainees live in youth_participants
+    youthTrainees = Object.keys(p.youth_participants || {}).sort();
+    // Adult trainees live in adult_trainees
+    adultTrainees = Object.keys(p.adult_trainees || {}).sort();
+    // Trainers: adult_participants registry + any 'adult'-type attendance records
+    var trainerSet = new Set(Object.keys(p.adult_participants || {}));
+    Object.keys(p.attendance || {}).forEach(function(d) {
+      (p.attendance[d] || []).forEach(function(r) {
+        if (r.type === 'adult' && r.attended && r.name !== '_adult_enrolled') trainerSet.add(r.name);
+      });
+    });
+    Object.keys(p.adult_volunteers || {}).forEach(function(d) {
+      (p.adult_volunteers[d] || []).forEach(function(n) { trainerSet.add(n); });
+    });
+    trainers = Array.from(trainerSet).sort();
+  } else {
+    // JY Participants
+    jyParticipants = Object.keys(p.youth_participants || {}).sort();
+    // Youth Animators: youth_helper_participants registry + 'youth_animator' attendance type
+    var yaSet = new Set(Object.keys(p.youth_helper_participants || {}));
+    Object.keys(p.attendance || {}).forEach(function(d) {
+      (p.attendance[d] || []).forEach(function(r) {
+        if (r.type === 'youth_animator' && r.attended && r.name !== '_youth_helper_enrolled') yaSet.add(r.name);
+      });
+    });
+    youthAnimators = Array.from(yaSet).sort();
+    // Adult Animators: adult_participants registry + 'adult' attendance type
+    var aaSet = new Set(Object.keys(p.adult_participants || {}));
+    Object.keys(p.attendance || {}).forEach(function(d) {
+      (p.attendance[d] || []).forEach(function(r) {
+        if (r.type === 'adult' && r.attended && r.name !== '_adult_enrolled') aaSet.add(r.name);
+      });
+    });
+    Object.keys(p.adult_volunteers || {}).forEach(function(d) {
+      (p.adult_volunteers[d] || []).forEach(function(n) { aaSet.add(n); });
+    });
+    adultAnimators = Array.from(aaSet).sort();
+  }
+
+  // Guard: need at least one person enrolled in any role
+  var totalEnrolled = isAT
+    ? (youthTrainees.length + adultTrainees.length + trainers.length)
+    : (jyParticipants.length + youthAnimators.length + adultAnimators.length);
+
+  if (totalEnrolled === 0) {
+    el.innerHTML = '<div style="color:var(--text-muted);font-size:.82rem;padding:8px">'+(isAT?'No trainees or trainers enrolled yet.':'No participants or animators enrolled yet.')+'</div>';
+    return;
   }
 
   var periods = jysepBookPeriods(p);
   if (periods.length === 0) {
-    el.innerHTML = '<div style="color:var(--text-muted);font-size:.82rem;padding:8px;font-style:italic">No book assigned to this group yet — set one via "Edit Group".</div>'; return;
+    // AT groups never have a book assigned; show attendance summary without book context
+    if (!isAT) {
+      el.innerHTML = '<div style="color:var(--text-muted);font-size:.82rem;padding:8px;font-style:italic">No book assigned to this group yet — set one via "Edit Group".</div>';
+      return;
+    }
   }
 
+  // ── Shared helpers ────────────────────────────────────────────────────────
   var statusBadge = function(pct) {
     if (pct >= 80) return '<span style="background:rgba(0,181,160,.15);color:var(--ya-teal);border-radius:4px;padding:1px 7px;font-size:.68rem;font-weight:700">Strong ✔</span>';
     if (pct >= 50) return '<span style="background:rgba(90,140,220,.15);color:var(--ya-blue);border-radius:4px;padding:1px 7px;font-size:.68rem;font-weight:700">On Track</span>';
@@ -10221,49 +10287,117 @@ function renderJysepBookCompletion() {
     return '<span style="background:rgba(255,255,255,.06);color:var(--text-muted);border-radius:4px;padding:1px 7px;font-size:.68rem">Not started</span>';
   };
 
+  // Renders a role-category sub-table inside a book period block.
+  // attendedFn(name, dateStr) → bool — custom attendance check per role.
+  var renderRoleTable = function(heading, headingColor, names, periodSessions, attendedFn) {
+    if (names.length === 0) return '';
+    var total = periodSessions.length;
+    var out = '';
+    out += '<div style="margin-bottom:10px">';
+    out += '<div style="font-size:.75rem;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:'+headingColor+';margin-bottom:5px;padding-bottom:3px;border-bottom:1px solid rgba(255,255,255,.07)">'+heading+'</div>';
+    out += '<div style="overflow-x:auto"><table class="data-table" style="width:100%">';
+    out += '<thead><tr>';
+    out += '<th style="font-size:.72rem;text-align:left">Name</th>';
+    out += '<th style="font-size:.72rem;text-align:center">Attended</th>';
+    out += '<th style="font-size:.72rem;text-align:center">Possible</th>';
+    out += '<th style="font-size:.72rem;text-align:center">Completion</th>';
+    out += '<th style="font-size:.72rem;text-align:left">Status</th>';
+    out += '</tr></thead><tbody>';
+    names.forEach(function(name) {
+      var attended = total > 0 ? periodSessions.filter(function(d) { return attendedFn(name, d); }).length : 0;
+      var pct = total > 0 ? Math.round(attended / total * 100) : 0;
+      var pctBar = '<div style="display:inline-block;width:60px;height:6px;background:rgba(255,255,255,.08);border-radius:3px;vertical-align:middle;margin-right:5px"><div style="width:'+pct+'%;height:100%;background:var(--ya-teal);border-radius:3px"></div></div>';
+      out += '<tr>';
+      out += '<td style="font-size:.82rem;font-weight:600">'+name+'</td>';
+      out += '<td style="text-align:center;font-weight:700;color:var(--ya-teal)">'+attended+'</td>';
+      out += '<td style="text-align:center;color:var(--text-muted)">'+total+'</td>';
+      out += '<td style="text-align:center;white-space:nowrap">'+pctBar+'<span style="font-size:.8rem;font-weight:700">'+pct+'%</span></td>';
+      out += '<td>'+statusBadge(pct)+'</td>';
+      out += '</tr>';
+    });
+    out += '</tbody></table></div></div>';
+    return out;
+  };
+
+  // Attendance checkers per role type
+  // 'youth' type covers JY participants and youth trainees
+  var attYouth = function(name, d) {
+    var rec = jysepAttRow(p, d, name);
+    return !!(rec && rec.attended && rec.type !== 'youth_animator' && rec.name !== '_youth_enrolled');
+  };
+  // youth_animator type covers youth animators
+  var attYouthAnim = function(name, d) {
+    var rec = jysepAttRow(p, d, name);
+    return !!(rec && rec.attended && rec.type === 'youth_animator');
+  };
+  // adult type covers adult animators (regular) and trainers (AT)
+  var attAdult = function(name, d) {
+    var rec = jysepAttRow(p, d, name);
+    return !!(rec && rec.attended && (rec.type === 'adult' || rec.type === 'adult_animator') && rec.name !== '_adult_enrolled');
+  };
+  // adult_trainee type covers adult trainees (AT groups)
+  var attAdultTrainee = function(name, d) {
+    var rec = jysepAttRow(p, d, name);
+    return !!(rec && rec.attended && rec.type === 'adult_trainee');
+  };
+
+  // ── Build HTML ─────────────────────────────────────────────────────────────
   var html = '';
-  periods.forEach(function(period) {
+
+  // AT groups show a single attendance-range block (no book period)
+  var periodsToRender = (isAT && periods.length === 0)
+    ? [{ title: null, focus: null, startISO: null, endISO: null }]
+    : periods;
+
+  periodsToRender.forEach(function(period) {
     var periodSessions = jysepBookPeriodSessions(p, period);
     var total = periodSessions.length;
-    var bTitle = period.title || '(No book)';
-    var bFocus = period.focus || '';
-    var dateRange = '';
-    if (period.startISO || period.endISO) {
-      dateRange = ' · ' + (period.startISO ? bookISOToDisplay(period.startISO) : '…') + ' – ' + (period.endISO ? bookISOToDisplay(period.endISO) : 'ongoing');
-    }
 
     html += '<div class="section-box" style="margin-bottom:12px">';
-    html += '<div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:6px;margin-bottom:10px">';
-    html += '<div><div style="font-size:.88rem;font-weight:700;color:var(--text-main)">📖 '+bTitle+'</div>';
-    if (bFocus) html += '<div style="font-size:.72rem;color:var(--text-muted);font-style:italic;margin-top:2px">'+bFocus+'</div>';
-    html += '<div style="font-size:.72rem;color:var(--text-muted);margin-top:2px">'+total+' eligible session'+(total!==1?'s':'')+dateRange+'</div>';
-    html += '</div></div>';
+
+    // Book / period header (omitted for AT groups with no book)
+    if (!isAT || period.title) {
+      var bTitle = period.title || '(No book)';
+      var bFocus = period.focus || '';
+      var dateRange = '';
+      if (period.startISO || period.endISO) {
+        dateRange = ' · ' + (period.startISO ? bookISOToDisplay(period.startISO) : '…') + ' – ' + (period.endISO ? bookISOToDisplay(period.endISO) : 'ongoing');
+      }
+      html += '<div style="margin-bottom:10px">';
+      html += '<div style="font-size:.88rem;font-weight:700;color:var(--text-main)">📖 '+bTitle+'</div>';
+      if (bFocus) html += '<div style="font-size:.72rem;color:var(--text-muted);font-style:italic;margin-top:2px">'+bFocus+'</div>';
+      html += '<div style="font-size:.72rem;color:var(--text-muted);margin-top:2px">'+total+' eligible session'+(total!==1?'s':'')+dateRange+'</div>';
+      html += '</div>';
+    } else {
+      // AT group with no book — just show session count
+      html += '<div style="margin-bottom:10px">';
+      html += '<div style="font-size:.72rem;color:var(--text-muted)">'+total+' eligible session'+(total!==1?'s':'')+'</div>';
+      html += '</div>';
+    }
 
     if (total === 0) {
-      html += '<div style="color:var(--text-muted);font-size:.82rem;font-style:italic;padding:4px 0">No completed sessions in this book\'s date range yet.</div>';
+      html += '<div style="color:var(--text-muted);font-size:.82rem;font-style:italic;padding:4px 0">No completed sessions in this date range yet.</div>';
+    } else if (isAT) {
+      // ── Animator Training group ──────────────────────────────────────────
+      html += renderRoleTable('Youth Trainees',  'var(--lavender)',  youthTrainees, periodSessions, attYouth);
+      html += renderRoleTable('Adult Trainees',  'var(--ya-orange)', adultTrainees, periodSessions, attAdultTrainee);
+      html += renderRoleTable('Trainers',        'var(--ya-blue)',   trainers,      periodSessions, attAdult);
+      if (youthTrainees.length === 0 && adultTrainees.length === 0 && trainers.length === 0) {
+        html += '<div style="color:var(--text-muted);font-size:.82rem;font-style:italic;padding:4px 0">No trainees or trainers enrolled yet.</div>';
+      }
     } else {
-      // Table of youth completion for this book period
-      html += '<div style="overflow-x:auto"><table class="data-table" style="width:100%">';
-      html += '<thead><tr><th style="font-size:.72rem;text-align:left">Youth</th><th style="font-size:.72rem;text-align:center">Attended</th><th style="font-size:.72rem;text-align:center">Possible</th><th style="font-size:.72rem;text-align:center">Completion</th><th style="font-size:.72rem;text-align:left">Status</th></tr></thead><tbody>';
-      enrolled.forEach(function(name) {
-        var attended = periodSessions.filter(function(d) {
-          var rec = jysepAttRow(p, d, name);
-          return rec && rec.attended;
-        }).length;
-        var pct = total > 0 ? Math.round(attended / total * 100) : 0;
-        var pctBar = '<div style="display:inline-block;width:60px;height:6px;background:rgba(255,255,255,.08);border-radius:3px;vertical-align:middle;margin-right:5px"><div style="width:'+pct+'%;height:100%;background:var(--ya-teal);border-radius:3px"></div></div>';
-        html += '<tr>';
-        html += '<td style="font-size:.82rem;font-weight:600">'+name+'</td>';
-        html += '<td style="text-align:center;font-weight:700;color:var(--ya-teal)">'+attended+'</td>';
-        html += '<td style="text-align:center;color:var(--text-muted)">'+total+'</td>';
-        html += '<td style="text-align:center;white-space:nowrap">'+pctBar+'<span style="font-size:.8rem;font-weight:700">'+pct+'%</span></td>';
-        html += '<td>'+statusBadge(pct)+'</td>';
-        html += '</tr>';
-      });
-      html += '</tbody></table></div>';
+      // ── Regular JYSEP group ──────────────────────────────────────────────
+      html += renderRoleTable('JY Participants', 'var(--lavender)',  jyParticipants, periodSessions, attYouth);
+      html += renderRoleTable('Youth Animators', 'var(--ya-teal)',   youthAnimators, periodSessions, attYouthAnim);
+      html += renderRoleTable('Adult Animators', 'var(--ya-blue)',   adultAnimators, periodSessions, attAdult);
+      if (jyParticipants.length === 0 && youthAnimators.length === 0 && adultAnimators.length === 0) {
+        html += '<div style="color:var(--text-muted);font-size:.82rem;font-style:italic;padding:4px 0">No participants or animators enrolled yet.</div>';
+      }
     }
+
     html += '</div>';
   });
+
   el.innerHTML = html;
 }
 

@@ -7962,8 +7962,11 @@ async function removeJysepYouthHelper(gid, name) {
 
 /**
  * Remove an adult animator (regular JYSEP) or trainer (AT group) from the hours grid.
- * Deletes the _adult_enrolled sentinel row. Historical hours rows are preserved —
- * the person will still appear in reporting if they have hours, but not as actively enrolled.
+ * Deletes the _adult_enrolled sentinel row AND writes an _adult_removed tombstone row.
+ * Historical hours rows are preserved in the database for reporting, but the tombstone
+ * ensures the person no longer reappears in the active Trainer/Animator Hours roster
+ * (which otherwise would re-derive "active" membership from their attended hour rows).
+ * The tombstone is cleared automatically if the person is re-enrolled later.
  */
 async function removeJysepTrainer(gid, name) {
   var p = jysepProg(gid); if (!p) return;
@@ -7972,12 +7975,23 @@ async function removeJysepTrainer(gid, name) {
   if (!confirm('Remove ' + role + ' "' + name + '" from this group?\n\nAny recorded hours will be preserved in the database for reporting but they will no longer appear as actively enrolled.')) return;
   // Remove from in-memory active set
   if (p.adult_participants) delete p.adult_participants[name];
-  // Remove the _adult_enrolled sentinel row only — historical hour rows remain
-  await fetch(
+  // Mark as explicitly removed in memory so the hours grid doesn't resurrect this
+  // person from their historical attended-hours rows.
+  p.removed_adult_participants = p.removed_adult_participants || {};
+  p.removed_adult_participants[name] = true;
+  // Remove the _adult_enrolled sentinel row — historical hour rows remain untouched
+  var delEnrolled = fetch(
     SUPA_URL + '/rest/v1/program_attendance?program_id=eq.' + encodeURIComponent(gid) +
     '&session_date=eq._adult_enrolled&participant_name=eq.' + encodeURIComponent(name),
     { method: 'DELETE', headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY, 'Prefer': 'return=minimal' } }
   );
+  // Write the _adult_removed tombstone so removal survives refresh/logout/login
+  var writeTombstone = upsertProgramAttendance({
+    program_id: gid, program_type: p.program_type || 'jysep',
+    session_date: '_adult_removed', participant_name: name,
+    participant_type: 'adult', attended: false, volunteer_hours: null
+  });
+  await Promise.all([delEnrolled, writeTombstone]);
   renderJysepAdultHrsGrid();
   renderJysepStatCards();
 }
@@ -8292,6 +8306,13 @@ function renderJysepAdultHrsGrid() {
   });
   Object.keys(p.adult_volunteers || {}).forEach(function(d) {
     (p.adult_volunteers[d] || []).forEach(function(n) { adultSet.add(n); });
+  });
+  // Explicitly-removed trainers/animators must not be resurrected by the historical
+  // attended-hours fallback above — their hour rows are preserved in the DB for
+  // reporting, but they should no longer show up as actively enrolled here.
+  var removedAdultSet = p.removed_adult_participants || {};
+  Object.keys(removedAdultSet).forEach(function(n) {
+    if (removedAdultSet[n] && !(p.adult_participants && p.adult_participants[n])) adultSet.delete(n);
   });
   var adultNames = Array.from(adultSet).sort();
   // AT groups: trainers are adults only — no youth helpers in this grid
@@ -9092,6 +9113,14 @@ async function loadSingleSccGroup(gid) {
     if(row.session_date==='_adult_enrolled'&&row.participant_type==='adult'){
       prog.adult_participants=prog.adult_participants||{};
       if(!prog.adult_participants[row.participant_name]) prog.adult_participants[row.participant_name]=true;
+      return;
+    }
+    // _adult_removed tombstone rows mark an adult animator/trainer as explicitly
+    // removed. Their historical hour rows are preserved elsewhere in this table,
+    // but they must not be treated as actively enrolled (see renderJysepAdultHrsGrid).
+    if(row.session_date==='_adult_removed'&&row.participant_type==='adult'){
+      prog.removed_adult_participants=prog.removed_adult_participants||{};
+      prog.removed_adult_participants[row.participant_name]=true;
       return;
     }
     // Youth facilitator enrollment sentinel — participant_type='youth' + notes='role:scc_facilitator'
@@ -15837,6 +15866,7 @@ async function loadSingleJysepGroup(gid) {
   prog.adult_participants      = {};
   prog.youth_helper_participants = {}; // youth animators/facilitators enrolled as helpers
   prog.adult_trainees          = {};   // adult trainees in Animator Training groups
+  prog.removed_adult_participants = {}; // explicitly-removed trainers/animators (tombstones)
 
   // ── Reset cancellations for this group before loading from DB ──────────────
   // This prevents any stale in-memory state from the JS seed or a previous
@@ -15903,6 +15933,14 @@ async function loadSingleJysepGroup(gid) {
       if (row.session_date === '_adult_enrolled' && row.participant_type === 'adult') {
         prog.adult_participants = prog.adult_participants || {};
         if (!prog.adult_participants[row.participant_name]) prog.adult_participants[row.participant_name] = true;
+        return;
+      }
+      // _adult_removed tombstone rows mark an adult animator/trainer as explicitly
+      // removed. Historical hour rows for this person are preserved elsewhere in
+      // this table, but they must not be treated as actively enrolled.
+      if (row.session_date === '_adult_removed' && row.participant_type === 'adult') {
+        prog.removed_adult_participants = prog.removed_adult_participants || {};
+        prog.removed_adult_participants[row.participant_name] = true;
         return;
       }
       // Youth animator/facilitator enrollment sentinel — stored as participant_type='youth' + notes='role:jysep_animator'
@@ -16822,6 +16860,13 @@ async function saveProgramAdultEnrollment(programId, adultNames) {
     if (results[i]) {
       prog.adult_participants[name] = true;
       enrolled.push(name);
+      // Clear any prior explicit-removal tombstone so a re-enrolled trainer/animator
+      // shows up as active again (fire-and-forget; doesn't block the enroll flow).
+      if (prog.removed_adult_participants) delete prog.removed_adult_participants[name];
+      dbDel('program_attendance',
+        'program_id=eq.' + encodeURIComponent(programId) +
+        '&session_date=eq._adult_removed' +
+        '&participant_name=eq.' + encodeURIComponent(name));
     } else {
       failed.push(name);
     }

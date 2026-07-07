@@ -7876,7 +7876,13 @@ function renderJysepYouthGrid() {
 
   var rows = allEnrolled.map(function(name) {
     var isAdultTrainee = adultTrainees.indexOf(name) >= 0;
-    var attCount = pastDates.filter(function(d){ var r = jysepAttRow(p, d, name); return r && r.attended; }).length;
+    // Only count attendance rows tagged for THIS person's displayed role. A row
+    // left over from a different role (e.g. a Trainer hours entry re-using the
+    // same date+name slot) must not inflate this roster's totals — this keeps
+    // the count here consistent with the role-specific counts shown in the
+    // Book Completion Summary (attYouth / attAdultTrainee).
+    var expectedType = isAdultTrainee ? 'adult_trainee' : 'youth';
+    var attCount = pastDates.filter(function(d){ var r = jysepAttRow(p, d, name); return r && r.attended && r.type === expectedType; }).length;
     var pct = pastDates.length > 0 ? Math.round(attCount / pastDates.length * 100) : 0;
     var age = YOUTH_AGES[name] ? 'Age '+YOUTH_AGES[name] : '';
     var escapedName = name.replace(/'/g, "\\'");
@@ -7892,7 +7898,7 @@ function renderJysepYouthGrid() {
       : '<button onclick="removeJysepYouth(\''+safeGid+'\',\''+escapedName+'\')" style="border:none;background:none;color:var(--badge-red);cursor:pointer;font-size:.65rem;padding:0;margin-left:2px;opacity:.6" title="Remove">✕</button>';
     var cells = pastDates.map(function(d) {
       var rec = jysepAttRow(p, d, name);
-      var att = rec && rec.attended;
+      var att = !!(rec && rec.attended && rec.type === expectedType);
       var safeDate = d.replace(/'/g,"\\'");
       // For adult trainees, use 'adult_trainee' type; for youth use 'youth'
       var toggleFn = isAdultTrainee
@@ -7921,7 +7927,11 @@ async function toggleJysepYouthCell(gid, name, dateStr, btn) {
   p.attendance[dateStr] = p.attendance[dateStr] || [];
   var rec = jysepAttRow(p, dateStr, name);
   var newAtt = rec ? !rec.attended : true;
-  if (rec) { rec.attended = newAtt; }
+  // Always (re-)tag this row as 'youth' role — a given person can only have one
+  // attendance row per (date, name), so toggling their JY-participant attendance
+  // must claim that row's type, or a stale role (e.g. 'youth_animator') from a
+  // prior action would leave this row uncounted in the youth roster/report totals.
+  if (rec) { rec.attended = newAtt; rec.type = 'youth'; }
   else { p.attendance[dateStr].push({ name: name, type: 'youth', attended: true, hours: null }); }
   btn.textContent = newAtt ? '✔' : '·';
   btn.style.background = newAtt ? 'rgba(0,181,160,.2)' : 'transparent';
@@ -7930,7 +7940,7 @@ async function toggleJysepYouthCell(gid, name, dateStr, btn) {
   var row = btn.closest('tr');
   if (row) {
     var activeDates = jysepPastDates(gid);
-    var newCount = activeDates.filter(function(d){ var r2 = jysepAttRow(p, d, name); return r2 && r2.attended; }).length;
+    var newCount = activeDates.filter(function(d){ var r2 = jysepAttRow(p, d, name); return r2 && r2.attended && r2.type === 'youth'; }).length;
     var tds = row.querySelectorAll('td');
     if (tds[1]) tds[1].textContent = newCount;
     if (tds[2]) tds[2].textContent = (activeDates.length>0 ? Math.round(newCount/activeDates.length*100) : 0)+'%';
@@ -8003,9 +8013,16 @@ async function toggleJysepAdultTraineeCell(gid, name, dateStr, btn) {
   p.attendance = p.attendance || {};
   p.attendance[dateStr] = p.attendance[dateStr] || [];
   var rec = jysepAttRow(p, dateStr, name);
-  var newAtt = rec ? !rec.attended : true;
-  // In memory use 'adult_trainee' type so stats don't count as volunteer hours
-  if (rec) { rec.attended = newAtt; }
+  // Only an existing row already tagged 'adult_trainee' reflects trainee-role
+  // attendance for this date — a row left over from a different role (e.g. a
+  // Trainer hours entry) must not be read as "already attended as trainee".
+  var wasTrainee = !!(rec && rec.type === 'adult_trainee');
+  var newAtt = wasTrainee ? !rec.attended : true;
+  // Always (re-)tag this row as 'adult_trainee' — a person can only have one
+  // attendance row per (date, name), so toggling their trainee attendance must
+  // claim that row's type, or a stale role (e.g. leftover Trainer hours) would
+  // leave this row uncounted in the Adult Trainees roster/report totals.
+  if (rec) { rec.attended = newAtt; rec.type = 'adult_trainee'; }
   else { p.attendance[dateStr].push({ name: name, type: 'adult_trainee', attended: true, hours: null }); }
   btn.textContent = newAtt ? '✔' : '·';
   btn.style.background  = newAtt ? 'rgba(0,181,160,.2)' : 'transparent';
@@ -8014,12 +8031,14 @@ async function toggleJysepAdultTraineeCell(gid, name, dateStr, btn) {
   var row = btn.closest('tr');
   if (row) {
     var activeDates = jysepPastDates(gid);
-    var newCount = activeDates.filter(function(d){ var r2 = jysepAttRow(p, d, name); return r2 && r2.attended; }).length;
+    var newCount = activeDates.filter(function(d){ var r2 = jysepAttRow(p, d, name); return r2 && r2.attended && r2.type === 'adult_trainee'; }).length;
     var tds = row.querySelectorAll('td');
     if (tds[1]) tds[1].textContent = newCount;
     if (tds[2]) tds[2].textContent = (activeDates.length>0 ? Math.round(newCount/activeDates.length*100) : 0)+'%';
   }
-  // DB write: participant_type='adult' (satisfies CHECK constraint); role stored in notes
+  // DB write: participant_type='adult' (satisfies CHECK constraint); role stored in notes.
+  // volunteer_hours is cleared because this row is now claimed by the trainee role —
+  // trainee attendance never carries hours (only Trainer rows do).
   await upsertProgramAttendance({
     program_id: gid, program_type: 'jysep',
     session_date: dateStr, participant_name: name,
@@ -8831,7 +8850,9 @@ function renderJysepStatCards() {
     // Youth attendance (for regular groups = participants; for AT = trainees)
     var allTrackable = enrolled.concat(adultTrainees.filter(function(n){ return enrolled.indexOf(n)<0; }));
     allTrackable.forEach(function(name) {
-      pastDates.forEach(function(d){ var r = jysepAttRow(p, d, name); if (r && r.attended) totalYouthAtt++; });
+      var isAdultTraineeName = adultTrainees.indexOf(name) >= 0 && enrolled.indexOf(name) < 0;
+      var expectedType = isAdultTraineeName ? 'adult_trainee' : 'youth';
+      pastDates.forEach(function(d){ var r = jysepAttRow(p, d, name); if (r && r.attended && r.type === expectedType) totalYouthAtt++; });
     });
     var ps = calcProgramStats()[gid] || {};
     totalAnimHrs += ps.adultHrs || 0;

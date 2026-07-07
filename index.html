@@ -7994,6 +7994,7 @@ async function removeJysepTrainer(gid, name) {
   await Promise.all([delEnrolled, writeTombstone]);
   renderJysepAdultHrsGrid();
   renderJysepStatCards();
+  renderJysepBookCompletion();
 }
 
 // ── Adult trainee attendance toggle (Animator Training groups) ─────────────────
@@ -9881,6 +9882,12 @@ function calculateBookTrendsData(programType, bookLookupFn) {
     Object.keys(p.adult_volunteers || {}).forEach(function(d) {
       (p.adult_volunteers[d] || []).forEach(function(n) { if (n) adultSet.add(n); });
     });
+    // Explicitly-removed trainers/animators must not be resurrected here either —
+    // their hours stay in the DB, but they no longer count as currently enrolled.
+    var removedSetBT = p.removed_adult_participants || {};
+    Object.keys(removedSetBT).forEach(function(n) {
+      if (removedSetBT[n] && !(p.adult_participants && p.adult_participants[n])) adultSet.delete(n);
+    });
 
     // Role lists per subtype
     var jyNames, secondaryNames, adultNames;
@@ -10371,6 +10378,13 @@ function renderJysepBookCompletion() {
     Object.keys(p.adult_volunteers || {}).forEach(function(d) {
       (p.adult_volunteers[d] || []).forEach(function(n) { trainerSet.add(n); });
     });
+    // Explicitly-removed trainers must not be resurrected by the historical
+    // attended-hours fallback above — their hour rows stay in the DB for
+    // reporting, but they should no longer appear as an active trainer.
+    var removedTrainerSet = p.removed_adult_participants || {};
+    Object.keys(removedTrainerSet).forEach(function(n) {
+      if (removedTrainerSet[n] && !(p.adult_participants && p.adult_participants[n])) trainerSet.delete(n);
+    });
     trainers = Array.from(trainerSet).sort();
   } else {
     // JY Participants
@@ -10392,6 +10406,11 @@ function renderJysepBookCompletion() {
     });
     Object.keys(p.adult_volunteers || {}).forEach(function(d) {
       (p.adult_volunteers[d] || []).forEach(function(n) { aaSet.add(n); });
+    });
+    // Same explicit-removal exclusion for regular JYSEP adult animators.
+    var removedAnimSet = p.removed_adult_participants || {};
+    Object.keys(removedAnimSet).forEach(function(n) {
+      if (removedAnimSet[n] && !(p.adult_participants && p.adult_participants[n])) aaSet.delete(n);
     });
     adultAnimators = Array.from(aaSet).sort();
   }

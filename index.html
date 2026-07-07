@@ -19209,6 +19209,7 @@ var _evEditorActive  = '__default__'; // id of currently selected slot
 // Per-slot, per-role volunteer maps: { slotId: { name: hours } }
 var _evEditorYouthHrs = {}; // slotId -> { name: hours }
 var _evEditorAdultHrs = {}; // slotId -> { name: hours }
+var _evEditorInitialSnapshot = null; // JSON snapshot of state at open, for unsaved-changes detection
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -19280,6 +19281,9 @@ function openEventEditor(eventId){
   // Render tabs + section
   evEditorRenderTabs();
   evEditorRenderSlotSection();
+  // Snapshot the just-loaded state so closeEventEditor can detect unsaved edits
+  // and warn before silently discarding them (Close/Cancel never write to Supabase).
+  _evEditorInitialSnapshot = JSON.stringify({ y: _evEditorYouthHrs, a: _evEditorAdultHrs });
   document.getElementById('event-editor-modal').style.display = 'block';
 }
 
@@ -19517,6 +19521,9 @@ async function saveEventEditor(){
   }
 
   await loadEventVolunteers();
+  // Mark current state as "saved" so the closeEventEditor() call below doesn't
+  // mistake the just-saved changes for unsaved ones.
+  _evEditorInitialSnapshot = JSON.stringify({ y: _evEditorYouthHrs, a: _evEditorAdultHrs });
   closeEventEditor();
   renderAdmin();
   var evLogTab = document.getElementById('tab-events-log');
@@ -19525,12 +19532,20 @@ async function saveEventEditor(){
 }
 
 function closeEventEditor(){
+  // Guard against silently losing unsaved volunteer names/hours — Close and
+  // Cancel never write to Supabase, only "Save Changes" does. If the current
+  // state differs from what was loaded when the editor opened, confirm first.
+  var currentSnapshot = JSON.stringify({ y: _evEditorYouthHrs, a: _evEditorAdultHrs });
+  if (_evEditorInitialSnapshot !== null && currentSnapshot !== _evEditorInitialSnapshot) {
+    if (!confirm('You have unsaved volunteer changes for this event.\n\nClose without saving? Your changes will be lost.')) return;
+  }
   document.getElementById('event-editor-modal').style.display = 'none';
   _evEditorId      = null;
   _evEditorSlots   = [];
   _evEditorActive  = '__default__';
   _evEditorYouthHrs = {};
   _evEditorAdultHrs = {};
+  _evEditorInitialSnapshot = null;
 }
 
 // ── NEW EVENT MODAL ──

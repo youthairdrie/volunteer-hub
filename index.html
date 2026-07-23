@@ -6880,8 +6880,7 @@ async function manualLinkProfile() {
   // Derive linked_id using the same logic as user creation
   var linkedId = '';
   if (role === 'youth') {
-    // TODO(future-stable-ids): replace with uuid lookup once youth table has stable ids
-    linkedId = 'yn_' + name.toLowerCase().replace(/\s+/g,'_').replace(/[^a-z0-9_]/g,'');
+    linkedId = youthIdFor(name);
   } else {
     linkedId = name.toLowerCase().replace(/\s+/g,'_').replace(/[^a-z0-9_]/g,'').substring(0,20);
   }
@@ -9126,15 +9125,19 @@ async function loadSingleSccGroup(gid) {
     var memType = row.participant_type;
     if (role === 'scc_facilitator') memType = 'youth_facilitator';
     if (role === 'jysep_animator')  memType = 'youth_animator';
+    // Resolve through the name-alias table so a renamed person never shows up
+    // twice (once under their old name, once under their new one).
+    var pType = (row.participant_type==='adult') ? 'adult' : 'youth';
+    var pname = resolveCanonicalName(pType, row.participant_name);
 
     if(row.session_date==='_enrolled'&&row.participant_type==='youth'){
       prog.youth_participants=prog.youth_participants||{};
-      if(!prog.youth_participants[row.participant_name]) prog.youth_participants[row.participant_name]=[];
+      if(!prog.youth_participants[pname]) prog.youth_participants[pname]=[];
       return;
     }
     if(row.session_date==='_adult_enrolled'&&row.participant_type==='adult'){
       prog.adult_participants=prog.adult_participants||{};
-      if(!prog.adult_participants[row.participant_name]) prog.adult_participants[row.participant_name]=true;
+      if(!prog.adult_participants[pname]) prog.adult_participants[pname]=true;
       return;
     }
     // _adult_removed tombstone rows mark an adult animator/trainer as explicitly
@@ -9142,7 +9145,7 @@ async function loadSingleSccGroup(gid) {
     // but they must not be treated as actively enrolled (see renderJysepAdultHrsGrid).
     if(row.session_date==='_adult_removed'&&row.participant_type==='adult'){
       prog.removed_adult_participants=prog.removed_adult_participants||{};
-      prog.removed_adult_participants[row.participant_name]=true;
+      prog.removed_adult_participants[pname]=true;
       return;
     }
     // Youth facilitator enrollment sentinel — participant_type='youth' + notes='role:scc_facilitator'
@@ -9150,14 +9153,14 @@ async function loadSingleSccGroup(gid) {
     if(row.session_date==='_youth_helper_enrolled'&&
         (row.participant_type==='youth'||row.participant_type==='youth_facilitator'||row.participant_type==='youth_animator')){
       prog.youth_helper_participants=prog.youth_helper_participants||{};
-      if(!prog.youth_helper_participants[row.participant_name])
-        prog.youth_helper_participants[row.participant_name]=memType||row.participant_type;
+      if(!prog.youth_helper_participants[pname])
+        prog.youth_helper_participants[pname]=memType||row.participant_type;
       return;
     }
     prog.attendance[row.session_date]=prog.attendance[row.session_date]||[];
-    var exists=prog.attendance[row.session_date].find(function(r){return r.name===row.participant_name;});
+    var exists=prog.attendance[row.session_date].find(function(r){return r.name===pname;});
     if(!exists) prog.attendance[row.session_date].push({
-      name:row.participant_name,type:memType,attended:row.attended,
+      name:pname,type:memType,attended:row.attended,
       hours:row.volunteer_hours!=null?parseFloat(row.volunteer_hours):null
     });
   });
@@ -13976,10 +13979,6 @@ function addNewPlayer(){
 }
 
 function rebuildYouthLoginDropdown(){
-  // TODO(future-stable-ids): youthId is derived from name — fragile if names change.
-  // Future: store uuid in profiles.linked_id and use that directly.
-  function youthId(name){ return 'yn_' + name.toLowerCase().replace(/\s+/g,'_').replace(/[^a-z0-9_]/g,''); }
-
   var nativeSelect = document.getElementById('setup-name-select');
   // setup-name-select is a hidden input, not a <select> — skip the options loop
   if(nativeSelect && nativeSelect.tagName === 'SELECT'){
@@ -13990,7 +13989,7 @@ function rebuildYouthLoginDropdown(){
     nativeSelect.innerHTML = '<option value="">— Select your name —</option>';
     ALL_YOUTH_NAMES.slice().sort().forEach(function(name){
       var opt = document.createElement('option');
-      opt.value = youthId(name);
+      opt.value = youthIdFor(name);
       opt.textContent = name;
       nativeSelect.appendChild(opt);
     });
@@ -14080,6 +14079,209 @@ const dbGet  = (table, params)       => supa('GET',    table, null, params);
 const dbPost = (table, data)         => supa('POST',   table, data);
 const dbPatch= (table, data, params) => supa('PATCH',  table, data, params);
 const dbDel  = (table, params)       => supa('DELETE', table, null, params);
+
+// ═══════════════════════════════════════════════════════════════════════════
+// STABLE IDENTITY — name-alias resolution layer
+// ═══════════════════════════════════════════════════════════════════════════
+// A rename is a change to ONE existing person's display name, never the
+// creation of a second person. Most tables in this app key activity rows by
+// the person's *name text* rather than a numeric ID, so a rename cascade has
+// to physically rewrite every name-keyed row (see renameYouthEverywhere /
+// renameAdultEverywhere below). That cascade is now atomic-ish (awaited,
+// sequential, reported on failure) — but as a safety net against legacy dirty
+// data, half-migrated rows, or any table we don't yet know about, every
+// rename also writes an alias record here. Any loader can resolve a raw name
+// coming out of Supabase through resolveCanonicalName() so an old name can
+// never re-appear as a second roster entry, even if a stray row still has it.
+var NAME_ALIASES = { youth: {}, adult: {} }; // lowercased-trimmed oldName -> current canonical name
+
+function _aliasKey(name){ return (name || '').trim().toLowerCase(); }
+
+async function loadNameAliases() {
+  // checkAndInitDB() only re-runs the full initDB() SQL under specific
+  // fallback conditions (missing columns, missing event_volunteers, etc.) —
+  // on an already-seeded production DB it may never run again, which would
+  // leave a brand-new table like name_aliases never created. Guarantee it
+  // exists here directly; this is a cheap, idempotent statement.
+  await execSqlTransaction(
+    "create table if not exists name_aliases (" +
+    "  id bigserial primary key," +
+    "  person_type text not null check (person_type in ('youth','adult'))," +
+    "  old_name text not null," +
+    "  new_name text not null," +
+    "  created_at timestamptz default now()," +
+    "  unique(person_type, old_name)" +
+    ");" +
+    "alter table name_aliases disable row level security;" +
+    "create index if not exists name_aliases_new_name_idx on name_aliases(person_type, new_name);"
+  );
+  var rows = await dbGet('name_aliases', 'select=person_type,old_name,new_name');
+  NAME_ALIASES = { youth: {}, adult: {} };
+  if (!rows) return;
+  rows.forEach(function(r){
+    if (!NAME_ALIASES[r.person_type]) NAME_ALIASES[r.person_type] = {};
+    NAME_ALIASES[r.person_type][_aliasKey(r.old_name)] = r.new_name;
+  });
+}
+
+// Resolves any historical name to the current canonical display name.
+// Safe to call on names that were never renamed (returns them unchanged).
+function resolveCanonicalName(personType, rawName) {
+  if (!rawName) return rawName;
+  var map = NAME_ALIASES[personType] || {};
+  var seen = {}; // guard against any accidental alias cycle
+  var cur = rawName;
+  while (map[_aliasKey(cur)] && !seen[_aliasKey(cur)]) {
+    seen[_aliasKey(cur)] = true;
+    cur = map[_aliasKey(cur)];
+  }
+  return cur;
+}
+
+// Records oldName -> newName for personType, and collapses any existing
+// alias chain so every historical name for this person points directly at
+// the new canonical name (keeps resolveCanonicalName O(1) in practice).
+async function recordNameAlias(personType, oldName, newName) {
+  NAME_ALIASES[personType] = NAME_ALIASES[personType] || {};
+  // Repoint anyone who previously aliased to oldName straight to newName
+  Object.keys(NAME_ALIASES[personType]).forEach(function(k){
+    if (NAME_ALIASES[personType][k] === oldName) NAME_ALIASES[personType][k] = newName;
+  });
+  NAME_ALIASES[personType][_aliasKey(oldName)] = newName;
+  var ok = await dbPost('name_aliases', {
+    person_type: personType, old_name: oldName, new_name: newName
+  });
+  if (ok) {
+    // Collapse historical rows that pointed at oldName so the chain stays flat
+    await dbPatch('name_aliases', { new_name: newName },
+      'person_type=eq.' + encodeURIComponent(personType) +
+      '&new_name=eq.' + encodeURIComponent(oldName));
+  }
+  return !!ok;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// STABLE IDENTITY — youth ID lookup
+// ═══════════════════════════════════════════════════════════════════════════
+// The `youth` table's primary key is a slug generated from the name at
+// creation time ('yn_' + slug(name)). That id must NEVER be recomputed from
+// a person's CURRENT name — if it were, a rename would compute a different
+// id than the one actually stored in the youth row (and in every table that
+// references it), which silently created a second "person" on every rename.
+// YOUTH_ID_BY_NAME is populated from the DB's actual `id` column (loadYouthData)
+// and is the single source of truth for "what is this person's stable id".
+// youthIdFor() only falls back to deriving a slug for names that don't exist
+// in the DB yet (i.e. a brand-new youth being created for the first time).
+var YOUTH_ID_BY_NAME = {};
+
+function _slugYouthId(name){ return 'yn_' + name.toLowerCase().replace(/\s+/g,'_').replace(/[^a-z0-9_]/g,''); }
+
+function youthIdFor(name) {
+  if (YOUTH_ID_BY_NAME[name]) return YOUTH_ID_BY_NAME[name];
+  return _slugYouthId(name);
+}
+
+// ── Safe single-quote escaping for building literal SQL strings ──
+// (exec_sql takes a raw query string with no parameter binding, so every
+// user-supplied value that goes into SQL text MUST be escaped this way.)
+function _sqlStr(s) { return "'" + String(s == null ? '' : s).replace(/'/g, "''") + "'"; }
+
+// Runs an arbitrary SQL string (wrapped by the caller in BEGIN/COMMIT as
+// needed) through the exec_sql RPC and returns {ok, error}. Because the whole
+// rename cascade is sent as ONE statement block, Postgres rolls the entire
+// thing back automatically if any part of it fails — this is what makes
+// renamePersonEverywhere() atomic instead of a series of independent PATCHes
+// that can leave a person half-renamed if one of them fails partway through.
+async function execSqlTransaction(sql) {
+  try {
+    var r = await fetch(SUPA_URL + '/rest/v1/rpc/exec_sql', {
+      method: 'POST',
+      headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query: sql })
+    });
+    if (r.ok) return { ok: true, error: '' };
+    var errText = await r.text();
+    var msg = errText;
+    try { var e = JSON.parse(errText); msg = e.message || e.hint || e.details || errText; } catch(x){}
+    return { ok: false, error: msg };
+  } catch (e) {
+    return { ok: false, error: (e && e.message) || String(e) };
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// STABLE IDENTITY — the single shared rename cascade
+// ═══════════════════════════════════════════════════════════════════════════
+// A rename is an update to ONE existing person, never the creation of a
+// second person. This function is the ONLY place that writes a renamed
+// display name into the database, for both youth and adults. It:
+//   1. Blocks the rename (server-side, inside the same transaction) if the
+//      new name already belongs to a different person.
+//   2. Updates every name-keyed table for this person ATOMICALLY — either
+//      all of it lands, or none of it does (via a single SQL transaction).
+//   3. Records a name_aliases row so any loader can self-heal legacy data
+//      that predates this fix, or a row this list doesn't yet know about.
+// Callers (saveEditYouth / saveEditAdult) still need to update in-memory
+// structures themselves — this only guarantees the DB write is safe.
+async function renamePersonEverywhere(personType, oldName, newName, stableId) {
+  if (!oldName || !newName || oldName === newName) return { ok: true, error: '' };
+
+  var onT = _sqlStr(newName), onO = _sqlStr(oldName);
+  var stmts = [];
+
+  if (personType === 'youth') {
+    var idLit = _sqlStr(stableId);
+    stmts.push(
+      // Guard: fail the whole transaction if newName already belongs to a
+      // DIFFERENT youth — this is the "block silent merge" requirement.
+      "do $$ begin " +
+        "if exists (select 1 from youth where lower(name) = lower(" + onT + ") and id <> " + idLit + ") then " +
+          "raise exception 'A different youth is already named %', " + onT + "; " +
+        "end if; " +
+      "end $$;",
+      "update youth set name = " + onT + " where id = " + idLit + ";",
+      "update scrabble_sessions set player_name = " + onT + " where player_name = " + onO + ";",
+      "update pending_entries set youth_name = " + onT + " where youth_name = " + onO + ";",
+      "update event_registrations set youth_name = " + onT + " where youth_name = " + onO + ";",
+      "update program_attendance set participant_name = " + onT + " where participant_name = " + onO + " and participant_type in ('youth','youth_facilitator','youth_animator');",
+      "update service_project_participants set participant_name = " + onT + " where participant_name = " + onO + " and participant_type = 'youth';",
+      "update youth_compliance set name = " + onT + " where name = " + onO + ";",
+      "insert into name_aliases(person_type, old_name, new_name) values ('youth', " + onO + ", " + onT + ") " +
+        "on conflict (person_type, old_name) do update set new_name = excluded.new_name;",
+      "update name_aliases set new_name = " + onT + " where person_type = 'youth' and new_name = " + onO + ";"
+    );
+  } else { // adult
+    var keyLit = _sqlStr(stableId);
+    stmts.push(
+      "do $$ begin " +
+        "if exists (select 1 from adults where lower(name) = lower(" + onT + ") and id <> " + keyLit + ") then " +
+          "raise exception 'A different adult is already named %', " + onT + "; " +
+        "end if; " +
+      "end $$;",
+      "update adults set name = " + onT + " where id = " + keyLit + ";",
+      "update adult_scrabble_sessions set volunteer_name = " + onT + " where volunteer_name = " + onO + ";",
+      "update program_volunteers set adult_name = " + onT + " where adult_name = " + onO + ";",
+      "update program_attendance set participant_name = " + onT + " where participant_name = " + onO + " and participant_type in ('adult','adult_trainee');",
+      "update service_project_participants set participant_name = " + onT + " where participant_name = " + onO + " and participant_type = 'adult';",
+      "update adult_compliance set name = " + onT + " where name = " + onO + ";",
+      "insert into name_aliases(person_type, old_name, new_name) values ('adult', " + onO + ", " + onT + ") " +
+        "on conflict (person_type, old_name) do update set new_name = excluded.new_name;",
+      "update name_aliases set new_name = " + onT + " where person_type = 'adult' and new_name = " + onO + ";"
+    );
+  }
+
+  var sql = 'begin;\n' + stmts.join('\n') + '\ncommit;';
+  var result = await execSqlTransaction(sql);
+  if (result.ok) {
+    // Keep the in-memory alias map in sync immediately (no reload needed).
+    NAME_ALIASES[personType] = NAME_ALIASES[personType] || {};
+    Object.keys(NAME_ALIASES[personType]).forEach(function(k){
+      if (NAME_ALIASES[personType][k] === oldName) NAME_ALIASES[personType][k] = newName;
+    });
+    NAME_ALIASES[personType][_aliasKey(oldName)] = newName;
+  }
+  return result;
+}
 
 // ── CREATE TABLES VIA SQL EDGE FUNCTION ──
 async function initDB() {
@@ -14368,6 +14570,22 @@ async function initDB() {
     create index if not exists spp_project_id_idx   on service_project_participants(project_id);
     create index if not exists spp_participant_name_idx on service_project_participants(participant_name);
     create index if not exists spp_participant_type_idx on service_project_participants(participant_type);
+    -- ── STABLE IDENTITY: name-change alias table ──
+    -- Every rename (Admin → Users) writes a row here mapping the old display
+    -- name to the new one. Any loader that reads a name-keyed table can pass
+    -- the raw name through resolveCanonicalName() to self-heal legacy rows
+    -- that a rename cascade missed (network hiccup, RLS error, old data, etc.)
+    -- without ever creating a second "person" in the UI.
+    create table if not exists name_aliases (
+      id          bigserial primary key,
+      person_type text not null check (person_type in ('youth','adult')),
+      old_name    text not null,
+      new_name    text not null,
+      created_at  timestamptz default now(),
+      unique(person_type, old_name)
+    );
+    alter table name_aliases disable row level security;
+    create index if not exists name_aliases_new_name_idx on name_aliases(person_type, new_name);
   `;
   const r = await fetch(SUPA_URL + '/rest/v1/rpc/exec_sql', {
     method: 'POST',
@@ -14608,6 +14826,10 @@ async function loadYouthData() {
     var isAdminAdded = row.id && row.id.indexOf('yn_') === 0;
     if(!isAdminAdded) return;
 
+    // Record the REAL stable id from the DB row — never recompute this from
+    // the current name (see YOUTH_ID_BY_NAME comment above).
+    YOUTH_ID_BY_NAME[name] = row.id;
+
     // If deactivated, ensure removed from active list
     if(row.active === false){
       ALL_YOUTH_NAMES = ALL_YOUTH_NAMES.filter(function(n){ return n !== name; });
@@ -14649,8 +14871,11 @@ async function loadYouthData() {
 }
 
 // ── SAVE A SINGLE YOUTH TO SUPABASE ──
+// Uses the REAL stable id (YOUTH_ID_BY_NAME) when this youth already exists,
+// so a rename never causes a second `youth` row to be inserted under a
+// newly-recomputed id. Only brand-new youth get an id derived from their name.
 async function saveYouthToDB(name, age, workshops) {
-  var id = 'yn_' + name.toLowerCase().replace(/\s+/g,'_').replace(/[^a-z0-9_]/g,'');
+  var id = youthIdFor(name);
   // Check if already exists
   const existing = await dbGet('youth', 'select=id&id=eq.' + encodeURIComponent(id) + '&limit=1');
   if (existing && existing.length > 0) {
@@ -14682,6 +14907,7 @@ async function saveYouthToDB(name, age, workshops) {
     const err = await r.text();
     console.warn('saveYouthToDB failed for', name, r.status, err);
   } else {
+    YOUTH_ID_BY_NAME[name] = id; // this youth now has a real, persisted, stable id
     console.log('Youth saved to DB:', name, '(id:', id + ')');
   }
 }
@@ -14693,7 +14919,7 @@ async function saveWorkshopAttendance(youthName, workshopId, attended) {
     console.warn('saveWorkshopAttendance: blocked — ws', workshopId, 'is not conducted. Skipping save.');
     return;
   }
-  var youthId = 'yn_' + youthName.toLowerCase().replace(/\s+/g,'_').replace(/[^a-z0-9_]/g,'');
+  var youthId = youthIdFor(youthName);
 
   if (attended) {
     const r = await fetch(SUPA_URL + '/rest/v1/workshop_attendance?on_conflict=youth_id,workshop_id', {
@@ -14907,8 +15133,9 @@ async function loadScrabbleData() {
   if(q1rows && q1rows.length > 0) {
     Q1_SESSIONS = {};
     q1rows.forEach(function(row){
-      if(!Q1_SESSIONS[row.player_name]) Q1_SESSIONS[row.player_name] = {};
-      Q1_SESSIONS[row.player_name][row.session_date] = row.points;
+      var pname = resolveCanonicalName('youth', row.player_name);
+      if(!Q1_SESSIONS[pname]) Q1_SESSIONS[pname] = {};
+      Q1_SESSIONS[pname][row.session_date] = row.points;
     });
     console.log('Q1 sessions loaded:', q1rows.length, 'rows');
   }
@@ -14918,8 +15145,9 @@ async function loadScrabbleData() {
   if(q1adult && q1adult.length > 0) {
     Q1_ADULT_SCRABBLE = {};
     q1adult.forEach(function(row){
-      if(!Q1_ADULT_SCRABBLE[row.volunteer_name]) Q1_ADULT_SCRABBLE[row.volunteer_name] = {};
-      Q1_ADULT_SCRABBLE[row.volunteer_name][row.session_date] = parseFloat(row.hours);
+      var pname = resolveCanonicalName('adult', row.volunteer_name);
+      if(!Q1_ADULT_SCRABBLE[pname]) Q1_ADULT_SCRABBLE[pname] = {};
+      Q1_ADULT_SCRABBLE[pname][row.session_date] = parseFloat(row.hours);
     });
     console.log('Q1 adult hours loaded:', q1adult.length, 'rows');
   } // e.g. "q2_2026"
@@ -14931,13 +15159,14 @@ async function loadScrabbleData() {
     // Separate real session rows from override rows
     var overrides = {};
     sessions.forEach(function(row) {
-      if(!SCRABBLE_SESSIONS[row.player_name]) SCRABBLE_SESSIONS[row.player_name] = {};
+      var pname = resolveCanonicalName('youth', row.player_name);
+      if(!SCRABBLE_SESSIONS[pname]) SCRABBLE_SESSIONS[pname] = {};
       if(row.session_date === '_registered') return; // skip placeholder
       if(row.session_date === '_total_override'){
-        overrides[row.player_name] = row.points; // will apply after sessions loaded
+        overrides[pname] = row.points; // will apply after sessions loaded
         return;
       }
-      SCRABBLE_SESSIONS[row.player_name][row.session_date] = row.points;
+      SCRABBLE_SESSIONS[pname][row.session_date] = row.points;
     });
     Object.keys(SCRABBLE_SESSIONS).forEach(function(name) {
       var sessionSum = Object.values(SCRABBLE_SESSIONS[name]).reduce(function(s,v){return s+v;},0);
@@ -14962,8 +15191,9 @@ async function loadScrabbleData() {
   if(adultSessions && adultSessions.length > 0) {
     Object.keys(ADULT_SCRABBLE).forEach(function(n){ ADULT_SCRABBLE[n] = {}; });
     adultSessions.forEach(function(row) {
-      if(!ADULT_SCRABBLE[row.volunteer_name]) ADULT_SCRABBLE[row.volunteer_name] = {};
-      ADULT_SCRABBLE[row.volunteer_name][row.session_date] = parseFloat(row.hours);
+      var pname = resolveCanonicalName('adult', row.volunteer_name);
+      if(!ADULT_SCRABBLE[pname]) ADULT_SCRABBLE[pname] = {};
+      ADULT_SCRABBLE[pname][row.session_date] = parseFloat(row.hours);
     });
     Object.keys(ADULT_SCRABBLE).forEach(function(name) {
       ADULT_SCRABBLE_TOTALS[name] = Object.values(ADULT_SCRABBLE[name]).reduce(function(s,v){return s+v;},0);
@@ -14981,8 +15211,9 @@ async function loadScrabbleData() {
     Object.keys(SCRABBLE_SCORES).forEach(function(n){ SCRABBLE_SCORES[n]={}; });
     SCRABBLE_SCORE_PLAYED.length = 0;
     wordScores.forEach(function(row){
-      if(!SCRABBLE_SCORES[row.player_name]) SCRABBLE_SCORES[row.player_name]={};
-      SCRABBLE_SCORES[row.player_name][row.session_date]=row.score;
+      var pname = resolveCanonicalName('youth', row.player_name);
+      if(!SCRABBLE_SCORES[pname]) SCRABBLE_SCORES[pname]={};
+      SCRABBLE_SCORES[pname][row.session_date]=row.score;
       if(SCRABBLE_SCORE_PLAYED.indexOf(row.session_date)<0) SCRABBLE_SCORE_PLAYED.push(row.session_date);
     });
     Object.keys(SCRABBLE_SCORES).forEach(function(name){
@@ -15103,9 +15334,10 @@ async function loadEventRegistrations() {
   rows.forEach(function(row) {
     const ev = EVENTS_DATA.find(function(e) { return e.id === row.event_id; });
     if (ev) {
+      var pname = resolveCanonicalName('youth', row.youth_name);
       ev.youth_registered = ev.youth_registered || [];
-      if (ev.youth_registered.indexOf(row.youth_name) < 0) {
-        ev.youth_registered.push(row.youth_name);
+      if (ev.youth_registered.indexOf(pname) < 0) {
+        ev.youth_registered.push(pname);
       }
     }
   });
@@ -15135,6 +15367,9 @@ async function loadEventVolunteers() {
   rows.forEach(function(row){
     var ev = EVENTS_DATA.find(function(e){ return e.id === row.event_id; });
     if(!ev) return;
+    // Resolve through the name-alias table so a renamed volunteer never shows
+    // up twice — once under their old name, once under the new one.
+    row = Object.assign({}, row, { name: resolveCanonicalName(row.role === 'adult' ? 'adult' : 'youth', row.name) });
     var hrs = parseFloat(row.hours) || 2;
     var hBucket = Math.min(8, Math.max(1, Math.round(hrs)));
     var slotId = row.timeslot_id || '__default__';
@@ -15289,10 +15524,11 @@ async function loadProgramData() {
     vols.forEach(function(row) {
       const prog = PROGRAMS_DATA[row.program_id];
       if (prog) {
+        var pname = resolveCanonicalName('adult', row.adult_name);
         prog.adult_volunteers = prog.adult_volunteers || {};
         prog.adult_volunteers[row.session_date] = prog.adult_volunteers[row.session_date] || [];
-        if (prog.adult_volunteers[row.session_date].indexOf(row.adult_name) < 0) {
-          prog.adult_volunteers[row.session_date].push(row.adult_name);
+        if (prog.adult_volunteers[row.session_date].indexOf(pname) < 0) {
+          prog.adult_volunteers[row.session_date].push(pname);
         }
       }
     });
@@ -15369,31 +15605,40 @@ async function loadGardenData() {
     'select=session_date,participant_name,participant_type,attended,volunteer_hours&program_id=eq.garden_2026&order=session_date.asc');
   if (attRows) {
     attRows.forEach(function(row) {
+      // Resolve through the name-alias table so a renamed Garden participant
+      // never shows up twice — once under their old name, once under the new.
+      var pType = (row.participant_type === 'adult') ? 'adult' : 'youth';
+      var pname = resolveCanonicalName(pType, row.participant_name);
       // _enrolled sentinel rows restore the youth_participants list across page loads
       if (row.session_date === '_enrolled' && row.participant_type === 'youth') {
         prog.youth_participants = prog.youth_participants || {};
-        if (!prog.youth_participants[row.participant_name]) {
-          prog.youth_participants[row.participant_name] = [];
+        if (!prog.youth_participants[pname]) {
+          prog.youth_participants[pname] = [];
         }
         return;
       }
       // _adult_enrolled sentinel rows restore enrolled adult volunteers across page loads
       if (row.session_date === '_adult_enrolled' && row.participant_type === 'adult') {
         prog.adult_participants = prog.adult_participants || {};
-        if (!prog.adult_participants[row.participant_name]) {
-          prog.adult_participants[row.participant_name] = true;
+        if (!prog.adult_participants[pname]) {
+          prog.adult_participants[pname] = true;
         }
         return;
       }
       prog.attendance[row.session_date] = prog.attendance[row.session_date] || [];
-      var exists = prog.attendance[row.session_date].find(function(r){ return r.name === row.participant_name; });
+      var exists = prog.attendance[row.session_date].find(function(r){ return r.name === pname; });
       if (!exists) {
         prog.attendance[row.session_date].push({
-          name:    row.participant_name,
+          name:    pname,
           type:    row.participant_type,
           attended:row.attended,
           hours:   row.volunteer_hours != null ? parseFloat(row.volunteer_hours) : null
         });
+      } else if (row.attended && !exists.attended) {
+        // Same canonical person, two rows (pre-rename + post-rename same date) —
+        // keep attendance/hours rather than silently dropping the second row.
+        exists.attended = row.attended;
+        if (row.volunteer_hours != null) exists.hours = parseFloat(row.volunteer_hours);
       }
     });
   }
@@ -15432,6 +15677,10 @@ async function loadServiceProjects() {
   SERVICE_PROJECT_PARTICIPANTS = {};
   if (ptRows) {
     ptRows.forEach(function(pt){
+      // Resolve through the name-alias table so a renamed participant never
+      // shows up twice — once under their old name, once under the new one.
+      pt.participant_name = resolveCanonicalName(
+        pt.participant_type === 'adult' ? 'adult' : 'youth', pt.participant_name);
       if (!SERVICE_PROJECT_PARTICIPANTS[pt.project_id])
         SERVICE_PROJECT_PARTICIPANTS[pt.project_id] = [];
       SERVICE_PROJECT_PARTICIPANTS[pt.project_id].push(pt);
@@ -15964,15 +16213,19 @@ async function loadSingleJysepGroup(gid) {
       if (role === 'jysep_animator')  memType = 'youth_animator';
       if (role === 'scc_facilitator') memType = 'youth_facilitator';
       if (role === 'at_trainee')      memType = 'adult_trainee';
+      // Resolve through the name-alias table so a renamed person never shows
+      // up twice — once under their old name, once under the new one.
+      var pType = (row.participant_type === 'adult') ? 'adult' : 'youth';
+      var pname = resolveCanonicalName(pType, row.participant_name);
 
       if (row.session_date === '_enrolled' && row.participant_type === 'youth') {
         prog.youth_participants = prog.youth_participants || {};
-        if (!prog.youth_participants[row.participant_name]) prog.youth_participants[row.participant_name] = [];
+        if (!prog.youth_participants[pname]) prog.youth_participants[pname] = [];
         return;
       }
       if (row.session_date === '_adult_enrolled' && row.participant_type === 'adult') {
         prog.adult_participants = prog.adult_participants || {};
-        if (!prog.adult_participants[row.participant_name]) prog.adult_participants[row.participant_name] = true;
+        if (!prog.adult_participants[pname]) prog.adult_participants[pname] = true;
         return;
       }
       // _adult_removed tombstone rows mark an adult animator/trainer as explicitly
@@ -15980,7 +16233,7 @@ async function loadSingleJysepGroup(gid) {
       // this table, but they must not be treated as actively enrolled.
       if (row.session_date === '_adult_removed' && row.participant_type === 'adult') {
         prog.removed_adult_participants = prog.removed_adult_participants || {};
-        prog.removed_adult_participants[row.participant_name] = true;
+        prog.removed_adult_participants[pname] = true;
         return;
       }
       // Youth animator/facilitator enrollment sentinel — stored as participant_type='youth' + notes='role:jysep_animator'
@@ -15988,8 +16241,8 @@ async function loadSingleJysepGroup(gid) {
       if (row.session_date === '_youth_helper_enrolled' &&
           (row.participant_type === 'youth' || row.participant_type === 'youth_animator' || row.participant_type === 'youth_facilitator')) {
         prog.youth_helper_participants = prog.youth_helper_participants || {};
-        if (!prog.youth_helper_participants[row.participant_name])
-          prog.youth_helper_participants[row.participant_name] = memType || row.participant_type;
+        if (!prog.youth_helper_participants[pname])
+          prog.youth_helper_participants[pname] = memType || row.participant_type;
         return;
       }
       // Adult trainee enrollment sentinel — stored as participant_type='adult' + notes='role:at_trainee'
@@ -15997,18 +16250,21 @@ async function loadSingleJysepGroup(gid) {
       if (row.session_date === '_trainee_enrolled' &&
           (row.participant_type === 'adult' || row.participant_type === 'adult_trainee')) {
         prog.adult_trainees = prog.adult_trainees || {};
-        if (!prog.adult_trainees[row.participant_name]) prog.adult_trainees[row.participant_name] = true;
+        if (!prog.adult_trainees[pname]) prog.adult_trainees[pname] = true;
         return;
       }
       prog.attendance[row.session_date] = prog.attendance[row.session_date] || [];
-      var exists = prog.attendance[row.session_date].find(function(r){ return r.name === row.participant_name; });
+      var exists = prog.attendance[row.session_date].find(function(r){ return r.name === pname; });
       if (!exists) {
         prog.attendance[row.session_date].push({
-          name:    row.participant_name,
+          name:    pname,
           type:    memType,
           attended:row.attended,
           hours:   row.volunteer_hours != null ? parseFloat(row.volunteer_hours) : null
         });
+      } else if (row.attended && !exists.attended) {
+        exists.attended = row.attended;
+        if (row.volunteer_hours != null) exists.hours = parseFloat(row.volunteer_hours);
       }
     });
   }
@@ -16022,7 +16278,8 @@ async function loadComplianceData() {
   const adults = await dbGet('adult_compliance', 'select=*');
   if (adults) {
     adults.forEach(function(row) {
-      ADULT_COMPLIANCE[row.name] = {
+      var pname = resolveCanonicalName('adult', row.name);
+      ADULT_COMPLIANCE[pname] = {
         vsc_issued: row.vsc_issued || '',
         vsc_expiry: row.vsc_expiry || '',
         vsc_on_file: row.vsc_on_file || false,
@@ -16037,7 +16294,8 @@ async function loadComplianceData() {
   const youth = await dbGet('youth_compliance', 'select=*');
   if (youth) {
     youth.forEach(function(row) {
-      YOUTH_COMPLIANCE[row.name] = {
+      var pname = resolveCanonicalName('youth', row.name);
+      YOUTH_COMPLIANCE[pname] = {
         waiver_date: row.waiver_date || '',
         waiver_on_file: row.waiver_on_file || false,
         photo_date: row.photo_date || '',
@@ -16084,6 +16342,9 @@ async function dbStartup() {
 
   // Run the rest in parallel — these don't block login
   try { await checkAndInitDB(); } catch(e) { console.warn('checkAndInitDB error (non-fatal):', e); }
+  // Name aliases MUST load before any name-keyed table so renamed people never
+  // reappear as a duplicate "old name" entry (see resolveCanonicalName).
+  try { await loadNameAliases(); } catch(e) { console.warn('loadNameAliases error (non-fatal):', e); }
   try {
     if(statusEl) statusEl.textContent = 'Loading profiles…';
     await loadYouthData();
@@ -16191,11 +16452,14 @@ window.addEventListener('load', function() {
 async function loadAllWorkshopAttendance() {
   const rows = await dbGet('workshop_attendance', 'select=youth_id,workshop_id');
 
-  // Build a reverse lookup: yn_adam_choe → "Adam Choe"
+  // Build a reverse lookup: yn_adam_choe → "Adam Choe", from the REAL stable
+  // ids (YOUTH_ID_BY_NAME) rather than recomputing a slug from each youth's
+  // current name — recomputing here is exactly what caused a renamed youth's
+  // historical workshop attendance to silently vanish (their DB row's
+  // youth_id no longer matched a freshly-recomputed slug of the new name).
   var ynToName = {};
   ALL_YOUTH_NAMES.forEach(function(n) {
-    var key = 'yn_' + n.toLowerCase().replace(/\s+/g,'_').replace(/[^a-z0-9_]/g,'');
-    ynToName[key] = n;
+    ynToName[youthIdFor(n)] = n;
   });
 
   if(!rows || rows.length === 0){
@@ -16235,8 +16499,8 @@ async function loadAllWorkshopAttendance() {
 
 
 async function loadWorkshopAttendance(youthName) {
-  // Primary stable key: yn_adam_choe
-  var youthId = "yn_" + youthName.toLowerCase().replace(/\s+/g,"_").replace(/[^a-z0-9_]/g,"");
+  // Primary stable key: yn_adam_choe (or the real DB id if this youth was ever renamed)
+  var youthId = youthIdFor(youthName);
 
   // Also build legacy index key (y_N) so old records are not missed
   var legacyId = null;
@@ -16670,7 +16934,7 @@ async function openEditYouth(name){
   modal.style.display = 'flex';
 
   // Live DB fetch for email — more reliable than stale _cachedProfiles cache
-  var linkedId = 'yn_' + name.toLowerCase().replace(/\s+/g,'_').replace(/[^a-z0-9_]/g,'');
+  var linkedId = youthIdFor(name);
   var rows = await dbGet('profiles',
     'select=email&or=(linked_id.eq.' + encodeURIComponent(linkedId) +
     ',name.eq.' + encodeURIComponent(name.trim()) + ')&limit=1');
@@ -16706,25 +16970,36 @@ async function saveEditYouth(){
   if(newName !== origName){
     var dup = ALL_YOUTH_NAMES.find(function(n){ return n !== origName && n.toLowerCase() === newName.toLowerCase(); });
     if(dup){ showErr('"'+dup+'" already exists.'); return; }
+
+    // The person's REAL stable id — this never changes on a rename. Only the
+    // `name` column is updated; every other table is patched by matching the
+    // old NAME text (see renamePersonEverywhere), never by recomputing an id.
+    var stableId = youthIdFor(origName);
+
+    setBusy(true);
+    fb.innerHTML = '<span style="color:var(--text-muted)">Renaming — updating attendance, hours, and enrollment…</span>';
+    var renameResult = await renamePersonEverywhere('youth', origName, newName, stableId);
+    setBusy(false);
+    if (!renameResult.ok) {
+      // Atomic: the transaction rolled back, so NOTHING was changed in the DB.
+      // Don't touch in-memory state either — keep the modal open so the
+      // admin can see exactly what went wrong and retry.
+      showErr('Rename failed — no data was changed. ' + renameResult.error);
+      return;
+    }
+
+    // DB write succeeded — now it's safe to update every in-memory structure.
     var idx = ALL_YOUTH_NAMES.indexOf(origName);
     if(idx>=0) ALL_YOUTH_NAMES[idx] = newName;
     ALL_YOUTH_NAMES.sort();
+    YOUTH_ID_BY_NAME[newName] = stableId;
+    delete YOUTH_ID_BY_NAME[origName];
     if(YOUTH_AGES[origName]!==undefined){ YOUTH_AGES[newName]=YOUTH_AGES[origName]; delete YOUTH_AGES[origName]; }
     if(YOUTH_HOURS[origName]!==undefined){ YOUTH_HOURS[newName]=YOUTH_HOURS[origName]; delete YOUTH_HOURS[origName]; }
     if(YOUTH_COMPLIANCE[origName]){ YOUTH_COMPLIANCE[newName]=YOUTH_COMPLIANCE[origName]; delete YOUTH_COMPLIANCE[origName]; }
     if(EL_YOUTH[origName]!==undefined){ EL_YOUTH[newName]=EL_YOUTH[origName]; delete EL_YOUTH[origName]; }
     if(SCRABBLE_SESSIONS[origName]){ SCRABBLE_SESSIONS[newName]=SCRABBLE_SESSIONS[origName]; delete SCRABBLE_SESSIONS[origName]; }
     if(SCRABBLE_TOTALS[origName]!==undefined){ SCRABBLE_TOTALS[newName]=SCRABBLE_TOTALS[origName]; delete SCRABBLE_TOTALS[origName]; }
-    var oldId = 'yn_'+origName.toLowerCase().replace(/\s+/g,'_').replace(/[^a-z0-9_]/g,'');
-    var newId = 'yn_'+newName.toLowerCase().replace(/\s+/g,'_').replace(/[^a-z0-9_]/g,'');
-    dbPatch('youth', {name:newName}, 'id=eq.'+encodeURIComponent(oldId));
-    if(oldId !== newId) dbPatch('workshop_attendance', {youth_id: newId}, 'youth_id=eq.'+encodeURIComponent(oldId));
-    dbPatch('scrabble_sessions', {player_name: newName}, 'player_name=eq.'+encodeURIComponent(origName));
-    dbPatch('pending_entries', {youth_name: newName}, 'youth_name=eq.'+encodeURIComponent(origName));
-    dbPatch('event_registrations', {youth_name: newName}, 'youth_name=eq.'+encodeURIComponent(origName));
-    if(newEmail) dbPatch('profiles', {name: newName}, 'email=eq.'+encodeURIComponent(newEmail));
-    // ── Cascade rename into program_attendance (all rows: sentinel + actual) ──
-    dbPatch('program_attendance', {participant_name: newName}, 'participant_name=eq.'+encodeURIComponent(origName));
     // ── Cascade rename into all PROGRAMS_DATA.youth_participants in-memory ──
     Object.keys(PROGRAMS_DATA).forEach(function(pid) {
       var prog = PROGRAMS_DATA[pid];
@@ -16780,7 +17055,7 @@ async function saveEditYouth(){
   // ── Profile upsert — awaited, result gates the success message ──
   if(newEmail) {
     setBusy(true);
-    var linkedId = 'yn_' + cur.toLowerCase().replace(/\s+/g,'_').replace(/[^a-z0-9_]/g,'');
+    var linkedId = youthIdFor(cur);
     var ok = await upsertProfile(newEmail, cur, 'youth', linkedId);
     setBusy(false);
     if(!ok) {
@@ -17296,7 +17571,22 @@ async function saveEditAdult(){
   if(newName !== origName){
     var dup = Object.values(FAC_PROFILES).find(function(x){ return x !== p && x.name.toLowerCase() === newName.toLowerCase(); });
     if(dup){ showErr('"'+dup.name+'" already exists.'); return; }
-    p._prevName = origName;
+
+    // `key` (adults.id) is this person's real stable id and never changes.
+    // The rename cascade runs to completion (atomically) BEFORE anything
+    // below writes a new sentinel/attendance row under the new name — this
+    // ordering is what prevented the old race where an enrollment checkbox
+    // could create a "new name" row while the rename of "old name" rows was
+    // still in flight, leaving the same person appearing under both names.
+    setBusy(true);
+    fb.innerHTML = '<span style="color:var(--text-muted)">Renaming — updating attendance, hours, and enrollment…</span>';
+    var renameResult = await renamePersonEverywhere('adult', origName, newName, key);
+    setBusy(false);
+    if (!renameResult.ok) {
+      showErr('Rename failed — no data was changed. ' + renameResult.error);
+      return;
+    }
+
     if(ADULT_SCRABBLE[origName]){ ADULT_SCRABBLE[newName]=ADULT_SCRABBLE[origName]; delete ADULT_SCRABBLE[origName]; }
     if(ADULT_SCRABBLE_TOTALS[origName]!==undefined){ ADULT_SCRABBLE_TOTALS[newName]=ADULT_SCRABBLE_TOTALS[origName]; delete ADULT_SCRABBLE_TOTALS[origName]; }
     if(ADULT_COMPLIANCE[origName]){ ADULT_COMPLIANCE[newName]=ADULT_COMPLIANCE[origName]; delete ADULT_COMPLIANCE[origName]; }
@@ -17322,7 +17612,6 @@ async function saveEditAdult(){
     });
     var parts = newName.split(' ');
     p.avatar = (parts[0][0]+(parts[1]?parts[1][0]:'')).toUpperCase();
-    if(newEmail) dbPatch('profiles', {name: newName}, 'email=eq.'+encodeURIComponent(newEmail));
   }
 
   p.name = newName;
@@ -17334,6 +17623,8 @@ async function saveEditAdult(){
   }
 
   // ── Program enrollment checkboxes ──
+  // Safe to write under newName now — the rename cascade above (if any) has
+  // already completed and committed, so there's no old-name row left to race with.
   Object.keys(PROGRAMS_DATA).forEach(function(pid) {
     var prog = PROGRAMS_DATA[pid];
     if (!prog || prog.youth_source === 'scrabble_sessions') return;
@@ -17397,13 +17688,6 @@ async function saveEditAdult(){
   // Update in-memory isAdmin
   p.isAdmin = newIsAdmin;
 
-  if(p._prevName){
-    dbPatch('adult_scrabble_sessions',{volunteer_name:p.name},'volunteer_name=eq.'+encodeURIComponent(p._prevName));
-    dbPatch('program_volunteers',{adult_name:p.name},'adult_name=eq.'+encodeURIComponent(p._prevName));
-    dbPatch('program_attendance',{participant_name:p.name},'participant_name=eq.'+encodeURIComponent(p._prevName)+'&participant_type=eq.adult');
-  }
-  delete p._prevName;
-
   // ── Profile upsert — always run when email present, role reflects new admin state ──
   var profileOk = true;
   if(newEmail) {
@@ -17452,7 +17736,7 @@ function deactivateYouth(name){
   ALL_YOUTH_NAMES = ALL_YOUTH_NAMES.filter(function(n){return n!==name;});
   // Remove from in-memory active structures (keep data in DB with active=false)
   delete EL_YOUTH[name];
-  var id = 'yn_'+name.toLowerCase().replace(/\s+/g,'_').replace(/[^a-z0-9_]/g,'');
+  var id = youthIdFor(name);
   dbPatch('youth', {active: false}, 'id=eq.'+encodeURIComponent(id));
   rebuildYouthLoginDropdown();
   renderYouthRoster();
@@ -18170,13 +18454,15 @@ function attemptAdminLogin() {
 // ── CORE LOGIN HANDLER (unchanged) ──
 function doLogin(id, role) {
   if(role === 'youth') {
-    // TODO(future-stable-ids): once profiles.linked_id stores a uuid that maps
-    // directly to the youth table, replace this name-derivation cascade with a
-    // single lookup: youth = await dbGet('youth','id=eq.'+profile.uuid)
+    // Resolve the id from the profile link back to a name using the REAL
+    // stable id map (YOUTH_ID_BY_NAME) rather than recomputing a slug from
+    // each youth's CURRENT name — recomputing here broke login for anyone
+    // renamed after their profile was linked, since profiles.linked_id keeps
+    // the id issued at signup and a rename never changes that id.
     var selectedName = null;
     if(id.startsWith('yn_')) {
       selectedName = ALL_YOUTH_NAMES.find(function(n){
-        return 'yn_' + n.toLowerCase().replace(/\s+/g,'_').replace(/[^a-z0-9_]/g,'') === id;
+        return youthIdFor(n) === id;
       }) || null;
     }
     if(!selectedName && id.startsWith('y_')) {
@@ -18913,7 +19199,7 @@ function _doSelectCustomName(el) {
   var name = el.textContent.replace(/\s*⚡/g,'').trim();
   var val  = el.getAttribute('data-value');
   if (val && (val.startsWith('y_') || val.startsWith('yn_'))) {
-    val = 'yn_' + name.toLowerCase().replace(/\s+/g,'_').replace(/[^a-z0-9_]/g,'');
+    val = youthIdFor(name);
   }
   document.getElementById('setup-name-select').value = val;
   document.getElementById('cdd-display').textContent = name;

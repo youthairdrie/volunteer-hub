@@ -1296,7 +1296,10 @@ tr:hover .grd-date-sticky { background: #1a2d47; }
             <div class="section-box" style="margin-bottom:10px">
               <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:10px">
                 <div style="font-size:.78rem;color:var(--text-muted)">Only enrolled Garden youth appear below. Youth attendance = participation only — not volunteer hours.</div>
-                <button onclick="openProgramEnrollYouthModal('garden_2026')" class="ws-btn" style="border-color:var(--ya-green);color:var(--ya-green);font-size:.75rem;white-space:nowrap">+ Enroll Youth</button>
+                <div style="display:flex;gap:8px;flex-wrap:wrap">
+                  <button id="garden-att-edit-btn" onclick="toggleGardenAttEditMode()" class="ws-btn" style="border-color:var(--ya-teal);color:var(--ya-teal);font-size:.75rem;white-space:nowrap">✏️ Edit Attendance</button>
+                  <button onclick="openProgramEnrollYouthModal('garden_2026')" class="ws-btn" style="border-color:var(--ya-green);color:var(--ya-green);font-size:.75rem;white-space:nowrap">+ Enroll Youth</button>
+                </div>
               </div>
             </div>
             <!-- Certification config -->
@@ -7208,6 +7211,31 @@ async function saveGardenCertConfig() {
 }
 
 // ── Youth Attendance Grid ─────────────────────────────────────────────────────
+// Garden youth attendance is read-only until an admin clicks "Edit Attendance",
+// mirroring the Workshop attendance edit/save pattern (wsAttEditMode / toggleWsAttEditMode).
+var gardenAttEditMode = false;
+function toggleGardenAttEditMode(){
+  gardenAttEditMode = !gardenAttEditMode;
+  var btn = document.getElementById('garden-att-edit-btn');
+  if (btn) {
+    if (gardenAttEditMode) {
+      btn.textContent = '💾 Save Attendance';
+      btn.style.borderColor = 'var(--ya-orange)';
+      btn.style.color = 'var(--ya-orange)';
+      btn.style.background = 'rgba(232,98,10,.08)';
+    } else {
+      btn.textContent = '✏️ Edit Attendance';
+      btn.style.borderColor = 'var(--ya-teal)';
+      btn.style.color = 'var(--ya-teal)';
+      btn.style.background = '';
+    }
+  }
+  renderGardenYouthGrid();
+  // Leaving edit mode = "Save": attendance is already persisted per-click via
+  // upsertProgramAttendance, so just refresh stats/totals and return to read-only.
+  if (!gardenAttEditMode) renderGardenAdmin();
+}
+
 function renderGardenYouthGrid() {
   var thead = document.getElementById('garden-youth-att-thead');
   var tbody = document.getElementById('garden-youth-att-tbody');
@@ -7223,7 +7251,7 @@ function renderGardenYouthGrid() {
     thead.innerHTML = ''; tbody.innerHTML = '<tr><td colspan="4" style="color:var(--text-muted);font-size:.82rem;padding:12px">No youth enrolled yet. Use "Enroll Youth" above.</td></tr>'; return;
   }
 
-  // Header: frozen columns + one col per past session
+  // Header: frozen columns + one col per past session (with attended-total above each date)
   thead.innerHTML =
     '<th class="grd-sticky grd-sticky-1">Name</th>'+
     '<th class="grd-sticky grd-sticky-2" style="text-align:center">Sessions</th>'+
@@ -7231,7 +7259,14 @@ function renderGardenYouthGrid() {
     pastDates.map(function(d){
       var short = d.replace(', 2026','').replace(', 2027','');
       var meta  = (p.session_meta||{})[d] || {};
-      return '<th style="text-align:center;font-size:.6rem;min-width:42px;padding:5px 3px" title="'+(meta.theme||d)+'">'+short+'</th>';
+      var sessionTotal = enrolled.filter(function(nm){
+        var r = gardenAttRow(p, d, nm);
+        return r && r.attended;
+      }).length;
+      return '<th style="text-align:center;font-size:.6rem;min-width:42px;padding:5px 3px" title="'+(meta.theme||d)+'">'+
+        '<div style="font-weight:800;color:var(--ya-green);font-size:.68rem">'+sessionTotal+' Youth</div>'+
+        '<div>'+short+'</div>'+
+      '</th>';
     }).join('')+
     '<th style="text-align:center;min-width:60px">Attended</th>';
 
@@ -7260,20 +7295,25 @@ function renderGardenYouthGrid() {
     }
 
     // Cells per session — cancelled sessions excluded by gardenPastDates()
+    // Read-only unless gardenAttEditMode is active, to avoid accidental edits while browsing.
+    var editClass = gardenAttEditMode ? ' editable' : '';
     var cells = pastDates.map(function(d) {
       var rec = gardenAttRow(p, d, name);
       var isAtt = rec && rec.attended;
       var safeDate = d.replace(/'/g,"\\'"); var safeName = name.replace(/'/g,"\\'");
-      return '<td class="ws-att-cell'+(isAtt?' attended':' absent')+' editable" '+
-        'onclick="toggleGardenYouthCell(\''+safeDate+'\',\''+safeName+'\',this)">'+
+      var clickAttr = gardenAttEditMode ? ' onclick="toggleGardenYouthCell(\''+safeDate+'\',\''+safeName+'\',this)"' : '';
+      return '<td class="ws-att-cell'+(isAtt?' attended':' absent')+editClass+'"'+clickAttr+'>'+
         (isAtt?'✔':'—')+'</td>';
     }).join('');
 
     var ageStr = YOUTH_AGES[name] ? ' · Age '+YOUTH_AGES[name] : '';
+    var removeBtn = gardenAttEditMode
+      ? '<button onclick="removeGardenYouth(\''+name.replace(/'/g,"\\'")+'\')" style="border:none;background:none;color:var(--badge-red);cursor:pointer;font-size:.65rem;padding:0;margin-left:4px;opacity:.6" title="Remove from Garden">✕</button>'
+      : '';
     return '<tr>'+
       '<td class="grd-sticky grd-sticky-1">'+
         '<strong style="font-size:.83rem">'+name+'</strong>'+
-        '<div style="font-size:.65rem;color:var(--text-muted);margin-top:1px">'+ageStr+'<button onclick="removeGardenYouth(\''+name.replace(/'/g,"\\'")+'\')" style="border:none;background:none;color:var(--badge-red);cursor:pointer;font-size:.65rem;padding:0;margin-left:4px;opacity:.6" title="Remove from Garden">✕</button></div>'+
+        '<div style="font-size:.65rem;color:var(--text-muted);margin-top:1px">'+ageStr+removeBtn+'</div>'+
       '</td>'+
       '<td class="grd-sticky grd-sticky-2" style="text-align:center;vertical-align:middle"><strong>'+attCount+'</strong><br>'+progressBar+'</td>'+
       '<td class="grd-sticky grd-sticky-3" style="vertical-align:middle">'+st+'</td>'+
@@ -7285,6 +7325,7 @@ function renderGardenYouthGrid() {
 
 // toggleGardenYouthCell — cancelled sessions never reach here since gardenPastDates() excludes them
 async function toggleGardenYouthCell(dateStr, name, cell) {
+  if (!gardenAttEditMode) return; // attendance is read-only outside Edit Attendance mode
   var p = gardenProg(); if (!p) return;
   p.attendance = p.attendance || {};
   p.attendance[dateStr] = p.attendance[dateStr] || [];

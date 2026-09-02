@@ -1084,7 +1084,13 @@ tr:hover .grd-date-sticky { background: #1a2d47; }
           <summary style="font-family:Nunito,sans-serif;font-weight:900;font-size:.95rem;color:var(--ya-teal);cursor:pointer;padding:10px 0;list-style:none;display:flex;align-items:center;gap:8px">🌱 Winter 2026 Workshop Schedule</summary>
           <div style="margin-top:10px">
             <div class="section-box">
-              <div class="section-title">🌱 Winter 2026 Workshop Schedule</div>
+              <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:8px">
+                <div class="section-title" style="margin-bottom:0">🌱 Winter 2026 Workshop Schedule</div>
+                <div style="display:flex;gap:6px;flex-wrap:wrap">
+                  <button onclick="wsExportScheduleCSV('winter_2026')" style="padding:5px 14px;border-radius:8px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.04);color:var(--text-muted);font-size:.75rem;font-weight:700;cursor:pointer;font-family:DM Sans,sans-serif">⬇ CSV</button>
+                  <button onclick="wsExportScheduleXLSX('winter_2026')" style="padding:5px 14px;border-radius:8px;border:1px solid rgba(34,197,94,.4);background:rgba(34,197,94,.08);color:#22c55e;font-size:.75rem;font-weight:700;cursor:pointer;font-family:DM Sans,sans-serif">⬇ Excel</button>
+                </div>
+              </div>
               <div style="font-size:.75rem;color:var(--text-muted);margin-bottom:10px">Jan 12 – May 25, 2026 · Historical · Attendance data preserved</div>
               <table class="data-table"><thead><tr><th>#</th><th>Workshop</th><th>Facilitator(s)</th><th>Volunteers</th><th>Date</th><th>Status</th><th>Attendance</th><th>Staff</th></tr></thead><tbody id="admin-ws-tbody"></tbody></table>
             </div>
@@ -1101,6 +1107,8 @@ tr:hover .grd-date-sticky { background: #1a2d47; }
                 <div style="display:flex;gap:6px;flex-wrap:wrap">
                   <button onclick="openAddSessionModal('fall_2026')" style="padding:5px 14px;border-radius:8px;border:1px solid rgba(0,181,160,.4);background:rgba(0,181,160,.08);color:var(--ya-teal);font-size:.75rem;font-weight:700;cursor:pointer;font-family:DM Sans,sans-serif">＋ Add New Session</button>
                   <button id="ws-rearrange-btn-fall_2026" onclick="toggleWsRearrangeMode('fall_2026')" style="padding:5px 14px;border-radius:8px;border:1px solid rgba(232,98,10,.4);background:rgba(232,98,10,.08);color:var(--ya-orange);font-size:.75rem;font-weight:700;cursor:pointer;font-family:DM Sans,sans-serif">⇅ Rearrange</button>
+                  <button onclick="wsExportScheduleCSV('fall_2026')" style="padding:5px 14px;border-radius:8px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.04);color:var(--text-muted);font-size:.75rem;font-weight:700;cursor:pointer;font-family:DM Sans,sans-serif">⬇ CSV</button>
+                  <button onclick="wsExportScheduleXLSX('fall_2026')" style="padding:5px 14px;border-radius:8px;border:1px solid rgba(34,197,94,.4);background:rgba(34,197,94,.08);color:#22c55e;font-size:.75rem;font-weight:700;cursor:pointer;font-family:DM Sans,sans-serif">⬇ Excel</button>
                 </div>
               </div>
               <div style="font-size:.75rem;color:var(--text-muted);margin-bottom:10px">Sep 14 – Dec 14, 2026 · Mondays · Labour Day &amp; Thanksgiving skipped</div>
@@ -3735,6 +3743,8 @@ function renderAdmin(){
         '<div style="display:flex;gap:6px;flex-wrap:wrap">' +
         '<button onclick="openAddSessionModal(\''+sid+'\')" style="padding:5px 14px;border-radius:8px;border:1px solid rgba(0,181,160,.4);background:rgba(0,181,160,.08);color:var(--ya-teal);font-size:.75rem;font-weight:700;cursor:pointer;font-family:DM Sans,sans-serif">＋ Add New Session</button>' +
         '<button id="ws-rearrange-btn-'+sid+'" onclick="toggleWsRearrangeMode(\''+sid+'\')" style="padding:5px 14px;border-radius:8px;border:1px solid rgba(29,127,212,.4);background:rgba(29,127,212,.08);color:var(--ya-blue);font-size:.75rem;font-weight:700;cursor:pointer;font-family:DM Sans,sans-serif">⇅ Rearrange</button>' +
+        '<button onclick="wsExportScheduleCSV(\''+sid+'\')" style="padding:5px 14px;border-radius:8px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.04);color:var(--text-muted);font-size:.75rem;font-weight:700;cursor:pointer;font-family:DM Sans,sans-serif">⬇ CSV</button>' +
+        '<button onclick="wsExportScheduleXLSX(\''+sid+'\')" style="padding:5px 14px;border-radius:8px;border:1px solid rgba(34,197,94,.4);background:rgba(34,197,94,.08);color:#22c55e;font-size:.75rem;font-weight:700;cursor:pointer;font-family:DM Sans,sans-serif">⬇ Excel</button>' +
         '</div>' +
         '</div>' +
         '<div id="ws-rearrange-hint-'+sid+'" style="display:none;font-size:.75rem;color:var(--ya-blue);background:rgba(29,127,212,.07);border:1px solid rgba(29,127,212,.2);border-radius:8px;padding:8px 12px;margin-bottom:10px">✏️ <strong>Rearrange mode:</strong> Use ↑↓ to reorder topics · <strong>＋</strong> inserts a session &amp; pushes subsequent dates out · <strong>✕</strong> removes &amp; pulls dates in · <strong>🚫</strong> cancels (name stays)</div>' +
@@ -12878,7 +12888,7 @@ function wsScheduleCancel(seriesId, wsId) {
   _wsRerenderSeriesTable(seriesId);
 }
 
-// Un-cancel a session
+// ── Un-cancel a session
 function wsScheduleUncancel(seriesId, wsId) {
   var arr = _wsGetSeriesArr(seriesId);
   if (!arr) return;
@@ -12891,6 +12901,106 @@ function wsScheduleUncancel(seriesId, wsId) {
     .then(function(){ console.log('Session un-cancelled:', wsId); });
   saveWsScheduleToDB(seriesId);
   _wsRerenderSeriesTable(seriesId);
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// SCHEDULE EXPORT — CSV / Excel, retaining every visible table column
+// ══════════════════════════════════════════════════════════════════════════
+
+// Build export rows for a series, one object per session, keys = column headers
+// exactly matching the visible table columns (#, Workshop, Facilitator(s),
+// Volunteers, Date, Status, Attendance, Staff).
+function _wsExportRows(seriesId) {
+  var arr = _wsGetSeriesArr(seriesId);
+  if (!arr) return [];
+  var allNames = Object.keys(EL_YOUTH);
+  return arr.map(function(w) {
+    var facNames = getWsFacilitators(w).filter(function(n){ return n && n !== 'TBD'; });
+    var volNames = getWsVolunteers(w);
+    var isCancelled = !!(w.cancelled || w.adminCancelled);
+    var status = isCancelled ? 'Cancelled' : (w.conducted ? 'Done' : 'Scheduled');
+    var attendance = w.conducted ? allNames.filter(function(n){ return (EL_YOUTH[n]||[]).indexOf(w.id) >= 0; }).length : '';
+    return {
+      '#': w.series_num,
+      'Workshop': w.name,
+      'Facilitator(s)': facNames.length ? facNames.join(', ') : 'TBD',
+      'Volunteers': volNames.length ? volNames.join(', ') : '',
+      'Date': w.date,
+      'Status': status,
+      'Attendance': attendance,
+      'Staff': facNames.concat(volNames).join(', ')
+    };
+  });
+}
+
+// Build a safe, timestamped filename for a series export
+function _wsExportFilename(seriesId, ext) {
+  var ser = WS_SERIES[seriesId] || WS_SERIES_DB[seriesId] || {};
+  var name = ser.name || seriesId;
+  var safe = name.replace(/[^a-z0-9]+/gi, '_').replace(/^_+|_+$/g, '') || 'workshop_series';
+  var d = new Date();
+  var stamp = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+  return safe + '_workshop_schedule_' + stamp + '.' + ext;
+}
+
+// Trigger a browser download of text content
+function _wsDownloadBlob(content, filename, mime) {
+  var blob = new Blob([content], {type: mime});
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
+}
+
+// Export a series' schedule to CSV (no external dependency)
+function wsExportScheduleCSV(seriesId) {
+  var rows = _wsExportRows(seriesId);
+  if (!rows.length) { alert('No sessions to export for this series.'); return; }
+  var headers = Object.keys(rows[0]);
+  function csvCell(v) {
+    var s = (v === null || v === undefined) ? '' : String(v);
+    if (/[",\n\r]/.test(s)) s = '"' + s.replace(/"/g, '""') + '"';
+    return s;
+  }
+  var lines = [headers.map(csvCell).join(',')];
+  rows.forEach(function(r){ lines.push(headers.map(function(h){ return csvCell(r[h]); }).join(',')); });
+  _wsDownloadBlob(lines.join('\r\n'), _wsExportFilename(seriesId, 'csv'), 'text/csv;charset=utf-8;');
+}
+
+// Lazy-load SheetJS (only needed for the Excel export path) from a CDN
+var _wsSheetJSPromise = null;
+function _wsLoadSheetJS() {
+  if (window.XLSX) return Promise.resolve();
+  if (_wsSheetJSPromise) return _wsSheetJSPromise;
+  _wsSheetJSPromise = new Promise(function(resolve, reject) {
+    var s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+    s.onload = function(){ resolve(); };
+    s.onerror = function(){ reject(new Error('Failed to load Excel export library')); };
+    document.head.appendChild(s);
+  });
+  return _wsSheetJSPromise;
+}
+
+// Export a series' schedule to a genuine .xlsx workbook
+function wsExportScheduleXLSX(seriesId) {
+  var rows = _wsExportRows(seriesId);
+  if (!rows.length) { alert('No sessions to export for this series.'); return; }
+  _wsLoadSheetJS().then(function() {
+    var sheet = XLSX.utils.json_to_sheet(rows);
+    var wb = XLSX.utils.book_new();
+    var ser = WS_SERIES[seriesId] || WS_SERIES_DB[seriesId] || {};
+    var sheetName = (ser.name || seriesId).replace(/[\[\]\*\/\\\?:]/g, '').slice(0, 31) || 'Schedule';
+    XLSX.utils.book_append_sheet(wb, sheet, sheetName);
+    XLSX.writeFile(wb, _wsExportFilename(seriesId, 'xlsx'));
+  }).catch(function(err) {
+    console.warn('wsExportScheduleXLSX error:', err);
+    alert('Could not load the Excel export library (check your internet connection). Try CSV export instead.');
+  });
 }
 
 // ── generateSeriesSessions — creates session objects from templates ────────

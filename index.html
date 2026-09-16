@@ -2502,11 +2502,26 @@ var WORKSHOPS=[
 ];
 
 // ═══════════════════════════════════════════════════════════════════════════
-// FALL 2026 SESSIONS — generated from WS_TEMPLATES (templates #1–13)
-// Mondays Sep 7–Dec 14, 2026; Labour Day (Sep 7) and Thanksgiving (Oct 12) skipped.
-// IDs 101–113. Facilitators copied from template defaults.
+// FALL 2026 SESSIONS
+// ARCHITECTURE (fixed): the array below, produced by generateFall2026Sessions(),
+// is SEED/FALLBACK data only — built from the hardcoded WS_TEMPLATES in case
+// no persisted configuration exists yet (e.g. first-ever run against a fresh
+// database). As soon as the app starts, loadOrCreateFallSeriesSnapshot()
+// (called early in dbStartup(), before any conducted/attendance data loads)
+// either:
+//   (a) replaces the contents below with the PERSISTED Fall 2026 snapshot
+//       (program_settings, program_id='ws_series_fall_2026') if one already
+//       exists — this is what protects an established Fall series from ever
+//       being regenerated, however the template library changes afterward; or
+//   (b) if no snapshot exists yet, recomputes this same array using whatever
+//       template order is CURRENTLY authoritative (persisted ws_templates,
+//       already loaded into WS_TEMPLATES by that point — see
+//       loadWsTemplatesFromDB()) and immediately persists that result as the
+//       permanent snapshot, so every future load restores it unchanged.
+// IDs 101-113 (or as many active templates as exist). Facilitators copied
+// from template defaults at the moment a session is first created.
 // ═══════════════════════════════════════════════════════════════════════════
-var WS_FALL_2026 = (function() {
+function generateFall2026Sessions() {
   var tmpl = WS_TEMPLATES.filter(function(t){ return t.active; }).sort(function(a,b){ return a.sort_order - b.sort_order; });
   // Non-holiday Mondays Sep 7–Dec 14, 2026 (Labour Day Sep 7 and Thanksgiving Oct 12 skipped)
   var dates = ["Sep 14, 2026","Sep 21, 2026","Sep 28, 2026","Oct 5, 2026","Oct 19, 2026",
@@ -2522,7 +2537,8 @@ var WS_FALL_2026 = (function() {
       date: date, conducted: false, cancelled: false
     };
   });
-})();
+}
+var WS_FALL_2026 = generateFall2026Sessions();
 
 // Runtime: DB-loaded overrides for Fall 2026 sessions (facilitator edits, mark-done, cancellations)
 // Key = workshop_id integer. Merged on startup.
@@ -13169,10 +13185,14 @@ function saveScheduledSeries(idBase) {
   alert('✅ '+name+' created with '+sessions.length+' sessions. Holidays skipped automatically.');
 }
 
-// Load any admin-created series from program_settings on startup
-async function loadWsSeriesFromDB() {
+// FIX (Fall series identity architecture): template loading is split out on
+// its own so it can run to completion BEFORE anything that needs the current
+// (persisted-if-available) template library — specifically
+// loadOrCreateFallSeriesSnapshot() below, and (already true before this fix)
+// the "Schedule Next Series" flow, which reads WS_TEMPLATES live at the time
+// an admin opens that modal, long after startup has finished.
+async function loadWsTemplatesFromDB() {
   try {
-    // Load template overrides
     var tmplRow = await dbGet('program_settings', 'select=cert_notes&program_id=eq.ws_templates');
     if (tmplRow && tmplRow.length && tmplRow[0].cert_notes) {
       try {
@@ -13188,11 +13208,19 @@ async function loadWsSeriesFromDB() {
             else WS_TEMPLATES.push(s);
           });
           WS_TEMPLATES_DB_LOADED = true;
-          console.log('WS_TEMPLATES loaded from DB');
+          console.log('WS_TEMPLATES loaded from DB — persisted template configuration is now authoritative.');
         }
       } catch(e) { console.warn('WS_TEMPLATES parse error', e); }
     }
-    // Load DB-created series
+  } catch(e) { console.warn('loadWsTemplatesFromDB error — falling back to hardcoded WS_TEMPLATES seed data', e); }
+}
+
+// Load any admin-created future series from program_settings (unrelated to
+// Fall 2026 — those live under ws_series_series_<id> and are only ever
+// created going forward via "Schedule Next Series", so there's no historical
+// data at risk here the way there is for Fall).
+async function loadFutureSeriesFromDB() {
+  try {
     var seriesRows = await dbGet('program_settings', 'select=program_id,cert_notes&program_id=like.ws_series_series_%25');
     if (seriesRows && seriesRows.length) {
       seriesRows.forEach(function(row) {
@@ -13206,7 +13234,84 @@ async function loadWsSeriesFromDB() {
       });
       console.log('WS_SERIES loaded from DB:', seriesRows.length, 'series');
     }
-  } catch(e) { console.warn('loadWsSeriesFromDB error', e); }
+  } catch(e) { console.warn('loadFutureSeriesFromDB error', e); }
+}
+
+// FIX (Fall series identity architecture): Fall 2026 must become its own
+// independent, persisted historical record the first time it's established,
+// and never be recomputed from the template library again after that.
+//
+// Previously, WS_FALL_2026 was computed once, synchronously, at script parse
+// time — always from the hardcoded WS_TEMPLATES, before any persisted
+// ws_templates configuration could load. That made the hardcoded seed order
+// the accidental "source of truth" for which template maps to which Fall
+// session id, even when an admin had explicitly reordered the template
+// library in Supabase (e.g. moving "Joy of Accomplishment" to position #1).
+//
+// Now: this loader runs early in dbStartup(), strictly AFTER
+// loadWsTemplatesFromDB() has resolved (so WS_TEMPLATES already reflects the
+// persisted configuration if one exists), and strictly BEFORE
+// loadWorkshopConducted()/loadWorkshopCancellations()/loadAllWorkshopAttendance()
+// (so their per-session overrides land on the correct, final Fall session
+// objects rather than on a set that gets thrown away and rebuilt afterward).
+//
+// - If a persisted Fall 2026 snapshot already exists (program_settings,
+//   program_id='ws_series_fall_2026'), it is loaded VERBATIM — ids, dates,
+//   sequence numbers, titles, template_id links — and nothing is
+//   recomputed. This is what protects an already-established Fall series
+//   from ever shifting again, no matter how the template library changes
+//   afterward.
+// - If no snapshot exists yet (this is the first startup after this fix
+//   ships), the current, fully-loaded template order is used to compute the
+//   sessions ONE TIME, and that exact result is immediately persisted as the
+//   permanent snapshot — locking in "Joy of Accomplishment = Fall #1" (which
+//   the persisted ws_templates configuration confirms is correct) as the
+//   stable identity going forward.
+async function loadOrCreateFallSeriesSnapshot() {
+  try {
+    var rows = await dbGet('program_settings', 'select=cert_notes&program_id=eq.ws_series_fall_2026');
+    if (rows && rows.length && rows[0].cert_notes) {
+      var saved = JSON.parse(rows[0].cert_notes);
+      if (Array.isArray(saved) && saved.length) {
+        WS_FALL_2026.length = 0;
+        saved.forEach(function(s){ WS_FALL_2026.push(s); });
+        console.log('Fall 2026 loaded from its persisted snapshot:', WS_FALL_2026.length, 'sessions — template library changes will not affect it.');
+        return;
+      }
+    }
+  } catch(e) {
+    // On any load failure, deliberately do NOT fall through to recompute —
+    // that could overwrite an established series with a fresh (possibly
+    // differently-ordered) one. Keep whatever is currently in memory
+    // (the hardcoded seed) and try again on the next startup.
+    console.warn('loadOrCreateFallSeriesSnapshot: could not check for a persisted Fall snapshot — leaving current in-memory Fall 2026 sessions untouched this run.', e);
+    return;
+  }
+
+  // No persisted snapshot exists yet — establish Fall 2026 as its own record
+  // for the first time, using the template order that is authoritative RIGHT
+  // NOW (persisted ws_templates, already merged into WS_TEMPLATES above).
+  var fresh = generateFall2026Sessions();
+  WS_FALL_2026.length = 0;
+  fresh.forEach(function(s){ WS_FALL_2026.push(s); });
+  try {
+    var ok = await supa('POST', 'program_settings',
+      { program_id: 'ws_series_fall_2026', cert_notes: JSON.stringify(fresh) },
+      'on_conflict=program_id');
+    if (ok) console.log('Fall 2026 established as its own persisted record (' + fresh.length + ' sessions) — future template edits will not affect it.');
+    else console.warn('loadOrCreateFallSeriesSnapshot: failed to persist the new Fall 2026 snapshot — it will attempt to establish it again on next startup.');
+  } catch(e) {
+    console.warn('loadOrCreateFallSeriesSnapshot: error persisting snapshot', e);
+  }
+}
+
+// Kept for backward compatibility with any other caller — runs both steps in
+// the correct order. The startup sequence in dbStartup() calls the two
+// halves separately so it can insert loadOrCreateFallSeriesSnapshot() between
+// them (see comment there).
+async function loadWsSeriesFromDB() {
+  await loadWsTemplatesFromDB();
+  await loadFutureSeriesFromDB();
 }
 
 // ══════════════════════════════════════════════════════════════════════════
@@ -16865,6 +16970,19 @@ async function dbStartup() {
   // any loader merges live Supabase rows on top of it (see STABLE IDENTITY —
   // reconcile hardcoded seed data above loadYouthData()).
   try { reconcileHardcodedSeedNames(); } catch(e) { console.warn('reconcileHardcodedSeedNames error (non-fatal):', e); }
+
+  // FIX (Fall series identity architecture): persisted template configuration
+  // (ws_templates) MUST be authoritative before anything reads the current
+  // template library or the current Fall 2026 session list — including
+  // youth-enrollment filtering below, which already calls
+  // getAllWsSessions()/_getConductedIdSet(). Establishing/restoring the Fall
+  // 2026 snapshot here, before any per-session overrides load, guarantees
+  // conducted/cancellation/facilitator overrides applied further down land on
+  // the final session objects rather than on a placeholder that gets
+  // discarded afterward.
+  try { await loadWsTemplatesFromDB(); } catch(e) { console.warn('loadWsTemplatesFromDB error (non-fatal):', e); }
+  try { await loadOrCreateFallSeriesSnapshot(); } catch(e) { console.warn('loadOrCreateFallSeriesSnapshot error (non-fatal):', e); }
+
   try {
     if(statusEl) statusEl.textContent = 'Loading profiles…';
     await loadYouthData();
@@ -16878,11 +16996,12 @@ async function dbStartup() {
     await loadEventStatus();
     // Workshop conducted/cancellation status MUST load before attendance,
     // because loadAllWorkshopAttendance filters to conducted-only IDs.
+    // (Template + Fall-snapshot loading already happened above.)
     await Promise.all([
       loadWorkshopConducted(),
       loadWorkshopCancellations(),
       loadWsScheduleOverrides(),
-      loadWsSeriesFromDB(),
+      loadFutureSeriesFromDB(),
     ]);
     // Now load attendance (conducted set is accurate) and everything else in parallel
     await Promise.all([

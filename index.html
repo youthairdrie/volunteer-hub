@@ -2687,6 +2687,23 @@ var EVENTS_DATA=[{"id":"evt_ton_2026","name":"Taste of Nations","host":"Welcomin
 var CONDUCTED_DATES=["7-Jan", "14-Jan", "21-Jan", "28-Jan", "4-Feb", "11-Feb", "18-Feb", "25-Feb", "4-Mar", "11-Mar", "18-Mar","25-Mar","30-Mar"];
 var ALL_YOUTH_NAMES=["Aaliyah","Abegail Jbbo-Rustrian","Abigail Robinson","Adam Choe","Aiden Bruce","Alleem Hammed","Ameerah Hammed","Anastasia Strokova","Anisim Rashid","Anna Choi","Ariel Young","Avery Sengsavang","Azeem Hammed","Caitlen","Chaey Moon","Cindy Hwang","Claire Choe","Connor Sengsavang","David","Denise","Devira","Eilleen Shin","Elijah butler","Elisa Choi","Emma Memedovski","Emma Tumak","Eoin","Everett Rempel","Greyson Riley","Haytham","Ji Hoon","Ji Woo","Juanna Shin","Jude Effah","Khanishka Sood","Kinsey Ehigiator","Koby Bolton","Kristen Robinson","Lee (Karlee)","Mackensie","Mason Guise","Mason Seo","Navkar Sing","Oliver","Polina Strokova","Preston","Reed Bieganski","Roza","Sasha Tumak","Sebastian Baitson","Serena Shin","Sophia Tong","Sophie Hwang","Taya Allen","Teni Olaniyan","Theodore Bourdeau","Tobi Olaniyan","Zoya Rashid"];
 
+// FIX (Issue C — Winter attendance display): frozen snapshot of the ORIGINAL
+// roster order, captured before any runtime mutation. Legacy "y_N" attendance
+// keys (recorded before the yn_* stable-ID scheme existed) decode to a name
+// via array index — e.g. "y_11" -> ALL_YOUTH_NAMES[11]. But ALL_YOUTH_NAMES
+// itself is mutated at runtime: loadYouthData() both INSERTS admin-added
+// youth (push + re-sort) and REMOVES deactivated ones — both operations shift
+// every index after the change point. A y_N row decoded against the
+// post-mutation array silently resolves to the wrong person (or to nothing,
+// since a name mismatch returns null and the row is dropped) for every index
+// after the shift. This is why late-Winter workshops — the ones most likely
+// to be viewed/loaded after such a roster change — showed far fewer resolved
+// attendees than the rows actually present in Supabase, while earlier
+// low-index names still resolved correctly.
+// ALWAYS decode/encode legacy y_N keys against THIS frozen array, never the
+// live ALL_YOUTH_NAMES.
+var LEGACY_Y_INDEX_ROSTER = ALL_YOUTH_NAMES.slice();
+
 var currentRole=null,youthState=null,adultState=null;
 
 function getYouthLevel(ws,hrs){
@@ -13226,12 +13243,29 @@ function toggleWsAttEditMode(){
   if(!wsAttEditMode) renderAdmin();
 }
 
-function markWorkshopDone(wsId) {
+async function markWorkshopDone(wsId) {
   // Look up in all series
   var ws = getAllWsSessions().find(function(w){ return w.id === wsId; });
   if(!ws) return;
   if(!confirm('Mark #'+wsId+' "'+ws.name+'" ('+ws.date+') as Done?\n\nThis will add it to the attendance tracker so you can enter youth attendance.')) return;
-  // Update in-memory: find in correct array
+
+  // FIX (Issue A): persist to Supabase FIRST and confirm it actually succeeded
+  // before touching any in-memory state or the UI. Previously the in-memory
+  // `conducted` flags were flipped unconditionally and the Supabase write was
+  // fire-and-forget (no await, no ok-check) — so a session could look "Done"
+  // on screen while workshop_conducted never received the row (this is
+  // exactly what the Fall 2026 diagnostics showed: 0 rows for ids 101-199).
+  var result = await supa('POST', 'workshop_conducted',
+    { workshop_id: wsId, conducted: true, marked_at: new Date().toISOString() },
+    'on_conflict=workshop_id');
+
+  if (result === null) {
+    alert('❌ Could not mark workshop #'+wsId+' ("'+ws.name+'") as Done — the save to the database failed.\n\nNothing has changed. Check the browser console for the Supabase error and try again.');
+    console.error('markWorkshopDone: Supabase write to workshop_conducted FAILED for workshop_id', wsId, '— no in-memory or UI state was changed.');
+    return; // do NOT touch in-memory state or re-render as Done
+  }
+
+  // Supabase confirmed the write — now (and only now) update in-memory state.
   var inWinter = WORKSHOPS.find(function(w){ return w.id === wsId; });
   var inFall   = WS_FALL_2026.find(function(w){ return w.id === wsId; });
   if(inWinter) inWinter.conducted = true;
@@ -13241,12 +13275,12 @@ function markWorkshopDone(wsId) {
     var s = (WS_FUTURE_SERIES_SESSIONS[sid]||[]).find(function(w){ return w.id === wsId; });
     if(s) s.conducted = true;
   });
-  // Persist to Supabase
-  dbPost('workshop_conducted', { workshop_id: wsId, conducted: true, marked_at: new Date().toISOString() })
-    .then(function(){ console.log('Workshop marked done in DB:', wsId); });
+
   invalidateConductedCache();
   renderAdmin();
-  alert('Workshop #'+wsId+' marked as Done! You can now enter attendance in the Workshops tab.');
+  renderYouthAttendanceTable(); // refresh attendance immediately so the new session appears without a reload
+  console.log('Workshop marked done in DB:', wsId);
+  alert('✅ Workshop #'+wsId+' marked as Done! You can now enter attendance in the Workshops tab.');
 }
 
 function openWsStaffEdit(wsId) {
@@ -13342,7 +13376,7 @@ function wsRemoveStaff(type, name) {
   });
 }
 
-function wsStaffSave(wsId) {
+async function wsStaffSave(wsId) {
   var ws = getAllWsSessions().find(function(w){ return w.id === wsId; });
   if(!ws) return;
 
@@ -13408,71 +13442,109 @@ function wsStaffSave(wsId) {
   var newFac = facList ? Array.from(facList.querySelectorAll('span')).map(function(s){ return s.textContent.replace('×','').trim(); }) : [];
   var newVol = volList ? Array.from(volList.querySelectorAll('span')).map(function(s){ return s.textContent.replace('×','').trim(); }) : [];
 
-  // Mark this workshop as DB-staffed so hardcoded defaults are ignored everywhere
-  WS_STAFFED_BY_DB.add(wsId);
+  // FIX (Issue E): compute the PROPOSED per-adult facilitated/volunteered
+  // changes without touching FAC_PROFILES yet. Previously WS_STAFFED_BY_DB
+  // and FAC_PROFILES were mutated immediately (optimistic UI), and the actual
+  // Supabase writes were fire-and-forget with only a console.warn on failure
+  // — so a failed write still looked identical to a successful save, on the
+  // editing device, forever (until the next full reload pulled the real
+  // state back down from Supabase and silently reverted it). Nothing is
+  // applied to FAC_PROFILES/WS_STAFFED_BY_DB/the session object until every
+  // required write is confirmed.
+  var proposed = {};
+  Object.keys(FAC_PROFILES).forEach(function(key){
+    var p = FAC_PROFILES[key];
+    var facilitated = (p.facilitated || []).slice();
+    var volunteered = (p.volunteered || []).slice();
+    if(newFac.indexOf(p.name) >= 0){
+      if(facilitated.indexOf(wsId) < 0) facilitated.push(wsId);
+      volunteered = volunteered.filter(function(id){ return id !== wsId; });
+    } else if(newVol.indexOf(p.name) >= 0){
+      if(volunteered.indexOf(wsId) < 0) volunteered.push(wsId);
+      facilitated = facilitated.filter(function(id){ return id !== wsId; });
+    } else {
+      facilitated = facilitated.filter(function(id){ return id !== wsId; });
+      volunteered = volunteered.filter(function(id){ return id !== wsId; });
+    }
+    var changed = facilitated.join(',') !== (p.facilitated||[]).join(',') ||
+                  volunteered.join(',') !== (p.volunteered||[]).join(',');
+    if (changed) proposed[key] = { facilitated: facilitated, volunteered: volunteered };
+  });
 
-  // Update in-memory: mutate the session in whichever array it lives in
+  var failedNames = [];
+  var savePromises = Object.keys(proposed).map(function(facKey){
+    var p = FAC_PROFILES[facKey];
+    var next = proposed[facKey];
+    return fetch(SUPA_URL + '/rest/v1/adults?on_conflict=id', {
+      method: 'POST',
+      headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY,
+        'Content-Type': 'application/json', 'Prefer': 'resolution=merge-duplicates,return=minimal' },
+      body: JSON.stringify({
+        id: facKey,
+        name: p.name,
+        role: p.role || 'Adult Volunteer',
+        avatar: p.avatar || '',
+        bg: p.bg || '',
+        facilitated: next.facilitated,
+        volunteered: next.volunteered,
+        hours: p.hours || 0,
+        fac_level: p.fac_level || 0,
+        grandfathered: p.grandfathered || false,
+        is_admin: p.isAdmin || false
+      })
+    }).then(function(r){
+      if(!r.ok){ failedNames.push(p.name); console.error('wsStaffSave: adult save FAILED for', p.name, r.status); }
+      return r.ok;
+    }).catch(function(e){
+      failedNames.push(p.name); console.error('wsStaffSave: adult save ERROR for', p.name, e); return false;
+    });
+  });
+
+  await Promise.all(savePromises);
+
+  if (failedNames.length > 0) {
+    alert('❌ Could not save facilitator/volunteer changes for: ' + failedNames.join(', ') +
+      '.\n\nNothing was saved — please try again. (Any date/cancellation change above, if made, was already saved separately.)');
+    console.error('wsStaffSave: aborting — staffing changes for workshop', wsId, 'were NOT applied because', failedNames.length, 'write(s) failed.');
+    return; // do NOT touch WS_STAFFED_BY_DB, FAC_PROFILES, or the session object — nothing should look saved
+  }
+
+  // All required writes confirmed — now, and only now, apply in-memory state.
+  WS_STAFFED_BY_DB.add(wsId);
+  Object.keys(proposed).forEach(function(key){
+    FAC_PROFILES[key].facilitated = proposed[key].facilitated;
+    FAC_PROFILES[key].volunteered = proposed[key].volunteered;
+  });
+  // Mutate the LIVE session object (not the possibly-throwaway merged copy
+  // `ws` can be — see the liveWs comment above) so this doesn't silently
+  // no-op the way the old code's `ws.facilitators = newFac` could.
+  liveWs.facilitators = newFac;
+  liveWs.volunteers = newVol;
   ws.facilitators = newFac;
   ws.volunteers = newVol;
-  // Also track DB overrides for Fall 2026 array so regeneration-safe
+  // Also track DB overrides for Fall 2026 array so regeneration-safe.
+  // NOTE: this is display-path metadata only — the actual source of truth
+  // for "is this session DB-staffed" is WS_STAFFED_BY_DB + FAC_PROFILES,
+  // rebuilt from the `adults` table on every load (loadAdultProfiles()).
+  // Template defaults (WS_TEMPLATES) are never written here and never
+  // regenerate an already-created Fall/Winter session, so this never gets
+  // clobbered by future template edits — only by this same explicit action.
   if(ws.series_id === 'fall_2026') {
     WS_FALL_2026_DB_OVERRIDES[wsId] = Object.assign(WS_FALL_2026_DB_OVERRIDES[wsId]||{}, {facilitators: newFac, volunteers: newVol});
   }
 
-  // Update FAC_PROFILES to reflect changes
-  Object.keys(FAC_PROFILES).forEach(function(key){
-    var p = FAC_PROFILES[key];
-    if(newFac.indexOf(p.name) >= 0){
-      if(p.facilitated.indexOf(wsId) < 0) p.facilitated.push(wsId);
-      p.volunteered = p.volunteered.filter(function(id){ return id !== wsId; });
-    } else if(newVol.indexOf(p.name) >= 0){
-      if(p.volunteered.indexOf(wsId) < 0) p.volunteered.push(wsId);
-      p.facilitated = p.facilitated.filter(function(id){ return id !== wsId; });
-    } else {
-      p.facilitated = p.facilitated.filter(function(id){ return id !== wsId; });
-      p.volunteered = p.volunteered.filter(function(id){ return id !== wsId; });
-    }
-  });
+  console.log('Workshop staff saved for ws', wsId);
+  renderLandingCalendar(); // re-render home page so facilitator change shows immediately
+  updateLandingStats();
 
-  // Save each affected adult's profile directly (avoid async adultState race condition)
-  var savePromises = [];
-  Object.keys(FAC_PROFILES).forEach(function(facKey){
-    var p = FAC_PROFILES[facKey];
-    if(newFac.indexOf(p.name) >= 0 || newVol.indexOf(p.name) >= 0 ||
-       p.facilitated.indexOf(wsId) >= 0 || p.volunteered.indexOf(wsId) >= 0) {
-      savePromises.push(
-        fetch(SUPA_URL + '/rest/v1/adults?on_conflict=id', {
-          method: 'POST',
-          headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY,
-            'Content-Type': 'application/json', 'Prefer': 'resolution=merge-duplicates,return=minimal' },
-          body: JSON.stringify({
-            id: facKey,
-            name: p.name,
-            role: p.role || 'Adult Volunteer',
-            avatar: p.avatar || '',
-            bg: p.bg || '',
-            facilitated: p.facilitated,
-            volunteered: p.volunteered,
-            hours: p.hours || 0,
-            fac_level: p.fac_level || 0,
-            grandfathered: p.grandfathered || false,
-            is_admin: p.isAdmin || false
-          })
-        }).then(function(r){ if(!r.ok) console.warn('wsStaffSave adult save failed:', p.name); })
-      );
-    }
-  });
-  Promise.all(savePromises).then(function(){
-    console.log('Workshop staff saved for ws', wsId);
-    renderLandingCalendar(); // re-render home page so facilitator change shows immediately
-    updateLandingStats();
-  });
-
-  document.getElementById('ws-staff-modal').remove();
+  var modalEl = document.getElementById('ws-staff-modal');
+  if (modalEl) modalEl.remove();
   if (ws.series_id) _wsRerenderSeriesTable(ws.series_id);
   renderAdmin();
   if (dupWarning) {
     alert('⚠️ Heads up: another session in this series now shares the same date as "'+ws.name+'" ('+ws.date+'). Both have been saved as-is — you may want to review the schedule.');
+  } else {
+    alert('✅ Staffing saved for workshop #'+wsId+'.');
   }
 }
 
@@ -13481,7 +13553,11 @@ function renderYouthAttendanceTable(){
   var tbody = document.getElementById('youth-ws-att-tbody');
   if(!thead || !tbody) return;
 
-  var conductedWs = WORKSHOPS.filter(function(w){ return w.conducted && !w.cancelled; });
+  // FIX (Issue B): this used to read WORKSHOPS (Winter-only), so Fall 2026 and
+  // any future-series sessions could never appear as columns here even after
+  // being marked Done. Use the series-aware session source instead, matching
+  // the pattern already used by toggleYouthWsAdmin() below.
+  var conductedWs = getAllWsSessions().filter(function(w){ return w.conducted && !w.cancelled && !w.adminCancelled; });
   var names = Object.keys(EL_YOUTH).sort();
 
   // ── Update summary pill in collapsible header ──
@@ -15144,7 +15220,30 @@ async function checkAndInitDB() {
 }
 
 // ── MIGRATE LEGACY workshop_attendance ROWS TO NAME-BASED ──
+// FIX (Issue D): this used to run on EVERY app startup and would delete the
+// old-ID row unconditionally after firing an insert whose response was never
+// checked — a single failed insert (conflict, network blip, RLS) meant the
+// old row was deleted anyway with no replacement ever having landed,
+// permanently losing that attendance record. It now:
+//   1. Runs at most ONCE, ever, gated by a completion flag in program_settings
+//      (an explicit/idempotent operation, not a destructive routine that
+//      re-runs on every normal load).
+//   2. Upserts the replacement row with on_conflict + merge-duplicates and
+//      checks the response.
+//   3. Deletes the specific old row by its own primary key ONLY after its
+//      replacement insert is confirmed successful — never a bulk delete,
+//      never unconditional.
 async function migrateWorkshopAttendanceToNames() {
+  try {
+    var flagRows = await dbGet('program_settings', 'select=cert_notes&program_id=eq.ws_attendance_id_repair_done');
+    if (flagRows && flagRows.length && flagRows[0].cert_notes === 'true') {
+      return; // already ran successfully once — never touch historical attendance again
+    }
+  } catch(e) {
+    console.warn('migrateWorkshopAttendanceToNames: could not check completion flag, skipping this run to be safe', e);
+    return;
+  }
+
   // Fix any workshop_attendance rows saved under old Method B IDs
   // (name.replace(/[^a-z0-9]/gi,'_').toLowerCase()) vs correct Method A
   // Affected names: those with hyphens, parens, or special chars
@@ -15158,11 +15257,12 @@ async function migrateWorkshopAttendanceToNames() {
       repairs.push({name: name, correctId: correctId, oldId: oldId});
     }
   });
-  if(repairs.length === 0) return;
+
+  var anyFailures = false;
 
   for(var i=0; i<repairs.length; i++){
     var r = repairs[i];
-    // Fetch rows under old ID
+    // Fetch rows under old ID (need each row's own id for a scoped delete)
     var rows = await dbGet('workshop_attendance',
       'select=id,workshop_id&youth_id=eq.'+encodeURIComponent(r.oldId));
     if(!rows || rows.length === 0){
@@ -15171,18 +15271,38 @@ async function migrateWorkshopAttendanceToNames() {
     }
     console.log('ID repair: migrating', rows.length, 'rows for', r.name,
       'from', r.oldId, '→', r.correctId);
-    // Re-insert under correct ID (ignore conflicts if already there)
+
     for(var j=0; j<rows.length; j++){
-      await fetch(SUPA_URL+'/rest/v1/workshop_attendance', {
+      var resp = await fetch(SUPA_URL+'/rest/v1/workshop_attendance?on_conflict=youth_id,workshop_id', {
         method:'POST',
         headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,
-          'Content-Type':'application/json','Prefer':'return=minimal'},
+          'Content-Type':'application/json','Prefer':'resolution=merge-duplicates,return=minimal'},
         body: JSON.stringify({youth_id: r.correctId, workshop_id: rows[j].workshop_id})
       });
+      if (!resp.ok) {
+        anyFailures = true;
+        var errText = await resp.text();
+        console.error('ID repair: insert FAILED for', r.name, 'workshop', rows[j].workshop_id,
+          '—', resp.status, errText, '— the old row (id='+rows[j].id+') was NOT deleted.');
+        continue; // do not delete this specific old row — its replacement was not confirmed
+      }
+      // Replacement confirmed written — safe to remove only this specific old row.
+      await dbDel('workshop_attendance', 'id=eq.'+encodeURIComponent(rows[j].id));
     }
-    // Delete old rows
-    await dbDel('workshop_attendance','youth_id=eq.'+encodeURIComponent(r.oldId));
-    console.log('ID repair complete for', r.name);
+    console.log('ID repair pass complete for', r.name);
+  }
+
+  if (anyFailures) {
+    console.warn('migrateWorkshopAttendanceToNames: one or more rows failed to migrate — will retry on next startup, completion flag NOT set.');
+    return; // leave the flag unset so a future run can retry the rows that failed
+  }
+
+  // Only mark complete once every repair either had nothing to do or fully succeeded.
+  try {
+    await supa('POST', 'program_settings', { program_id: 'ws_attendance_id_repair_done', cert_notes: 'true' }, 'on_conflict=program_id');
+    console.log('migrateWorkshopAttendanceToNames: completed and flagged done — will not run again.');
+  } catch(e) {
+    console.warn('migrateWorkshopAttendanceToNames: could not persist completion flag (will re-check next startup)', e);
   }
 }
 
@@ -16876,9 +16996,11 @@ async function loadAllWorkshopAttendance() {
       // New stable key: yn_adam_choe → "Adam Choe"
       name = ynToName[row.youth_id] || null;
     } else if(row.youth_id.indexOf('y_') === 0) {
-      // Legacy index key: y_3 → ALL_YOUTH_NAMES[3]
+      // Legacy index key: y_3 → LEGACY_Y_INDEX_ROSTER[3]
+      // FIX (Issue C): must use the frozen roster, not the live (mutable)
+      // ALL_YOUTH_NAMES — see LEGACY_Y_INDEX_ROSTER comment above.
       var idx = parseInt(row.youth_id.replace('y_', ''));
-      name = isNaN(idx) ? null : (ALL_YOUTH_NAMES[idx] || null);
+      name = isNaN(idx) ? null : (LEGACY_Y_INDEX_ROSTER[idx] || null);
     }
 
     if(!name) return;
@@ -16902,9 +17024,12 @@ async function loadWorkshopAttendance(youthName) {
   // Primary stable key: yn_adam_choe (or the real DB id if this youth was ever renamed)
   var youthId = youthIdFor(youthName);
 
-  // Also build legacy index key (y_N) so old records are not missed
+  // Also build legacy index key (y_N) so old records are not missed.
+  // FIX (Issue C): use the frozen roster (LEGACY_Y_INDEX_ROSTER), not a
+  // re-sorted copy of the live, mutable ALL_YOUTH_NAMES — see the
+  // LEGACY_Y_INDEX_ROSTER declaration for why the live array is unsafe here.
   var legacyId = null;
-  var legacyIdx = ALL_YOUTH_NAMES.slice().sort().indexOf(youthName);
+  var legacyIdx = LEGACY_Y_INDEX_ROSTER.indexOf(youthName);
   if(legacyIdx >= 0) legacyId = "y_" + legacyIdx;
 
   var fetchPrimary = dbGet("workshop_attendance",

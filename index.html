@@ -13638,6 +13638,24 @@ async function wsStaffSave(wsId) {
     WS_FALL_2026_DB_OVERRIDES[wsId] = Object.assign(WS_FALL_2026_DB_OVERRIDES[wsId]||{}, {facilitators: newFac, volunteers: newVol});
   }
 
+  // TEMPORARY DIAGNOSTIC LOGGING (Issue 1) — per static trace, WS_STAFFED_BY_DB
+  // and FAC_PROFILES are fully updated above BEFORE any render call below, and
+  // both _wsRerenderSeriesTable('fall_2026') and renderAdmin() read the exact
+  // same live WS_FALL_2026 array + getWsFacilitators()/getWsVolunteers(), which
+  // in turn read WS_STAFFED_BY_DB + FAC_PROFILES — not ws.facilitators. If the
+  // schedule still shows stale data immediately after this log line fires,
+  // the desync is NOT in this function; it is either (a) a stale cached
+  // JS bundle in the browser predating this fix — check via a hard refresh /
+  // incognito window before assuming a remaining code bug — or (b) a render
+  // function reading some other state entirely. This log makes that
+  // distinguishable: compare what it reports here against what's on screen.
+  console.log('[Issue 1 diagnostic] wsStaffSave confirmed for ws', wsId, {
+    WS_STAFFED_BY_DB_has_id: WS_STAFFED_BY_DB.has(wsId),
+    getWsFacilitators_now: getWsFacilitators(liveWs),
+    getWsVolunteers_now: getWsVolunteers(liveWs),
+    liveWs_object: liveWs
+  });
+
   console.log('Workshop staff saved for ws', wsId);
   renderLandingCalendar(); // re-render home page so facilitator change shows immediately
   updateLandingStats();
@@ -14729,6 +14747,15 @@ function reconcileHardcodedSeedNames() {
 // youthIdFor() only falls back to deriving a slug for names that don't exist
 // in the DB yet (i.e. a brand-new youth being created for the first time).
 var YOUTH_ID_BY_NAME = {};
+// FIX (Issue 2): reverse map, id -> canonical current name. Populated
+// authoritatively from the `youth` table's own (id, name) pairs in
+// loadYouthData() for every row it sees, regardless of id scheme. This is
+// what loadAllWorkshopAttendance() should trust FIRST when resolving a
+// workshop_attendance.youth_id, instead of re-deriving a name from the id by
+// slug computation or array-index guessing (both of which are only correct
+// by coincidence, since neither is guaranteed to match how the id was
+// actually assigned when the row was first created).
+var YOUTH_NAME_BY_ID = {};
 
 function _slugYouthId(name){ return 'yn_' + name.toLowerCase().replace(/\s+/g,'_').replace(/[^a-z0-9_]/g,''); }
 
@@ -15442,6 +15469,33 @@ async function loadYouthData() {
     // future rename), instead of a fresh name-derived fallback id being
     // computed and silently orphaning their historical records.
     YOUTH_ID_BY_NAME[name] = row.id;
+    // FIX (Issue 2): authoritative reverse map (id -> canonical name), built
+    // directly from the `youth` table's own (id, name) pair for EVERY row,
+    // regardless of which id scheme (yn_ slug or legacy y_N index) was used
+    // when the row was created. loadAllWorkshopAttendance() below uses this
+    // FIRST, before falling back to slug computation or index-guessing,
+    // because guessing from array position is only ever correct by
+    // coincidence — the (id, name) pair actually stored in Supabase is the
+    // one thing that's always correct.
+    if (row.id) YOUTH_NAME_BY_ID[row.id] = name;
+
+    // FIX (Issue 3 — root cause): user-level active/inactive status must be
+    // authoritative for EVERY youth, not only admin-added ('yn_') ones. This
+    // check previously lived AFTER the "isAdminAdded" early-return below, so
+    // a deactivated SEED/legacy youth (whose persisted `youth` row almost
+    // always has a legacy y_N id, from the original one-time data
+    // migration, not a yn_ id) had their active:false flag silently ignored
+    // on every load: the hardcoded ALL_YOUTH_NAMES array was never filtered
+    // for them, so they always reappeared as active after any reload or
+    // logout/login, even though the Supabase write itself had succeeded.
+    // This is a pure user-status check — it must never touch EL_YOUTH or any
+    // other program-history structure, so historical attendance/enrollment
+    // remains intact for a deactivated person (see architecture rule: user
+    // status and program enrollment are separate concepts).
+    if (row.active === false) {
+      ALL_YOUTH_NAMES = ALL_YOUTH_NAMES.filter(function(n){ return n !== name; });
+      return; // deactivated — do not also run the "restore enrollment" logic below
+    }
 
     // Roster membership / EL enrollment below is only driven by admin-added
     // ('yn_') rows — legacy/seed roster membership and workshop enrollment
@@ -15450,12 +15504,6 @@ async function loadYouthData() {
     // program, or enrollment behavior for pre-existing seed youth.
     var isAdminAdded = row.id && row.id.indexOf('yn_') === 0;
     if(!isAdminAdded) return;
-
-    // If deactivated, ensure removed from active list
-    if(row.active === false){
-      ALL_YOUTH_NAMES = ALL_YOUTH_NAMES.filter(function(n){ return n !== name; });
-      return;
-    }
 
     // Add to ALL_YOUTH_NAMES if not already present
     if(ALL_YOUTH_NAMES.indexOf(name) < 0) {
@@ -17096,6 +17144,7 @@ async function loadAllWorkshopAttendance() {
   // current name — recomputing here is exactly what caused a renamed youth's
   // historical workshop attendance to silently vanish (their DB row's
   // youth_id no longer matched a freshly-recomputed slug of the new name).
+  // Kept as a fallback (see resolution order below).
   var ynToName = {};
   ALL_YOUTH_NAMES.forEach(function(n) {
     ynToName[youthIdFor(n)] = n;
@@ -17106,27 +17155,68 @@ async function loadAllWorkshopAttendance() {
     return;
   }
 
+  // ── TEMPORARY DIAGNOSTIC LOGGING (Issue 2) ──────────────────────────────
+  // Requested reconciliation output: DB rows retrieved, youth IDs retrieved,
+  // which resolved vs. failed and why, canonical names produced, and the
+  // final per-workshop count. Grouped by workshop_id so any specific
+  // workshop (e.g. #14) can be checked directly in the console. Safe to
+  // remove once Issue 2 is confirmed fixed in production.
+  var diag = {}; // workshop_id -> {dbRows, resolvedYn, resolvedY, resolvedById, failed:[{youth_id,reason}]}
+  function diagFor(wid) {
+    if (!diag[wid]) diag[wid] = { dbRows: 0, resolvedById: 0, resolvedYn: 0, resolvedY: 0, skippedUnconducted: 0, failed: [] };
+    return diag[wid];
+  }
+
   var resolved = 0;
   rows.forEach(function(row){
     var name = null;
+    var method = null;
     if(!row.youth_id) return;
+    var d = diagFor(row.workshop_id);
+    d.dbRows++;
 
-    if(row.youth_id.indexOf('yn_') === 0) {
+    // FIX (Issue 2 root cause): try the AUTHORITATIVE reverse map first —
+    // built directly from the `youth` table's own (id, name) pairs in
+    // loadYouthData(). This is correct regardless of which id scheme
+    // (yn_ slug vs. legacy y_N index) was actually used when the row was
+    // created, and survives renames via resolveCanonicalName. The previous
+    // fix (LEGACY_Y_INDEX_ROSTER) was still fundamentally a GUESS — it only
+    // works if the array order captured in this source file happens to
+    // match whatever order was live when the one-time migrateData() seed
+    // ran, which is not guaranteed and evidently was not the case in
+    // production. The (id, name) pair actually stored in Supabase is the
+    // one thing that's always correct, so it's now checked first.
+    if (YOUTH_NAME_BY_ID[row.youth_id]) {
+      name = YOUTH_NAME_BY_ID[row.youth_id];
+      method = 'id-map';
+    } else if(row.youth_id.indexOf('yn_') === 0) {
       // New stable key: yn_adam_choe → "Adam Choe"
       name = ynToName[row.youth_id] || null;
+      method = 'yn-slug';
     } else if(row.youth_id.indexOf('y_') === 0) {
-      // Legacy index key: y_3 → LEGACY_Y_INDEX_ROSTER[3]
-      // FIX (Issue C): must use the frozen roster, not the live (mutable)
-      // ALL_YOUTH_NAMES — see LEGACY_Y_INDEX_ROSTER comment above.
+      // Legacy index key: y_3 → LEGACY_Y_INDEX_ROSTER[3] (last-resort guess
+      // only reached if this id has no corresponding `youth` table row at all)
       var idx = parseInt(row.youth_id.replace('y_', ''));
       name = isNaN(idx) ? null : (LEGACY_Y_INDEX_ROSTER[idx] || null);
+      method = 'legacy-index-guess';
     }
 
-    if(!name) return;
+    if(!name) {
+      d.failed.push({ youth_id: row.youth_id, reason: 'no name resolved via id-map, yn-slug, or legacy-index' });
+      return;
+    }
+    if (method === 'id-map') d.resolvedById++;
+    else if (method === 'yn-slug') d.resolvedYn++;
+    else if (method === 'legacy-index-guess') d.resolvedY++;
+
     // Only add IDs for workshops that are actually conducted and not cancelled.
     // This prevents unconducted/future workshop IDs from inflating counts.
+    // NOTE: this does NOT check youth active/deactivated status — historical
+    // attendance must remain valid for a deactivated person (see Issue 3
+    // architecture rule), so a deactivated youth's rows are still counted.
     var ws = getAllWsSessions().find(function(s){ return s.id === row.workshop_id; });
     if (!ws || !ws.conducted || ws.cancelled || ws.adminCancelled) {
+      d.skippedUnconducted++;
       console.warn('loadAllWorkshopAttendance: skipping unconducted ws', row.workshop_id, 'for', name);
       return;
     }
@@ -17135,7 +17225,24 @@ async function loadAllWorkshopAttendance() {
     base.add(row.workshop_id);
     EL_YOUTH[name] = Array.from(base);
   });
+
   console.log('Workshop attendance loaded:', rows.length, 'rows,', resolved, 'resolved');
+  console.group('[Issue 2 diagnostic] Attendance reconciliation by workshop_id');
+  Object.keys(diag).sort(function(a,b){ return a-b; }).forEach(function(wid){
+    var d = diag[wid];
+    var finalCount = d.resolvedById + d.resolvedYn + d.resolvedY - d.skippedUnconducted;
+    console.log('Workshop #'+wid+':', {
+      db_rows_retrieved: d.dbRows,
+      resolved_via_id_map: d.resolvedById,
+      resolved_via_yn_slug: d.resolvedYn,
+      resolved_via_legacy_index_guess: d.resolvedY,
+      skipped_workshop_not_conducted: d.skippedUnconducted,
+      failed_to_resolve: d.failed.length,
+      final_counted_attendance: finalCount
+    });
+    if (d.failed.length) console.warn('  -> unresolved youth_ids for workshop #'+wid+':', d.failed);
+  });
+  console.groupEnd();
 }
 
 
@@ -18375,24 +18482,48 @@ async function saveEditAdult(){
   setTimeout(function(){ modal.style.display='none'; renderAdultRoster(); renderAdmin(); }, 1400);
 }
 
-function deactivateYouth(name){
+async function deactivateYouth(name){
   if(!confirm('Deactivate "'+name+'"? They will be removed from the active roster but their historical data is preserved in the database.')) return;
-  ALL_YOUTH_NAMES = ALL_YOUTH_NAMES.filter(function(n){return n!==name;});
-  // Remove from in-memory active structures (keep data in DB with active=false)
-  delete EL_YOUTH[name];
   var id = youthIdFor(name);
-  dbPatch('youth', {active: false}, 'id=eq.'+encodeURIComponent(id));
+
+  // FIX (Issue 3): await and verify the write before touching any local
+  // state. The write itself was already reaching Supabase correctly in most
+  // cases — the actual bug was downstream, in loadYouthData() ignoring
+  // active:false for non-admin-added youth (fixed above) — but per the
+  // required mutation pattern (await -> verify -> update local state ->
+  // render, never commit optimistic state on failure), this must still be
+  // confirmed rather than fired-and-forgotten.
+  var result = await dbPatch('youth', {active: false}, 'id=eq.'+encodeURIComponent(id));
+  if (result === null) {
+    alert('❌ Could not deactivate "'+name+'" — the save to the database failed.\n\nNothing has changed. Check the console and try again.');
+    console.error('deactivateYouth: Supabase write FAILED for', name, '(id:', id + ') — no local state was changed.');
+    return;
+  }
+
+  // Confirmed — now update local state. User status only: this must NOT
+  // touch EL_YOUTH or any other program-history structure, so historical
+  // attendance/enrollment/hours remain intact and can still be viewed while
+  // this person is deactivated (see: user status vs. program enrollment are
+  // separate concepts).
+  ALL_YOUTH_NAMES = ALL_YOUTH_NAMES.filter(function(n){return n!==name;});
   rebuildYouthLoginDropdown();
   renderYouthRoster();
   renderAdmin();
 }
 
-function deactivateAdult(key){
+async function deactivateAdult(key){
   var p = FAC_PROFILES[key];
   if(!p) return;
   if(!confirm('Deactivate "'+p.name+'"? They will be hidden from the roster but their historical data is preserved.')) return;
+
+  var result = await dbPatch('adults', {active: false}, 'id=eq.'+encodeURIComponent(key));
+  if (result === null) {
+    alert('❌ Could not deactivate "'+p.name+'" — the save to the database failed.\n\nNothing has changed. Check the console and try again.');
+    console.error('deactivateAdult: Supabase write FAILED for', p.name, '(id:', key + ') — no local state was changed.');
+    return;
+  }
+
   delete FAC_PROFILES[key];
-  dbPatch('adults', {active: false}, 'id=eq.'+encodeURIComponent(key));
   renderAdultRoster();
   renderAdmin();
 }

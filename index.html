@@ -3220,7 +3220,12 @@ function toggleYouthWs(id,btn){
   var attended;
   if(youthState.workshops.has(id)){youthState.workshops.delete(id);attended=false;}
   else{youthState.workshops.add(id);attended=true;}
-  saveWorkshopAttendance(youthState.name, id, attended);
+  saveWorkshopAttendance(youthState.name, id, attended).catch(function(err){
+    console.error('toggleYouthWs: save failed, rolling back', err);
+    if(attended){ youthState.workshops.delete(id); } else { youthState.workshops.add(id); }
+    renderYouth();
+    alert('❌ Could not save your attendance — please check your connection and try again.');
+  });
   renderYouth();
 }
 
@@ -6924,9 +6929,12 @@ async function manualLinkProfile() {
   }
 
   // Derive linked_id using the same logic as user creation
+  // FIX (identity root cause): a wrong guess here would permanently link a
+  // login account to the WRONG (or a brand-new, orphaned) youth id,
+  // disconnecting that person's login from their real attendance history.
   var linkedId = '';
   if (role === 'youth') {
-    linkedId = youthIdFor(name);
+    linkedId = await ensureYouthIdentity(name);
   } else {
     linkedId = name.toLowerCase().replace(/\s+/g,'_').replace(/[^a-z0-9_]/g,'').substring(0,20);
   }
@@ -14505,7 +14513,7 @@ function rebuildYouthLoginDropdown(){
     ALL_YOUTH_NAMES.slice().sort().forEach(function(name){
       var item = document.createElement('div');
       item.className = 'cdd-item';
-      item.setAttribute('data-value', youthId(name));
+      item.setAttribute('data-value', youthIdFor(name));
       item.setAttribute('onclick', 'selectCustomName(this)');
       item.textContent = name;
       cddList.insertBefore(item, firstItem);
@@ -14759,9 +14767,129 @@ var YOUTH_NAME_BY_ID = {};
 
 function _slugYouthId(name){ return 'yn_' + name.toLowerCase().replace(/\s+/g,'_').replace(/[^a-z0-9_]/g,''); }
 
+// youthIdFor() remains a SYNCHRONOUS, READ-ONLY best-effort lookup (dropdown
+// population, display, etc.) — it can only consult the already-warm
+// YOUTH_ID_BY_NAME cache and, failing that, computes a slug. That fallback
+// is fine for a read (worst case: a mis-rendered value that gets corrected
+// on next load) but is NOT safe to use as the id under which a new record
+// gets WRITTEN, because a cold cache (loadYouthData() still in flight,
+// failed silently, or simply never populated this exact name string) makes
+// it indistinguishable from "this person doesn't have an id yet" — even
+// when they already have a canonical y_N (or yn_) id sitting in the `youth`
+// table. That exact confusion is what produced the yn_* vs y_N split this
+// fix addresses. Every WRITE path that needs a youth's id now goes through
+// ensureYouthIdentity() instead.
 function youthIdFor(name) {
   if (YOUTH_ID_BY_NAME[name]) return YOUTH_ID_BY_NAME[name];
   return _slugYouthId(name);
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// STABLE YOUTH IDENTITY (root-cause fix)
+//
+// A youth's `youth.id` is their ONE permanent identity. A name is display
+// data and must never be used to (re)derive identity for someone who
+// already exists. This function is the ONLY sanctioned way for a WRITE
+// path (attendance, hours, enrollment, deactivation, rename, login-linking,
+// etc.) to obtain a youth's id:
+//
+//   1. Warm-cache fast path: if YOUTH_ID_BY_NAME[name] is already known
+//      (normal case, once loadYouthData() has completed), use it — no
+//      network round trip needed.
+//   2. Cold cache: query Supabase DIRECTLY by name before ever considering
+//      this person "new". This is what prevents a canonical y_N (or
+//      already-existing yn_) person from silently getting a second,
+//      orphaned identity just because the in-memory cache happened not to
+//      be warm yet (a slow/failed loadYouthData() at startup, or an action
+//      taken very soon after page load).
+//   3. Also checks name_aliases, in case `rawName` is a recorded OLD name
+//      for someone whose canonical name has since changed.
+//   4. Only if NO existing record can be found anywhere does this create
+//      one — and that creation is itself the permanent identity: it is
+//      never regenerated later, including on a subsequent rename (a rename
+//      only ever changes the `name` column, never the `id`).
+//
+// This never falls back to array position or runtime roster order for
+// identity, and never silently regenerates an id for someone who already
+// has one.
+// ═══════════════════════════════════════════════════════════════════════
+// ── TEMPORARY, PRE-MERGE SAFETY NET ─────────────────────────────────────
+// Real duplicate `youth` rows for the same person have been confirmed to
+// exist (e.g. y_35 + yn_kinsey_ehigiator, both named "Kinsey Ehigiator").
+// Until those are reviewed and merged via a deliberate, human-approved
+// migration, a query in ensureYouthIdentity() can legitimately return more
+// than one row for the same name. Supabase/PostgREST does not guarantee
+// row order without an explicit `order=`, so picking rows[0] blindly would
+// make new writes land on a RANDOM one of the two ids from one page load to
+// the next — silently continuing to fork data even after the cold-cache
+// bug itself is fixed.
+//
+// This tie-break is deliberately conservative and deterministic, not a
+// migration decision: prefer a legacy y_N id (the general default agreed
+// for this app) over a yn_* id, then fall back to the lowest id string, and
+// LOUDLY warn every time it fires so a real duplicate is never silently
+// papered over. It does not merge, move, or delete any data — it only
+// decides where the NEXT write goes. The actual reconciliation (deciding
+// per-group which id is canonical, migrating history, and removing the
+// duplicate row) must go through the reviewed diagnostic + migration
+// process, not this heuristic.
+function _pickCanonicalDuplicate(rows, name) {
+  if (rows.length === 1) return rows[0];
+  console.error('ensureYouthIdentity: DUPLICATE youth rows found for "' + name + '":',
+    rows.map(function(r){ return r.id; }).join(', '),
+    '— defaulting to a legacy y_ id if one exists, for consistency only. This person needs manual identity reconciliation.');
+  var legacy = rows.filter(function(r){ return r.id && r.id.indexOf('y_') === 0 && r.id.indexOf('yn_') !== 0; });
+  var pool = legacy.length ? legacy : rows;
+  return pool.slice().sort(function(a,b){ return a.id < b.id ? -1 : a.id > b.id ? 1 : 0; })[0];
+}
+
+async function ensureYouthIdentity(rawName) {
+  var name = resolveCanonicalName('youth', rawName);
+
+  // Fast path
+  if (YOUTH_ID_BY_NAME[name]) return YOUTH_ID_BY_NAME[name];
+
+  // Cold cache — look this person up directly rather than guessing.
+  try {
+    var rows = await dbGet('youth', 'select=id,name&name=eq.' + encodeURIComponent(name));
+    if (rows && rows.length) {
+      var picked = _pickCanonicalDuplicate(rows, name);
+      YOUTH_ID_BY_NAME[name] = picked.id;
+      YOUTH_NAME_BY_ID[picked.id] = name;
+      console.warn('ensureYouthIdentity: cache was cold for', name, '— recovered existing id', picked.id, 'via direct lookup instead of generating a new one.');
+      return picked.id;
+    }
+    // The raw (pre-alias) name might itself be recorded as someone's old
+    // name — resolveCanonicalName already handles the in-memory case, but
+    // double-check the DB directly in case NAME_ALIASES hasn't loaded yet.
+    if (rawName !== name) {
+      var rows2 = await dbGet('youth', 'select=id,name&name=eq.' + encodeURIComponent(rawName));
+      if (rows2 && rows2.length) {
+        var picked2 = _pickCanonicalDuplicate(rows2, name);
+        YOUTH_ID_BY_NAME[name] = picked2.id;
+        YOUTH_NAME_BY_ID[picked2.id] = name;
+        console.warn('ensureYouthIdentity: recovered existing id for', name, 'via raw-name lookup:', picked2.id);
+        return picked2.id;
+      }
+    }
+  } catch(e) {
+    console.error('ensureYouthIdentity: lookup failed for', name, '— refusing to guess a new identity.', e);
+    throw e; // never silently fall through to id generation on a failed lookup
+  }
+
+  // Genuinely no existing record anywhere in Supabase — a brand-new person.
+  // Create their permanent identity now, once, and cache it immediately so
+  // this is never repeated for the same person.
+  var newId = _slugYouthId(name);
+  var created = await supa('POST', 'youth', { id: newId, name: name, active: true }, 'on_conflict=id');
+  if (created === null) {
+    console.error('ensureYouthIdentity: failed to create a new youth record for', name);
+    throw new Error('Could not establish a database identity for ' + name);
+  }
+  YOUTH_ID_BY_NAME[name] = newId;
+  YOUTH_NAME_BY_ID[newId] = name;
+  console.log('ensureYouthIdentity: created new permanent identity for', name, '->', newId);
+  return newId;
 }
 
 // ── Safe single-quote escaping for building literal SQL strings ──
@@ -15544,7 +15672,14 @@ async function loadYouthData() {
 // so a rename never causes a second `youth` row to be inserted under a
 // newly-recomputed id. Only brand-new youth get an id derived from their name.
 async function saveYouthToDB(name, age, workshops) {
-  var id = youthIdFor(name);
+  // FIX (identity root cause): resolve/establish identity via
+  // ensureYouthIdentity BEFORE checking for an existing row. Previously this
+  // called youthIdFor(name) directly and used that (possibly freshly-guessed)
+  // id both to check for an existing row AND as the id to insert under — if
+  // the cache was cold, the existence check looked under the WRONG id, found
+  // nothing, and created a brand-new DUPLICATE record for someone who
+  // already had one.
+  var id = await ensureYouthIdentity(name);
   // Check if already exists
   const existing = await dbGet('youth', 'select=id&id=eq.' + encodeURIComponent(id) + '&limit=1');
   if (existing && existing.length > 0) {
@@ -15577,6 +15712,7 @@ async function saveYouthToDB(name, age, workshops) {
     console.warn('saveYouthToDB failed for', name, r.status, err);
   } else {
     YOUTH_ID_BY_NAME[name] = id; // this youth now has a real, persisted, stable id
+    YOUTH_NAME_BY_ID[id] = name;
     console.log('Youth saved to DB:', name, '(id:', id + ')');
   }
 }
@@ -15588,7 +15724,10 @@ async function saveWorkshopAttendance(youthName, workshopId, attended) {
     console.warn('saveWorkshopAttendance: blocked — ws', workshopId, 'is not conducted. Skipping save.');
     return;
   }
-  var youthId = youthIdFor(youthName);
+  // FIX (identity root cause): resolve via ensureYouthIdentity, not
+  // youthIdFor(), so a cold cache never manufactures a second, orphaned
+  // identity for someone who already has a canonical id.
+  var youthId = await ensureYouthIdentity(youthName);
 
   if (attended) {
     const r = await fetch(SUPA_URL + '/rest/v1/workshop_attendance?on_conflict=youth_id,workshop_id', {
@@ -17685,7 +17824,9 @@ async function openEditYouth(name){
   modal.style.display = 'flex';
 
   // Live DB fetch for email — more reliable than stale _cachedProfiles cache
-  var linkedId = youthIdFor(name);
+  var linkedId;
+  try { linkedId = await ensureYouthIdentity(name); }
+  catch(e) { linkedId = youthIdFor(name); } // best-effort fallback for this non-critical display lookup
   var rows = await dbGet('profiles',
     'select=email&or=(linked_id.eq.' + encodeURIComponent(linkedId) +
     ',name.eq.' + encodeURIComponent(name.trim()) + ')&limit=1');
@@ -17725,7 +17866,14 @@ async function saveEditYouth(){
     // The person's REAL stable id — this never changes on a rename. Only the
     // `name` column is updated; every other table is patched by matching the
     // old NAME text (see renamePersonEverywhere), never by recomputing an id.
-    var stableId = youthIdFor(origName);
+    // FIX (identity root cause): this MUST be the verified id, not a
+    // youthIdFor() guess — if the cache were cold here, the rename SQL below
+    // would filter on a nonexistent id, match zero rows, "succeed" (a
+    // no-match UPDATE is not an error), and silently leave the canonical
+    // record renamed to nothing while every future write for this person
+    // proceeded under a brand-new orphaned id. This is exactly the failure
+    // mode this fix eliminates.
+    var stableId = await ensureYouthIdentity(origName);
 
     setBusy(true);
     fb.innerHTML = '<span style="color:var(--text-muted)">Renaming — updating attendance, hours, and enrollment…</span>';
@@ -17806,7 +17954,7 @@ async function saveEditYouth(){
   // ── Profile upsert — awaited, result gates the success message ──
   if(newEmail) {
     setBusy(true);
-    var linkedId = youthIdFor(cur);
+    var linkedId = await ensureYouthIdentity(cur);
     var ok = await upsertProfile(newEmail, cur, 'youth', linkedId);
     setBusy(false);
     if(!ok) {
@@ -18484,7 +18632,12 @@ async function saveEditAdult(){
 
 async function deactivateYouth(name){
   if(!confirm('Deactivate "'+name+'"? They will be removed from the active roster but their historical data is preserved in the database.')) return;
-  var id = youthIdFor(name);
+  // FIX (identity root cause): resolve via ensureYouthIdentity, not
+  // youthIdFor(). A cold-cache guess here would PATCH a filter that matches
+  // zero rows (Supabase returns success either way), silently leaving the
+  // person's REAL row untouched and active — exactly the symptom originally
+  // reported for this feature.
+  var id = await ensureYouthIdentity(name);
 
   // FIX (Issue 3): await and verify the write before touching any local
   // state. The write itself was already reaching Supabase correctly in most
@@ -19229,20 +19382,22 @@ function attemptAdminLogin() {
 // ── CORE LOGIN HANDLER (unchanged) ──
 function doLogin(id, role) {
   if(role === 'youth') {
-    // Resolve the id from the profile link back to a name using the REAL
-    // stable id map (YOUTH_ID_BY_NAME) rather than recomputing a slug from
-    // each youth's CURRENT name — recomputing here broke login for anyone
-    // renamed after their profile was linked, since profiles.linked_id keeps
-    // the id issued at signup and a rename never changes that id.
-    var selectedName = null;
-    if(id.startsWith('yn_')) {
+    // Resolve the id from the profile link back to a name. Prefer the
+    // AUTHORITATIVE reverse map (YOUTH_NAME_BY_ID, built directly from the
+    // `youth` table's own (id, name) pairs in loadYouthData()) — this is
+    // correct for ANY id scheme (yn_ or legacy y_N) and survives renames.
+    // The scans below are last-resort fallbacks only, kept for the rare
+    // case this id has no corresponding `youth` row at all (e.g. a
+    // profile linked before that row existed).
+    var selectedName = YOUTH_NAME_BY_ID[id] || null;
+    if(!selectedName && id.startsWith('yn_')) {
       selectedName = ALL_YOUTH_NAMES.find(function(n){
         return youthIdFor(n) === id;
       }) || null;
     }
     if(!selectedName && id.startsWith('y_')) {
       var idx = parseInt(id.replace('y_',''));
-      selectedName = ALL_YOUTH_NAMES.slice().sort()[idx] || null;
+      selectedName = LEGACY_Y_INDEX_ROSTER[idx] || null;
     }
     if(!selectedName && storedCredentials[id]) {
       selectedName = storedCredentials[id].name || null;
@@ -19972,10 +20127,13 @@ function toggleCDD(e) {
 
 function _doSelectCustomName(el) {
   var name = el.textContent.replace(/\s*⚡/g,'').trim();
+  // FIX (identity root cause audit): this used to re-derive the id from
+  // `name` via youthIdFor() even though `val` already held a valid,
+  // correctly-assigned id from when the dropdown was populated — that
+  // re-derivation could silently overwrite a correct existing id with a
+  // fresh (wrong) guess if the cache happened to be cold at click time.
+  // The id set on the item at render time is already authoritative; trust it.
   var val  = el.getAttribute('data-value');
-  if (val && (val.startsWith('y_') || val.startsWith('yn_'))) {
-    val = youthIdFor(name);
-  }
   document.getElementById('setup-name-select').value = val;
   document.getElementById('cdd-display').textContent = name;
   document.getElementById('cdd-display').style.color = 'var(--text-main)';

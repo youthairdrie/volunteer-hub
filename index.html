@@ -3074,7 +3074,7 @@ function renderYouth(){
   checkYouth18thBirthday();
   var name=youthState.name;
   var ws=youthState.workshops; // Set of workshop IDs attended
-  var isEL=name in EL_YOUTH;
+  var isEL=EL_ENROLLED.has(name);
   var isScrOnly=!isEL&&isScrabbleMember(name);
 
   // ── Hours: admin-verified only (from YOUTH_HOURS, not self-reported) ──
@@ -12024,7 +12024,7 @@ function _elDropdownCandidates(query) {
   return ALL_YOUTH_NAMES
     .map(function(n){
       var isArchived   = EL_ARCHIVED.has(n);
-      var isAlreadyEL  = !isArchived && (EL_YOUTH[n] !== undefined);
+      var isAlreadyEL  = !isArchived && EL_ENROLLED.has(n);
       var label = n;
       if(isArchived)  label += ' \u2014 \U0001F4E6 Archived';
       if(isAlreadyEL) label += ' \u2014 already in EL';
@@ -12100,7 +12100,7 @@ document.addEventListener('click', function(e){
   if(dd && panel && !panel.contains(e.target)) dd.style.display = 'none';
 });
 
-function addELYouth(){
+async function addELYouth(){
   var nameEl = document.getElementById('el-new-name');
   var fb     = document.getElementById('el-add-feedback');
   if(!nameEl || !fb) return;
@@ -12120,14 +12120,36 @@ function addELYouth(){
     return;
   }
 
-  // Already active in EL (not archived) -- nothing to do
-  if(!EL_ARCHIVED.has(name) && EL_YOUTH[name] !== undefined){
+  // Already active in EL (not archived) -- nothing to do. Persisted
+  // el_enrolled is the authority here, not EL_YOUTH key presence.
+  if(!EL_ARCHIVED.has(name) && EL_ENROLLED.has(name)){
     fb.innerHTML = '<span style="color:var(--badge-amber)">\u26a0 <strong>' + name + '</strong> is already an active Emerging Leaders member.</span>';
+    return;
+  }
+
+  // Resolve the permanent canonical id BEFORE writing anything -- reuse the
+  // hardened identity architecture (fast path via YOUTH_ID_BY_NAME, cold-cache
+  // recovery via ensureYouthIdentity), never a fresh name-derived id for a
+  // youth that already exists.
+  var id;
+  try {
+    id = YOUTH_ID_BY_NAME[name] || await ensureYouthIdentity(name);
+  } catch(e) {
+    fb.innerHTML = '<span style="color:var(--badge-red)">\u274c Could not resolve a database identity for <strong>' + name + '</strong>. Nothing was changed. Check the console and try again.</span>';
+    console.error('addELYouth: ensureYouthIdentity failed for', name, e);
     return;
   }
 
   // Archived youth: restore, do not duplicate
   if(EL_ARCHIVED.has(name)){
+    var restoreResult = await dbPatch('youth', {el_enrolled: true}, 'id=eq.' + encodeURIComponent(id));
+    if (restoreResult === null) {
+      fb.innerHTML = '<span style="color:var(--badge-red)">\u274c Could not restore <strong>' + name + '</strong> \u2014 the save to the database failed. Nothing has changed.</span>';
+      console.error('addELYouth: el_enrolled restore write FAILED for', name, '(id:', id + ')');
+      return;
+    }
+    // Confirmed -- now update local state.
+    EL_ENROLLED.add(name);
     EL_ARCHIVED.delete(name);
     saveArchivedYouthToDB();
     // EL_YOUTH[name] already exists with full history -- no overwrite needed
@@ -12139,8 +12161,19 @@ function addELYouth(){
     return;
   }
 
-  // Youth exists in ALL_YOUTH_NAMES but not yet enrolled in EL
-  // Add to EL with empty workshop list (no new youth record created here)
+  // Youth exists in ALL_YOUTH_NAMES but not yet enrolled in EL. Persist the
+  // enrollment decision to Supabase FIRST -- only touch in-memory state and
+  // re-render after a confirmed successful write.
+  var enrollResult = await dbPatch('youth', {el_enrolled: true}, 'id=eq.' + encodeURIComponent(id));
+  if (enrollResult === null) {
+    fb.innerHTML = '<span style="color:var(--badge-red)">\u274c Could not add <strong>' + name + '</strong> to Emerging Leaders \u2014 the save to the database failed. Nothing has changed.</span>';
+    console.error('addELYouth: el_enrolled write FAILED for', name, '(id:', id + ')');
+    return;
+  }
+
+  // Confirmed -- now update local state (no new youth record created here;
+  // the youth row already exists, we only persisted its enrollment flag).
+  EL_ENROLLED.add(name);
   if(EL_YOUTH[name] === undefined) EL_YOUTH[name] = [];
   YOUTH_HOURS[name]      = YOUTH_HOURS[name] || 0;
   if(!YOUTH_COMPLIANCE[name]) YOUTH_COMPLIANCE[name] = { waiver_date:'', waiver_on_file:false, photo_date:'', photo_on_file:false };
@@ -12148,9 +12181,6 @@ function addELYouth(){
   fb.innerHTML = '<span style="color:var(--ya-teal)">\u2714 <strong>' + name + '</strong> added to Emerging Leaders. They now appear in the attendance table.</span>';
   nameEl.value = '';
   _elPanelSelectedName = null;
-
-  // No saveYouthToDB here -- Admin -> Users is the authoritative create path.
-  // The youth record already exists; we only enrol them in EL in memory.
 
   renderYouthAttendanceTable();
   renderAdmin();
@@ -13332,6 +13362,20 @@ var WS_REARRANGE_MODE = {};
 // Set of youth names hidden from the attendance table (archived). Data is preserved.
 var EL_ARCHIVED = new Set();
 
+// ── EL_ENROLLED ───────────────────────────────────────────────────────────
+// Authoritative, persisted-driven set of names who CURRENTLY belong to the
+// Emerging Leaders roster, per youth.el_enrolled === true (loaded fresh in
+// loadYouthData() on every startup). This is the ONLY thing the Attendance
+// roster and the "already in EL" dropdown check may use to decide roster
+// membership. EL_YOUTH remains a separate, purely historical workshop-id
+// CACHE (used only to compute checkmarks/counts for a name that is already
+// known — via this set — to be on the roster); EL_YOUTH's key existence
+// must never again be treated as enrollment evidence, because it is also
+// populated by loadAllWorkshopAttendance() straight from historical
+// workshop_attendance rows, which is explicitly NOT enrollment evidence
+// (see: Oluwamuretom, historical workshop-18 attendance, el_enrolled=false).
+var EL_ENROLLED = new Set();
+
 function toggleWsAttEditMode(){
   wsAttEditMode = !wsAttEditMode;
   var btn = document.getElementById('ws-att-edit-btn');
@@ -13689,10 +13733,16 @@ function renderYouthAttendanceTable(){
   // being marked Done. Use the series-aware session source instead, matching
   // the pattern already used by toggleYouthWsAdmin() below.
   var conductedWs = getAllWsSessions().filter(function(w){ return w.conducted && !w.cancelled && !w.adminCancelled; });
-  var names = Object.keys(EL_YOUTH).sort();
+  // Roster membership comes ONLY from persisted el_enrolled (via EL_ENROLLED,
+  // rebuilt fresh in loadYouthData()) -- never from EL_YOUTH key existence
+  // (which is also populated straight from historical workshop_attendance
+  // rows by loadAllWorkshopAttendance(), and is therefore NOT enrollment
+  // evidence -- see Oluwamuretom) and never from an attendance-count gate
+  // (which is what previously hid Tristan: enrolled + zero attendance).
+  var names = Array.from(EL_ENROLLED).sort();
 
   // ── Update summary pill in collapsible header ──
-  var activeCt = names.filter(function(n){ return getYouthConductedWorkshops(n).length > 0 && !EL_ARCHIVED.has(n); }).length;
+  var activeCt = names.filter(function(n){ return !EL_ARCHIVED.has(n); }).length;
   var archivedCt = EL_ARCHIVED.size;
   var pill = document.getElementById('youth-att-summary-pill');
   if (pill) pill.textContent = '(' + activeCt + ' active' + (archivedCt ? ' · ' + archivedCt + ' archived' : '') + ')';
@@ -13710,8 +13760,11 @@ function renderYouthAttendanceTable(){
     '<th style="text-align:center;min-width:60px">Attended</th>' +
     (wsAttArchiveMode ? '<th style="text-align:center;min-width:80px">Archive</th>' : '');
 
-  // ── Body rows — skip archived and 0-attendance youth ──
-  var activeNames = names.filter(function(n){ return getYouthConductedWorkshops(n).length > 0 && !EL_ARCHIVED.has(n); });
+  // ── Body rows — every current (non-archived) EL member, regardless of
+  // attendance count. Zero-attendance members (e.g. Tristan) must still get
+  // a row so their first attendance can be recorded; getYouthConductedWorkshops
+  // below only affects that row's checkmarks/counts, never its presence.
+  var activeNames = names.filter(function(n){ return !EL_ARCHIVED.has(n); });
   tbody.innerHTML = activeNames.map(function(n){
     var attended = new Set(EL_YOUTH[n] || []);
     var conducted = _getConductedIdSet();
@@ -13870,16 +13923,49 @@ function toggleWsAttArchiveMode() {
   renderYouthAttendanceTable();
 }
 
-// Archive a single youth — hides from table, preserves all data
-function archiveYouth(name) {
+// Archive a single youth — hides from table, preserves all data.
+// Persists el_enrolled=false (this youth no longer belongs to the CURRENT
+// EL roster) in lockstep with EL_ARCHIVED, so el_enrolled alone remains a
+// reliable signal even if EL_ARCHIVED is ever inspected independently.
+async function archiveYouth(name) {
   if (!confirm('Archive "' + name + '"?\n\nThey will be hidden from the attendance list. All their workshop history, counts, and stats are fully preserved and continue to count toward program metrics. You can restore them at any time.')) return;
+
+  var id = YOUTH_ID_BY_NAME[name];
+  if (!id) {
+    try { id = await ensureYouthIdentity(name); }
+    catch(e) { alert('❌ Could not resolve a database identity for "' + name + '". Nothing was changed.'); console.error('archiveYouth: identity resolution failed for', name, e); return; }
+  }
+  var result = await dbPatch('youth', {el_enrolled: false}, 'id=eq.' + encodeURIComponent(id));
+  if (result === null) {
+    alert('❌ Could not archive "' + name + '" — the save to the database failed.\n\nNothing has changed. Check the console and try again.');
+    console.error('archiveYouth: el_enrolled write FAILED for', name, '(id:', id + ')');
+    return;
+  }
+
+  // Confirmed — now update local state.
+  EL_ENROLLED.delete(name);
   EL_ARCHIVED.add(name);
   saveArchivedYouthToDB();
   renderYouthAttendanceTable();
 }
 
-// Restore a single youth from archived set
-function restoreYouth(name) {
+// Restore a single youth from archived set. Persists el_enrolled=true back
+// (mirror of archiveYouth), so el_enrolled and EL_ARCHIVED never drift apart.
+async function restoreYouth(name) {
+  var id = YOUTH_ID_BY_NAME[name];
+  if (!id) {
+    try { id = await ensureYouthIdentity(name); }
+    catch(e) { alert('❌ Could not resolve a database identity for "' + name + '". Nothing was changed.'); console.error('restoreYouth: identity resolution failed for', name, e); return; }
+  }
+  var result = await dbPatch('youth', {el_enrolled: true}, 'id=eq.' + encodeURIComponent(id));
+  if (result === null) {
+    alert('❌ Could not restore "' + name + '" — the save to the database failed.\n\nNothing has changed. Check the console and try again.');
+    console.error('restoreYouth: el_enrolled write FAILED for', name, '(id:', id + ')');
+    return;
+  }
+
+  // Confirmed — now update local state.
+  EL_ENROLLED.add(name);
   EL_ARCHIVED.delete(name);
   saveArchivedYouthToDB();
   renderYouthAttendanceTable();
@@ -13974,13 +14060,40 @@ function _restoreModalSelectAll(checked) {
   listEl.querySelectorAll('input[type=checkbox]').forEach(function(cb){ cb.checked = checked; });
 }
 
-function _wsConfirmRestoreSelected() {
+async function _wsConfirmRestoreSelected() {
   var listEl = document.getElementById('ws-restore-list');
   if (!listEl) return;
   var selected = [];
   listEl.querySelectorAll('input[type=checkbox]:checked').forEach(function(cb){ selected.push(cb.value); });
   if (!selected.length) { alert('Please select at least one youth to restore.'); return; }
-  selected.forEach(function(name){ EL_ARCHIVED.delete(name); });
+
+  // Resolve every selected name to its canonical id BEFORE writing anything.
+  var ids = [];
+  for (var i = 0; i < selected.length; i++) {
+    var nm = selected[i];
+    var id = YOUTH_ID_BY_NAME[nm];
+    if (!id) {
+      try { id = await ensureYouthIdentity(nm); }
+      catch(e) {
+        alert('❌ Could not resolve a database identity for "' + nm + '" — nothing was restored. Check the console and try again.');
+        console.error('_wsConfirmRestoreSelected: identity resolution failed for', nm, e);
+        return;
+      }
+    }
+    ids.push(id);
+  }
+
+  // One batched write for all selected youth.
+  var idFilter = 'id=in.(' + ids.map(encodeURIComponent).join(',') + ')';
+  var result = await dbPatch('youth', {el_enrolled: true}, idFilter);
+  if (result === null) {
+    alert('❌ Could not restore the selected youth — the save to the database failed.\n\nNothing has changed. Check the console and try again.');
+    console.error('_wsConfirmRestoreSelected: el_enrolled batch write FAILED for', selected);
+    return;
+  }
+
+  // Confirmed — now update local state.
+  selected.forEach(function(name){ EL_ENROLLED.add(name); EL_ARCHIVED.delete(name); });
   saveArchivedYouthToDB();
   renderYouthAttendanceTable();
   document.getElementById('ws-restore-modal').remove();
@@ -14418,7 +14531,7 @@ function toggleAddPlayerPanel(){
   }
 }
 
-function addNewPlayer(){
+async function addNewPlayer(){
   var nameEl = document.getElementById('new-player-name');
   var ageEl  = document.getElementById('new-player-age');
   var typeEl = document.getElementById('new-player-type');
@@ -14434,23 +14547,33 @@ function addNewPlayer(){
   var existing = ALL_YOUTH_NAMES.find(function(n){ return n.toLowerCase() === name.toLowerCase(); });
   if(existing || SCRABBLE_SESSIONS[name]){ fb.innerHTML = '<span style="color:var(--badge-amber)">⚠ "'+name+'" is already in the list.</span>'; return; }
 
-  // Add to scrabble tracking (empty session history)
-  SCRABBLE_SESSIONS[name] = {};
-  SCRABBLE_TOTALS[name] = 0;
-
-  // Add age if provided
-  if(age) YOUTH_AGES[name] = age;
-
   if(type === 'el'){
-    // Full youth member — add to ALL_YOUTH_NAMES, EL_YOUTH, compliance, login dropdown
+    // Full youth member with EL enrollment -- persist el_enrolled=true
+    // FIRST (this also creates the permanent youth identity via
+    // ensureYouthIdentity inside saveYouthToDB, since this is a brand-new
+    // person). Only commit local roster state after a confirmed write.
+    if(age) YOUTH_AGES[name] = age;
+    var elSaveOk = await saveYouthToDB(name, age, [], true);
+    if (!elSaveOk) {
+      fb.innerHTML = '<span style="color:var(--badge-red)">\u274c Could not add <strong>' + name + '</strong> \u2014 the save to the database failed. Nothing has changed.</span>';
+      if(age) delete YOUTH_AGES[name];
+      return;
+    }
     ALL_YOUTH_NAMES.push(name);
     ALL_YOUTH_NAMES.sort();
+    EL_ENROLLED.add(name);
     EL_YOUTH[name] = [];
     if(!YOUTH_COMPLIANCE[name]) YOUTH_COMPLIANCE[name] = { waiver_date:'', waiver_on_file:false, photo_date:'', photo_on_file:false };
     YOUTH_HOURS[name] = YOUTH_HOURS[name] || 0;
     rebuildYouthLoginDropdown();
-    saveYouthToDB(name, age, []);
+  } else {
+    // Add age if provided
+    if(age) YOUTH_AGES[name] = age;
   }
+
+  // Add to scrabble tracking (empty session history)
+  SCRABBLE_SESSIONS[name] = {};
+  SCRABBLE_TOTALS[name] = 0;
 
   // Save a placeholder row to scrabble_sessions DB so player persists across reload
   // Use a special '_registered' date with 0 points as a presence marker
@@ -14835,9 +14958,19 @@ function youthIdFor(name) {
 // process, not this heuristic.
 function _pickCanonicalDuplicate(rows, name) {
   if (rows.length === 1) return rows[0];
-  console.error('ensureYouthIdentity: DUPLICATE youth rows found for "' + name + '":',
-    rows.map(function(r){ return r.id; }).join(', '),
+  var idList = rows.map(function(r){ return r.id; }).join(', ');
+  console.error('ensureYouthIdentity: DUPLICATE youth rows found for "' + name + '":', idList,
     '— defaulting to a legacy y_ id if one exists, for consistency only. This person needs manual identity reconciliation.');
+  // FIX (post-migration integrity requirement): once the reviewed
+  // reconciliation has run, this should never fire again for a
+  // conclusively-matched person. If it does, it's a NEW integrity error
+  // (e.g. someone recreated a duplicate), not routine cold-cache recovery —
+  // surface it to whoever is using the app right now, not just the console,
+  // so it gets reported rather than silently persisting.
+  try {
+    alert('⚠️ Data integrity issue: found ' + rows.length + ' database records for "' + name + '" (' + idList + ').\n\n' +
+      'The app is using one of them for now, but this needs an admin to review and merge them — please report this.');
+  } catch(e) { /* alert unavailable in this context (e.g. background load) — console.error above still recorded it */ }
   var legacy = rows.filter(function(r){ return r.id && r.id.indexOf('y_') === 0 && r.id.indexOf('yn_') !== 0; });
   var pool = legacy.length ? legacy : rows;
   return pool.slice().sort(function(a,b){ return a.id < b.id ? -1 : a.id > b.id ? 1 : 0; })[0];
@@ -14952,6 +15085,8 @@ async function renamePersonEverywhere(personType, oldName, newName, stableId) {
       "end $$;",
       "update youth set name = " + onT + " where id = " + idLit + ";",
       "update scrabble_sessions set player_name = " + onT + " where player_name = " + onO + ";",
+      "update scrabble_scores set player_name = " + onT + " where player_name = " + onO + ";",
+      "update event_volunteers set name = " + onT + " where name = " + onO + " and role = 'youth';",
       "update pending_entries set youth_name = " + onT + " where youth_name = " + onO + ";",
       "update event_registrations set youth_name = " + onT + " where youth_name = " + onO + ";",
       "update program_attendance set participant_name = " + onT + " where participant_name = " + onO + " and participant_type in ('youth','youth_facilitator','youth_animator');",
@@ -15568,11 +15703,14 @@ async function migrateWorkshopAttendanceToNames() {
 
 // ── LOAD YOUTH FROM SUPABASE (picks up admin-added youth) ──
 async function loadYouthData() {
-  const rows = await dbGet('youth', 'select=id,name,age,workshops,active,volunteer_hours');
+  const rows = await dbGet('youth', 'select=id,name,age,workshops,active,volunteer_hours,el_enrolled');
   if(!rows || rows.length === 0) {
     console.log('No youth rows in DB');
     return;
   }
+  // Rebuilt fresh from persisted el_enrolled on every load — this is the
+  // ONLY roster-membership signal; see the EL_ENROLLED declaration comment.
+  EL_ENROLLED = new Set();
   var added = 0;
   rows.forEach(function(row) {
     var rawName = row.name;
@@ -15625,32 +15763,50 @@ async function loadYouthData() {
       return; // deactivated — do not also run the "restore enrollment" logic below
     }
 
-    // Roster membership / EL enrollment below is only driven by admin-added
-    // ('yn_') rows — legacy/seed roster membership and workshop enrollment
-    // stay governed by the hardcoded seed data (reconciled separately by
-    // reconcileHardcodedSeedNames()), so this fix doesn't change workshop,
-    // program, or enrollment behavior for pre-existing seed youth.
+    // isAdminAdded now controls ONLY identity bookkeeping (whether this row
+    // is the thing that should add its own name into ALL_YOUTH_NAMES) — it
+    // must never again be read as EL-enrollment evidence. Legacy/seed
+    // youth already have their name in the hardcoded ALL_YOUTH_NAMES seed
+    // array, so only admin-added ('yn_') rows need to push themselves in.
     var isAdminAdded = row.id && row.id.indexOf('yn_') === 0;
-    if(!isAdminAdded) return;
 
-    // Add to ALL_YOUTH_NAMES if not already present
-    if(ALL_YOUTH_NAMES.indexOf(name) < 0) {
+    if (isAdminAdded && ALL_YOUTH_NAMES.indexOf(name) < 0) {
       ALL_YOUTH_NAMES.push(name);
       added++;
     }
-    // Restore EL_YOUTH entry — only admit IDs for conducted, non-cancelled workshops
-    var wsArr = row.workshops || [];
-    var conductedSet = _getConductedIdSet();
-    var base = new Set(EL_YOUTH[name] || []);
-    wsArr.forEach(function(w){
-      var session = getAllWsSessions().find(function(s){ return s.id === w; });
-      if (session && session.conducted && !session.cancelled && !session.adminCancelled) {
-        base.add(w);
-      } else if (w) {
-        console.warn('loadYouthData: skipping unconducted ws', w, 'for', name);
-      }
-    });
-    EL_YOUTH[name] = Array.from(base);
+
+    // ── EL enrollment — persisted youth.el_enrolled is the SOLE authority ──
+    // Runs for EVERY active row regardless of id scheme (legacy y_N or
+    // modern yn_*). This replaces the old isAdminAdded-gated restore, which
+    // meant legacy/seed EL members' DB state was never consulted at all —
+    // they relied purely on the hardcoded EL_YOUTH literal, a second,
+    // competing enrollment authority. That is now retired: el_enrolled is
+    // the one and only signal for "is this person currently on the EL
+    // roster." Non-empty youth.workshops, historical workshop_attendance,
+    // yn_* id shape, and hardcoded seed membership are explicitly NOT
+    // consulted here — see Tristan (el_enrolled=true, workshops=[], zero
+    // attendance -> ON roster) and Oluwamuretom (el_enrolled=false, one
+    // historical attendance row -> NOT on roster) as the two proof cases.
+    if (row.el_enrolled === true) {
+      EL_ENROLLED.add(name);
+
+      // EL_YOUTH is now purely a workshop-id CACHE for this name's
+      // checkmarks/counts — never consulted to decide roster membership.
+      // Only admit IDs for conducted, non-cancelled workshops.
+      var wsArr = row.workshops || [];
+      var base = new Set(EL_YOUTH[name] || []);
+      wsArr.forEach(function(w){
+        var session = getAllWsSessions().find(function(s){ return s.id === w; });
+        if (session && session.conducted && !session.cancelled && !session.adminCancelled) {
+          base.add(w);
+        } else if (w) {
+          console.warn('loadYouthData: skipping unconducted ws', w, 'for', name);
+        }
+      });
+      EL_YOUTH[name] = Array.from(base);
+    }
+
+    if(!isAdminAdded) return; // remaining identity bookkeeping below is admin-added-only, unchanged
 
     // Restore age
     if(row.age && !YOUTH_AGES[name]) YOUTH_AGES[name] = row.age;
@@ -15671,7 +15827,13 @@ async function loadYouthData() {
 // Uses the REAL stable id (YOUTH_ID_BY_NAME) when this youth already exists,
 // so a rename never causes a second `youth` row to be inserted under a
 // newly-recomputed id. Only brand-new youth get an id derived from their name.
-async function saveYouthToDB(name, age, workshops) {
+async function saveYouthToDB(name, age, workshops, elEnrolled) {
+  // elEnrolled is OPTIONAL and, when omitted (undefined), must never touch
+  // youth.el_enrolled at all -- callers that only update age/workshops/hours
+  // (e.g. the event_hours approval path in updatePendingEntry()) must not
+  // accidentally reset or overwrite a person's current EL enrollment.
+  var touchesEnrollment = (elEnrolled !== undefined);
+
   // FIX (identity root cause): resolve/establish identity via
   // ensureYouthIdentity BEFORE checking for an existing row. Previously this
   // called youthIdFor(name) directly and used that (possibly freshly-guessed)
@@ -15683,14 +15845,26 @@ async function saveYouthToDB(name, age, workshops) {
   // Check if already exists
   const existing = await dbGet('youth', 'select=id&id=eq.' + encodeURIComponent(id) + '&limit=1');
   if (existing && existing.length > 0) {
-    // Update age/workshops if changed
-    await dbPatch('youth',
-      { age: age || null, workshops: workshops || [] },
-      'id=eq.' + encodeURIComponent(id));
+    // Update age/workshops (and el_enrolled, only if the caller passed it) if changed
+    var patch = { age: age || null, workshops: workshops || [] };
+    if (touchesEnrollment) patch.el_enrolled = !!elEnrolled;
+    var patchResult = await dbPatch('youth', patch, 'id=eq.' + encodeURIComponent(id));
+    if (patchResult === null) {
+      console.warn('saveYouthToDB: update FAILED for', name, '(id:', id + ')');
+      return false;
+    }
     console.log('Youth updated in DB:', name);
-    return;
+    return true;
   }
   // Insert new
+  var insertBody = {
+    id: id,
+    name: name,
+    age: age || null,
+    workshops: workshops || [],
+    volunteer_hours: YOUTH_HOURS[name] || 0
+  };
+  if (touchesEnrollment) insertBody.el_enrolled = !!elEnrolled;
   const r = await fetch(SUPA_URL + '/rest/v1/youth', {
     method: 'POST',
     headers: {
@@ -15699,21 +15873,17 @@ async function saveYouthToDB(name, age, workshops) {
       'Content-Type': 'application/json',
       'Prefer': 'return=minimal'
     },
-    body: JSON.stringify({
-      id: id,
-      name: name,
-      age: age || null,
-      workshops: workshops || [],
-      volunteer_hours: YOUTH_HOURS[name] || 0
-    })
+    body: JSON.stringify(insertBody)
   });
   if (!r.ok) {
     const err = await r.text();
     console.warn('saveYouthToDB failed for', name, r.status, err);
+    return false;
   } else {
     YOUTH_ID_BY_NAME[name] = id; // this youth now has a real, persisted, stable id
     YOUTH_NAME_BY_ID[id] = name;
     console.log('Youth saved to DB:', name, '(id:', id + ')');
+    return true;
   }
 }
 
@@ -17621,7 +17791,7 @@ function renderYouthRoster(){
   var sorted = ALL_YOUTH_NAMES.slice().sort();
   el.innerHTML = sorted.map(function(name){
     var age = YOUTH_AGES[name] ? YOUTH_AGES[name]+' yrs' : '—';
-    var inEL = name in EL_YOUTH;
+    var inEL = EL_ENROLLED.has(name);
     var inScrabble = name in SCRABBLE_SESSIONS;
     var inGarden = PROGRAMS_DATA['garden_2026'] && PROGRAMS_DATA['garden_2026'].youth_participants && (name in PROGRAMS_DATA['garden_2026'].youth_participants);
     var tags = '';
@@ -17667,7 +17837,7 @@ function renderAdultRoster(){
   }).join('') || '<div style="color:var(--text-muted);font-size:.82rem;padding:8px">No adults yet.</div>';
 }
 
-function addNewYouthUser(){
+async function addNewYouthUser(){
   var name  = document.getElementById('new-youth-name').value.trim();
   var email = (document.getElementById('new-youth-email') ? document.getElementById('new-youth-email').value.trim().toLowerCase() : '');
   var age   = parseInt(document.getElementById('new-youth-age').value) || null;
@@ -17683,6 +17853,17 @@ function addNewYouthUser(){
     fb.innerHTML='<span style="color:var(--badge-amber)">⚠ "'+name+'" already exists.</span>'; return;
   }
 
+  // Persist the youth record FIRST -- including el_enrolled, set to EXACTLY
+  // the checkbox's value (true or false), never left implicit/inferred from
+  // an empty workshops array. This is a brand-new person, so this call also
+  // establishes their permanent identity via ensureYouthIdentity internally.
+  // Only commit any local state below after a confirmed successful write.
+  var saveOk = await saveYouthToDB(name, age, [], enrolEl);
+  if (!saveOk) {
+    fb.innerHTML = '<span style="color:var(--badge-red)">\u274c Could not add <strong>' + name + '</strong> \u2014 the save to the database failed. Nothing has changed.</span>';
+    return;
+  }
+
   // Add to core lists
   ALL_YOUTH_NAMES.push(name);
   ALL_YOUTH_NAMES.sort();
@@ -17692,6 +17873,7 @@ function addNewYouthUser(){
 
   // Enrol in selected programs
   if(enrolEl){
+    EL_ENROLLED.add(name);
     EL_YOUTH[name] = EL_YOUTH[name] || [];
   }
   if(enrolScrabble && !(name in SCRABBLE_SESSIONS)){
@@ -17716,11 +17898,9 @@ function addNewYouthUser(){
     });
   }
 
-  // Persist to DB
   // TODO(future-stable-ids): once youth table uses uuid PKs, store the uuid
   // in profiles.linked_id instead of the derived yn_* string.
   var linkedId = 'yn_' + name.toLowerCase().replace(/\s+/g,'_').replace(/[^a-z0-9_]/g,'');
-  saveYouthToDB(name, age, []);
 
   // Phase 2: write profiles row if email provided
   if(email) {
@@ -17816,7 +17996,7 @@ async function openEditYouth(name){
   modal.dataset.origName = name;
   document.getElementById('eyu-name').value = name;
   document.getElementById('eyu-age').value = YOUTH_AGES[name] || '';
-  document.getElementById('eyu-el').checked = name in EL_YOUTH;
+  document.getElementById('eyu-el').checked = EL_ENROLLED.has(name);
   document.getElementById('eyu-scrabble').checked = name in SCRABBLE_SESSIONS;
   document.getElementById('eyu-garden').checked = !!(PROGRAMS_DATA['garden_2026'] && PROGRAMS_DATA['garden_2026'].youth_participants && (name in PROGRAMS_DATA['garden_2026'].youth_participants));
   document.getElementById('eyu-feedback').innerHTML = '';
@@ -17920,8 +18100,26 @@ async function saveEditYouth(){
   var cur = newName;
   if(newAge) YOUTH_AGES[cur] = newAge;
 
-  if(enrolEL && !(cur in EL_YOUTH)) EL_YOUTH[cur] = [];
-  else if(!enrolEL && cur in EL_YOUTH) delete EL_YOUTH[cur];
+  // Persist el_enrolled EXACTLY as the checkbox states -- true or false,
+  // never left implicit or inferred. Awaited: only touch EL_ENROLLED/
+  // EL_YOUTH locally after a confirmed successful write, and never
+  // optimistically report success if it fails.
+  setBusy(true);
+  var elSaveOk = await saveYouthToDB(cur, newAge || YOUTH_AGES[cur] || null, EL_YOUTH[cur] || [], enrolEL);
+  setBusy(false);
+  if (!elSaveOk) {
+    showErr('Could not save changes — the write to the database failed. Please try again.');
+    return;
+  }
+  if (enrolEL) {
+    EL_ENROLLED.add(cur);
+    if (EL_YOUTH[cur] === undefined) EL_YOUTH[cur] = [];
+  } else {
+    EL_ENROLLED.delete(cur);
+    // EL_YOUTH (the historical workshop-id cache) is intentionally left
+    // untouched here -- un-enrolling from EL must never delete or hide
+    // historical attendance data, only remove current roster membership.
+  }
 
   if(enrolScrabble && !(cur in SCRABBLE_SESSIONS)){
     SCRABBLE_SESSIONS[cur] = {};
@@ -17948,8 +18146,6 @@ async function saveEditYouth(){
     dbDel('program_attendance',
       'program_id=eq.garden_2026&session_date=eq._enrolled&participant_name=eq.'+encodeURIComponent(cur));
   }
-
-  saveYouthToDB(cur, newAge || YOUTH_AGES[cur] || null, EL_YOUTH[cur] || []);
 
   // ── Profile upsert — awaited, result gates the success message ──
   if(newEmail) {

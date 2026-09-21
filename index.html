@@ -981,10 +981,10 @@ tr:hover .grd-date-sticky { background: #1a2d47; }
       <div id="admin-kim-cert-card" class="fac-cert-card">
         <div style="font-size:2.6rem;flex-shrink:0">🏅</div>
         <div>
-          <div class="fac-cert-title">Kim Sundset — Level 3 Certified Facilitator</div>
+          <div class="fac-cert-title" id="admin-kim-cert-title">Kim Sundset — Certified Facilitator</div>
           <div class="fac-cert-sub" id="admin-kim-cert-sub">Loading…</div>
           <div style="margin-top:7px;display:flex;gap:7px;flex-wrap:wrap" id="admin-kim-cert-pills">
-            <span class="pill pill-gold">⭐ Level 3 Facilitator</span>
+            <span class="pill pill-gold" id="admin-kim-lvl-pill">⭐ Certified Facilitator</span>
             <span class="pill pill-teal" id="admin-kim-ws-pill">— Workshops (2026)</span>
             <span class="pill pill-blue">Administrator</span>
           </div>
@@ -2722,11 +2722,30 @@ var LEGACY_Y_INDEX_ROSTER = ALL_YOUTH_NAMES.slice();
 
 var currentRole=null,youthState=null,adultState=null;
 
-function getYouthLevel(ws,hrs){
-  if(ws>=18&&hrs>=6)return 3;
-  if(ws>=12&&hrs>=4)return 2;
-  if(ws>=6&&hrs>=2)return 1;
-  return 0;
+// ── Emerging Leaders certification — WORKSHOP-ONLY, open-ended ─────────────
+// Level = floor(qualifying workshops / 6). No maximum level.
+// Volunteer hours are NOT part of EL certification (they remain recorded
+// and displayed elsewhere as service history).
+var EL_WORKSHOPS_PER_LEVEL = 6;
+function getYouthLevel(ws){
+  ws = Math.max(0, Math.floor(Number(ws) || 0));
+  return Math.floor(ws / EL_WORKSHOPS_PER_LEVEL);
+}
+// Workshop count needed for the NEXT level: (currentLevel + 1) * 6
+function getYouthNextTarget(ws){
+  return (getYouthLevel(ws) + 1) * EL_WORKSHOPS_PER_LEVEL;
+}
+// Compact status pills for admin attendance rows (levels earned + progress).
+function elYouthStatusPills(c){
+  var l = getYouthLevel(c), target = getYouthNextTarget(c), st = '';
+  if(l>=1){
+    if(l<=3){ for(var lv=1;lv<=l;lv++) st+='<span class="pill pill-green" style="margin:1px 2px;font-size:.65rem">L'+lv+' ✔</span>'; }
+    else { st+='<span class="pill pill-green" style="margin:1px 2px;font-size:.65rem">L1–L'+l+' ✔</span>'; }
+    st+='<span class="pill pill-amber" style="margin:1px 2px;font-size:.65rem">→L'+(l+1)+': '+c+'/'+target+' ws</span>';
+  } else {
+    st='<span class="pill '+(c>=4?'pill-amber':'pill-grey')+'" style="margin:1px;font-size:.65rem">'+c+'/'+target+' ws</span>';
+  }
+  return st;
 }
 
 // ── getYouthConductedWorkshops(name) ────────────────────────────────────────
@@ -2873,15 +2892,13 @@ function wsDateChip(ws){
   if(ws.conducted)return '<span class="ws-date-chip ws-past">✔ Past</span>';
   return '<span class="ws-date-chip ws-future">Upcoming</span>';
 }
-function certBannerHTML(ws,hrs){
-  var lvl=getYouthLevel(ws,hrs);
-  var ll=['','Level 1 Certificate','Level 2 Certificate','Level 3 Certificate'];
-  var tg=[[6,2],[12,4],[18,6]];
-  var msg='';
-  if(lvl<3){var t=tg[lvl];var nw=Math.max(0,t[0]-ws),nh=parseFloat(Math.max(0,t[1]-hrs).toFixed(1));msg=(nw>0?nw+' more workshop'+(nw>1?'s':''):'')+(nw>0&&nh>0?' + ':'')+(nh>0?nh+' more hr'+(nh!=1?'s':''):'')+(nw>0||nh>0?' to Level '+(lvl+1):'');}
-  else{msg='Max level achieved!';}
-  if(lvl===0)return '<div class="in-progress-bar">🎯 <strong style="color:var(--text-main)">Working toward Level 1</strong> — '+ws+' workshops, '+hrs+' hrs. '+msg+'</div>';
-  return '<div class="cert-banner"><div class="cert-level">L'+lvl+'</div><div class="cert-info"><div class="cert-title">'+ll[lvl]+'</div><div class="cert-sub">'+ws+' workshops · '+hrs+' volunteer hours</div><div class="cert-next">'+msg+'</div></div></div>';
+function certBannerHTML(ws){
+  ws = Math.max(0, Math.floor(Number(ws) || 0));
+  var lvl=getYouthLevel(ws);
+  var nw=getYouthNextTarget(ws)-ws;
+  var msg=nw+' more workshop'+(nw!==1?'s':'')+' to Level '+(lvl+1);
+  if(lvl===0)return '<div class="in-progress-bar">🎯 <strong style="color:var(--text-main)">Working toward Level 1</strong> — '+ws+' workshop'+(ws!==1?'s':'')+' completed. '+msg+'</div>';
+  return '<div class="cert-banner"><div class="cert-level">L'+lvl+'</div><div class="cert-info"><div class="cert-title">Level '+lvl+' Certificate</div><div class="cert-sub">'+ws+' workshops completed</div><div class="cert-next">'+msg+'</div></div></div>';
 }
 function facCertBannerHTML(adultName){
   var total = getTotalFacilitatedCount(adultName);
@@ -2911,7 +2928,7 @@ function renderInviteCards(name,isEL,isScrOnly){
     cards+='<div class="invite-card sc"><div class="invite-icon">🎲</div><div><div class="invite-title">Join Scrabble & Games Club!</div><div class="invite-sub">Weekly sessions every Wednesday · Earn points for attendance and wins · '+CURRENT_QUARTER+' Trophy up for grabs — ask Kim to register!</div></div></div>';
   }
   if(isScrOnly){
-    cards+='<div class="invite-card el"><div class="invite-icon">🌱</div><div><div class="invite-title">Join Emerging Leaders Workshops!</div><div class="invite-sub">Ages 10–16 welcome · 18 workshops on leadership, communication, finance & more · Earn Level 1, 2 & 3 Certificates — ask Kim to register!</div></div></div>';
+    cards+='<div class="invite-card el"><div class="invite-icon">🌱</div><div><div class="invite-title">Join Emerging Leaders Workshops!</div><div class="invite-sub">Ages 10–16 welcome · 18 workshops on leadership, communication, finance & more · Earn a new certificate level for every 6 workshops — ask Kim to register!</div></div></div>';
     cards+='<div class="invite-card jysep"><div class="invite-icon">📖</div><div><div class="invite-title">Interested in JYSEP?</div><div class="invite-sub">Junior Youth Spiritual Empowerment Program · Ages 10–14 · Service, community, and leadership — ask Kim to learn more!</div></div></div>';
     if(age&&age>=15&&age<=29) cards+='<div class="invite-card jysep" style="border-color:rgba(232,98,10,.3);background:rgba(232,98,10,.08)"><div class="invite-icon">🌟</div><div><div class="invite-title">JYSEP Animator Training</div><div class="invite-sub">Ages 15–29 · Train to facilitate and animate JYSEP programs in your community!</div></div></div>';
     if(age&&age>=5&&age<=9) cards+='<div class="invite-card jysep" style="border-color:rgba(45,184,75,.3);background:rgba(45,184,75,.08)"><div class="invite-icon">🌈</div><div><div class="invite-title">Spiritual Children Class</div><div class="invite-sub">Ages 5-9 · Youth Airdrie · Fun, values-based learning — ask Kim to register!</div></div></div>';
@@ -3100,7 +3117,7 @@ function renderYouth(){
   // cnt = conducted workshops only — used for level, cert banner, stat card
   var conductedSet = _getConductedIdSet();
   var cnt=Array.from(ws).filter(function(id){ return conductedSet.has(id); }).length;
-  var lvl=getYouthLevel(cnt,hrs);
+  var lvl=getYouthLevel(cnt); // workshop-only; hrs intentionally not used
 
   // Page title
   var t=document.getElementById('youth-dash-title');
@@ -3108,7 +3125,7 @@ function renderYouth(){
 
   // Cert banner (EL only)
   var cb1=document.getElementById('youth-cert-banner-dash');
-  if(cb1)cb1.innerHTML=isEL?certBannerHTML(cnt,hrs):'';
+  if(cb1)cb1.innerHTML=isEL?certBannerHTML(cnt):'';
 
   // Show/hide EL-only sections
   var wsSection=document.getElementById('youth-workshops-section');
@@ -3136,7 +3153,7 @@ function renderYouth(){
         '';
       sc.innerHTML=
         '<div class="stat-card" style="--accent-color:var(--ya-teal)"><div class="stat-label">Workshops Attended</div><div class="stat-value">'+cnt+'</div><div class="stat-meta">of '+calcWorkshopStats('winter_2026').scheduled.length+' in Winter 2026</div><div class="stat-icon">📚</div></div>'+
-        '<div class="stat-card" style="--accent-color:var(--ya-orange)"><div class="stat-label">Volunteer Hours</div><div class="stat-value">'+verifiedHrs+'</div><div class="stat-meta">Admin-verified · Goal: '+(lvl<1?2:lvl<2?4:6)+'h for Level '+(Math.min(lvl+1,3))+'</div><div class="stat-icon">⏱</div></div>'+
+        '<div class="stat-card" style="--accent-color:var(--ya-orange)"><div class="stat-label">Volunteer Hours</div><div class="stat-value">'+verifiedHrs+'</div><div class="stat-meta">Admin-verified volunteer service</div><div class="stat-icon">⏱</div></div>'+
         '<div class="stat-card" style="--accent-color:var(--ya-blue)"><div class="stat-label">EL Level</div><div class="stat-value" style="font-size:'+(lvl>0?'1.8rem':'1.1rem')+';padding-top:'+(lvl>0?'3px':'6px')+'">'+(lvl>0?'Level '+lvl:'In Progress')+'</div><div class="stat-meta">EL Certificate</div><div class="stat-icon">🎓</div></div>'+
         scCard;
     }
@@ -3148,10 +3165,9 @@ function renderYouth(){
     if(!isEL){
       pb.innerHTML='';
     }else{
-      var cGW=lvl<1?6:lvl<2?12:18,cGH=lvl<1?2:lvl<2?4:6;
+      var cGW=getYouthNextTarget(cnt);
       pb.innerHTML=
-        '<div class="prog-bar-wrap"><div class="prog-label"><span>Workshops (Level '+Math.min(lvl+1,3)+')</span><span>'+cnt+' / '+cGW+'</span></div><div class="prog-track"><div class="prog-fill" style="width:'+Math.min(100,cnt/cGW*100)+'%;background:linear-gradient(90deg,var(--ya-teal),var(--ya-blue))"></div></div></div>'+
-        '<div class="prog-bar-wrap"><div class="prog-label"><span>Volunteer Hours (admin-verified)</span><span>'+hrs+' / '+cGH+'</span></div><div class="prog-track"><div class="prog-fill" style="width:'+Math.min(100,hrs/cGH*100)+'%;background:linear-gradient(90deg,var(--ya-orange),var(--ya-gold))"></div></div></div>';
+        '<div class="prog-bar-wrap"><div class="prog-label"><span>Workshops — Level '+(lvl+1)+'</span><span>'+cnt+' / '+cGW+'</span></div><div class="prog-track"><div class="prog-fill" style="width:'+Math.min(100,cnt/cGW*100)+'%;background:linear-gradient(90deg,var(--ya-teal),var(--ya-blue))"></div></div></div>';
     }
   }
 
@@ -3195,11 +3211,15 @@ function renderYouth(){
     return '<div class="badge-card '+(earned?'earned':'')+'"><span class="badge-emoji">'+b.e+'</span><div class="badge-name">'+b.n+'</div></div>';
   }).join('');
   var cl=document.getElementById('youth-certs-list');
-  if(cl)cl.innerHTML=[{l:1,w:6,h:2},{l:2,w:12,h:4},{l:3,w:18,h:6}].map(function(c){
-    var earned=cnt>=c.w&&hrs>=c.h;
-    var p=cnt>=c.w&&hrs<c.h?'pill-amber':cnt<c.w?'pill-grey':'pill-green';
-    return '<div class="activity-item"><div class="activity-dot" style="background:'+(earned?'var(--ya-teal)':'rgba(255,255,255,.15)')+'"></div><div style="flex:1"><div class="activity-name">Emerging Leaders Certificate — Level '+c.l+'</div><div class="activity-meta">Requires '+c.w+' workshops + '+c.h+' hrs (admin-verified)</div></div><span class="pill '+p+'">'+(earned?'✔ Earned':cnt>=c.w?'Need '+Math.max(0,c.h-hrs).toFixed(1)+' more hrs':cnt+'/'+c.w+' workshops')+'</span></div>';
-  }).join('');
+  if(cl){
+    // Dynamic, open-ended: every level earned + the next level being worked toward.
+    var certRows=[];
+    for(var cl_l=1;cl_l<=lvl+1;cl_l++) certRows.push({l:cl_l,w:cl_l*EL_WORKSHOPS_PER_LEVEL});
+    cl.innerHTML=certRows.map(function(c){
+      var earned=cnt>=c.w;
+      return '<div class="activity-item"><div class="activity-dot" style="background:'+(earned?'var(--ya-teal)':'rgba(255,255,255,.15)')+'"></div><div style="flex:1"><div class="activity-name">Emerging Leaders Certificate — Level '+c.l+'</div><div class="activity-meta">Requires '+c.w+' workshops</div></div><span class="pill '+(earned?'pill-green':'pill-grey')+'">'+(earned?'✔ Earned':cnt+'/'+c.w+' workshops')+'</span></div>';
+    }).join('');
+  }
 
   // ── Volunteer event history (admin-verified hours, read-only) ───────────
   renderVolunteerHistoryYouth('youth-vol-history', name);
@@ -3822,6 +3842,9 @@ function renderAdmin(){
     var kimSubEl  = eid('admin-kim-cert-sub');
     var kimPillEl = eid('admin-kim-ws-pill');
     if(kimSubEl) kimSubEl.textContent = (kimProf.prior_facilitated||0)+' prior + '+kimCount+' in-app · FL'+getFacLevel(kimTotal)+' Certified · Program Administrator';
+    var kimTitleEl = eid('admin-kim-cert-title'), kimLvlPill = eid('admin-kim-lvl-pill');
+    if(kimTitleEl) kimTitleEl.textContent = 'Kim Sundset — Level '+getFacLevel(kimTotal)+' Certified Facilitator';
+    if(kimLvlPill) kimLvlPill.textContent = '⭐ Level '+getFacLevel(kimTotal)+' Facilitator';
     if(kimPillEl) kimPillEl.textContent = kimCount + ' Workshop' + (kimCount !== 1 ? 's' : '') + ' (in-app)';
   }
 
@@ -6237,10 +6260,11 @@ function renderImpactTab(){
   var allYouthSet    = calcYouthParticipants(); // shared: EL + Scrabble(both qtrs) + Programs + Events
 
   // ── Leadership pipeline ───────────────────────────────────────────────────
-  var lvl1Eligible = allYouthNames.filter(function(n){ var c=getYouthConductedWorkshops(n).length,h=YOUTH_HOURS[n]||0; return getYouthLevel(c,h)>=1; });
-  var lvl2Eligible = allYouthNames.filter(function(n){ var c=getYouthConductedWorkshops(n).length,h=YOUTH_HOURS[n]||0; return getYouthLevel(c,h)>=2; });
-  var lvl3Eligible = allYouthNames.filter(function(n){ var c=getYouthConductedWorkshops(n).length,h=YOUTH_HOURS[n]||0; return getYouthLevel(c,h)>=3; });
-  var nearLvl1     = allYouthNames.filter(function(n){ var c=getYouthConductedWorkshops(n).length; return c>=4 && getYouthLevel(c,YOUTH_HOURS[n]||0)<1; });
+  var lvl1Eligible = allYouthNames.filter(function(n){ return getYouthLevel(getYouthConductedWorkshops(n).length)>=1; });
+  var lvl2Eligible = allYouthNames.filter(function(n){ return getYouthLevel(getYouthConductedWorkshops(n).length)>=2; });
+  var lvl3Eligible = allYouthNames.filter(function(n){ return getYouthLevel(getYouthConductedWorkshops(n).length)>=3; });
+  var lvl4PlusEligible = allYouthNames.filter(function(n){ return getYouthLevel(getYouthConductedWorkshops(n).length)>=4; });
+  var nearLvl1     = allYouthNames.filter(function(n){ var c=getYouthConductedWorkshops(n).length; return c>=4 && getYouthLevel(c)<1; });
   var tenPlusWs    = allYouthNames.filter(function(n){ return getYouthConductedWorkshops(n).length>=10; });
   var multiProgram = allYouthNames.filter(function(n){
     var inWs = getYouthConductedWorkshops(n).length > 0;
@@ -6359,9 +6383,10 @@ function renderImpactTab(){
   // Left: milestone highlights
   html += '<div class="section-box" style="margin-bottom:0">';
   html += '<div class="section-title" style="margin-bottom:10px">🏆 Leadership Milestones</div>';
-  html += milestone('🎓', '<strong>'+lvl1Eligible.length+' youth</strong> have achieved Level 1 certification eligibility (6+ workshops, 2+ volunteer hours)', 'var(--ya-green)');
-  if(lvl2Eligible.length) html += milestone('🥈', '<strong>'+lvl2Eligible.length+' youth</strong> have achieved Level 2 eligibility (12+ workshops, 4+ hours)', 'var(--ya-blue)');
-  if(lvl3Eligible.length) html += milestone('⭐', '<strong>'+lvl3Eligible.length+' youth</strong> have achieved Level 3 eligibility (18 workshops, 6+ hours)', 'var(--ya-gold)');
+  html += milestone('🎓', '<strong>'+lvl1Eligible.length+' youth</strong> have achieved Level 1 certification eligibility (6+ workshops)', 'var(--ya-green)');
+  if(lvl2Eligible.length) html += milestone('🥈', '<strong>'+lvl2Eligible.length+' youth</strong> have achieved Level 2 eligibility (12+ workshops)', 'var(--ya-blue)');
+  if(lvl3Eligible.length) html += milestone('⭐', '<strong>'+lvl3Eligible.length+' youth</strong> have achieved Level 3 eligibility (18+ workshops)', 'var(--ya-gold)');
+  if(lvl4PlusEligible.length) html += milestone('🏆', '<strong>'+lvl4PlusEligible.length+' youth</strong> have achieved Level 4 or higher (24+ workshops)', 'var(--ya-gold)');
   html += milestone('📈', '<strong>'+tenPlusWs.length+' youth</strong> have attended 10 or more workshops — demonstrating sustained commitment', 'var(--ya-teal)');
   html += milestone('🔗', '<strong>'+multiProgram.length+' youth</strong> are engaged in 2 or more programs (workshops, Scrabble, events)', 'var(--ya-orange)');
   html += milestone('⏳', '<strong>'+nearLvl1.length+' youth</strong> are 4–5 workshops in and approaching Level 1 — next milestone within reach', 'var(--ya-gold)');
@@ -6379,6 +6404,7 @@ function renderImpactTab(){
   html += statRow('Level 1 eligible',        lvl1Eligible.length, 'pill-green');
   html += statRow('Level 2 eligible',        lvl2Eligible.length, 'pill-blue');
   if(lvl3Eligible.length) html += statRow('Level 3 eligible', lvl3Eligible.length, 'pill-gold');
+  if(lvl4PlusEligible.length) html += statRow('Level 4+ eligible', lvl4PlusEligible.length, 'pill-gold');
   html += '</div>';
   html += '</div>';
 
@@ -13771,32 +13797,16 @@ function renderYouthAttendanceTable(){
     // c = conducted-only count — used for level, progress, status pills
     var c = Array.from(attended).filter(function(id){ return conducted.has(id); }).length;
     var h = YOUTH_HOURS[n] || 0;
-    var l = getYouthLevel(c, h);
+    var l = getYouthLevel(c); // workshop-only
     var ageStr = YOUTH_AGES[n] ? ' · Age '+YOUTH_AGES[n] : '';
 
     // Progress bar
-    var target = l<1?6:l<2?12:18;
+    var target = getYouthNextTarget(c);
     var bg = Math.min(100, Math.round(c/target*100));
     var progressBar = '<div class="prog-track" style="width:90px;margin-top:3px"><div class="prog-fill" style="width:'+bg+'%;background:linear-gradient(90deg,var(--ya-teal),var(--ya-blue))"></div></div>';
 
-    // Status pills
-    var st = '';
-    if(l>=1){
-      for(var lv=1;lv<=l;lv++) st+='<span class="pill pill-green" style="margin:1px 2px;font-size:.65rem">L'+lv+' ✔</span>';
-      if(l<3){
-        var nw=[6,12,18][l],nh=[2,4,6][l];
-        var wl=Math.max(0,nw-c),hl=parseFloat(Math.max(0,nh-h).toFixed(1));
-        var pr=wl>0?(c+'/'+nw+' ws'):hl>0?(h+'/'+nh+' hrs'):'Ready!';
-        st+='<span class="pill pill-amber" style="margin:1px 2px;font-size:.65rem">→L'+(l+1)+': '+pr+'</span>';
-      } else {
-        st+='<span class="pill pill-gold" style="margin:1px 2px;font-size:.65rem">Max ⭐</span>';
-      }
-    } else {
-      var wl2=Math.max(0,6-c), hl2=parseFloat(Math.max(0,2-h).toFixed(1));
-      if(c>=6&&h<2) st='<span class="pill pill-amber" style="margin:1px;font-size:.65rem">Need '+hl2+' hrs</span>';
-      else if(c>=4) st='<span class="pill pill-amber" style="margin:1px;font-size:.65rem">'+c+'/6 ws</span>';
-      else st='<span class="pill pill-grey" style="margin:1px;font-size:.65rem">'+c+'/6 ws</span>';
-    }
+    // Status pills (workshop-only; open-ended levels)
+    var st = elYouthStatusPills(c);
 
     // Workshop attendance cells
     var wsCells = conductedWs.map(function(w){
@@ -13855,30 +13865,12 @@ function toggleYouthWsAdmin(name, wsId, cell){
   var strongEl = tds[1].querySelector("strong");
   if(strongEl) strongEl.textContent = newTotal;
 
-  var h = YOUTH_HOURS[name] || 0;
-  var l = getYouthLevel(newTotal, h);
-  var target = l<1?6:l<2?12:18;
+  var target = getYouthNextTarget(newTotal);
   var bgPct = Math.min(100, Math.round(newTotal/target*100));
   var barEl = tds[1].querySelector(".prog-fill");
   if(barEl) barEl.style.width = bgPct + "%";
 
-  var st = "";
-  if(l>=1){
-    for(var lv=1;lv<=l;lv++) st+='<span class="pill pill-green" style="margin:1px 2px;font-size:.65rem">L'+lv+' ✔</span>';
-    if(l<3){
-      var nw=[6,12,18][l],nh=[2,4,6][l];
-      var wl=Math.max(0,nw-newTotal),hl=parseFloat(Math.max(0,nh-h).toFixed(1));
-      var pr=wl>0?(newTotal+"/"+nw+" ws"):hl>0?(h+"/"+nh+" hrs"):"Ready!";
-      st+='<span class="pill pill-amber" style="margin:1px 2px;font-size:.65rem">→L'+(l+1)+": "+pr+"</span>";
-    } else {
-      st+='<span class="pill pill-gold" style="margin:1px 2px;font-size:.65rem">Max ⭐</span>';
-    }
-  } else {
-    var wl2=Math.max(0,6-newTotal),hl2=parseFloat(Math.max(0,2-h).toFixed(1));
-    if(newTotal>=6&&h<2) st='<span class="pill pill-amber" style="margin:1px;font-size:.65rem">Need '+hl2+' hrs</span>';
-    else if(newTotal>=4) st='<span class="pill pill-amber" style="margin:1px;font-size:.65rem">'+newTotal+'/6 ws</span>';
-    else st='<span class="pill pill-grey" style="margin:1px;font-size:.65rem">'+newTotal+'/6 ws</span>';
-  }
+  var st = elYouthStatusPills(newTotal);
   tds[2].innerHTML = st;
 
   // Persist to Supabase -- roll back optimistic UI if save fails

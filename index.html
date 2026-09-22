@@ -3783,8 +3783,16 @@ function renderAdmin(){
   if(wtb) wtb.innerHTML = WORKSHOPS.map(function(w){ return wsSessionRow(w, allNames); }).join('');
 
   // ── Fall 2026 schedule table ─────────────────────────────────────────────
+  // FIX (Fall Done/cancellation display bug): read through the canonical
+  // series accessor instead of the raw WS_FALL_2026 array. getSeriesWsSessions()
+  // goes through getAllWsSessions(), which merges WS_FALL_2026_DB_OVERRIDES
+  // (the authoritative persisted conducted/adminCancelled state) on top of each
+  // raw session object. Mapping WS_FALL_2026 directly — the old code — bypassed
+  // that merge entirely, so this table could show "Mark Done"/uncancelled even
+  // when workshop_conducted/workshop_cancellations (and every other reader that
+  // goes through getAllWsSessions()) correctly had the workshop as Done/Cancelled.
   var ftb2 = eid('admin-ws-fall-tbody');
-  if(ftb2) ftb2.innerHTML = WS_FALL_2026.map(function(w){ return wsSessionRow(w, allNames); }).join('');
+  if(ftb2) ftb2.innerHTML = getSeriesWsSessions('fall_2026').map(function(w){ return wsSessionRow(w, allNames); }).join('');
 
   // ── Additional future series sections ────────────────────────────────────
   var futureSeriesDiv = eid('admin-ws-future-series-sections');
@@ -3792,7 +3800,17 @@ function renderAdmin(){
     var fsHtml = '';
     Object.keys(WS_FUTURE_SERIES_SESSIONS).forEach(function(sid) {
       var ser = WS_SERIES_DB[sid] || {name: sid, icon: '📅', color: 'var(--ya-blue)'};
-      var sessions = WS_FUTURE_SERIES_SESSIONS[sid] || [];
+      // FIX: read through getSeriesWsSessions(sid) rather than the raw
+      // WS_FUTURE_SERIES_SESSIONS[sid] array. Future series have no separate
+      // override map (conducted/adminCancelled are mutated directly onto these
+      // objects by loadWorkshopConducted()/loadWorkshopCancellations()), so
+      // once the startup ordering fix above guarantees those loaders run after
+      // array reconstruction, WS_FUTURE_SERIES_SESSIONS[sid] and
+      // getSeriesWsSessions(sid) return equivalent data for this series today.
+      // Using the canonical accessor here keeps every schedule table on the
+      // same read path so this render can't silently drift from the
+      // authoritative state again if a per-series override layer is ever added.
+      var sessions = getSeriesWsSessions(sid);
       var tbId = 'admin-ws-'+sid+'-tbody';
       fsHtml += '<details open style="margin-bottom:14px"><summary style="font-family:Nunito,sans-serif;font-weight:900;font-size:.95rem;color:'+ser.color+';cursor:pointer;padding:10px 0;list-style:none;display:flex;align-items:center;gap:8px">'+ser.icon+' '+ser.name+' Workshop Schedule</summary>' +
         '<div style="margin-top:10px"><div class="section-box">' +
@@ -17343,14 +17361,37 @@ async function dbStartup() {
     // loadEventStatus MUST run before loadEventVolunteers so event objects
     // exist before volunteers are populated into them (fixes race condition)
     await loadEventStatus();
+    // FIX (Fall Done/cancellation reload race): loadWsScheduleOverrides() and
+    // loadFutureSeriesFromDB() RECONSTRUCT session arrays wholesale
+    // (WS_FALL_2026.length=0/push..., WS_FUTURE_SERIES_SESSIONS[sid]=saved) from
+    // older persisted schedule/series snapshots that do not carry per-workshop
+    // conducted/cancellation state. loadWorkshopConducted()/loadWorkshopCancellations()
+    // apply the AUTHORITATIVE per-workshop flags on top of whatever session
+    // objects currently exist. These two groups used to run inside a single
+    // Promise.all, so whichever fetch happened to resolve last would silently
+    // win — if a schedule/series reconstruction resolved after the authoritative
+    // flags were applied, it replaced the very objects that had just been
+    // marked conducted/cancelled, reverting them to stale (usually false) state
+    // on the raw arrays (this is what made Fall 2026 "Done" workshops revert to
+    // "Mark Done" after sign-out/sign-in — see diagnostic history above).
+    //
+    // Fix: run these as two STRICTLY SEQUENTIAL stages. Everything that can
+    // reconstruct/replace a session array must finish first; only afterward do
+    // we apply the authoritative conducted/cancellation flags on top of the
+    // now-final objects. Within each stage the loaders don't overwrite each
+    // other's targets, so Promise.all is still safe and kept for concurrency.
+    await Promise.all([
+      loadWsScheduleOverrides(),   // may replace WS_FALL_2026 / WS_FUTURE_SERIES_SESSIONS[sid]
+      loadFutureSeriesFromDB(),    // may replace WS_FUTURE_SERIES_SESSIONS[sid]
+    ]);
     // Workshop conducted/cancellation status MUST load before attendance,
-    // because loadAllWorkshopAttendance filters to conducted-only IDs.
+    // because loadAllWorkshopAttendance filters to conducted-only IDs, AND
+    // must load AFTER the array-reconstruction stage above so its mutations
+    // land on the final session objects and are never subsequently discarded.
     // (Template + Fall-snapshot loading already happened above.)
     await Promise.all([
       loadWorkshopConducted(),
       loadWorkshopCancellations(),
-      loadWsScheduleOverrides(),
-      loadFutureSeriesFromDB(),
     ]);
     // Now load attendance (conducted set is accurate) and everything else in parallel
     await Promise.all([

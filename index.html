@@ -16518,6 +16518,65 @@ async function loadAdultProfiles() {
   console.log('Adult profiles loaded from DB:', rows.length, 'rows, DB-staffed workshops:', [...WS_STAFFED_BY_DB].join(','));
 }
 
+// ══════════════════════════════════════════════════════════════════════════════
+// GAMES & CRAFTS CLUB — READ-ONLY QUARTER MODEL (Phase 2, increment P2-1)
+// View-only data for the future quarter interface. Uses GET requests only and
+// never writes to Supabase. Kept in GCC_VIEW, outside PROGRAMS_DATA, so Impact,
+// the Stats Audit and every existing calculation are unaffected. Historical
+// 2026 Scrabble data (SCRABBLE_DATES, Q1/Q2, scrabble_* tables) is not touched.
+// ══════════════════════════════════════════════════════════════════════════════
+var GCC_SEASON_ID = 'scrabble_2026_27';   // existing season ID — preserved as-is
+var GCC_QUARTERS = [
+  // Approved Oct 2026. Active = loaded for the view.
+  { id:'gcc_2026_q4', label:'Fall 2026',          start:'Oct 14, 2026', end:'Dec 30, 2026', active:true  },
+  // Approved Oct 17, 2026. NOT active: display requires separate authorization.
+  { id:'gcc_2027_q1', label:'Winter/Spring 2027', start:'Jan 6, 2027',  end:'Apr 28, 2027', active:false }
+];
+var GCC_VIEW = { loaded:false, error:null, loadedAt:null, quarters:[], cancellations:{}, meta:{}, signups:{} };
+
+function getActiveGccQuarters() {
+  return GCC_QUARTERS.filter(function(q){ return q.active === true; });
+}
+
+// Loads cancellations, session notes/activities and adult sign-ups for the
+// Games & Crafts season. Never throws, so it cannot disturb startup.
+async function loadGccView() {
+  try {
+    var quarters = getActiveGccQuarters().map(function(q){
+      return { id:q.id, label:q.label, start:q.start, end:q.end,
+               dates: buildWeeklyDates(q.start, q.end, 'Wednesday') };
+    });
+    var pid = encodeURIComponent(GCC_SEASON_ID);
+    var res = await Promise.all([
+      dbGet('program_cancellations', 'select=session_date,reason&program_id=eq.' + pid),
+      dbGet('program_session_meta',  'select=session_date,activity_theme,session_description,cancellation_reason,notes&program_id=eq.' + pid),
+      dbGet('program_volunteers',    'select=session_date,adult_name&program_id=eq.' + pid)
+    ]);
+    var asRows = function(r){ return Array.isArray(r) ? r : []; };
+    var cancellations = {}, meta = {}, signups = {};
+    asRows(res[0]).forEach(function(r){ cancellations[r.session_date] = r.reason || ''; });
+    asRows(res[1]).forEach(function(r){
+      meta[r.session_date] = { theme: r.activity_theme || '', description: r.session_description || '', notes: r.notes || '' };
+      if (r.cancellation_reason && !(r.session_date in cancellations)) cancellations[r.session_date] = r.cancellation_reason;
+    });
+    asRows(res[2]).forEach(function(r){
+      var n = resolveCanonicalName('adult', r.adult_name);
+      signups[r.session_date] = signups[r.session_date] || [];
+      if (signups[r.session_date].indexOf(n) < 0) signups[r.session_date].push(n);
+    });
+    var failed = res.filter(function(r){ return !Array.isArray(r); }).length;
+    GCC_VIEW = { loaded:true, error: failed ? (failed + ' read(s) failed') : null,
+                 loadedAt: new Date().toISOString(), quarters: quarters,
+                 cancellations: cancellations, meta: meta, signups: signups };
+    console.log('[GCC view] loaded (read-only):', quarters.map(function(q){ return q.id + ' ' + q.dates.length + ' dates'; }).join(', '),
+                '| cancellations:', Object.keys(cancellations).length, '| sign-up dates:', Object.keys(signups).length,
+                failed ? '| ' + GCC_VIEW.error : '');
+  } catch (e) {
+    GCC_VIEW.error = 'load error: ' + (e && e.message);
+    console.warn('[GCC view] non-fatal load error:', e);
+  }
+}
+
 async function loadProgramData() {
   // Load volunteer signups
   const vols = await dbGet('program_volunteers', 'select=program_id,session_date,adult_name');
@@ -17412,6 +17471,7 @@ async function dbStartup() {
       loadEventVolunteers(),
       loadArchivedYouth(),
       loadProgramData(),
+      loadGccView(),               // P2-1: read-only Games & Crafts quarter view
       loadGardenData(),
       loadJysepBooks().then(function(){ return loadAllJysepData(); }),
       loadSccBooks().then(function(){ return loadAllSccData(); }),

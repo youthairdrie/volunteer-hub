@@ -1133,6 +1133,12 @@ tr:hover .grd-date-sticky { background: #1a2d47; }
         </details>
       </div>
       <div id="tab-scrabble-admin" style="display:none">
+        <!-- A1: Games & Crafts read-only quarter calendar -->
+        <div id="gcc-quarter-bar"></div>
+        <div id="gcc-quarter-view"></div>
+        <!-- 2026 Scrabble archive: existing interface, unchanged -->
+        <div id="gcc-archive-wrap">
+        <div class="section-box" style="padding:12px 16px;font-size:.82rem;border-color:rgba(255,255,255,.14)"><strong>📜 2026 Scrabble archive</strong>: historical records for Scrabble &amp; Games Club, Q1 and Q2 2026 (closed). Shown exactly as recorded.</div>
         <div class="cards-grid" id="admin-scrabble-stat-cards"></div>
         <div id="admin-q1-history-banner" style="margin-bottom:10px"></div>
         <div id="admin-scrabble-trophy-banner"></div>
@@ -1282,6 +1288,7 @@ tr:hover .grd-date-sticky { background: #1a2d47; }
             </div>
           </div>
         </div>
+        </div><!-- /gcc-archive-wrap -->
       </div>
       
       </div>
@@ -4251,6 +4258,7 @@ function switchTab(tabId,btn){
   btn.classList.add('active');
   if(tabId==='workshops') renderAdmin();
   if(tabId==='garden-admin') renderGardenAdmin();
+  if(tabId==='scrabble-admin'){ try{ renderGccQuarterView(); }catch(e){ console.warn('[GCC view] render skipped:', e); } }
   if(tabId==='jysep-admin') renderJysepAdmin();
   if(tabId==='scc-admin') renderSccAdmin();
   if(tabId==='future-schedule') renderScheduleTab();
@@ -16529,8 +16537,8 @@ var GCC_SEASON_ID = 'scrabble_2026_27';   // existing season ID — preserved as
 var GCC_QUARTERS = [
   // Approved Oct 2026. Active = loaded for the view.
   { id:'gcc_2026_q4', label:'Fall 2026',          start:'Oct 14, 2026', end:'Dec 30, 2026', active:true  },
-  // Approved Oct 17, 2026. NOT active: display requires separate authorization.
-  { id:'gcc_2027_q1', label:'Winter/Spring 2027', start:'Jan 6, 2027',  end:'Apr 28, 2027', active:false }
+  // Approved Oct 17, 2026. Activated for the read-only calendar in increment A1.
+  { id:'gcc_2027_q1', label:'Winter/Spring 2027', start:'Jan 6, 2027',  end:'Apr 28, 2027', active:true  }
 ];
 var GCC_VIEW = { loaded:false, error:null, loadedAt:null, quarters:[], cancellations:{}, meta:{}, signups:{} };
 
@@ -16575,7 +16583,148 @@ async function loadGccView() {
     GCC_VIEW.error = 'load error: ' + (e && e.message);
     console.warn('[GCC view] non-fatal load error:', e);
   }
+  try { renderGccQuarterView(); } catch (e2) { console.warn('[GCC view] render skipped:', e2); }
 }
+// ── A1: read-only quarter calendar on the admin Games & Crafts tab ────────────
+// Display only. No saving, editing, registering, cancelling or results entry.
+// Reads GCC_QUARTERS (dates) and GCC_VIEW (cancellations, sign-ups, notes).
+// The 2026 Scrabble interface is left untouched inside #gcc-archive-wrap.
+var _gccView = null;      // selected quarter id, or 'archive'
+var _gccSelDate = null;   // session date whose details are open
+
+function _gccEsc(s) {
+  return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+function _gccDate(s) {
+  var m = {Jan:0,Feb:1,Mar:2,Apr:3,May:4,Jun:5,Jul:6,Aug:7,Sep:8,Oct:9,Nov:10,Dec:11};
+  var p = String(s || '').replace(',', '').split(/\s+/);
+  var d = new Date(parseInt(p[2], 10), m[p[0]], parseInt(p[1], 10));
+  return isNaN(d.getTime()) ? null : d;
+}
+function _gccToday() { var d = new Date(); d.setHours(0,0,0,0); return d; }
+function _gccShort(s) { return String(s || '').replace(/, \d{4}$/, ''); }
+
+// Default view: the quarter containing today; else the next approved quarter; else the archive.
+function gccDefaultView() {
+  var t = _gccToday().getTime(), qs = getActiveGccQuarters(), i;
+  for (i = 0; i < qs.length; i++) {
+    if (t >= _gccDate(qs[i].start).getTime() && t <= _gccDate(qs[i].end).getTime()) return qs[i].id;
+  }
+  for (i = 0; i < qs.length; i++) {
+    if (_gccDate(qs[i].start).getTime() > t) return qs[i].id;
+  }
+  return 'archive';
+}
+function gccSelectView(id) { _gccView = id; _gccSelDate = null; renderGccQuarterView(); }
+function gccSelectSession(d) { _gccSelDate = (_gccSelDate === d) ? null : d; renderGccQuarterView(); }
+
+function renderGccQuarterView() {
+  var bar = document.getElementById('gcc-quarter-bar');
+  var view = document.getElementById('gcc-quarter-view');
+  var arch = document.getElementById('gcc-archive-wrap');
+  if (!bar || !view || !arch) return;
+  var qs = getActiveGccQuarters();
+  if (!_gccView || (_gccView !== 'archive' && !qs.some(function(q){ return q.id === _gccView; }))) _gccView = gccDefaultView();
+
+  // Quarter selector
+  var chip = function(id, text) {
+    return '<button type="button" class="filter-btn' + (_gccView === id ? ' active' : '') + '" onclick="gccSelectView(\'' + id + '\')" style="margin:0">' + text + '</button>';
+  };
+  bar.innerHTML =
+    '<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:14px">' +
+      qs.map(function(q){ return chip(q.id, '🎲 ' + _gccEsc(q.label) + ' · ' + _gccEsc(_gccShort(q.start)) + '–' + _gccEsc(_gccShort(q.end))); }).join('') +
+      chip('archive', '📜 2026 Scrabble archive') +
+    '</div>';
+
+  if (_gccView === 'archive') { view.innerHTML = ''; arch.style.display = ''; return; }
+  arch.style.display = 'none';
+
+  var q = qs.filter(function(x){ return x.id === _gccView; })[0];
+  var dates = buildWeeklyDates(q.start, q.end, 'Wednesday');
+  var V = GCC_VIEW || {}, canc = V.cancellations || {}, signups = V.signups || {}, meta = V.meta || {};
+  var t = _gccToday().getTime();
+  var isCanc = function(d){ return Object.prototype.hasOwnProperty.call(canc, d); };
+  // "Next" = the club's next non-cancelled session across all approved quarters
+  var nextDate = null;
+  qs.forEach(function(x){ buildWeeklyDates(x.start, x.end, 'Wednesday').forEach(function(d){
+    var ms = _gccDate(d).getTime();
+    if (ms > t && !isCanc(d) && (!nextDate || ms < _gccDate(nextDate).getTime())) nextDate = d;
+  }); });
+  var nPast = 0, nUp = 0, nCanc = 0;
+  var rows = dates.map(function(d) {
+    var dt = _gccDate(d), ms = dt ? dt.getTime() : 0, st;
+    if (isCanc(d)) { st = 'cancelled'; nCanc++; }
+    else if (ms < t) { st = 'past'; nPast++; }
+    else { st = (ms === t) ? 'today' : (d === nextDate ? 'next' : 'upcoming'); nUp++; }
+    return { d: d, st: st };
+  });
+  var PILL = {
+    cancelled: '<span class="pill pill-red">⛔ Cancelled</span>',
+    past:      '<span class="pill pill-grey">Past · not recorded</span>',
+    today:     '<span class="pill pill-gold">Today</span>',
+    next:      '<span class="pill pill-teal">Next</span>',
+    upcoming:  '<span class="pill pill-blue">Upcoming</span>'
+  };
+  var STATUS_TEXT = {
+    cancelled: 'Cancelled',
+    past:      'Past. Attendance and games won are not recorded in the app yet.',
+    today:     'Today',
+    next:      'Next scheduled session',
+    upcoming:  'Upcoming'
+  };
+
+  var loadNote = '';
+  if (!V.loaded) loadNote = '<div style="font-size:.78rem;color:var(--text-muted);margin-top:8px">Loading cancellations and sign-ups…</div>';
+  else if (V.error) loadNote = '<div style="font-size:.78rem;color:var(--badge-red);margin-top:8px">Some session details could not be loaded. Dates are shown; reload the page to try again.</div>';
+
+  var html = '';
+  html += '<div class="section-box">' +
+    '<div class="section-title" style="margin-bottom:4px">🎲 ' + _gccEsc(q.label) + ' · ' + _gccEsc(q.start) + ' – ' + _gccEsc(q.end) + '</div>' +
+    '<div style="font-size:.82rem;color:var(--text-muted);margin-bottom:10px">Wednesdays · 4:30–6:30 PM · Youth Airdrie · ' + dates.length + ' scheduled sessions</div>' +
+    '<div style="display:flex;flex-wrap:wrap;gap:6px">' +
+      '<span class="pill pill-blue">' + dates.length + ' scheduled</span>' +
+      '<span class="pill pill-grey">' + nPast + ' past</span>' +
+      '<span class="pill pill-teal">' + nUp + ' upcoming</span>' +
+      '<span class="pill pill-red">' + nCanc + ' cancelled</span>' +
+    '</div>' +
+    '<div style="margin-top:12px;padding:10px 12px;border-radius:10px;background:rgba(29,127,212,.08);border:1px solid rgba(29,127,212,.25);font-size:.8rem;line-height:1.5">' +
+      'ⓘ <strong>View only.</strong> Attendance and games-won entry will be added in a later update. ' +
+      'Past dates show as “Past · not recorded” until results are entered.<br>' +
+      (q.id === 'gcc_2026_q4' ? 'No Fall 2026 registrations are recorded in the app yet.' : 'No registrations are recorded in the app for this quarter yet.') +
+    '</div>' + loadNote +
+  '</div>';
+
+  html += '<div class="section-box"><div class="section-title" style="margin-bottom:10px">📅 Sessions</div>';
+  rows.forEach(function(r) {
+    var d = r.d, open = (_gccSelDate === d), su = signups[d] || [], mt = meta[d];
+    var wd = 'Wed ' + _gccEsc(_gccShort(d));
+    var suLine = su.length ? 'Signed up: ' + su.map(_gccEsc).join(', ') : 'No sign-ups recorded';
+    var dEsc = _gccEsc(d).replace(/&#39;/g, '');
+    html += '<div role="button" tabindex="0" aria-expanded="' + open + '" ' +
+        'onclick="gccSelectSession(\'' + dEsc + '\')" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();gccSelectSession(\'' + dEsc + '\')}" ' +
+        'style="display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;padding:10px 12px;margin-bottom:6px;border-radius:10px;cursor:pointer;' +
+        'border:1px solid ' + (open ? 'var(--ya-gold)' : 'var(--card-border)') + ';background:' + (r.st === 'cancelled' ? 'rgba(239,68,68,.05)' : 'rgba(255,255,255,.02)') + '">' +
+        '<span style="font-weight:700;min-width:92px">' + wd + '</span>' + PILL[r.st] +
+        '<span style="font-size:.78rem;color:var(--text-muted);flex:1;min-width:150px">' + suLine + '</span>' +
+        '<span style="font-size:.75rem;color:var(--text-muted)">' + (open ? '▲' : '▼') + '</span>' +
+      '</div>';
+    if (open) {
+      var det = [];
+      det.push('<div><strong>' + _gccEsc(d) + '</strong> · 4:30–6:30 PM · Youth Airdrie</div>');
+      det.push('<div>Status: ' + STATUS_TEXT[r.st] + '</div>');
+      if (r.st === 'cancelled' && canc[d]) det.push('<div>Cancellation reason: ' + _gccEsc(canc[d]) + '</div>');
+      det.push('<div>' + (su.length ? 'Adults signed up: ' + su.map(_gccEsc).join(', ') : 'Adults signed up: none recorded') + '</div>');
+      if (mt && mt.theme)       det.push('<div>Activity: ' + _gccEsc(mt.theme) + '</div>');
+      if (mt && mt.description) det.push('<div>Description: ' + _gccEsc(mt.description) + '</div>');
+      if (mt && mt.notes)       det.push('<div>Notes: ' + _gccEsc(mt.notes) + '</div>');
+      det.push('<div style="color:var(--text-muted)">Attendance and games won: not recorded in the app. Entry will be added in a later update.</div>');
+      html += '<div style="margin:-2px 0 10px;padding:10px 14px;border-left:3px solid var(--ya-gold);font-size:.8rem;line-height:1.6">' + det.join('') + '</div>';
+    }
+  });
+  html += '</div>';
+  view.innerHTML = html;
+}
+
 
 async function loadProgramData() {
   // Load volunteer signups

@@ -16694,7 +16694,7 @@ function renderGccQuarterView() {
       'ⓘ <strong>View only.</strong> Attendance and games-won entry will be added in a later update. ' +
       'Past dates show as “Past · not recorded” until results are entered.<br>' +
       (q.id === 'gcc_2026_q4' ? 'No Fall 2026 registrations are recorded in the app yet.' : 'No registrations are recorded in the app for this quarter yet.') +
-    '</div>' + loadNote +
+    '</div>' + loadNote + '<div id="gcc-auth-status"></div>' +
   '</div>';
 
   html += '<div class="section-box"><div class="section-title" style="margin-bottom:10px">📅 Sessions</div>';
@@ -16726,7 +16726,60 @@ function renderGccQuarterView() {
   });
   html += '</div>';
   view.innerHTML = html;
+  try { gccRenderAuthStatus(); } catch (e) { console.warn('[GCC auth] status line skipped'); }
 }
+// ── B1.2: results-permission status line (display only) ──────────────────────
+// Shows whether this browser holds a genuine email sign-in and whether the
+// database says that account is an approved results editor. It only informs;
+// the database's row-level security still decides every read and save.
+var _gccAuthCheck = { email: null, state: 'idle' };   // idle | checking | editor | not_editor | failed
+
+function gccRenderAuthStatus() {
+  var el = document.getElementById('gcc-auth-status');
+  if (!el) return;
+  var st = (typeof GCC_AUTH !== 'undefined' && GCC_AUTH) ? GCC_AUTH.status() : { signedIn: false };
+  var icon, text, tone;
+  if (!st.signedIn) {
+    _gccAuthCheck = { email: null, state: 'idle' };
+    if (st.lastError === 'session_expired') {
+      icon = '⏱'; tone = 'red';
+      text = 'Your sign-in has expired. Sign out, then sign in again with your email to enter results.';
+    } else {
+      icon = '👁'; tone = 'grey';
+      text = 'View only. Entering results will require signing in with an approved email account.';
+    }
+  } else {
+    if (_gccAuthCheck.email !== st.email || _gccAuthCheck.state === 'idle') {
+      var who = st.email;
+      _gccAuthCheck = { email: who, state: 'checking' };
+      GCC_AUTH.checkEditor().then(function (v) {
+        if (_gccAuthCheck.email !== who) return;            // a different sign-in since
+        _gccAuthCheck.state = (v === true) ? 'editor' : (v === false ? 'not_editor' : 'failed');
+        gccRenderAuthStatus();
+      });
+    }
+    var em = _gccEsc(st.email || 'your account');
+    if (_gccAuthCheck.state === 'editor') {
+      icon = '✎'; tone = 'green';
+      text = 'Signed in as <strong>' + em + '</strong> · approved results editor. Results entry arrives in the next update.';
+    } else if (_gccAuthCheck.state === 'not_editor') {
+      icon = '👁'; tone = 'grey';
+      text = 'Signed in as <strong>' + em + '</strong> · not an approved results editor (view only).';
+    } else if (_gccAuthCheck.state === 'failed') {
+      icon = '⚠'; tone = 'red';
+      text = 'Signed in as <strong>' + em + '</strong> · results permission could not be confirmed right now. Reload and sign in again to retry.';
+    } else {
+      icon = '…'; tone = 'grey';
+      text = 'Signed in as <strong>' + em + '</strong> · checking results permission…';
+    }
+  }
+  var C = { green: ['rgba(34,197,94,.08)', 'rgba(34,197,94,.3)'],
+            red:   ['rgba(239,68,68,.08)', 'rgba(239,68,68,.3)'],
+            grey:  ['rgba(255,255,255,.04)', 'var(--card-border)'] }[tone];
+  el.innerHTML = '<div style="margin-top:10px;padding:8px 12px;border-radius:10px;font-size:.8rem;line-height:1.5;' +
+    'background:' + C[0] + ';border:1px solid ' + C[1] + '">' + icon + ' ' + text + '</div>';
+}
+
 
 // ══════════════════════════════════════════════════════════════════════════════
 // B1.1 · IN-MEMORY SUPABASE SESSION FOR GAMES & CRAFTS RESULTS

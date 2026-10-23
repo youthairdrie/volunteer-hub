@@ -4278,8 +4278,11 @@ function filterEvents(type,btn){
 }
 
 function logout(){
-  // Return to landing screen (full reload to get fresh Supabase data)
-  window.location.reload();
+  // B1.1: end the in-memory Supabase session first (best effort, never more than 3 s),
+  // then return to the landing screen (full reload to get fresh Supabase data) as before.
+  var reloaded = false;
+  var go = function(){ if (reloaded) return; reloaded = true; window.location.reload(); };
+  try { setTimeout(go, 3000); GCC_AUTH.signOut().then(go, go); } catch (e) { go(); }
 }
 
 // ── LANDING / LOGIN NAVIGATION ──
@@ -16725,6 +16728,155 @@ function renderGccQuarterView() {
   view.innerHTML = html;
 }
 
+// ══════════════════════════════════════════════════════════════════════════════
+// B1.1 · IN-MEMORY SUPABASE SESSION FOR GAMES & CRAFTS RESULTS
+// Keeps the genuine Supabase Auth session from email sign-in, in memory only
+// (never browser storage; a reload signs you out, as before). Used ONLY for
+// Games & Crafts results and the editor check — every other request in the app
+// keeps using the public key exactly as before. Who may read or save results is
+// decided by the database (row-level security + the private editor allowlist),
+// never by this code. Tokens are kept inside this closure and are never logged.
+// ══════════════════════════════════════════════════════════════════════════════
+var GCC_AUTH = (function () {
+  var sess = null;          // { access, refresh, expiresAt (ms, this computer's clock), userId, email }
+  var gen = 0;              // bumps on sign-in and sign-out; late responses for an older gen are ignored
+  var signedOut = false;    // once signed out, nothing can restore a session until the page reloads
+  var refreshing = null;    // the one refresh request in progress, if any
+  var timer = null;
+  var isEditor = null;      // last answer from gcc_is_editor() — display only; the database decides
+  var lastError = null;
+  var ALLOWED = /^\/rest\/v1\/(gcc_session_results|rpc\/gcc_is_editor)(\?|$)/;
+
+  function store(d, keepUser) {
+    sess = {
+      access:    d.access_token,
+      refresh:   d.refresh_token,
+      expiresAt: Date.now() + (Number(d.expires_in) > 0 ? Number(d.expires_in) : 3600) * 1000,
+      userId:    (d.user && d.user.id)    || (keepUser && sess ? sess.userId : null),
+      email:     (d.user && d.user.email) || (keepUser && sess ? sess.email  : null)
+    };
+    schedule();
+  }
+  function schedule() {
+    if (timer) { clearTimeout(timer); timer = null; }
+    if (!sess) return;
+    var wait = Math.max(5000, sess.expiresAt - Date.now() - 120000);   // ~2 min before expiry
+    timer = setTimeout(function () { refresh(); }, wait);
+  }
+  function clear(reason) {
+    gen++;
+    sess = null; isEditor = null; refreshing = null;
+    if (timer) { clearTimeout(timer); timer = null; }
+    lastError = reason || null;
+  }
+
+  // Called after a successful email sign-in (attemptEmailLogin). Refuses after sign-out.
+  function set(authData) {
+    if (signedOut) return false;
+    if (!authData || !authData.access_token || !authData.refresh_token) return false;
+    gen++;
+    isEditor = null; lastError = null;
+    store(authData, false);
+    return true;
+  }
+
+  // One refresh at a time; the new refresh token replaces the old one.
+  function refresh() {
+    if (refreshing) return refreshing;
+    if (!sess || !sess.refresh || signedOut) return Promise.resolve(false);
+    var myGen = gen, rt = sess.refresh;
+    refreshing = fetch(SUPA_URL + '/auth/v1/token?grant_type=refresh_token', {
+      method: 'POST',
+      headers: { 'apikey': SUPA_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refresh_token: rt })
+    }).then(function (r) {
+      return r.json().catch(function () { return {}; }).then(function (d) { return { ok: r.ok, d: d }; });
+    }).then(function (x) {
+      if (myGen !== gen || signedOut) return false;                 // signed out / replaced meanwhile
+      if (!x.ok || !x.d.access_token || !x.d.refresh_token) { clear('session_expired'); return false; }
+      store(x.d, true); lastError = null;
+      return true;
+    }, function () {
+      if (myGen === gen && sess) {                                   // network problem: keep session, retry soon
+        lastError = 'network';
+        if (timer) clearTimeout(timer);
+        timer = setTimeout(function () { refresh(); }, 30000);
+      }
+      return false;
+    }).then(function (v) {
+      if (myGen === gen) refreshing = null;
+      return v;
+    });
+    return refreshing;
+  }
+
+  async function ensureFresh() {
+    if (!sess || signedOut) return false;
+    if (sess.expiresAt - Date.now() < 60000) await refresh();
+    return !!sess && sess.expiresAt - Date.now() > 0;
+  }
+
+  function authError(code) { var e = new Error(code); e.code = code; return e; }
+
+  // Authenticated request — ONLY for Games & Crafts results and the editor check.
+  // Never falls back to the public key.
+  async function authFetch(path, opts) {
+    if (!ALLOWED.test(String(path))) throw authError('path_not_allowed');
+    opts = opts || {};
+    if (!(await ensureFresh())) throw authError(lastError === 'session_expired' ? 'session_expired' : 'not_signed_in');
+    var myGen = gen;
+    var send = function () {
+      var h = Object.assign({}, opts.headers || {}, { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + sess.access });
+      return fetch(SUPA_URL + path, Object.assign({}, opts, { headers: h }));
+    };
+    var r = await send();
+    if (r.status === 401) {
+      if (myGen !== gen || !(await refresh()) || !sess) throw authError('session_expired');
+      r = await send();
+      if (r.status === 401) { clear('session_expired'); throw authError('session_expired'); }
+    }
+    if (myGen !== gen) throw authError('not_signed_in');            // signed out while waiting
+    return r;
+  }
+
+  // Asks the database whether this signed-in account is an approved results editor.
+  async function checkEditor() {
+    if (!sess) { isEditor = null; return null; }
+    try {
+      var r = await authFetch('/rest/v1/rpc/gcc_is_editor', { method: 'GET' });
+      if (!r.ok) { isEditor = null; return null; }
+      isEditor = (await r.json()) === true;
+      return isEditor;
+    } catch (e) { isEditor = null; return null; }
+  }
+
+  // Sign-out: forget everything now, then ask Supabase to end the session (best effort).
+  function signOut() {
+    signedOut = true;
+    var token = sess ? sess.access : null;
+    clear('signed_out');
+    if (!token) return Promise.resolve();
+    return fetch(SUPA_URL + '/auth/v1/logout?scope=local', {
+      method: 'POST',
+      headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + token }
+    }).then(function () {}, function () {});
+  }
+
+  // Non-secret summary for the console and (in B1.2) the status line. No tokens.
+  function status() {
+    return {
+      signedIn:  !!sess,
+      email:     sess ? sess.email : null,
+      expiresIn: sess ? Math.round((sess.expiresAt - Date.now()) / 1000) + 's' : null,
+      isEditor:  isEditor,
+      refreshing: !!refreshing,
+      lastError: lastError
+    };
+  }
+
+  return { set: set, refresh: refresh, fetch: authFetch, checkEditor: checkEditor, signOut: signOut, status: status };
+})();
+
 
 async function loadProgramData() {
   // Load volunteer signups
@@ -19802,6 +19954,8 @@ async function attemptEmailLogin() {
 
     // 3. Log in using the linked_id (the existing youth/adults table key)
     doLogin(profile.linked_id, profile.role);
+    // B1.1: keep the genuine Supabase session in memory (Games & Crafts results only)
+    try { if (currentRole) GCC_AUTH.set(authData); } catch (e) { console.warn('[GCC auth] session not kept'); }
   } catch(e) {
     showError('Network error. Please check your connection and try again.');
     console.error('Login error:', e);

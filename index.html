@@ -307,9 +307,6 @@ tr:hover .grd-date-sticky { background: #1a2d47; }
 .alert-row.info{background:rgba(29,127,212,.07);border-color:rgba(29,127,212,.15)}
 .alert-row.success{background:rgba(34,197,94,.07);border-color:rgba(34,197,94,.15)}
 .impact-number{font-family:"Nunito",sans-serif;font-size:2.8rem;font-weight:900;background:linear-gradient(135deg,var(--ya-orange),var(--ya-gold));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;line-height:1}
-.fac-cert-card{background:linear-gradient(135deg,rgba(245,166,35,.1),rgba(232,98,10,.07));border:1px solid rgba(245,166,35,.3);border-radius:15px;padding:20px;margin-bottom:15px;display:flex;align-items:center;gap:18px}
-.fac-cert-title{font-family:"Nunito",sans-serif;font-size:1.1rem;font-weight:900;margin-bottom:3px}
-.fac-cert-sub{font-size:.8rem;color:var(--text-muted)}
 .hours-input{display:flex;align-items:center;gap:9px;margin-top:7px}
 .hours-input input{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:8px;padding:6px 11px;color:var(--text-main);font-size:.84rem;width:85px;font-family:"DM Sans",sans-serif}
 .hours-input input:focus{outline:none;border-color:var(--ya-teal)}
@@ -975,21 +972,9 @@ tr:hover .grd-date-sticky { background: #1a2d47; }
       <div class="ya-stripe"></div>
       <div class="page-header">
         <div class="page-title">Admin Dashboard <span class="hl">⚡</span></div>
-        <div class="page-sub">Youth Airdrie · Emerging Leaders · Kim Sundset, Program Facilitator</div>
+        <div class="page-sub">Youth Airdrie · Program Administration</div>
       </div>
       <div class="alert-row success" id="adult-ws-next-alert" style="margin-bottom:14px"></div>
-      <div id="admin-kim-cert-card" class="fac-cert-card">
-        <div style="font-size:2.6rem;flex-shrink:0">🏅</div>
-        <div>
-          <div class="fac-cert-title" id="admin-kim-cert-title">Kim Sundset — Certified Facilitator</div>
-          <div class="fac-cert-sub" id="admin-kim-cert-sub">Loading…</div>
-          <div style="margin-top:7px;display:flex;gap:7px;flex-wrap:wrap" id="admin-kim-cert-pills">
-            <span class="pill pill-gold" id="admin-kim-lvl-pill">⭐ Certified Facilitator</span>
-            <span class="pill pill-teal" id="admin-kim-ws-pill">— Workshops (2026)</span>
-            <span class="pill pill-blue">Administrator</span>
-          </div>
-        </div>
-      </div>
       <div class="tab-bar">
         <button class="tab-btn active" onclick="switchTab('workshops',this)">📚 Workshops</button>
         <button class="tab-btn" onclick="switchTab('scrabble-admin',this)">🎲 Games &amp; Crafts Club</button>
@@ -3857,21 +3842,6 @@ function renderAdmin(){
   var attMetaEl = eid('admin-total-att-meta');
   if(attEl) attEl.textContent = totalAtt;
   if(attMetaEl) attMetaEl.textContent = 'Across ' + wsStats.delivered.length + ' workshop' + (wsStats.delivered.length !== 1 ? 's' : '') + ' (all series)';
-
-  // ── Kim Sundset cert card ─────────────────────────────────────────────────
-  var kimProf = FAC_PROFILES['kim'];
-  if(kimProf) {
-    var kimCount = getFacilitatedWorkshopCount(kimProf.name);
-    var kimTotal = getTotalFacilitatedCount(kimProf.name);
-    var kimIds   = getFacilitatedWorkshopIds(kimProf.name);
-    var kimSubEl  = eid('admin-kim-cert-sub');
-    var kimPillEl = eid('admin-kim-ws-pill');
-    if(kimSubEl) kimSubEl.textContent = (kimProf.prior_facilitated||0)+' prior + '+kimCount+' in-app · FL'+getFacLevel(kimTotal)+' Certified · Program Administrator';
-    var kimTitleEl = eid('admin-kim-cert-title'), kimLvlPill = eid('admin-kim-lvl-pill');
-    if(kimTitleEl) kimTitleEl.textContent = 'Kim Sundset — Level '+getFacLevel(kimTotal)+' Certified Facilitator';
-    if(kimLvlPill) kimLvlPill.textContent = '⭐ Level '+getFacLevel(kimTotal)+' Facilitator';
-    if(kimPillEl) kimPillEl.textContent = kimCount + ' Workshop' + (kimCount !== 1 ? 's' : '') + ' (in-app)';
-  }
 
   // ── Template Library ─────────────────────────────────────────────────────
   renderWsTemplateList();
@@ -15778,6 +15748,7 @@ async function loadYouthData() {
     // coincidence — the (id, name) pair actually stored in Supabase is the
     // one thing that's always correct.
     if (row.id) YOUTH_NAME_BY_ID[row.id] = name;
+    if (row.id && typeof GCC_YOUTH_INACTIVE !== 'undefined') GCC_YOUTH_INACTIVE[row.id] = (row.active === false);  // B2: inactive label
 
     // FIX (Issue 3 — root cause): user-level active/inactive status must be
     // authoritative for EVERY youth, not only admin-added ('yn_') ones. This
@@ -16618,8 +16589,11 @@ function gccDefaultView() {
   }
   return 'archive';
 }
-function gccSelectView(id) { _gccView = id; _gccSelDate = null; renderGccQuarterView(); }
-function gccSelectSession(d) { _gccSelDate = (_gccSelDate === d) ? null : d; renderGccQuarterView(); }
+function gccSelectView(id) { if (!gccConfirmLeave()) return; _gccEntry = null; _gccView = id; _gccSelDate = null; renderGccQuarterView(); }
+function gccSelectSession(d) {
+  if (_gccEntry && !gccConfirmLeave()) return;
+  _gccEntry = null; _gccSelDate = (_gccSelDate === d) ? null : d; renderGccQuarterView();
+}
 
 function renderGccQuarterView() {
   var bar = document.getElementById('gcc-quarter-bar');
@@ -16663,14 +16637,14 @@ function renderGccQuarterView() {
   });
   var PILL = {
     cancelled: '<span class="pill pill-red">⛔ Cancelled</span>',
-    past:      '<span class="pill pill-grey">Past · not recorded</span>',
+    past:      '<span class="pill pill-grey">Past</span>',
     today:     '<span class="pill pill-gold">Today</span>',
     next:      '<span class="pill pill-teal">Next</span>',
     upcoming:  '<span class="pill pill-blue">Upcoming</span>'
   };
   var STATUS_TEXT = {
     cancelled: 'Cancelled',
-    past:      'Past. Attendance and games won are not recorded in the app yet.',
+    past:      'Past',
     today:     'Today',
     next:      'Next scheduled session',
     upcoming:  'Upcoming'
@@ -16691,8 +16665,7 @@ function renderGccQuarterView() {
       '<span class="pill pill-red">' + nCanc + ' cancelled</span>' +
     '</div>' +
     '<div style="margin-top:12px;padding:10px 12px;border-radius:10px;background:rgba(29,127,212,.08);border:1px solid rgba(29,127,212,.25);font-size:.8rem;line-height:1.5">' +
-      'ⓘ <strong>View only.</strong> Attendance and games-won entry will be added in a later update. ' +
-      'Past dates show as “Past · not recorded” until results are entered.<br>' +
+      'ⓘ Attendance and games won are recorded by approved results editors, for today’s and past sessions.<br>' +
       (q.id === 'gcc_2026_q4' ? 'No Fall 2026 registrations are recorded in the app yet.' : 'No registrations are recorded in the app for this quarter yet.') +
     '</div>' + loadNote + '<div id="gcc-auth-status"></div>' +
   '</div>';
@@ -16707,7 +16680,7 @@ function renderGccQuarterView() {
         'onclick="gccSelectSession(\'' + dEsc + '\')" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();gccSelectSession(\'' + dEsc + '\')}" ' +
         'style="display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;padding:10px 12px;margin-bottom:6px;border-radius:10px;cursor:pointer;' +
         'border:1px solid ' + (open ? 'var(--ya-gold)' : 'var(--card-border)') + ';background:' + (r.st === 'cancelled' ? 'rgba(239,68,68,.05)' : 'rgba(255,255,255,.02)') + '">' +
-        '<span style="font-weight:700;min-width:92px">' + wd + '</span>' + PILL[r.st] +
+        '<span style="font-weight:700;min-width:92px">' + wd + '</span>' + PILL[r.st] + gccResultPill(d, r.st) +
         '<span style="font-size:.78rem;color:var(--text-muted);flex:1;min-width:150px">' + suLine + '</span>' +
         '<span style="font-size:.75rem;color:var(--text-muted)">' + (open ? '▲' : '▼') + '</span>' +
       '</div>';
@@ -16720,8 +16693,10 @@ function renderGccQuarterView() {
       if (mt && mt.theme)       det.push('<div>Activity: ' + _gccEsc(mt.theme) + '</div>');
       if (mt && mt.description) det.push('<div>Description: ' + _gccEsc(mt.description) + '</div>');
       if (mt && mt.notes)       det.push('<div>Notes: ' + _gccEsc(mt.notes) + '</div>');
-      det.push('<div style="color:var(--text-muted)">Attendance and games won: not recorded in the app. Entry will be added in a later update.</div>');
+      var resLine = gccDetailResultsHtml(d, r.st);
+      if (resLine) det.push(resLine);
       html += '<div style="margin:-2px 0 10px;padding:10px 14px;border-left:3px solid var(--ya-gold);font-size:.8rem;line-height:1.6">' + det.join('') + '</div>';
+      if (_gccEntry && _gccEntry.date === d) html += '<div id="gcc-entry-panel" style="margin:-4px 0 12px">' + gccEntryPanelHtml() + '</div>';
     }
   });
   html += '</div>';
@@ -16743,7 +16718,8 @@ function gccRenderAuthStatus() {
     _gccAuthCheck = { email: null, state: 'idle' };
     if (st.lastError === 'session_expired') {
       icon = '⏱'; tone = 'red';
-      text = 'Your sign-in has expired. Sign out, then sign in again with your email to enter results.';
+      text = 'Your sign-in has expired. Unsaved entries are kept on this page. ' +
+             '<button type="button" class="ws-btn" style="font-size:.75rem;padding:3px 10px;margin-left:4px" onclick="gccShowReauth()">Sign in again</button>';
     } else {
       icon = '👁'; tone = 'grey';
       text = 'View only. Entering results will require signing in with an approved email account.';
@@ -16756,12 +16732,13 @@ function gccRenderAuthStatus() {
         if (_gccAuthCheck.email !== who) return;            // a different sign-in since
         _gccAuthCheck.state = (v === true) ? 'editor' : (v === false ? 'not_editor' : 'failed');
         gccRenderAuthStatus();
+        if (v === true) gccLoadCounts();
       });
     }
     var em = _gccEsc(st.email || 'your account');
     if (_gccAuthCheck.state === 'editor') {
       icon = '✎'; tone = 'green';
-      text = 'Signed in as <strong>' + em + '</strong> · approved results editor. Results entry arrives in the next update.';
+      text = 'Signed in as <strong>' + em + '</strong> · approved results editor. Open today’s or a past session to enter results.';
     } else if (_gccAuthCheck.state === 'not_editor') {
       icon = '👁'; tone = 'grey';
       text = 'Signed in as <strong>' + em + '</strong> · not an approved results editor (view only).';
@@ -16776,8 +16753,346 @@ function gccRenderAuthStatus() {
   var C = { green: ['rgba(34,197,94,.08)', 'rgba(34,197,94,.3)'],
             red:   ['rgba(239,68,68,.08)', 'rgba(239,68,68,.3)'],
             grey:  ['rgba(255,255,255,.04)', 'var(--card-border)'] }[tone];
+  if (st.signedIn && st.email) _gccLastEmail = st.email;
   el.innerHTML = '<div style="margin-top:10px;padding:8px 12px;border-radius:10px;font-size:.8rem;line-height:1.5;' +
-    'background:' + C[0] + ';border:1px solid ' + C[1] + '">' + icon + ' ' + text + '</div>';
+    'background:' + C[0] + ';border:1px solid ' + C[1] + '">' + icon + ' ' + text + '</div>' + gccReauthHtml();
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// B2 · GAMES & CRAFTS ATTENDANCE AND GAMES-WON ENTRY
+// Approved editors record, per session: which existing youth attended, and how
+// many games each won (blank = not entered yet; 0 = attended, won none).
+// Every read and write goes through GCC_AUTH.fetch — the genuine Supabase
+// session — and the database's row-level security and editor allowlist decide.
+// The simulated admin role is never used. Only today's and past sessions of the
+// approved quarters can be entered; cancelled sessions are read-only.
+// ══════════════════════════════════════════════════════════════════════════════
+var GCC_SEASON_RESULTS = { counts: {}, loaded: false, error: null };   // counts by ISO date (editors only)
+var _gccEntry = null;        // the open entry panel: { date, iso, rows, loading, saving, msg, err, lastSaved }
+var _gccReauthOpen = false;
+var _gccLastEmail = null;
+var GCC_WON_MAX = 999;       // sanity limit for a single session
+
+function _gccIso(d) {
+  var x = _gccDate(d); if (!x) return null;
+  return x.getFullYear() + '-' + String(x.getMonth() + 1).padStart(2, '0') + '-' + String(x.getDate()).padStart(2, '0');
+}
+function _gccTodayIso() { var x = _gccToday(); return x.getFullYear() + '-' + String(x.getMonth() + 1).padStart(2, '0') + '-' + String(x.getDate()).padStart(2, '0'); }
+function gccIsEditorNow() {
+  return typeof GCC_AUTH !== 'undefined' && GCC_AUTH.status().signedIn && _gccAuthCheck.state === 'editor';
+}
+function _gccApprovedDate(d) {
+  return getActiveGccQuarters().some(function (q) { return buildWeeklyDates(q.start, q.end, 'Wednesday').indexOf(d) >= 0; });
+}
+function _gccIsCancelled(d) { var c = (GCC_VIEW && GCC_VIEW.cancellations) || {}; return Object.prototype.hasOwnProperty.call(c, d); }
+function _gccCanEnter(d) {
+  return _gccApprovedDate(d) && !_gccIsCancelled(d) && _gccIso(d) <= _gccTodayIso();
+}
+function _gccYouthName(id) { return (typeof YOUTH_NAME_BY_ID !== 'undefined' && YOUTH_NAME_BY_ID[id]) || null; }
+var GCC_YOUTH_INACTIVE = {};  // youth id -> true when the youth record is inactive (filled by loadYouthData)
+function _gccYouthInactive(id) { return GCC_YOUTH_INACTIVE[id] === true; }
+function _gccWonValid(v) { return v === '' || (/^\d{1,3}$/.test(v) && Number(v) <= GCC_WON_MAX); }
+function _gccRowDirty(r) { return !r.saved || r.attended !== r.saved.attended || r.won !== r.saved.won; }
+function gccEntryDirty() { return !!(_gccEntry && _gccEntry.rows.some(_gccRowDirty)); }
+function gccConfirmLeave() {
+  if (!gccEntryDirty()) return true;
+  return confirm('You have unsaved attendance changes for ' + _gccEntry.date + '. Leave without saving?');
+}
+window.addEventListener('beforeunload', function (e) { if (gccEntryDirty()) { e.preventDefault(); e.returnValue = ''; } });
+
+// Calendar pill for editors: Recorded · N youth / Not recorded
+function gccResultPill(d, st) {
+  if (!gccIsEditorNow() || !GCC_SEASON_RESULTS.loaded || (st !== 'past' && st !== 'today')) return '';
+  var n = GCC_SEASON_RESULTS.counts[_gccIso(d)] || 0;
+  return n ? '<span class="pill pill-green">Recorded · ' + n + ' youth</span>'
+           : (st === 'past' ? '<span class="pill pill-grey">Not recorded</span>' : '');
+}
+
+// Results line inside the session details (editors only; others see nothing extra)
+function gccDetailResultsHtml(d, st) {
+  if (!gccIsEditorNow()) return '';
+  if (st === 'cancelled') return '<div style="color:var(--text-muted)">Results can’t be entered for a cancelled session.</div>';
+  if (!_gccCanEnter(d)) return '<div style="color:var(--text-muted)">Results can be entered from the session day onward.</div>';
+  if (_gccEntry && _gccEntry.date === d) return '';
+  var n = GCC_SEASON_RESULTS.loaded ? (GCC_SEASON_RESULTS.counts[_gccIso(d)] || 0) : null;
+  var dEsc = _gccEsc(d).replace(/&#39;/g, '');
+  return '<div style="margin-top:6px;display:flex;flex-wrap:wrap;align-items:center;gap:8px">' +
+    '<button type="button" class="ws-btn" style="border-color:var(--ya-gold);color:var(--ya-gold)" onclick="event.stopPropagation();gccOpenEntry(\'' + dEsc + '\')">✎ ' +
+    (n ? 'Edit results' : 'Enter results') + '</button>' +
+    (n === null ? '' : '<span style="color:var(--text-muted)">' + (n ? n + ' youth recorded' : 'Nothing recorded yet') + '</span>') + '</div>';
+}
+
+async function gccLoadCounts() {
+  if (!gccIsEditorNow()) return;
+  try {
+    var r = await GCC_AUTH.fetch('/rest/v1/gcc_session_results?select=session_date&season_id=eq.scrabble_2026_27', { method: 'GET' });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    var rows = await r.json(), c = {};
+    rows.forEach(function (x) { c[x.session_date] = (c[x.session_date] || 0) + 1; });
+    GCC_SEASON_RESULTS = { counts: c, loaded: true, error: null };
+  } catch (e) {
+    GCC_SEASON_RESULTS.error = e.code || e.message;
+  }
+  renderGccQuarterView();
+}
+
+async function gccOpenEntry(d) {
+  if (!gccIsEditorNow() || !_gccCanEnter(d)) return;
+  if (_gccEntry && _gccEntry.date !== d && !gccConfirmLeave()) return;
+  var iso = _gccIso(d);
+  _gccEntry = { date: d, iso: iso, rows: [], loading: true, saving: false, msg: '', err: '', lastSaved: null };
+  _gccSelDate = d;
+  renderGccQuarterView();
+  try {
+    var r = await GCC_AUTH.fetch('/rest/v1/gcc_session_results?select=youth_id,attended,games_won,updated_at,updated_by_email' +
+      '&season_id=eq.scrabble_2026_27&session_date=eq.' + iso + '&order=id.asc', { method: 'GET' });
+    if (!_gccEntry || _gccEntry.iso !== iso) return;               // closed meanwhile
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    var rows = await r.json();
+    _gccEntry.rows = rows.map(function (x) {
+      var won = x.games_won == null ? '' : String(x.games_won);
+      return { youth_id: x.youth_id, attended: x.attended, won: won, saved: { attended: x.attended, won: won } };
+    });
+    _gccEntry.lastSaved = _gccLatest(rows);
+  } catch (e) {
+    if (_gccEntry && _gccEntry.iso === iso) _gccEntry.err = _gccErrText(e);
+  }
+  if (_gccEntry && _gccEntry.iso === iso) { _gccEntry.loading = false; gccRenderEntry(); }
+}
+function _gccLatest(rows) {
+  var best = null;
+  rows.forEach(function (x) { if (x.updated_at && (!best || x.updated_at > best.updated_at)) best = x; });
+  return best ? { at: best.updated_at, by: best.updated_by_email } : null;
+}
+function _gccErrText(e) {
+  var c = e && e.code;
+  if (c === 'session_expired' || c === 'not_signed_in') { _gccReauthOpen = true; gccRenderAuthStatus(); return 'Your sign-in has expired. Sign in again above — your unsaved entries are kept.'; }
+  return 'Could not reach the results database (' + _gccEsc((e && e.message) || 'error') + '). Your entries are kept; try again.';
+}
+
+function gccCloseEntry() {
+  if (!gccConfirmLeave()) return;
+  _gccEntry = null; renderGccQuarterView();
+}
+
+function gccRenderEntry() {
+  var el = document.getElementById('gcc-entry-panel');
+  if (el) el.innerHTML = gccEntryPanelHtml(); else renderGccQuarterView();
+}
+
+function gccEntryPanelHtml() {
+  var E = _gccEntry; if (!E) return '';
+  var dis = E.saving ? ' disabled' : '';
+  var h = '<div class="section-box" style="margin:0;border-color:rgba(245,166,35,.45)">' +
+    '<div style="display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px;align-items:center;margin-bottom:8px">' +
+      '<div class="section-title" style="margin:0">✎ Results · Wed ' + _gccEsc(E.date) + '</div>' +
+      '<button type="button" class="ws-btn" onclick="gccCloseEntry()"' + dis + '>Close</button></div>';
+  if (E.lastSaved) h += '<div style="font-size:.75rem;color:var(--text-muted);margin-bottom:8px">Last saved ' +
+      _gccEsc(new Date(E.lastSaved.at).toLocaleString()) + (E.lastSaved.by ? ' by ' + _gccEsc(E.lastSaved.by) : '') + '</div>';
+  if (E.loading) return h + '<div style="font-size:.82rem;color:var(--text-muted)">Loading saved results…</div></div>';
+  if (E.err) h += '<div style="font-size:.8rem;color:var(--badge-red);margin-bottom:8px">' + E.err + '</div>';
+  if (E.msg) h += '<div style="font-size:.8rem;color:var(--ya-teal);margin-bottom:8px">' + _gccEsc(E.msg) + '</div>';
+
+  if (!E.rows.length) h += '<div style="font-size:.82rem;color:var(--text-muted);margin-bottom:8px">No youth recorded for this session yet. Add youth below.</div>';
+  var dupNames = {};
+  E.rows.forEach(function (r) { var n = _gccYouthName(r.youth_id) || ''; dupNames[n] = (dupNames[n] || 0) + 1; });
+  E.rows.forEach(function (r, i) {
+    var name = _gccYouthName(r.youth_id), dirty = _gccRowDirty(r);
+    var label = name ? _gccEsc(name) : 'Unknown youth record';
+    if (!name || dupNames[name] > 1) label += ' <span style="font-size:.7rem;color:var(--text-muted)">(' + _gccEsc(r.youth_id) + ')</span>';
+    if (name && _gccYouthInactive(r.youth_id)) label += ' <span class="pill pill-grey" style="font-size:.65rem">inactive</span>';
+    var yes = r.attended === true, no = r.attended === false;
+    var wonOk = _gccWonValid(r.won);
+    h += '<div id="gcc-row-' + i + '" style="display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;padding:8px 10px;margin-bottom:6px;border-radius:10px;border:1px solid var(--card-border);background:rgba(255,255,255,.02)">' +
+      '<div style="flex:1;min-width:160px;font-weight:700">' + label + '</div>' +
+      '<div style="display:flex;gap:4px" role="group" aria-label="Attended">' +
+        '<button type="button" class="filter-btn' + (yes ? ' active' : '') + '" style="margin:0" onclick="gccSetAttended(' + i + ',true)"' + dis + '>Attended</button>' +
+        '<button type="button" class="filter-btn' + (no ? ' active' : '') + '" style="margin:0" onclick="gccSetAttended(' + i + ',false)"' + dis + '>Absent</button>' +
+      '</div>' +
+      '<label style="display:flex;align-items:center;gap:6px;font-size:.78rem;color:var(--text-muted)">Games won ' +
+        '<input id="gcc-won-' + i + '" type="text" inputmode="numeric" autocomplete="off" maxlength="3" value="' + _gccEsc(r.won) + '"' +
+        (no || E.saving ? ' disabled' : '') + ' oninput="gccSetWon(' + i + ',this.value)" placeholder="—" ' +
+        'style="width:56px;padding:5px 8px;border-radius:8px;border:1px solid ' + (wonOk ? 'var(--card-border)' : 'var(--badge-red)') + ';background:rgba(255,255,255,.05);color:var(--text-main);text-align:center"></label>' +
+      '<span id="gcc-row-state-' + i + '" style="font-size:.72rem;min-width:110px">' + _gccRowStateHtml(r) + '</span>' +
+      '<button type="button" class="ws-btn" style="font-size:.72rem;padding:3px 9px;border-color:rgba(239,68,68,.35);color:#f87171" onclick="gccRemoveRow(' + i + ')"' + dis + '>Remove</button>' +
+    '</div>';
+  });
+
+  h += '<div style="margin:10px 0 6px;position:relative">' +
+    '<input id="gcc-youth-search" type="text" autocomplete="off" placeholder="Add youth: type a name…" oninput="gccSearchYouth(this.value)"' + dis +
+    ' style="width:100%;box-sizing:border-box;padding:8px 10px;border-radius:9px;border:1px solid var(--card-border);background:rgba(255,255,255,.05);color:var(--text-main)">' +
+    '<div id="gcc-youth-results"></div></div>';
+
+  var nDirty = E.rows.filter(_gccRowDirty).length, invalid = E.rows.some(function (r) { return !_gccWonValid(r.won) || typeof r.attended !== 'boolean'; });
+  h += '<div style="display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-top:8px">' +
+    '<button type="button" id="gcc-save-btn" class="ws-btn" style="border-color:var(--ya-green);color:var(--ya-green);font-weight:700"' +
+    (E.saving || !nDirty || invalid ? ' disabled' : '') + ' onclick="gccSaveEntry()">' + (E.saving ? 'Saving…' : '💾 Save session') + '</button>' +
+    '<span id="gcc-save-note" style="font-size:.75rem;color:' + (invalid ? 'var(--badge-red)' : 'var(--text-muted)') + '">' +
+    (invalid ? 'Games won must be a whole number (0–' + GCC_WON_MAX + ') or left blank.' : (nDirty ? nDirty + ' unsaved change' + (nDirty > 1 ? 's' : '') : 'All changes saved')) + '</span></div>' +
+    '<div style="font-size:.72rem;color:var(--text-muted);margin-top:6px">Blank games won = not entered yet (shown as “wins not entered”). 0 = attended and won none.</div>';
+  return h + '</div>';
+}
+function _gccRowStateHtml(r) {
+  if (!_gccWonValid(r.won)) return '<span style="color:var(--badge-red)">check games won</span>';
+  if (!r.saved) return '<span style="color:var(--ya-gold)">new · unsaved</span>';
+  if (_gccRowDirty(r)) return '<span style="color:var(--ya-gold)">changed · unsaved</span>';
+  if (r.attended && r.won === '') return '<span style="color:var(--text-muted)">wins not entered</span>';
+  return '<span style="color:var(--ya-teal)">saved ✓</span>';
+}
+function _gccRefreshSaveState() {
+  var E = _gccEntry; if (!E) return;
+  E.rows.forEach(function (r, i) {
+    var s = document.getElementById('gcc-row-state-' + i); if (s) s.innerHTML = _gccRowStateHtml(r);
+    var inp = document.getElementById('gcc-won-' + i); if (inp) inp.style.borderColor = _gccWonValid(r.won) ? 'var(--card-border)' : 'var(--badge-red)';
+  });
+  var nDirty = E.rows.filter(_gccRowDirty).length, invalid = E.rows.some(function (r) { return !_gccWonValid(r.won); });
+  var b = document.getElementById('gcc-save-btn'); if (b) b.disabled = E.saving || !nDirty || invalid;
+  var n = document.getElementById('gcc-save-note');
+  if (n) { n.style.color = invalid ? 'var(--badge-red)' : 'var(--text-muted)';
+    n.textContent = invalid ? 'Games won must be a whole number (0–' + GCC_WON_MAX + ') or left blank.' : (nDirty ? nDirty + ' unsaved change' + (nDirty > 1 ? 's' : '') : 'All changes saved'); }
+}
+
+function gccSetAttended(i, v) {
+  var r = _gccEntry && _gccEntry.rows[i]; if (!r || _gccEntry.saving) return;
+  r.attended = v; if (!v) r.won = '';
+  _gccEntry.msg = ''; gccRenderEntry();
+}
+function gccSetWon(i, v) {
+  var r = _gccEntry && _gccEntry.rows[i]; if (!r || _gccEntry.saving) return;
+  r.won = String(v).trim(); _gccEntry.msg = ''; _gccRefreshSaveState();
+}
+
+function gccSearchYouth(q) {
+  var box = document.getElementById('gcc-youth-results'); if (!box || !_gccEntry) return;
+  q = String(q || '').trim().toLowerCase();
+  if (!q) { box.innerHTML = ''; return; }
+  var listed = {}; _gccEntry.rows.forEach(function (r) { listed[r.youth_id] = true; });
+  var all = Object.keys(typeof YOUTH_NAME_BY_ID !== 'undefined' ? YOUTH_NAME_BY_ID : {});
+  var counts = {}; all.forEach(function (id) { var n = YOUTH_NAME_BY_ID[id]; counts[n] = (counts[n] || 0) + 1; });
+  var hits = all.filter(function (id) { return !listed[id] && YOUTH_NAME_BY_ID[id] && YOUTH_NAME_BY_ID[id].toLowerCase().indexOf(q) >= 0; })
+    .sort(function (a, b) { return YOUTH_NAME_BY_ID[a].localeCompare(YOUTH_NAME_BY_ID[b]); }).slice(0, 8);
+  box.innerHTML = hits.length ? '<div style="margin-top:4px;border:1px solid var(--card-border);border-radius:9px;overflow:hidden">' +
+    hits.map(function (id) {
+      var n = YOUTH_NAME_BY_ID[id];
+      return '<button type="button" onclick="gccAddYouth(\'' + _gccEsc(id).replace(/&#39;/g, '') + '\')" ' +
+        'style="display:block;width:100%;text-align:left;padding:8px 10px;border:0;border-bottom:1px solid var(--card-border);background:rgba(255,255,255,.03);color:var(--text-main);cursor:pointer">' +
+        _gccEsc(n) + (counts[n] > 1 ? ' <span style="font-size:.7rem;color:var(--text-muted)">(' + _gccEsc(id) + ')</span>' : '') +
+        (_gccYouthInactive(id) ? ' <span class="pill pill-grey" style="font-size:.65rem">inactive</span>' : '') + '</button>';
+    }).join('') + '</div>'
+    : '<div style="font-size:.78rem;color:var(--text-muted);margin-top:4px">No matching youth record. Only youth already registered in the Hub can be added.</div>';
+}
+function gccAddYouth(id) {
+  if (!_gccEntry || _gccEntry.saving || !_gccYouthName(id)) return;
+  if (_gccEntry.rows.some(function (r) { return r.youth_id === id; })) return;
+  _gccEntry.rows.push({ youth_id: id, attended: true, won: '', saved: null });
+  _gccEntry.msg = ''; gccRenderEntry();
+  var inp = document.getElementById('gcc-won-' + (_gccEntry.rows.length - 1)); if (inp) inp.focus();
+}
+
+async function gccRemoveRow(i) {
+  var E = _gccEntry, r = E && E.rows[i]; if (!r || E.saving) return;
+  var name = _gccYouthName(r.youth_id) || r.youth_id;
+  if (!r.saved) { E.rows.splice(i, 1); gccRenderEntry(); return; }          // never saved: just drop it
+  if (!confirm('Remove ' + name + ' from Wed ' + E.date + '?\n\nThis deletes their saved attendance and games-won record for this session.')) return;
+  E.saving = true; E.err = ''; E.msg = ''; gccRenderEntry();
+  try {
+    var resp = await GCC_AUTH.fetch('/rest/v1/gcc_session_results?season_id=eq.scrabble_2026_27&session_date=eq.' + E.iso +
+      '&youth_id=eq.' + encodeURIComponent(r.youth_id), { method: 'DELETE', headers: { 'Prefer': 'return=representation' } });
+    var body = resp.ok ? await resp.json() : null;
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    if (!Array.isArray(body) || body.length !== 1) { E.err = 'Not removed: the record was not found or this account is not permitted to remove it.'; }
+    else {
+      E.rows.splice(E.rows.indexOf(r), 1);
+      GCC_SEASON_RESULTS.counts[E.iso] = Math.max(0, (GCC_SEASON_RESULTS.counts[E.iso] || 1) - 1);
+      E.msg = name + ' removed from this session.';
+    }
+  } catch (e) { E.err = _gccErrText(e); }
+  E.saving = false;
+  if (_gccEntry === E) renderGccQuarterView();
+}
+
+async function gccSaveEntry() {
+  var E = _gccEntry; if (!E || E.saving) return;
+  var dirty = E.rows.filter(_gccRowDirty);
+  if (!dirty.length) return;
+  if (E.rows.some(function (r) { return !_gccWonValid(r.won) || typeof r.attended !== 'boolean'; })) { _gccRefreshSaveState(); return; }
+  if (!_gccCanEnter(E.date)) { E.err = 'Results can only be saved for today’s or past approved sessions.'; gccRenderEntry(); return; }
+  var payload = dirty.map(function (r) {
+    return { season_id: 'scrabble_2026_27', session_date: E.iso, youth_id: r.youth_id,
+             attended: r.attended, games_won: (r.attended && r.won !== '') ? parseInt(r.won, 10) : null };
+  });
+  E.saving = true; E.err = ''; E.msg = ''; gccRenderEntry();
+  try {
+    var resp = await GCC_AUTH.fetch('/rest/v1/gcc_session_results?on_conflict=season_id,session_date,youth_id', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Prefer': 'resolution=merge-duplicates,return=representation' },
+      body: JSON.stringify(payload)
+    });
+    if (!resp.ok) {
+      var detail = ''; try { var j = await resp.json(); detail = j.message || ''; } catch (x) {}
+      if (resp.status === 401 || resp.status === 403) throw Object.assign(new Error('not permitted'), { permission: true, detail: detail });
+      throw new Error('HTTP ' + resp.status + (detail ? ': ' + detail : ''));
+    }
+    var saved = await resp.json(), byId = {};
+    saved.forEach(function (x) { byId[x.youth_id] = x; });
+    var stored = 0;
+    dirty.forEach(function (r) {
+      var x = byId[r.youth_id]; if (!x) return;
+      var won = x.games_won == null ? '' : String(x.games_won);
+      r.attended = x.attended; r.won = won; r.saved = { attended: x.attended, won: won }; stored++;
+    });
+    if (stored !== dirty.length) E.err = 'Only ' + stored + ' of ' + dirty.length + ' changes were confirmed by the database. Please check and save again.';
+    else E.msg = 'Saved ' + stored + ' record' + (stored > 1 ? 's' : '') + ' at ' + new Date().toLocaleTimeString() + '.';
+    E.lastSaved = _gccLatest(saved) || E.lastSaved;
+    GCC_SEASON_RESULTS.counts[E.iso] = E.rows.filter(function (r) { return r.saved; }).length;
+  } catch (e) {
+    E.err = e.permission ? 'This account is not permitted to save results (the database refused). Nothing was saved.' : _gccErrText(e);
+  }
+  E.saving = false;
+  if (_gccEntry === E) renderGccQuarterView();
+}
+
+// ── In-page sign-in again (session expired) — keeps unsaved entries ──────────
+function gccShowReauth() { _gccReauthOpen = true; gccRenderAuthStatus(); var p = document.getElementById('gcc-reauth-email'); if (p) p.focus(); }
+function gccHideReauth() { _gccReauthOpen = false; gccRenderAuthStatus(); }
+function gccReauthHtml() {
+  if (!_gccReauthOpen || (typeof GCC_AUTH !== 'undefined' && GCC_AUTH.status().signedIn)) return '';
+  var IS = 'padding:7px 10px;border-radius:8px;border:1px solid var(--card-border);background:rgba(255,255,255,.05);color:var(--text-main);min-width:0;flex:1';
+  return '<div style="margin-top:8px;padding:10px 12px;border-radius:10px;border:1px solid var(--card-border);font-size:.8rem">' +
+    '<div style="margin-bottom:6px">Sign in again to continue. Your unsaved entries stay on this page.</div>' +
+    '<div style="display:flex;flex-wrap:wrap;gap:6px">' +
+      '<input id="gcc-reauth-email" type="email" autocomplete="username" placeholder="Email" value="' + _gccEsc(_gccLastEmail || '') + '" style="' + IS + '">' +
+      '<input id="gcc-reauth-password" type="password" autocomplete="current-password" placeholder="Password" style="' + IS + '" onkeydown="if(event.key===\'Enter\')gccDoReauth()">' +
+      '<button type="button" id="gcc-reauth-btn" class="ws-btn" onclick="gccDoReauth()">Sign in</button>' +
+      '<button type="button" class="ws-btn" onclick="gccHideReauth()">Cancel</button></div>' +
+    '<div id="gcc-reauth-msg" style="margin-top:6px;color:var(--badge-red)"></div></div>';
+}
+async function gccDoReauth() {
+  var em = document.getElementById('gcc-reauth-email'), pw = document.getElementById('gcc-reauth-password');
+  var msg = document.getElementById('gcc-reauth-msg'), btn = document.getElementById('gcc-reauth-btn');
+  if (!em || !pw) return;
+  var email = String(em.value || '').trim().toLowerCase(), password = pw.value || '';
+  if (!email || !password) { if (msg) msg.textContent = 'Enter your email and password.'; return; }
+  if (btn) { btn.disabled = true; btn.textContent = 'Signing in…'; }
+  var ok = false;
+  try {
+    var r = await fetch(SUPA_URL + '/auth/v1/token?grant_type=password', {
+      method: 'POST', headers: { 'apikey': SUPA_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: email, password: password })
+    });
+    var d = await r.json().catch(function () { return {}; });
+    ok = r.ok && GCC_AUTH.set(d);
+  } catch (e) { ok = false; }
+  pw.value = ''; password = null;
+  if (!ok) {
+    if (msg) msg.textContent = 'Sign-in failed. Check your email and password and try again.';
+    if (btn) { btn.disabled = false; btn.textContent = 'Sign in'; }
+    return;
+  }
+  _gccReauthOpen = false;
+  _gccAuthCheck = { email: null, state: 'idle' };                  // re-check editor permission for this account
+  if (_gccEntry) { _gccEntry.err = ''; _gccEntry.msg = 'Signed in again. Press Save to store your changes.'; }
+  renderGccQuarterView();
 }
 
 

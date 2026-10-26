@@ -813,53 +813,12 @@ tr:hover .grd-date-sticky { background: #1a2d47; }
     <!-- YOUTH SCRABBLE -->
     <div class="page" id="page-youth-scrabble">
       <!-- ENTRY FORM (shown when logging activity) -->
-      <div id="youth-entry-form" style="display:none;position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,.75);backdrop-filter:blur(4px);overflow-y:auto;padding:20px">
-        <div style="max-width:480px;margin:0 auto;background:var(--card-bg);border-radius:20px;border:1px solid var(--card-border);padding:28px;position:relative">
-          <button onclick="closeEntryForm()" style="position:absolute;top:14px;right:14px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);border-radius:8px;padding:5px 12px;color:var(--text-muted);cursor:pointer;font-family:DM Sans,sans-serif;font-size:.82rem">✕</button>
-          <div style="font-family:Nunito,sans-serif;font-size:1.2rem;font-weight:900;margin-bottom:4px">Log Today&#39;s Activity 🎲</div>
-          <div id="entry-form-date" style="font-size:.8rem;color:var(--text-muted);margin-bottom:18px"></div>
-          <div class="entry-form-box">
-            <div style="font-size:.75rem;font-weight:800;color:var(--ya-gold);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">🎮 Games Club</div>
-            <div class="entry-row">
-              <div class="entry-icon">✅</div>
-              <div class="entry-label" id="entry-attended-label">I attended Games Club</div>
-              <input type="checkbox" id="entry-attended" style="width:18px;height:18px;cursor:pointer;accent-color:var(--ya-teal)">
-              <div class="entry-pts">+1 pt</div>
-            </div>
-            <div class="entry-row">
-              <div class="entry-icon">🎮</div>
-              <div class="entry-label">Games I won today</div>
-              <input type="number" id="entry-games-won" class="entry-input" min="0" max="20" value="0" placeholder="0">
-              <div class="entry-pts">+1 pt each</div>
-            </div>
-          </div>
-          <div class="entry-form-box" style="border-color:rgba(124,131,253,.3);background:rgba(124,131,253,.07)">
-            <div style="font-size:.75rem;font-weight:800;color:var(--lavender);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">🔤 Scrabble Word Game</div>
-            <div class="entry-row">
-              <div class="entry-icon">🔤</div>
-              <div class="entry-label">My Scrabble score today</div>
-              <input type="number" id="entry-scrabble-score" class="entry-input" min="0" max="999" value="" placeholder="0">
-              <div class="entry-pts">raw score</div>
-            </div>
-            <div class="entry-row">
-              <div class="entry-icon">🏅</div>
-              <div class="entry-label">I played the longest word!</div>
-              <input type="checkbox" id="entry-longest-word" style="width:18px;height:18px;cursor:pointer;accent-color:var(--lavender)">
-              <div class="entry-pts">+10 pts</div>
-            </div>
-          </div>
-          <div style="font-size:.75rem;color:var(--text-muted);margin-bottom:14px;padding:10px 14px;background:rgba(245,166,35,.06);border-radius:8px;border:1px solid rgba(245,166,35,.15)">
-            ⏳ Your entry will show as <strong style="color:var(--ya-gold)">pending</strong> until an admin verifies it. Points count once approved!
-          </div>
-          <button onclick="submitYouthEntry()" style="width:100%;padding:12px;border-radius:10px;border:none;background:var(--ya-orange);color:#fff;font-family:Nunito,sans-serif;font-weight:800;font-size:.95rem;cursor:pointer">Submit Entry →</button>
-          <div id="entry-form-feedback" style="margin-top:10px;text-align:center"></div>
-        </div>
-      </div>
+      <!-- G1a: youth self-report form retired (D10) -->
       <div class="ya-stripe"></div>
       <div class="page-header">
         <div class="page-title">Games &amp; Crafts Club <span class="hl">🎲</span></div>
         <div class="page-sub">Weekly sessions · 1 pt attendance · 1 pt per win · Trophy awarded end of quarter</div>
-        <button onclick="openEntryForm()" style="margin-top:12px;padding:10px 24px;border-radius:10px;border:1px solid var(--ya-orange);background:rgba(232,98,10,.12);color:var(--ya-orange);font-family:Nunito,sans-serif;font-weight:800;font-size:.9rem;cursor:pointer;transition:all .2s" onmouseover="this.style.background='rgba(232,98,10,.22)'" onmouseout="this.style.background='rgba(232,98,10,.12)'">🎲 Log Today&#39;s Activity</button>
+        <div style="margin-top:10px;font-size:.78rem;color:var(--text-muted)">Activity is now recorded by Games &amp; Crafts leaders; self-reporting has been retired.</div>
       </div>
       <div id="youth-pending-entries-scrabble" style="margin-top:8px"></div>
       <div id="scrabble-youth-content"></div>
@@ -1114,7 +1073,7 @@ tr:hover .grd-date-sticky { background: #1a2d47; }
         <div id="gcc-quarter-view"></div>
         <!-- 2026 Scrabble archive: existing interface, unchanged -->
         <div id="gcc-archive-wrap">
-        <div class="section-box" style="padding:12px 16px;font-size:.82rem;border-color:rgba(255,255,255,.14)"><strong>📜 2026 Scrabble archive</strong>: historical records for Scrabble &amp; Games Club, Q1 and Q2 2026 (closed). Shown exactly as recorded.</div>
+        <div class="section-box" style="padding:12px 16px;font-size:.82rem;border-color:rgba(255,255,255,.14)"><strong>📜 2026 Scrabble archive</strong> <span class="pill pill-grey">Read-only</span>: historical records for Scrabble &amp; Games Club, Q1 and Q2 2026 (closed). Shown exactly as recorded.</div>
         <div class="cards-grid" id="admin-scrabble-stat-cards"></div>
         <div id="admin-q1-history-banner" style="margin-bottom:10px"></div>
         <div id="admin-scrabble-trophy-banner"></div>
@@ -1126,8 +1085,7 @@ tr:hover .grd-date-sticky { background: #1a2d47; }
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
               <div style="font-family:Nunito,sans-serif;font-size:1rem;font-weight:900;color:var(--ya-gold)">📋 Pending Verification</div>
               <div style="display:flex;gap:8px">
-                <button onclick="approveAllPending()" style="padding:5px 14px;border-radius:8px;border:1px solid var(--ya-teal);background:rgba(0,181,160,.1);color:var(--ya-teal);font-size:.75rem;font-weight:700;cursor:pointer;font-family:DM Sans,sans-serif">✔ Approve All</button>
-                <button onclick="rejectAllPending()" style="padding:5px 14px;border-radius:8px;border:1px solid var(--badge-red);background:rgba(239,68,68,.1);color:var(--badge-red);font-size:.75rem;font-weight:700;cursor:pointer;font-family:DM Sans,sans-serif">✘ Reject All</button>
+                <span style="font-size:.72rem;color:var(--text-muted)">Youth self-reporting retired · read-only</span>
               </div>
             </div>
             <div id="pending-entries-list"></div>
@@ -1135,8 +1093,8 @@ tr:hover .grd-date-sticky { background: #1a2d47; }
 
           <span class="section-title" style="margin-bottom:0">🎲 Full Leaderboard</span>
             <div style="display:flex;gap:6px">
-              <button id="lb-edit-btn" onclick="toggleLbEdit()" class="ws-btn" style="border-color:var(--ya-blue);color:var(--ya-blue);font-size:.75rem">✏️ Edit Totals</button>
-              <button class="ws-btn" style="border-color:var(--badge-red);color:var(--badge-red);font-size:.75rem" onclick="toggleCancelPanel()">+ Cancel a Session</button>
+              
+              
             </div>
           </div>
           <div id="cancel-panel" style="display:none;background:rgba(239,68,68,.07);border:1px solid rgba(239,68,68,.2);border-radius:10px;padding:14px;margin-bottom:14px">
@@ -1146,8 +1104,8 @@ tr:hover .grd-date-sticky { background: #1a2d47; }
                 <option value="">Select date to cancel</option>
               </select>
               <input id="cancel-reason" type="text" placeholder="Reason (optional)" style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:8px;padding:6px 12px;color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.82rem;flex:1;min-width:140px">
-              <button class="ws-btn active-fac" onclick="cancelScrabbleSession()" style="border-color:var(--badge-red);color:var(--badge-red);background:rgba(239,68,68,.1)">Confirm Cancel</button>
-              <button class="ws-btn" onclick="toggleCancelPanel()">Close</button>
+              
+              
             </div>
             <div id="cancelled-sessions-display" style="margin-top:10px"></div>
           </div><div class="scrabble-leaderboard" id="admin-scrabble-lb"></div>
@@ -1156,42 +1114,12 @@ tr:hover .grd-date-sticky { background: #1a2d47; }
             <div style="font-size:.78rem;color:var(--ya-blue);margin-bottom:10px">✏️ <strong>Edit leaderboard totals directly</strong> — use this to correct a player's total points. Changes update the leaderboard and trophy banners instantly.</div>
             <div id="lb-edit-inputs" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px"></div>
             <div style="margin-top:10px;display:flex;gap:8px">
-              <button onclick="saveLbEdits()" style="padding:7px 18px;border-radius:8px;border:none;background:var(--ya-teal);color:#fff;font-family:Nunito,sans-serif;font-weight:800;font-size:.82rem;cursor:pointer">💾 Save Totals</button>
-              <button onclick="toggleLbEdit()" class="ws-btn">Cancel</button>
+              
+              
             </div>
           </div>
         </div>
-        <!-- ADD NEW PLAYER PANEL -->
-        <div class="section-box" style="border-color:rgba(0,181,160,.3);margin-bottom:15px">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-            <div class="section-title" style="margin-bottom:0;color:var(--ya-teal)">➕ Add New Player</div>
-            <button onclick="toggleAddPlayerPanel()" id="add-player-toggle-btn" class="ws-btn" style="border-color:var(--ya-teal);color:var(--ya-teal);font-size:.75rem">+ Add Player</button>
-          </div>
-          <div id="add-player-panel" style="display:none">
-            <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:10px;align-items:end;flex-wrap:wrap">
-              <div>
-                <div style="font-size:.75rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Player Name</div>
-                <input type="text" id="new-player-name" placeholder="e.g. Alex Smith" style="width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.15);border-radius:8px;padding:8px 12px;color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.88rem">
-              </div>
-              <div>
-                <div style="font-size:.75rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Age (optional)</div>
-                <input type="number" id="new-player-age" min="5" max="25" placeholder="e.g. 12" style="width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.15);border-radius:8px;padding:8px 12px;color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.88rem">
-              </div>
-              <div>
-                <div style="font-size:.75rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Type</div>
-                <select id="new-player-type" class="login-select" style="margin-bottom:0;padding:8px 12px">
-                  <option value="scrabble">🎲 Scrabble Only</option>
-                  <option value="el">📚 Emerging Leaders</option>
-                </select>
-              </div>
-            </div>
-            <div style="margin-top:10px;display:flex;gap:8px;align-items:center">
-              <button onclick="addNewPlayer()" style="padding:8px 20px;border-radius:9px;border:none;background:var(--ya-teal);color:#fff;font-family:Nunito,sans-serif;font-weight:800;font-size:.88rem;cursor:pointer">✔ Add Player</button>
-              <button onclick="toggleAddPlayerPanel()" class="ws-btn">Cancel</button>
-              <div id="add-player-feedback" style="font-size:.82rem;margin-left:6px"></div>
-            </div>
-          </div>
-        </div>
+        <!-- G1a: Add New Player removed (2026 Scrabble quarters are closed) -->
 
         <!-- SESSION HISTORY TABLE -->
         <div class="section-box">
@@ -1199,9 +1127,9 @@ tr:hover .grd-date-sticky { background: #1a2d47; }
             <div class="section-title" style="margin-bottom:0">📅 Session History — Attendance &amp; Wins</div>
             <div style="display:flex;gap:8px;align-items:center">
               <button id="q1-sessions-toggle" onclick="toggleQ1Rows('sessions')" class="ws-btn" style="border-color:rgba(245,166,35,.5);color:var(--ya-gold);font-size:.75rem">📁 Hide Q1</button>
-              <button id="scrabble-edit-btn" onclick="toggleScrabbleEditMode()" class="ws-btn" style="border-color:var(--ya-blue);color:var(--ya-blue);font-size:.75rem">✏️ Edit Mode</button>
-              <button id="scrabble-save-btn" onclick="saveScrabbleEdits()" style="display:none;padding:6px 16px;border-radius:8px;border:none;background:var(--ya-teal);color:#fff;font-family:Nunito,sans-serif;font-weight:800;font-size:.8rem;cursor:pointer">💾 Save Changes</button>
-              <button id="scrabble-cancel-btn" onclick="cancelScrabbleEdits()" style="display:none" class="ws-btn">Cancel</button>
+              
+              
+              
             </div>
           </div>
           <div id="scrabble-edit-hint" style="display:none;font-size:.78rem;color:var(--ya-blue);background:rgba(29,127,212,.08);border:1px solid rgba(29,127,212,.2);border-radius:8px;padding:8px 12px;margin-bottom:10px">
@@ -1214,9 +1142,9 @@ tr:hover .grd-date-sticky { background: #1a2d47; }
             <div class="section-title" style="margin-bottom:0">🙌 Adult Volunteer Hours — Games &amp; Crafts Club</div>
             <div style="display:flex;gap:8px;align-items:center">
               <button id="q1-hours-toggle" onclick="toggleQ1Rows('hours')" class="ws-btn" style="border-color:rgba(245,166,35,.5);color:var(--ya-gold);font-size:.75rem">📁 Hide Q1</button>
-              <button id="adult-vol-edit-btn" onclick="toggleAdultVolEditMode()" class="ws-btn" style="border-color:var(--ya-orange);color:var(--ya-orange);font-size:.75rem">✏️ Edit Hours</button>
-              <button id="adult-vol-save-btn" onclick="saveAdultVolEdits()" style="display:none;padding:6px 16px;border-radius:8px;border:none;background:var(--ya-orange);color:#fff;font-family:Nunito,sans-serif;font-weight:800;font-size:.8rem;cursor:pointer">💾 Save Changes</button>
-              <button id="adult-vol-cancel-btn" onclick="cancelAdultVolEdits()" style="display:none" class="ws-btn">Cancel</button>
+              
+              
+              
             </div>
           </div>
           <div id="adult-vol-edit-hint" style="display:none;font-size:.78rem;color:var(--ya-orange);background:rgba(232,98,10,.07);border:1px solid rgba(232,98,10,.2);border-radius:8px;padding:8px 12px;margin-bottom:10px">
@@ -1228,13 +1156,7 @@ tr:hover .grd-date-sticky { background: #1a2d47; }
               <tbody id="adult-scrabble-vol-tbody"></tbody>
             </table>
           </div>
-          <div style="display:flex;align-items:center;gap:8px;margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,.06);flex-wrap:wrap">
-            <div style="font-size:.75rem;font-weight:700;color:var(--text-muted);white-space:nowrap">＋ Add volunteer:</div>
-            <select id="new-scrabble-vol-select" style="flex:1;min-width:160px;padding:6px 10px;border-radius:8px;border:1px solid var(--card-border);background:#0f1c2e;color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.82rem">
-              <option value="">— Select adult —</option>
-            </select>
-            <button onclick="addAdultScrabbleVolunteer()" style="padding:6px 16px;border-radius:8px;border:none;background:var(--ya-orange);color:#fff;font-family:Nunito,sans-serif;font-weight:800;font-size:.8rem;cursor:pointer">Add</button>
-          </div>
+          <!-- G1a: Add volunteer removed (2026 Scrabble quarters are closed) -->
         </div>
 
         <div class="section-box" style="border-color:rgba(124,131,253,.3)">
@@ -1244,9 +1166,9 @@ tr:hover .grd-date-sticky { background: #1a2d47; }
               <div style="color:var(--text-muted);font-size:.8rem">Actual Scrabble game scores · Q1 trophy for highest cumulative score</div>
             </div>
             <div style="display:flex;gap:8px;align-items:center">
-              <button id="word-score-edit-btn" onclick="toggleWordScoreEditMode()" class="ws-btn" style="border-color:var(--lavender);color:var(--lavender);font-size:.75rem">✏️ Edit Scores</button>
-              <button id="word-score-save-btn" onclick="saveWordScoreEdits()" style="display:none;padding:6px 16px;border-radius:8px;border:none;background:var(--lavender);color:#fff;font-family:Nunito,sans-serif;font-weight:800;font-size:.8rem;cursor:pointer">💾 Save Changes</button>
-              <button id="word-score-cancel-btn" onclick="cancelWordScoreEdits()" style="display:none" class="ws-btn">Cancel</button>
+              
+              
+              
             </div>
           </div>
           <div id="word-score-edit-hint" style="display:none;font-size:.78rem;color:var(--lavender);background:rgba(124,131,253,.07);border:1px solid rgba(124,131,253,.2);border-radius:8px;padding:8px 12px;margin-bottom:10px">
@@ -2188,7 +2110,7 @@ tr:hover .grd-date-sticky { background: #1a2d47; }
                 <div style="font-size:.75rem;color:var(--text-muted);font-weight:600;margin-top:2px">Enrol in:</div>
                 <div style="display:flex;flex-wrap:wrap;gap:10px;font-size:.82rem">
                   <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="ny-enrol-el" checked> Emerging Leaders (workshops)</label>
-                  <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="ny-enrol-scrabble"> Games &amp; Crafts Club</label>
+                  <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="ny-enrol-scrabble" disabled title="2026 Scrabble records are closed. Games &amp; Crafts enrolment will move to the new quarter grids."> Games &amp; Crafts Club</label>
                   <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="ny-enrol-garden"> Summer Garden Program</label>
                   <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="ny-enrol-events"> Volunteer Events</label>
                 </div>
@@ -2220,7 +2142,7 @@ tr:hover .grd-date-sticky { background: #1a2d47; }
                 </select>
                 <div style="font-size:.75rem;color:var(--text-muted);font-weight:600;margin-top:2px">Enrol in:</div>
                 <div style="display:flex;flex-wrap:wrap;gap:10px;font-size:.82rem">
-                  <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="na-enrol-scrabble"> Games &amp; Crafts Club</label>
+                  <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="na-enrol-scrabble" disabled title="2026 Scrabble records are closed. Games &amp; Crafts enrolment will move to the new quarter grids."> Games &amp; Crafts Club</label>
                   <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="na-enrol-events"> Volunteer Events</label>
                 </div>
                 <button onclick="addNewAdultUser()" style="padding:8px;border-radius:8px;border:none;background:var(--ya-blue);color:#fff;font-family:Nunito,sans-serif;font-weight:800;font-size:.85rem;cursor:pointer;margin-top:2px">＋ Add Adult</button>
@@ -2563,6 +2485,15 @@ var CURRENT_QUARTER = "Q2 2026";          // label shown throughout the app
 var QUARTER_STATE_KEY = "q2_closed";      // must match key in scrabble_state table
 var QUARTER_END_DATE = "Apr 29";          // shown in trophy banners
 var Q1_CLOSED = false; // loaded from DB on startup — do not edit manually
+// G1a: the 2026 Scrabble quarters (Q1, Q2) are closed history and read-only in the Hub.
+// Youth self-reporting is retired (D10). Data and database objects are unchanged.
+var GCC_LEGACY_READONLY = true;
+var GCC_LEGACY_TABLES = ['scrabble_sessions', 'scrabble_scores', 'adult_scrabble_sessions', 'pending_entries'];
+function gccLegacyReadOnly(what) {
+  if (!GCC_LEGACY_READONLY) return false;
+  console.warn('[G1a] ' + what + ' is disabled: the 2026 Scrabble quarters are closed and read-only.');
+  return true;
+}
 var KNOWN_CREDENTIALS={};
 
 var RECURRING_PROGRAMS=[{"id":"rec_scrabble","name":"Games & Crafts Club","day":"Wednesday","location":"Youth Airdrie","season":"Sep-Apr","note":"Every Wednesday, October through April","active":true,"cancellations":[]},{"id":"rec_garden","name":"Summer Garden Program","day":"Wednesday","location":"Youth Airdrie","season":"May-Sep","note":"Every Wednesday, May through end of September","active":true,"cancellations":[]}];
@@ -3988,30 +3919,14 @@ function renderAdminScrabble(){
     }
   }
 
-  // ── Close Out Quarter button ──
+  // ── G1a: 2026 Scrabble quarters are closed history (no Close Out / Reopen) ──
   var closePanel = eid('admin-closeout-panel');
   if(closePanel){
-    var pendingCount = PENDING_ENTRIES.filter(function(e){return e.status==='pending';}).length;
-    if(isWinner){
-      closePanel.innerHTML =
-        '<div class="alert-row success" style="margin:0;border-radius:12px;padding:12px 18px">'+
-        '🏆 <div><strong>'+CURRENT_QUARTER+' is closed.</strong> Trophy winners have been declared. '+
-        '<button onclick="reopenQuarter()" style="margin-left:10px;padding:4px 12px;border-radius:7px;border:1px solid rgba(255,255,255,.2);background:transparent;color:var(--text-muted);font-size:.75rem;cursor:pointer;font-family:DM Sans,sans-serif">↩ Reopen</button></div></div>';
-    } else {
-      var hint = pendingCount > 0
-        ? '<div style="font-size:.75rem;color:var(--badge-amber);margin-top:6px">⚠ '+pendingCount+' pending entr'+(pendingCount===1?'y':'ies')+' still awaiting verification — approve or reject before closing.</div>'
-        : '<div style="font-size:.75rem;color:var(--ya-teal);margin-top:6px">✔ All entries verified — ready to close out '+CURRENT_QUARTER+'.</div>';
-      closePanel.innerHTML =
-        '<div style="background:rgba(245,166,35,.07);border:1px solid rgba(245,166,35,.25);border-radius:12px;padding:14px 18px">'+
-        '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">'+
-        '<div>'+
-          '<div style="font-family:Nunito,sans-serif;font-size:.95rem;font-weight:800;color:var(--ya-gold)">🏁 Close Out '+CURRENT_QUARTER+'</div>'+
-          '<div style="font-size:.78rem;color:var(--text-muted);margin-top:2px">Declare winners and lock the quarter. Leaders become Trophy Winners.</div>'+
-          hint+
-        '</div>'+
-        '<button onclick="closeOutQuarter()" style="padding:10px 22px;border-radius:10px;border:none;background:linear-gradient(135deg,var(--ya-gold),var(--ya-orange));color:#fff;font-family:Nunito,sans-serif;font-weight:900;font-size:.9rem;cursor:pointer;white-space:nowrap;'+(pendingCount>0?'opacity:.5;':'')+'">🏆 Close Out Quarter</button>'+
-        '</div></div>';
-    }
+    closePanel.innerHTML =
+      '<div class="alert-row info" style="margin:0;border-radius:12px;padding:12px 18px">🔒 <div>'+
+      '<strong>Q1 and Q2 2026 are closed and read-only.</strong> '+
+      (isWinner ? CURRENT_QUARTER+' was closed in the database and its trophy winners recorded. ' : '')+
+      'These grids show the records exactly as stored. New Games &amp; Crafts results are entered in the Fall 2026 quarter view.</div></div>';
   }
 
   // ── Impact tab leader pill ──
@@ -4073,7 +3988,7 @@ function renderAdminScrabble(){
       },{})).sort(function(a,b){return b[1]-a[1];})[0];
       q1Summary = q1TopPlayer ? ' · Q1 Winner: '+q1TopPlayer[0]+' ('+q1TopPlayer[1]+' pts)' : '';
     }
-    var divider = '<tr><td colspan="'+(snames.length+2)+'" style="padding:4px 8px;background:rgba(245,166,35,.06);font-size:.68rem;color:var(--ya-gold);font-weight:700;letter-spacing:.06em;text-transform:uppercase;border-top:1px solid rgba(245,166,35,.2);border-bottom:1px solid rgba(245,166,35,.2)">'+(q1SessionsCollapsed?'📂 Q1 2026 hidden'+q1Summary:'↑ Q1 2026 (archived)')+'&nbsp;·&nbsp;Q2 2026 (active) ↓</td></tr>';
+    var divider = '<tr><td colspan="'+(snames.length+2)+'" style="padding:4px 8px;background:rgba(245,166,35,.06);font-size:.68rem;color:var(--ya-gold);font-weight:700;letter-spacing:.06em;text-transform:uppercase;border-top:1px solid rgba(245,166,35,.2);border-bottom:1px solid rgba(245,166,35,.2)">'+(q1SessionsCollapsed?'📂 Q1 2026 hidden'+q1Summary:'↑ Q1 2026 (archived)')+'&nbsp;·&nbsp;Q2 2026 ('+(Q1_CLOSED?'closed · ':'')+'read-only) ↓</td></tr>';
 
     stbody.innerHTML = q1Rows + divider + q2Rows;
 
@@ -10926,6 +10841,7 @@ function renderAdultRecurring(name){
 
 // ── CANCEL SCRABBLE SESSION ──
 function toggleCancelPanel(){
+  if (gccLegacyReadOnly('toggleCancelPanel')) return;   // G1a
   var p=document.getElementById('cancel-panel');
   if(!p) return;
   p.style.display=p.style.display==='none'?'block':'none';
@@ -10957,6 +10873,7 @@ function populateCancelDates(){
 }
 
 function cancelScrabbleSession(){
+  if (gccLegacyReadOnly('cancelScrabbleSession')) return;   // G1a
   var sel=document.getElementById('cancel-date-select').value;
   var reason=document.getElementById('cancel-reason').value||'No reason given';
   if(!sel){alert('Please select a date');return;}
@@ -11018,6 +10935,7 @@ function renderCancelledList(){
 }
 
 function undoCancelSession(dateStr){
+  if (gccLegacyReadOnly('undoCancelSession')) return;   // G1a
   var prog=RECURRING_PROGRAMS.find(function(p){return p.id==='rec_scrabble';});
   prog.cancellations=(prog.cancellations||[]).filter(function(c){
     return (typeof c==='string'?c:c.date)!==dateStr;
@@ -11067,7 +10985,7 @@ function renderAdultScrabbleTable(){
     var totalQ1Hrs = Object.values(Q1_ADULT_SCRABBLE).reduce(function(s,v){return s+Object.values(v).reduce(function(a,b){return a+b;},0);},0);
     q1HrsSummary = totalQ1Hrs ? ' · '+totalQ1Hrs.toFixed(1)+' total hrs' : '';
   }
-  var divider='<tr><td colspan="'+(names.length+2)+'" style="padding:4px 8px;background:rgba(245,166,35,.06);font-size:.68rem;color:var(--ya-gold);font-weight:700;letter-spacing:.06em;text-transform:uppercase;border-top:1px solid rgba(245,166,35,.2);border-bottom:1px solid rgba(245,166,35,.2)">'+(q1HoursCollapsed?'📂 Q1 2026 hidden'+q1HrsSummary:'↑ Q1 2026 (archived)')+'&nbsp;·&nbsp;Q2 2026 (active) ↓</td></tr>';
+  var divider='<tr><td colspan="'+(names.length+2)+'" style="padding:4px 8px;background:rgba(245,166,35,.06);font-size:.68rem;color:var(--ya-gold);font-weight:700;letter-spacing:.06em;text-transform:uppercase;border-top:1px solid rgba(245,166,35,.2);border-bottom:1px solid rgba(245,166,35,.2)">'+(q1HoursCollapsed?'📂 Q1 2026 hidden'+q1HrsSummary:'↑ Q1 2026 (archived)')+'&nbsp;·&nbsp;Q2 2026 ('+(Q1_CLOSED?'closed · ':'')+'read-only) ↓</td></tr>';
 
   // Q2 rows — editable
   var q2Rows = Q2_DATES.map(function(d){
@@ -14019,6 +13937,7 @@ async function _wsConfirmRestoreSelected() {
 var wordScoreEditMode = false;
 
 function toggleWordScoreEditMode(){
+  if (gccLegacyReadOnly('toggleWordScoreEditMode')) return;   // G1a
   wordScoreEditMode = !wordScoreEditMode;
   var editBtn   = document.getElementById('word-score-edit-btn');
   var saveBtn   = document.getElementById('word-score-save-btn');
@@ -14043,6 +13962,7 @@ function toggleWordScoreEditMode(){
 }
 
 function cancelWordScoreEdits(){
+  if (gccLegacyReadOnly('cancelWordScoreEdits')) return;   // G1a
   wordScoreEditMode = false;
   var editBtn   = document.getElementById('word-score-edit-btn');
   var saveBtn   = document.getElementById('word-score-save-btn');
@@ -14058,6 +13978,7 @@ function cancelWordScoreEdits(){
 }
 
 function saveWordScoreEdits(){
+  if (gccLegacyReadOnly('saveWordScoreEdits')) return;   // G1a
   var scoreNames = Object.keys(SCRABBLE_SCORES);
   // Also pick up any players in SCRABBLE_SCORE_TOTALS not yet in SCRABBLE_SCORES
   Object.keys(SCRABBLE_SCORE_TOTALS).forEach(function(n){
@@ -14107,6 +14028,7 @@ function saveWordScoreEdits(){
 }
 
 async function saveWordScoresToDB(){
+  if (gccLegacyReadOnly('saveWordScoresToDB')) return;   // G1a
   var qKey = QUARTER_STATE_KEY.replace('_closed','');
   const rows = [];
   Object.keys(SCRABBLE_SCORES).forEach(function(name){
@@ -14145,6 +14067,7 @@ function toggleQ1Rows(table) {
 }
 
 function toggleLbEdit(){
+  if (gccLegacyReadOnly('toggleLbEdit')) return;   // G1a
   lbEditMode = !lbEditMode;
   var btn = document.getElementById('lb-edit-btn');
   var panel = document.getElementById('lb-edit-panel');
@@ -14174,6 +14097,7 @@ function toggleLbEdit(){
 }
 
 function saveLbEdits(){
+  if (gccLegacyReadOnly('saveLbEdits')) return;   // G1a
   var sorted = Object.keys(SCRABBLE_TOTALS);
   sorted.forEach(function(name){
     var safeName = name.replace(/\s+/g,'_').replace(/[^\w]/g,'_');
@@ -14229,6 +14153,7 @@ function saveLbEdits(){
 var adultVolEditMode = false;
 
 function toggleAdultVolEditMode(){
+  if (gccLegacyReadOnly('toggleAdultVolEditMode')) return;   // G1a
   adultVolEditMode = !adultVolEditMode;
   var editBtn   = document.getElementById('adult-vol-edit-btn');
   var saveBtn   = document.getElementById('adult-vol-save-btn');
@@ -14253,6 +14178,7 @@ function toggleAdultVolEditMode(){
 }
 
 function cancelAdultVolEdits(){
+  if (gccLegacyReadOnly('cancelAdultVolEdits')) return;   // G1a
   adultVolEditMode = false;
   var editBtn   = document.getElementById('adult-vol-edit-btn');
   var saveBtn   = document.getElementById('adult-vol-save-btn');
@@ -14268,6 +14194,7 @@ function cancelAdultVolEdits(){
 }
 
 function saveAdultVolEdits(){
+  if (gccLegacyReadOnly('saveAdultVolEdits')) return;   // G1a
   var names = Object.keys(ADULT_SCRABBLE);
   names.forEach(function(name){
     SCRABBLE_DATES.forEach(function(dt){
@@ -14307,6 +14234,7 @@ function saveAdultVolEdits(){
 
 
 function closeOutQuarter(){
+  if (gccLegacyReadOnly('closeOutQuarter')) return;   // G1a
   var pendingCount = PENDING_ENTRIES.filter(function(e){return e.status==='pending';}).length;
   if(pendingCount > 0){
     if(!confirm(pendingCount+' pending entr'+(pendingCount===1?'y':'ies')+' still need verification. Close '+CURRENT_QUARTER+' anyway?')) return;
@@ -14328,6 +14256,7 @@ function closeOutQuarter(){
 }
 
 function reopenQuarter(){
+  if (gccLegacyReadOnly('reopenQuarter')) return;   // G1a
   if(!confirm('Reopen '+CURRENT_QUARTER+'? This will change Trophy Winners back to Trophy Leaders.')) return;
   Q1_CLOSED = false;
   saveQuarterState(false);
@@ -14339,6 +14268,7 @@ function reopenQuarter(){
 var scrabbleEditMode = false;
 
 function toggleScrabbleEditMode(){
+  if (gccLegacyReadOnly('toggleScrabbleEditMode')) return;   // G1a
   scrabbleEditMode = !scrabbleEditMode;
   var editBtn   = document.getElementById('scrabble-edit-btn');
   var saveBtn   = document.getElementById('scrabble-save-btn');
@@ -14363,6 +14293,7 @@ function toggleScrabbleEditMode(){
 }
 
 function cancelScrabbleEdits(){
+  if (gccLegacyReadOnly('cancelScrabbleEdits')) return;   // G1a
   scrabbleEditMode = false;
   var editBtn   = document.getElementById('scrabble-edit-btn');
   var saveBtn   = document.getElementById('scrabble-save-btn');
@@ -14378,6 +14309,7 @@ function cancelScrabbleEdits(){
 }
 
 function saveScrabbleEdits(){
+  if (gccLegacyReadOnly('saveScrabbleEdits')) return;   // G1a
   var snames = Object.keys(SCRABBLE_SESSIONS);
   var allDates = SCRABBLE_DATES.slice();
   CONDUCTED_DATES.forEach(function(d){ if(allDates.indexOf(d)<0) allDates.push(d); });
@@ -14431,6 +14363,7 @@ function saveScrabbleEdits(){
 // ══════════════════════════════════════════
 
 function toggleAddPlayerPanel(){
+  if (gccLegacyReadOnly('toggleAddPlayerPanel')) return;   // G1a
   var panel = document.getElementById('add-player-panel');
   var btn   = document.getElementById('add-player-toggle-btn');
   if(!panel) return;
@@ -14447,6 +14380,7 @@ function toggleAddPlayerPanel(){
 }
 
 async function addNewPlayer(){
+  if (gccLegacyReadOnly('addNewPlayer')) return;   // G1a
   var nameEl = document.getElementById('new-player-name');
   var ageEl  = document.getElementById('new-player-age');
   var typeEl = document.getElementById('new-player-type');
@@ -14569,6 +14503,8 @@ const SUPA_URL = 'https://odrnxozxiacbqnfhxkqm.supabase.co';
 const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9kcm54b3p4aWFjYnFuZmh4a3FtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ0NjI0NjQsImV4cCI6MjA5MDAzODQ2NH0.PkrvmdkucIxR1vz9EodOxnocXyzkkp68zH317DqyBHI';
 
 async function supa(method, table, data, params) {
+  // G1a: the closed 2026 Scrabble tables and the retired self-report queue are read-only
+  if (method !== 'GET' && GCC_LEGACY_TABLES.indexOf(table) >= 0 && gccLegacyReadOnly(method + ' ' + table)) return null;
   let url = SUPA_URL + '/rest/v1/' + table;
   if (params) url += '?' + params;
   const opts = {
@@ -15482,7 +15418,9 @@ async function checkAndInitDB() {
   } else {
     console.log('DB already seeded (' + result.length + ' rows found)');
     // Check if scrabble tables are seeded (may be new tables added after initial migration)
-    const scrCheck = await dbGet('scrabble_sessions', 'select=id&limit=1');
+    // G1a: never re-seed the closed 2026 Scrabble tables from hard-coded data (a failed read
+    // returns null, which previously looked like an empty table).
+    const scrCheck = GCC_LEGACY_READONLY ? true : await dbGet('scrabble_sessions', 'select=id&limit=1');
     if(!scrCheck || scrCheck.length === 0) {
       console.log('Scrabble tables empty — seeding...');
       const ssRows = [];
@@ -16131,6 +16069,7 @@ async function loadScrabbleData() {
 
 // ── SAVE SCRABBLE SESSIONS TO SUPABASE ──
 async function saveScrabbleSessionsToDB() {
+  if (gccLegacyReadOnly('saveScrabbleSessionsToDB')) return;   // G1a
   var qKey = QUARTER_STATE_KEY.replace('_closed','');
   const rows = [];
   Object.keys(SCRABBLE_SESSIONS).forEach(function(name) {
@@ -16152,6 +16091,7 @@ async function saveScrabbleSessionsToDB() {
 
 // ── SAVE ADULT SCRABBLE HOURS TO SUPABASE ──
 async function saveAdultScrabbleToDB() {
+  if (gccLegacyReadOnly('saveAdultScrabbleToDB')) return;   // G1a
   var qKey = QUARTER_STATE_KEY.replace('_closed','');
   const rows = [];
   Object.keys(ADULT_SCRABBLE).forEach(function(name) {
@@ -16171,6 +16111,7 @@ async function saveAdultScrabbleToDB() {
 
 // ── SAVE QUARTER STATE TO SUPABASE ──
 async function saveQuarterState(closed) {
+  if (gccLegacyReadOnly('saveQuarterState')) return;   // G1a
   const r = await fetch(SUPA_URL + '/rest/v1/scrabble_state?on_conflict=key', {
     method: 'POST',
     headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY, 'Content-Type': 'application/json', 'Prefer': 'resolution=merge-duplicates,return=minimal' },
@@ -18297,6 +18238,7 @@ async function loadWorkshopAttendance(youthName) {
 var currentEntryDate = '';
 
 function openEntryForm(){
+  if (gccLegacyReadOnly('openEntryForm')) return;   // G1a
   var modal = document.getElementById('youth-entry-form');
   if(!modal) return;
   // Use the most recent Scrabble session date (last entry in SCRABBLE_DATES)
@@ -18332,6 +18274,7 @@ function closeEntryForm(){
 }
 
 function submitYouthEntry(){
+  if (gccLegacyReadOnly('submitYouthEntry')) return;   // G1a
   var name = youthState ? youthState.name : null;
   if(!name){ alert('Please log in first'); return; }
 
@@ -18571,7 +18514,7 @@ async function addNewYouthUser(){
     // create-youth form or modal.
     renderYouthAttendanceTable();
   }
-  if(enrolScrabble && !(name in SCRABBLE_SESSIONS)){
+  if(!GCC_LEGACY_READONLY && enrolScrabble && !(name in SCRABBLE_SESSIONS)){   // G1a
     SCRABBLE_SESSIONS[name] = {};
     SCRABBLE_TOTALS[name] = 0;
     var qKey = QUARTER_STATE_KEY.replace('_closed','');
@@ -18642,7 +18585,7 @@ function addNewAdultUser(){
     facilitated:[], volunteered:[], hours:0, fac_level:0, grandfathered:false, isAdmin:false
   };
 
-  if(enrolScrabble){
+  if(!GCC_LEGACY_READONLY && enrolScrabble){   // G1a
     ADULT_SCRABBLE[name] = ADULT_SCRABBLE[name] || {};
     ADULT_SCRABBLE_TOTALS[name] = ADULT_SCRABBLE_TOTALS[name] || 0;
   }
@@ -18816,7 +18759,7 @@ async function saveEditYouth(){
     // historical attendance data, only remove current roster membership.
   }
 
-  if(enrolScrabble && !(cur in SCRABBLE_SESSIONS)){
+  if(!GCC_LEGACY_READONLY && enrolScrabble && !(cur in SCRABBLE_SESSIONS)){   // G1a
     SCRABBLE_SESSIONS[cur] = {};
     SCRABBLE_TOTALS[cur] = 0;
     var qKey = QUARTER_STATE_KEY.replace('_closed','');
@@ -19415,7 +19358,7 @@ async function saveEditAdult(){
   p.name = newName;
   p.role = newRole;
 
-  if(enrolScrabble && !(newName in ADULT_SCRABBLE)){
+  if(!GCC_LEGACY_READONLY && enrolScrabble && !(newName in ADULT_SCRABBLE)){   // G1a
     ADULT_SCRABBLE[newName] = {};
     ADULT_SCRABBLE_TOTALS[newName] = 0;
   }
@@ -19955,6 +19898,7 @@ function renderAdminVerificationPanel(){
 }
 
 function verifyEntry(entryId, approve){
+  if (gccLegacyReadOnly('verifyEntry')) return;   // G1a
   var entry = PENDING_ENTRIES.find(function(e){ return e.id === entryId; });
   if(!entry) return;
 
@@ -19984,6 +19928,7 @@ function verifyEntry(entryId, approve){
 }
 
 function approveAllForDate(date){
+  if (gccLegacyReadOnly('approveAllForDate')) return;   // G1a
   var toApprove = PENDING_ENTRIES.filter(function(e){
     return e.status === 'pending' && e.session_date === date;
   });
@@ -19999,6 +19944,7 @@ function approveAllForDate(date){
 }
 
 function approveAllPending(){
+  if (gccLegacyReadOnly('approveAllPending')) return;   // G1a
   var pending = PENDING_ENTRIES.filter(function(e){ return e.status === 'pending'; });
   pending.forEach(function(e){
     var ptsInput = document.getElementById('pts_' + e.id);
@@ -20012,6 +19958,7 @@ function approveAllPending(){
 }
 
 function rejectAllPending(){
+  if (gccLegacyReadOnly('rejectAllPending')) return;   // G1a
   if(!confirm('Reject all pending entries?')) return;
   PENDING_ENTRIES.filter(function(e){ return e.status === 'pending'; })
     .forEach(function(e){
@@ -20022,6 +19969,7 @@ function rejectAllPending(){
 }
 
 function applyApprovedEntry(entry){
+  if (gccLegacyReadOnly('applyApprovedEntry')) return;   // G1a
   if(entry.type === 'games_attended' || entry.type === 'games_won'){
     // Write into SCRABBLE_SESSIONS so session history shows it
     if(!SCRABBLE_SESSIONS[entry.youth_name]) SCRABBLE_SESSIONS[entry.youth_name] = {};
@@ -21815,6 +21763,7 @@ async function saveEditEventMeta(){
 
 // ── ADD NEW VOLUNTEER TO SCRABBLE ──
 function addAdultScrabbleVolunteer(){
+  if (gccLegacyReadOnly('addAdultScrabbleVolunteer')) return;   // G1a
   var sel = document.getElementById('new-scrabble-vol-select');
   if(!sel) return;
   var name = sel.value;
@@ -21852,7 +21801,7 @@ function addAdultScrabbleVolunteer(){
         <div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Programme Enrolment</div>
         <div style="display:flex;flex-direction:column;gap:7px;font-size:.83rem">
           <label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="eyu-el"> Emerging Leaders (workshops)</label>
-          <label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="eyu-scrabble"> Games &amp; Crafts Club</label>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="eyu-scrabble" disabled title="2026 Scrabble records are closed. Games &amp; Crafts enrolment will move to the new quarter grids."> Games &amp; Crafts Club</label>
           <label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="eyu-garden"> Summer Garden Program</label>
         </div>
       </div>
@@ -21890,7 +21839,7 @@ function addAdultScrabbleVolunteer(){
       </div>
       <div>
         <div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Programme Enrolment</div>
-        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:.83rem"><input type="checkbox" id="eau-scrabble"> Games &amp; Crafts Club (volunteer hours)</label>
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:.83rem"><input type="checkbox" id="eau-scrabble" disabled title="2026 Scrabble records are closed. Games &amp; Crafts enrolment will move to the new quarter grids."> Games &amp; Crafts Club (volunteer hours)</label>
         <div id="eau-program-checkboxes" style="margin-top:6px;display:grid;gap:5px"></div>
       </div>
     </div>

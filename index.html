@@ -672,15 +672,6 @@ tr:hover .grd-date-sticky { background: #1a2d47; }
       </div>
     </div>
 
-    <!-- ADMIN BYPASS (hidden; reveal with Ctrl+Shift+A) -->
-    <div id="panel-admin-legacy" style="display:none;margin-top:20px;padding-top:16px;border-top:1px solid rgba(255,255,255,.07)">
-      <div style="font-size:.72rem;color:var(--text-muted);margin-bottom:10px;text-align:center;text-transform:uppercase;letter-spacing:.06em">Admin Bypass</div>
-      <input type="password" id="admin-credential-input" maxlength="20" placeholder="Admin passphrase" autocomplete="off" spellcheck="false"
-        style="width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.15);border-radius:10px;padding:12px 16px;color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.95rem;margin-bottom:8px;box-sizing:border-box"
-        onkeydown="if(event.key==='Enter')attemptAdminLogin()">
-      <div id="admin-login-error" style="font-size:.78rem;color:var(--badge-red);text-align:center;margin-bottom:8px;min-height:18px"></div>
-      <button class="login-btn" onclick="attemptAdminLogin()">Enter Admin →</button>
-    </div>
   </div>
 </div>
 <!-- PASSWORD RECOVERY / SET-PASSWORD SCREEN
@@ -2262,7 +2253,7 @@ tr:hover .grd-date-sticky { background: #1a2d47; }
           <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:14px">
             <div>
               <div style="font-family:Nunito,sans-serif;font-size:1rem;font-weight:900;color:var(--ya-blue)">👤 Account Management</div>
-              <div style="font-size:.75rem;color:var(--text-muted);margin-top:2px">Shows everyone with a profile row. A profile row is created automatically when you add a user with an email.</div>
+              <div style="font-size:.75rem;color:var(--text-muted);margin-top:2px">Email sign-in replaces the retired passphrases.</div>
             </div>
             <button onclick="renderCredentialManager()" class="ws-btn" style="border-color:var(--ya-blue);color:var(--ya-blue);font-size:.75rem">🔄 Refresh</button>
           </div>
@@ -2273,7 +2264,7 @@ tr:hover .grd-date-sticky { background: #1a2d47; }
         <div class="section-box" style="border-color:rgba(245,166,35,.3)">
           <div style="font-family:Nunito,sans-serif;font-size:.88rem;font-weight:900;color:var(--ya-gold);margin-bottom:10px">🔗 Link Existing User to Email (Manual Override)</div>
           <div style="font-size:.76rem;color:var(--text-muted);margin-bottom:12px">
-            Use this to create or update a <code>profiles</code> table row for a user who was added before email collection. This does <em>not</em> create a Supabase Auth account — you still need to invite them from the Supabase dashboard.
+            During the security upgrade the Hub can no longer write sign-in profiles. Use this to check whether a user is already linked; if not, it shows the exact profile row for the coordinator to add in Supabase (Table Editor → profiles). It does <em>not</em> create a Supabase Auth account — invite them from the Supabase dashboard.
           </div>
           <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:10px;align-items:end;flex-wrap:wrap">
             <div>
@@ -2296,7 +2287,7 @@ tr:hover .grd-date-sticky { background: #1a2d47; }
             </div>
           </div>
           <div style="margin-top:10px;display:flex;gap:8px;align-items:center">
-            <button onclick="manualLinkProfile()" style="padding:8px 18px;border-radius:8px;border:none;background:var(--ya-gold);color:#0d1520;font-family:Nunito,sans-serif;font-weight:800;font-size:.82rem;cursor:pointer">🔗 Save Profile Link</button>
+            <button onclick="manualLinkProfile()" style="padding:8px 18px;border-radius:8px;border:none;background:var(--ya-gold);color:#0d1520;font-family:Nunito,sans-serif;font-weight:800;font-size:.82rem;cursor:pointer">🔗 Check Profile Link</button>
             <div id="manual-link-feedback" style="font-size:.78rem;min-height:16px"></div>
           </div>
         </div>
@@ -4134,73 +4125,7 @@ function switchLoginRole(role,btn){
   document.getElementById('panel-'+role).classList.add('active');
 }
 
-function enterApp(role){
-  if(role==='youth'){
-    var sel=document.getElementById('youth-select').value;
-    if(!sel){alert('Please select your name');return;}
-    var idx=parseInt(sel.replace('y_',''));
-    var selectedName=ALL_YOUTH_NAMES[idx];
-    if(!selectedName){alert('Could not find name — please try again');return;}
-    var attendedWs=EL_YOUTH[selectedName]||[];
-    var preloadedHrs=YOUTH_HOURS[selectedName]||0;
-    youthState={name:selectedName,workshops:new Set(attendedWs),hours:preloadedHrs,birthYear:null,age:YOUTH_AGES[selectedName]||null};
-    currentRole='youth';
-    // Clear pending entries display immediately on login to prevent bleed
-    var peEl=document.getElementById('youth-pending-entries-scrabble');
-    if(peEl) peEl.innerHTML='';
-    // Load any additional workshop attendance from Supabase (overrides static data)
-    loadWorkshopAttendance(selectedName);
-  }else if(role==='adult'){
-    var sel2=document.getElementById('adult-select').value;
-    if(!sel2){alert('Please select your name');return;}
-    var p=FAC_PROFILES[sel2];
-    adultState={name:p.name,avatar:p.avatar,bg:p.bg,role:p.role,facilitated:p.facilitated.slice(),volunteered:p.volunteered.slice(),hours:p.hours,grandfathered:p.grandfathered||false,isAdmin:p.isAdmin||false};
-    currentRole=p.isAdmin?'admin':'adult';
-    // Clear all program panels to prevent previous user's state bleeding in
-    ['scrabble-2026','garden-2026','scrabble-2026-27'].forEach(function(t){
-      var el=document.getElementById('prog-panel-'+t);
-      if(el) el.innerHTML='';
-    });
-    currentProgTab='scrabble-2026';
-  }else{currentRole='admin';}
-  document.getElementById('landing-screen').style.display='none';
-  document.getElementById('login-screen').style.display='none';
-  document.getElementById('app').style.display='block';
-  if(role==='youth'){
-    document.getElementById('user-avatar').textContent='🌱';
-    document.getElementById('user-avatar').style.background='#0c2d1e';
-    document.getElementById('user-name').textContent=youthState.name;
-    document.getElementById('user-role-badge').textContent='Youth Member';
-  }else if(role==='adult'){
-    document.getElementById('user-avatar').textContent=adultState.avatar;
-    document.getElementById('user-avatar').style.background=adultState.bg;
-    document.getElementById('user-name').textContent=adultState.name;
-    document.getElementById('user-role-badge').textContent=adultState.role;
-  }else{
-    document.getElementById('user-avatar').textContent='⚡';
-    document.getElementById('user-avatar').style.background='#281608';
-    document.getElementById('user-name').textContent='Kim Sundset';
-    document.getElementById('user-role-badge').textContent='Administrator';
-  }
-  var navs={
-    youth:[{id:'youth-dashboard',icon:'🏠',label:'My Activity'},{id:'youth-scrabble',icon:'🎲',label:'Games & Crafts Club'},{id:'youth-events',icon:'📋',label:'Programs & Events'}],
-    adult:[{id:'adult-dashboard',icon:'🏠',label:'My Activity'},{id:'adult-programs',icon:'📅',label:'Programs'}],
-    admin:[{id:'admin-dashboard',icon:'⚡',label:'Overview'}]
-  };
-  var navEl=document.getElementById('nav-links');
-  navEl.innerHTML='';
-  navs[role].forEach(function(n){
-    var d=document.createElement('div');
-    d.className='nav-item';
-    d.innerHTML='<span class="nav-icon">'+n.icon+'</span>'+n.label;
-    (function(nid,nd){d.onclick=function(){showPage(nid,nd);};})(n.id,d);
-    navEl.appendChild(d);
-  });
-  showPage(navs[role][0].id,navEl.children[0]);
-  if(role==='youth')renderYouth();
-  else if(role==='adult'){renderAdult();}
-  else renderAdmin();
-}
+// SEC-1.1: enterApp() removed (an unauthenticated entry shortcut; the interface never called it).
 
 function showPage(id,navItem){
   document.querySelectorAll('.page').forEach(function(p){p.classList.remove('active');});
@@ -6802,37 +6727,18 @@ function recoveryGoToLogin() {
 // email is optional — if absent, no profile row is written (login won't work
 // until one is added via the Credentials tab).
 async function upsertProfile(email, name, role, linkedId) {
+  // SEC-1.1: sign-in profiles are no longer written from the Hub (SEC-1.2 locks the table).
+  // If the existing profile already matches, nothing needs writing. Otherwise the admin is
+  // told exactly what the coordinator should add or change in Supabase.
   if (!email || !email.trim()) return false;
-  var cleanEmail = email.trim().toLowerCase();
-  var row = {
-    email:     cleanEmail,
-    name:      (name || '').trim(),
-    role:      role,
-    linked_id: linkedId || '',
-    active:    true
-  };
-  try {
-    var r = await fetch(SUPA_URL + '/rest/v1/profiles?on_conflict=email', {
-      method: 'POST',
-      headers: {
-        'apikey': SUPA_KEY,
-        'Authorization': 'Bearer ' + SUPA_KEY,
-        'Content-Type': 'application/json',
-        'Prefer': 'resolution=merge-duplicates,return=minimal'
-      },
-      body: JSON.stringify(row)
-    });
-    if (!r.ok) {
-      var errText = await r.text();
-      console.error('[upsertProfile] FAILED — HTTP ' + r.status + ' for ' + cleanEmail + ':', errText);
-      return false;
-    }
-    console.log('[upsertProfile] OK — ' + cleanEmail + ' role=' + role + ' linked_id=' + linkedId);
-    return true;
-  } catch(e) {
-    console.error('[upsertProfile] Network error for ' + cleanEmail + ':', e);
-    return false;
-  }
+  var cleanEmail = email.trim().toLowerCase(), wantLinked = linkedId || '';
+  var rows = await dbGet('profiles', 'select=role,linked_id,active&email=eq.' + encodeURIComponent(cleanEmail) + '&limit=1');
+  if (rows && rows.length && rows[0].role === role && (rows[0].linked_id || '') === wantLinked && rows[0].active !== false) return true;
+  alert('The sign-in profile was not changed from the Hub.\n\n' +
+        'During the security upgrade, sign-in profiles are managed in Supabase (Table Editor → profiles). ' +
+        'Please ask the coordinator to ' + (rows && rows.length ? 'update' : 'add') + ' this profile:\n\n' +
+        'email: ' + cleanEmail + '\nrole: ' + role + '\nlinked_id: ' + wantLinked + '\nname: ' + (name || '').trim());
+  return false;
 }
 
 // Load all profiles rows for the Credentials tab. Returns array or [].
@@ -6964,9 +6870,14 @@ async function manualLinkProfile() {
     linkedId = name.toLowerCase().replace(/\s+/g,'_').replace(/[^a-z0-9_]/g,'').substring(0,20);
   }
 
-  await upsertProfile(email, name, role, linkedId);
+  var linkOk = await upsertProfile(email, name, role, linkedId);
+  if (!linkOk) {
+    fb.style.color = 'var(--badge-red)';
+    fb.textContent = '⚠ Not saved from the Hub. Send the profile details shown to the coordinator to add in Supabase.';
+    return;
+  }
   fb.style.color = 'var(--ya-teal)';
-  fb.textContent = '✔ Profile link saved for ' + name + ' (' + email + ')';
+  fb.textContent = '✔ ' + name + ' (' + email + ') is already linked correctly.';
   document.getElementById('manual-link-email').value = '';
   document.getElementById('manual-link-name').value = '';
   renderCredentialManager();
@@ -17242,7 +17153,9 @@ var GCC_AUTH = (function () {
     };
   }
 
-  return { set: set, refresh: refresh, fetch: authFetch, checkEditor: checkEditor, signOut: signOut, status: status };
+  // discard(): forget a session that could not open the Hub (no sign-out lock)
+  return { set: set, refresh: refresh, fetch: authFetch, checkEditor: checkEditor, signOut: signOut, status: status,
+           discard: function () { clear(null); } };
 })();
 
 
@@ -18059,15 +17972,12 @@ async function dbStartup() {
     console.warn('DB startup timed out — continuing with cached/hardcoded data');
   }, 60000);
 
-  // ── PRIORITY: load credentials first so login works ASAP ──
+  // ── Email sign-in is ready immediately (SEC-1.1: legacy passphrase credentials are no longer downloaded) ──
   var statusEl = document.getElementById('db-status');
   try {
-    if(statusEl) statusEl.textContent = 'Loading credentials…';
-    await loadCredentials();
-    // Unlock the button as soon as credentials are ready
     setLoginBtn('Enter Dashboard →', true);
     if(statusEl) statusEl.textContent = 'Loading data…';
-  } catch(e) { console.warn('loadCredentials error:', e); }
+  } catch(e) { console.warn('login button error:', e); }
 
   // Run the rest in parallel — these don't block login
   try { await checkAndInitDB(); } catch(e) { console.warn('checkAndInitDB error (non-fatal):', e); }
@@ -18939,7 +18849,7 @@ async function saveEditYouth(){
     var ok = await upsertProfile(newEmail, cur, 'youth', linkedId);
     setBusy(false);
     if(!ok) {
-      showErr('User data saved locally, but the profile link to "' + newEmail + '" could not be saved in Supabase. Check the console for details. The user will not be able to log in until this is resolved. Try clicking Save again.');
+      showErr('User data saved locally, but the profile link to "' + newEmail + '" could not be saved in Supabase. Check the console for details. The user will not be able to sign in until the coordinator adds it in Supabase (details were shown).');
       return; // keep modal open so admin sees the error
     }
     // Refresh cache so Credentials tab shows the new email without reopening
@@ -19447,6 +19357,14 @@ async function saveEditAdult(){
   if(!newName){ showErr('Name cannot be empty.'); return; }
   if(newEmail && !newEmail.includes('@')){ showErr('Please enter a valid email address.'); return; }
 
+  // SEC-1.1: granting administrator rights is done in Supabase during the security upgrade
+  var _secAdminSec = document.getElementById('eau-admin-section'), _secAdminCb = document.getElementById('eau-is-admin');
+  if (_secAdminSec && _secAdminSec.style.display !== 'none' && _secAdminCb && _secAdminCb.checked && !p.isAdmin) {
+    showErr('Administrator rights can no longer be granted from the Hub during the security upgrade. ' +
+            'Ask the coordinator to set this in Supabase. Nothing was saved.');
+    return;
+  }
+
   // ── Name-change: rename across all in-memory data structures ──
   if(newName !== origName){
     var dup = Object.values(FAC_PROFILES).find(function(x){ return x !== p && x.name.toLowerCase() === newName.toLowerCase(); });
@@ -19577,11 +19495,11 @@ async function saveEditAdult(){
     if (!profileOk) {
       setBusy(false);
       showErr(
-        'adults table updated, but profiles table failed for "' + newEmail + '". ' +
+        'Saved, but the sign-in profile for "' + newEmail + '" was not changed. ' +
         (adminChanged
-          ? 'The admin role change will NOT take effect at login until profiles is also updated. Try clicking Save again.'
-          : 'The user\u2019s login link was not saved. Try clicking Save again.') +
-        ' Check console for details.'
+          ? 'The admin role change will NOT take effect at sign-in until the coordinator updates the profile in Supabase.'
+          : 'The user\u2019s sign-in link was not changed.') +
+        ' Send the profile details shown to the coordinator.'
       );
       return;
     }
@@ -19937,52 +19855,13 @@ async function loadEventStatus(){
 }
 
 function renderCredentialManager() {
+  // SEC-1.1: legacy passphrase sign-in is retired; passphrase records are no longer read by the Hub.
   var el = document.getElementById('credential-manager-list');
   if(!el) return;
-
-  var allCreds = Object.values(storedCredentials);
-  if(allCreds.length === 0) {
-    el.innerHTML = '<div style="color:var(--text-muted);font-size:.82rem">No credentials set up yet.</div>';
-    return;
-  }
-
-  // Sort by role then name
-  allCreds.sort(function(a,b){
-    if(a.role !== b.role) return a.role.localeCompare(b.role);
-    return a.name.localeCompare(b.name);
-  });
-
-  el.innerHTML = allCreds.map(function(c) {
-    var roleColor = c.role === 'admin' ? 'var(--ya-orange)' : c.role === 'adult' ? 'var(--ya-teal)' : 'var(--ya-blue)';
-    var roleLabel = c.role === 'admin' ? '⚡ Admin' : c.role === 'adult' ? '🙌 Adult' : '🌱 Youth';
-    return '<div style="display:flex;align-items:center;justify-content:space-between;padding:7px 10px;border-radius:8px;background:rgba(255,255,255,.03);margin-bottom:5px">' +
-      '<div>' +
-        '<span style="font-size:.83rem;font-weight:700;color:var(--text-main)">' + c.name + '</span>' +
-        '<span style="font-size:.72rem;color:' + roleColor + ';margin-left:8px;font-weight:600">' + roleLabel + '</span>' +
-        '<span style="font-size:.72rem;color:var(--text-muted);margin-left:8px">ID: ' + c.id + '</span>' +
-      '</div>' +
-      '<button onclick="resetCredential(\'' + c.id.replace(/'/g,"\\'") + '\',\'' + c.name.replace(/'/g,"\\'") + '\')" ' +
-        'style="padding:4px 12px;border-radius:7px;border:1px solid var(--badge-red);background:rgba(239,68,68,.1);color:var(--badge-red);font-size:.72rem;font-weight:700;cursor:pointer;font-family:DM Sans,sans-serif">Reset</button>' +
-    '</div>';
-  }).join('');
-}
-
-async function resetCredential(id, name) {
-  if(!confirm('Reset password for ' + name + '?\n\nThey will need to set up a new login on their next visit.')) return;
-  // Delete from Supabase
-  await dbDel('credentials', 'id=eq.' + encodeURIComponent(id));
-  // Remove from local state
-  delete storedCredentials[id];
-  // Re-render
-  renderCredentialManager();
-  var el = document.getElementById('credential-manager-list');
-  if(el) {
-    var fb = document.createElement('div');
-    fb.style.cssText = 'font-size:.78rem;color:var(--ya-teal);margin-top:8px;font-weight:700';
-    fb.textContent = '✔ Password reset for ' + name + '. They can set up a new password on next visit.';
-    el.appendChild(fb);
-    setTimeout(function(){ fb.parentNode && fb.parentNode.removeChild(fb); }, 4000);
-  }
+  el.innerHTML = '<div style="font-size:.82rem;line-height:1.6">🔒 <strong>Passphrase sign-in has been retired.</strong> '
+    + 'Everyone signs in with their email account. To give someone access, invite them in Supabase '
+    + '(Authentication → Users → Invite). During the security upgrade, sign-in profiles and administrator '
+    + 'rights are set by the coordinator in Supabase.</div>';
 }
 
 // ── ADMIN VIEW: full verification queue ──
@@ -20198,18 +20077,7 @@ async function updatePendingEntry(entry){
 // EMAIL + PASSWORD LOGIN SYSTEM
 // ══════════════════════════════════════
 
-var storedCredentials = {}; // loaded from Supabase credentials table
-
-// ── Load credentials from Supabase on startup (used for admin bypass) ──
-async function loadCredentials() {
-  var rows = await dbGet('credentials', 'select=*');
-  if (rows) {
-    rows.forEach(function(r) {
-      storedCredentials[r.id] = r;
-    });
-    console.log('Credentials loaded:', Object.keys(storedCredentials).length);
-  }
-}
+var storedCredentials = {}; // SEC-1.1: legacy passphrase records are no longer loaded (always empty)
 
 // ── Show/hide password ──
 function togglePwdVisibility() {
@@ -20320,50 +20188,29 @@ async function attemptEmailLogin() {
       return;
     }
 
-    // 3. Log in using the linked_id (the existing youth/adults table key)
+    // 3. Keep the genuine Supabase session first (SEC-1.1: the Hub opens only with one),
+    //    then log in using the linked_id (the existing youth/adults table key)
+    var kept = false;
+    try { kept = GCC_AUTH.set(authData); } catch (e) { kept = false; }
+    if (!kept) { showError('Sign-in could not be completed. Please reload the page and try again.'); return; }
     doLogin(profile.linked_id, profile.role);
-    // B1.1: keep the genuine Supabase session in memory (Games & Crafts results only)
-    try { if (currentRole) GCC_AUTH.set(authData); } catch (e) { console.warn('[GCC auth] session not kept'); }
+    if (!currentRole) { try { GCC_AUTH.discard(); } catch (e) {} }
   } catch(e) {
     showError('Network error. Please check your connection and try again.');
     console.error('Login error:', e);
   }
 }
 
-// ── Admin bypass (legacy passphrase, revealed with Ctrl+Shift+A) ──
-document.addEventListener('keydown', function(e) {
-  if (e.ctrlKey && e.shiftKey && e.key === 'A') {
-    var panel = document.getElementById('panel-admin-legacy');
-    if (panel) panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
-  }
-});
-
-function attemptAdminLogin() {
-  var input = (document.getElementById('admin-credential-input').value || '').trim().toUpperCase();
-  var errEl = document.getElementById('admin-login-error');
-  errEl.textContent = '';
-  if (!input) { errEl.textContent = 'Please enter the admin passphrase.'; return; }
-
-  var match = null;
-  Object.keys(KNOWN_CREDENTIALS).forEach(function(id) {
-    var c = KNOWN_CREDENTIALS[id];
-    if (c.credential.toUpperCase() === input && c.role === 'admin') match = c;
-  });
-  if (!match) {
-    Object.keys(storedCredentials).forEach(function(id) {
-      var c = storedCredentials[id];
-      if (c.credential && c.credential.toUpperCase() === input && c.role === 'admin') match = c;
-    });
-  }
-  if (match) {
-    doLogin(match.id, 'admin');
-  } else {
-    errEl.textContent = 'Admin passphrase not recognised.';
-  }
-}
+// SEC-1.1: the legacy passphrase panel, its keyboard shortcut and its sign-in handler were removed.
 
 // ── CORE LOGIN HANDLER (unchanged) ──
 function doLogin(id, role) {
+  // SEC-1.1: the Hub opens only after a genuine email sign-in (GCC_AUTH session).
+  // This removes the console shortcut; the database remains the real security boundary.
+  if (typeof GCC_AUTH === 'undefined' || !GCC_AUTH.status().signedIn) {
+    console.warn('Sign in with your email to open the Hub.');
+    return;
+  }
   if(role === 'youth') {
     // Resolve the id from the profile link back to a name. Prefer the
     // AUTHORITATIVE reverse map (YOUTH_NAME_BY_ID, built directly from the

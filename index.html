@@ -16757,8 +16757,8 @@ async function gccLoadGrid(q) {
 // The database enforces the same rules (G2). Points are always calculated.
 var _gccGridEdit = null;   // { qid, kind: 'youth'|'adult', vals: {key: text}, orig: {key: text}, saving, err, msg }
 function _gccGridEditable(q) { return gccIsEditorNow() && (q.status === 'open' || q.status === 'closed'); }
-function _gccYouthText(x) { return !x ? '' : (!x.attended ? 'A' : (x.games_won == null ? '✓' : String(x.games_won))); }
-function _gccYouthValid(v) { v = String(v).trim(); return v === '' || /^[aA✓pP]$/.test(v) || (/^\d{1,3}$/.test(v) && Number(v) <= GCC_WON_MAX); }
+function _gccYouthText(x) { return !x ? '' : (!x.attended ? 'A' : String(1 + (parseInt(x.games_won, 10) || 0))); }   // G4b: total points
+function _gccYouthValid(v) { v = String(v).trim(); return v === '' || /^[aA]$/.test(v) || (/^\d{1,4}$/.test(v) && Number(v) <= GCC_WON_MAX + 1); }   // G4b
 function _gccHoursValid(v) { v = String(v).trim(); return v === '' || (/^\d{1,2}(\.\d{1,2})?$/.test(v) && Number(v) > 0 && Number(v) <= 12); }
 function gccGridDirty() {
   var E = _gccGridEdit; if (!E) return false;
@@ -16796,9 +16796,9 @@ async function gccGridSave() {
     var p = k.split('|'), iso = p[0], id = p[1], v = String(E.vals[k]).trim();
     if (v === '') { dels.push({ iso: iso, id: id }); return; }
     if (E.kind === 'youth') {
-      var absent = /^[aA]$/.test(v), att = /^[✓pP]$/.test(v);
+      var n = /^[aA]$/.test(v) ? 0 : parseInt(v, 10);   // G4b: the number typed is the total points
       ups.push({ season_id: q.season || GCC_SEASON_ID, session_date: iso, youth_id: id,
-                 attended: !absent, games_won: (absent || att) ? null : parseInt(v, 10) });
+                 attended: n > 0, games_won: n > 0 ? n - 1 : null });
     } else {
       ups.push({ adult_id: id, session_date: iso, hours: Number(v) });
     }
@@ -16911,7 +16911,7 @@ function gccGridsHtml(q, rows) {
         (E.saving ? 'Saving…' : '💾 Save Changes') + '</button>' +
         '<button type="button" class="ws-btn" onclick="gccGridCancel()">Cancel</button>' +
         '<span style="font-size:.75rem;color:var(--text-muted)">' + (kind === 'youth'
-          ? 'Type games won (0 = attended, no wins), A = absent, ✓ = attended (wins not entered), blank = no record.'
+          ? 'Type the TOTAL points for each youth (1 = attended, 2 = attended + 1 win, …). 0 or A = absent. Blank = no record. The number you type is the number shown.'
           : 'Type hours (e.g. 1.5, up to 12). Blank = no record.') + ' Sessions after today stay locked.</span>' +
         (E.err ? '<div style="width:100%;font-size:.8rem;color:var(--badge-red)">⚠ ' + E.err + '</div>' : '') + '</div>';
     }
@@ -17000,7 +17000,7 @@ function gccGridsHtml(q, rows) {
   var flash = F ? '<div style="margin-top:10px;font-size:.8rem;color:' + (F.err ? 'var(--badge-red)' : 'var(--ya-teal)') + '">' + (F.err ? '⚠ ' : '✔ ') + F.msg + '</div>' : '';
   return '<div id="gcc-grids">' + flash +
     box('<div class="section-title" style="margin-bottom:4px">📅 ' + _gccEsc(q.label) + ' — Youth Attendance &amp; Points</div>' +
-        note('Points = 1 for attending + 1 per game won. A = absent.') + toolbar('youth') + yHtml + rosterBar('youth', PY)) +
+        note('Total points per session (1 for attending + 1 per game won). A = absent.') + toolbar('youth') + yHtml + rosterBar('youth', PY)) +
     box('<div class="section-title" style="margin-bottom:4px">🙌 ' + _gccEsc(q.label) + ' — Adult Volunteer Hours</div>' +
         note('Actual hours worked; sign-ups are not counted.') + toolbar('adult') + aHtml + rosterBar('adult', PA)) +
     '</div>';

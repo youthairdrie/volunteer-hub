@@ -16461,8 +16461,10 @@ function renderGccQuarterView() {
   };
   bar.innerHTML =
     '<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:14px">' +
-      qs.map(function(q){ return chip(q.id, '🎲 ' + _gccEsc(q.label) + ' · ' + _gccEsc(_gccShort(q.start)) + '–' + _gccEsc(_gccShort(q.end))); }).join('') +
-      chip('archive', '📜 2026 Scrabble archive') +
+      qs.map(function(q){ return chip(q.id, '🎲 ' + _gccEsc(q.label) + ' · ' + _gccEsc(_gccShort(q.start)) + '–' + _gccEsc(_gccShort(q.end)) +
+        (q.status ? ' · ' + (GCC_STATUS_LABEL[q.status] || _gccEsc(q.status)) : '')); }).join('') +   // G3: status from gcc_quarters
+      chip('archive', '📜 2026 Scrabble archive' + (GCC_QLIST.legacy.length ? ' · Q1–Q2 ' +
+        (GCC_QLIST.legacy.every(function(x){ return x.status === 'closed'; }) ? 'closed' : 'read-only') : '')) +
     '</div>';
 
   if (_gccView === 'archive') { view.innerHTML = ''; arch.style.display = ''; return; }
@@ -16552,6 +16554,7 @@ function renderGccQuarterView() {
     }
   });
   html += '</div>';
+  try { html += gccGridsHtml(q, rows); } catch (e) { console.warn('[GCC] grids skipped', e); }   // G3
   view.innerHTML = html;
   try { gccRenderAuthStatus(); } catch (e) { console.warn('[GCC auth] status line skipped'); }
 }
@@ -16584,6 +16587,7 @@ function gccRenderAuthStatus() {
         if (_gccAuthCheck.email !== who) return;            // a different sign-in since
         _gccAuthCheck.state = (v === true) ? 'editor' : (v === false ? 'not_editor' : 'failed');
         gccRenderAuthStatus();
+        try { gccLoadQuarterList(); } catch (e) {}   // G3
         if (v === true) gccLoadCounts();
       });
     }
@@ -16686,6 +16690,143 @@ async function gccLoadCounts() {
     GCC_SEASON_RESULTS.error = e.code || e.message;
   }
   renderGccQuarterView();
+}
+
+// ── G3: quarter list from the database + read-only quarterly grids ─────────────
+// Quarters come from public.gcc_quarters (any signed-in user). The grids read
+// gcc_session_results, gcc_roster and gcc_volunteer_hours, which only approved
+// results editors can read. Display only: nothing here writes. Q1/Q2 2026 stay
+// in the 2026 Scrabble archive view, exactly as recorded.
+var GCC_QLIST = { state: 'idle', legacy: [] };       // idle | loading | loaded | failed
+var GCC_GRID = { cache: {} };                         // quarter id -> {state, res, roster, hours, err}
+var GCC_STATUS_LABEL = { planned: 'Planned', open: 'Open', closed: 'Closed', archived: 'Archived' };
+function _gccFmtIso(iso) {
+  var m = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'], p = String(iso).split('-');
+  return m[parseInt(p[1], 10) - 1] + ' ' + parseInt(p[2], 10) + ', ' + p[0];
+}
+async function gccLoadQuarterList() {
+  if (GCC_QLIST.state === 'loading' || GCC_QLIST.state === 'loaded') return;
+  GCC_QLIST.state = 'loading';
+  try {
+    var r = await GCC_AUTH.fetch('/rest/v1/gcc_quarters?select=id,label,season_id,start_date,end_date,source,status&order=start_date.asc', { method: 'GET' });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    var rows = await r.json();
+    var results = rows.filter(function (x) { return x.source === 'results'; });
+    if (!results.length) throw new Error('no quarters');
+    GCC_QUARTERS = results.map(function (x) {
+      return { id: x.id, label: x.label, start: _gccFmtIso(x.start_date), end: _gccFmtIso(x.end_date), active: true,
+               status: x.status, season: x.season_id, startIso: x.start_date, endIso: x.end_date };
+    });
+    GCC_QLIST = { state: 'loaded', legacy: rows.filter(function (x) { return x.source === 'legacy'; }) };
+  } catch (e) {
+    GCC_QLIST.state = 'failed';                       // keep the built-in list (fallback)
+    console.warn('[GCC] quarter list not loaded; using built-in list');
+  }
+  renderGccQuarterView();
+}
+async function gccLoadGrid(q) {
+  var C = GCC_GRID.cache[q.id] = { state: 'loading' };
+  var s = q.startIso || _gccIso(q.start), e = q.endIso || _gccIso(q.end), season = q.season || GCC_SEASON_ID;
+  try {
+    var get = async function (path) {
+      var r = await GCC_AUTH.fetch(path, { method: 'GET' });
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
+    };
+    var out = await Promise.all([
+      get('/rest/v1/gcc_session_results?select=session_date,youth_id,attended,games_won&season_id=eq.' + encodeURIComponent(season) +
+          '&session_date=gte.' + s + '&session_date=lte.' + e),
+      get('/rest/v1/gcc_roster?select=youth_id,adult_id,archived&quarter_id=eq.' + encodeURIComponent(q.id)),
+      get('/rest/v1/gcc_volunteer_hours?select=adult_id,session_date,hours&session_date=gte.' + s + '&session_date=lte.' + e)
+    ]);
+    if (GCC_GRID.cache[q.id] !== C) return;            // replaced meanwhile
+    C.res = out[0]; C.roster = out[1]; C.hours = out[2]; C.state = 'loaded';
+  } catch (err) {
+    if (GCC_GRID.cache[q.id] !== C) return;
+    C.state = 'failed'; C.err = err.message || 'error';
+  }
+  renderGccQuarterView();
+}
+function gccGridsHtml(q, rows) {
+  var box = function (inner) { return '<div class="section-box" style="margin-top:14px">' + inner + '</div>'; };
+  var note = function (t) { return '<div style="font-size:.8rem;color:var(--text-muted)">' + t + '</div>'; };
+  var head = '<div class="section-title" style="margin-bottom:4px">📅 ' + _gccEsc(q.label) + ' — Attendance &amp; Points · Volunteer Hours</div>';
+  if (typeof GCC_AUTH === 'undefined' || !GCC_AUTH.status().signedIn) return box(head + note('Sign in to see the quarter grids.'));
+  if (_gccAuthCheck.state === 'idle' || _gccAuthCheck.state === 'checking') return box(head + note('Checking permission…'));
+  if (!gccIsEditorNow()) return box(head + note('The quarter grids are visible to approved results editors only.'));
+  var C = GCC_GRID.cache[q.id];
+  if (!C) { gccLoadGrid(q); return box(head + note('Loading grids…')); }
+  if (C.state === 'loading') return box(head + note('Loading grids…'));
+  if (C.state === 'failed') return box(head + note('The grids could not be loaded (' + _gccEsc(C.err) + '). Reload the page to try again.'));
+
+  var dates = rows.filter(function (r) { return r.st !== 'cancelled'; }).map(function (r) { return { d: r.d, iso: _gccIso(r.d) }; });
+  var cell = function (txt, color, weight, title) {
+    return '<td style="text-align:center;color:' + color + ';font-weight:' + weight + '"' + (title ? ' title="' + _gccEsc(title) + '"' : '') + '>' + txt + '</td>';
+  };
+  var colHead = function (name) { return '<th style="font-size:.65rem" title="' + _gccEsc(name) + '">' + _gccEsc(String(name).split(' ')[0]) + '</th>'; };
+  var byName = function (a, b) { return a.name.localeCompare(b.name); };
+
+  // Youth: points = 1 for attending + 1 per game won (calculated, never stored)
+  var res = {}, yIds = {};
+  C.res.forEach(function (x) { (res[x.session_date] = res[x.session_date] || {})[x.youth_id] = x; yIds[x.youth_id] = true; });
+  C.roster.forEach(function (x) { if (x.youth_id && !x.archived) yIds[x.youth_id] = true; });
+  var youth = Object.keys(yIds).map(function (id) { return { id: id, name: YOUTH_NAME_BY_ID[id] || id }; }).sort(byName);
+  var pts = function (x) { return x && x.attended ? 1 + (parseInt(x.games_won, 10) || 0) : 0; };
+  var yTot = {}, yGrand = 0;
+  var yRows = dates.map(function (dt) {
+    var day = 0;
+    var cols = youth.map(function (y) {
+      var x = (res[dt.iso] || {})[y.id];
+      if (!x) return cell('—', 'var(--text-muted)', 400);
+      if (!x.attended) return cell('A', 'var(--text-muted)', 400, 'Absent');
+      var p = pts(x); day += p; yTot[y.id] = (yTot[y.id] || 0) + p;
+      return cell(p, 'var(--ya-teal)', 700, 'Attended · ' + (x.games_won == null ? 'games won not entered' : x.games_won + ' games won'));
+    }).join('');
+    yGrand += day;
+    return '<tr><td style="font-weight:600;white-space:nowrap">' + _gccEsc(_gccShort(dt.d)) + '</td>' + cols +
+           '<td style="font-weight:700;color:var(--ya-gold)">' + day + '</td></tr>';
+  }).join('');
+  var yHtml = youth.length
+    ? '<div style="overflow-x:auto"><table class="data-table"><thead><tr><th>Date</th>' + youth.map(function (y) { return colHead(y.name); }).join('') +
+      '<th>Total</th></tr></thead><tbody>' + yRows +
+      '<tr style="border-top:2px solid var(--card-border)"><td style="font-weight:800">' + _gccEsc(q.label) + ' Total</td>' +
+      youth.map(function (y) { return '<td style="text-align:center;font-weight:800;color:var(--ya-orange)">' + (yTot[y.id] || 0) + '</td>'; }).join('') +
+      '<td style="font-weight:800;color:var(--ya-orange)">' + yGrand + '</td></tr></tbody></table></div>'
+    : note('No youth enrolled or recorded in this quarter yet.');
+
+  // Adults: hours as entered (decimals kept)
+  var hrs = {}, aIds = {};
+  C.hours.forEach(function (x) { (hrs[x.session_date] = hrs[x.session_date] || {})[x.adult_id] = parseFloat(x.hours); aIds[x.adult_id] = true; });
+  C.roster.forEach(function (x) { if (x.adult_id && !x.archived) aIds[x.adult_id] = true; });
+  var adults = Object.keys(aIds).map(function (id) { return { id: id, name: (FAC_PROFILES[id] && FAC_PROFILES[id].name) || id }; }).sort(byName);
+  var aTot = {}, aGrand = 0;
+  var aRows = dates.map(function (dt) {
+    var day = 0;
+    var cols = adults.map(function (a) {
+      var h = (hrs[dt.iso] || {})[a.id];
+      if (!h) return cell('—', 'var(--text-muted)', 400);
+      day += h; aTot[a.id] = (aTot[a.id] || 0) + h;
+      return cell(h, 'var(--ya-orange)', 700);
+    }).join('');
+    aGrand += day;
+    return '<tr><td style="font-weight:600;white-space:nowrap">' + _gccEsc(_gccShort(dt.d)) + '</td>' + cols +
+           '<td style="font-weight:700;color:var(--ya-orange)">' + (day ? day.toFixed(1) : '—') + '</td></tr>';
+  }).join('');
+  var aHtml = adults.length
+    ? '<div style="overflow-x:auto"><table class="data-table"><thead><tr><th>Date</th>' + adults.map(function (a) { return colHead(a.name); }).join('') +
+      '<th>Total</th></tr></thead><tbody>' + aRows +
+      '<tr style="border-top:2px solid var(--card-border)"><td style="font-weight:800">' + _gccEsc(q.label) + ' Total</td>' +
+      adults.map(function (a) { return '<td style="text-align:center;font-weight:800;color:var(--ya-orange)">' + (aTot[a.id] ? aTot[a.id].toFixed(1) : '—') + '</td>'; }).join('') +
+      '<td style="font-weight:800;color:var(--ya-orange)">' + aGrand.toFixed(1) + '</td></tr></tbody></table></div>'
+    : note('No adult volunteer hours recorded in this quarter yet.');
+
+  return '<div id="gcc-grids">' +
+    box('<div class="section-title" style="margin-bottom:4px">📅 ' + _gccEsc(q.label) + ' — Youth Attendance &amp; Points</div>' +
+        note('Read-only. Points = 1 for attending + 1 per game won. A = absent. Enter results in the session list above.') +
+        '<div style="height:8px"></div>' + yHtml) +
+    box('<div class="section-title" style="margin-bottom:4px">🙌 ' + _gccEsc(q.label) + ' — Adult Volunteer Hours</div>' +
+        note('Read-only. Hours entry arrives in a later update.') + '<div style="height:8px"></div>' + aHtml) +
+    '</div>';
 }
 
 async function gccOpenEntry(d) {
@@ -16897,6 +17038,7 @@ async function gccSaveEntry() {
     else E.msg = 'Saved ' + stored + ' record' + (stored > 1 ? 's' : '') + ' at ' + new Date().toLocaleTimeString() + '.';
     E.lastSaved = _gccLatest(saved) || E.lastSaved;
     GCC_SEASON_RESULTS.counts[E.iso] = E.rows.filter(function (r) { return r.saved; }).length;
+    GCC_GRID.cache = {};   // G3: grids re-read after a save
   } catch (e) {
     E.err = e.permission ? 'This account is not permitted to save results (the database refused). Nothing was saved.' : _gccErrText(e);
   }
@@ -16965,7 +17107,7 @@ var GCC_AUTH = (function () {
   var timer = null;
   var isEditor = null;      // last answer from gcc_is_editor() — display only; the database decides
   var lastError = null;
-  var ALLOWED = /^\/rest\/v1\/(gcc_session_results|rpc\/gcc_is_editor)(\?|$)/;
+  var ALLOWED = /^\/rest\/v1\/(gcc_session_results|gcc_quarters|gcc_roster|gcc_volunteer_hours|rpc\/gcc_is_editor)(\?|$)/;   // G3: + quarter list, roster, hours
 
   function store(d, keepUser) {
     sess = {

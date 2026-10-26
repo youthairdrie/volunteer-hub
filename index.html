@@ -4287,6 +4287,8 @@ function calcYouthParticipants() {
   Object.keys(SCRABBLE_SESSIONS || {}).forEach(function(n){
     if (Object.keys(SCRABBLE_SESSIONS[n] || {}).length > 0) ySet.add(n.toLowerCase().trim());
   });
+  // G4c: Games & Crafts Fall 2026+ — youth with recorded attendance
+  Object.keys(GCC_RECORDED.youth).forEach(function(n){ ySet.add(n.toLowerCase().trim()); });
   // PROGRAMS_DATA (Garden, etc.)
   Object.keys(PROGRAMS_DATA || {}).forEach(function(pid){
     var prog = PROGRAMS_DATA[pid]; if (!prog) return;
@@ -4372,6 +4374,11 @@ function calcAdultVolunteerHours() {
   mergeScr(Q1_ADULT_SCRABBLE); mergeScr(ADULT_SCRABBLE);
   Object.keys(allScr).forEach(function(n){
     var t = Object.values(allScr[n]).reduce(function(a,v){ return a + (parseFloat(v)||0); }, 0);
+    if (t > 0) add(n, t);
+  });
+  // G4c: Games & Crafts Fall 2026+ — recorded hours (gcc_volunteer_hours)
+  Object.keys(GCC_RECORDED.adults).forEach(function(n){
+    var t = Object.values(GCC_RECORDED.adults[n]).reduce(function(a,v){ return a + v; }, 0);
     if (t > 0) add(n, t);
   });
 
@@ -4556,6 +4563,16 @@ function calcProgramStats() {
       prog: prog
     };
   });
+  // G4c: Games & Crafts 2026/27 — recorded participation only (not the 2026 Scrabble data,
+  // not sign-ups, not scheduled dates). Sessions delivered = dates with recorded attendance or hours.
+  if (result['scrabble_2026_27']) {
+    var _g = result['scrabble_2026_27'];
+    _g.youthCount = Object.keys(GCC_RECORDED.youth).length;
+    _g.adultCount = Object.keys(GCC_RECORDED.adults).length;
+    _g.adultHrs   = GCC_RECORDED.hours;
+    _g.completed  = Object.keys(GCC_RECORDED.dates).length;
+    _g.recordedOnly = true; _g.recordedLoaded = GCC_RECORDED.loaded;
+  }
   return result;
 }
 
@@ -4612,6 +4629,9 @@ function getActiveAdultVolunteers() {
     if (sessions && Object.keys(sessions).length > 0)
       adultSet.add(name.toLowerCase().trim());
   });
+
+  // G4c: Games & Crafts Fall 2026+ — adults with recorded hours
+  Object.keys(GCC_RECORDED.adults).forEach(function(n){ adultSet.add(n.toLowerCase().trim()); });
 
   // Garden Program adult volunteering (from program_attendance)
   var gardenP = PROGRAMS_DATA && PROGRAMS_DATA['garden_2026'];
@@ -16519,41 +16539,11 @@ function renderGccQuarterView() {
       '<span class="pill pill-red">' + nCanc + ' cancelled</span>' +
     '</div>' +
     '<div style="margin-top:12px;padding:10px 12px;border-radius:10px;background:rgba(29,127,212,.08);border:1px solid rgba(29,127,212,.25);font-size:.8rem;line-height:1.5">' +
-      'ⓘ Attendance and games won are recorded by approved results editors, for today’s and past sessions.<br>' +
-      (q.id === 'gcc_2026_q4' ? 'No Fall 2026 registrations are recorded in the app yet.' : 'No registrations are recorded in the app for this quarter yet.') +
+      'ⓘ Youth points and adult volunteer hours are recorded in the grids below by approved results editors.' +
     '</div>' + loadNote + '<div id="gcc-auth-status"></div>' +
   '</div>';
 
-  html += '<div class="section-box"><div class="section-title" style="margin-bottom:10px">📅 Sessions</div>';
-  rows.forEach(function(r) {
-    var d = r.d, open = (_gccSelDate === d), su = signups[d] || [], mt = meta[d];
-    var wd = 'Wed ' + _gccEsc(_gccShort(d));
-    var suLine = su.length ? 'Signed up: ' + su.map(_gccEsc).join(', ') : 'No sign-ups recorded';
-    var dEsc = _gccEsc(d).replace(/&#39;/g, '');
-    html += '<div role="button" tabindex="0" aria-expanded="' + open + '" ' +
-        'onclick="gccSelectSession(\'' + dEsc + '\')" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();gccSelectSession(\'' + dEsc + '\')}" ' +
-        'style="display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;padding:10px 12px;margin-bottom:6px;border-radius:10px;cursor:pointer;' +
-        'border:1px solid ' + (open ? 'var(--ya-gold)' : 'var(--card-border)') + ';background:' + (r.st === 'cancelled' ? 'rgba(239,68,68,.05)' : 'rgba(255,255,255,.02)') + '">' +
-        '<span style="font-weight:700;min-width:92px">' + wd + '</span>' + PILL[r.st] + gccResultPill(d, r.st) +
-        '<span style="font-size:.78rem;color:var(--text-muted);flex:1;min-width:150px">' + suLine + '</span>' +
-        '<span style="font-size:.75rem;color:var(--text-muted)">' + (open ? '▲' : '▼') + '</span>' +
-      '</div>';
-    if (open) {
-      var det = [];
-      det.push('<div><strong>' + _gccEsc(d) + '</strong> · 4:30–6:30 PM · Youth Airdrie</div>');
-      det.push('<div>Status: ' + STATUS_TEXT[r.st] + '</div>');
-      if (r.st === 'cancelled' && canc[d]) det.push('<div>Cancellation reason: ' + _gccEsc(canc[d]) + '</div>');
-      det.push('<div>' + (su.length ? 'Adults signed up: ' + su.map(_gccEsc).join(', ') : 'Adults signed up: none recorded') + '</div>');
-      if (mt && mt.theme)       det.push('<div>Activity: ' + _gccEsc(mt.theme) + '</div>');
-      if (mt && mt.description) det.push('<div>Description: ' + _gccEsc(mt.description) + '</div>');
-      if (mt && mt.notes)       det.push('<div>Notes: ' + _gccEsc(mt.notes) + '</div>');
-      var resLine = gccDetailResultsHtml(d, r.st);
-      if (resLine) det.push(resLine);
-      html += '<div style="margin:-2px 0 10px;padding:10px 14px;border-left:3px solid var(--ya-gold);font-size:.8rem;line-height:1.6">' + det.join('') + '</div>';
-      if (_gccEntry && _gccEntry.date === d) html += '<div id="gcc-entry-panel" style="margin:-4px 0 12px">' + gccEntryPanelHtml() + '</div>';
-    }
-  });
-  html += '</div>';
+  // G4c: the Sessions list was removed; the grids below are the recording interface.
   try { html += gccGridsHtml(q, rows); } catch (e) { console.warn('[GCC] grids skipped', e); }   // G3
   view.innerHTML = html;
   try { gccRenderAuthStatus(); } catch (e) { console.warn('[GCC auth] status line skipped'); }
@@ -16589,6 +16579,7 @@ function gccRenderAuthStatus() {
         gccRenderAuthStatus();
         try { gccLoadQuarterList(); } catch (e) {}   // G3
         if (v === true) gccLoadCounts();
+        if (v === true) gccLoadRecorded();   // G4c
       });
     }
     var em = _gccEsc(st.email || 'your account');
@@ -16829,6 +16820,7 @@ async function gccGridSave() {
     _gccGridEdit = null;
     GCC_GRID.cache = {};
     if (E.kind === 'youth') gccLoadCounts();
+    gccLoadRecorded();   // G4c: reports follow the saved records
     GCC_GRID.flash = { qid: q.id, msg: 'Saved ' + done + ' change' + (done > 1 ? 's' : '') + ' at ' + new Date().toLocaleTimeString() + '.' };
   } catch (e) {
     E.err = (e && (e.code === 'session_expired' || e.code === 'not_signed_in')) ? _gccErrText(e) :
@@ -17006,6 +16998,36 @@ function gccGridsHtml(q, rows) {
     '</div>';
 }
 
+
+
+// ── G4c: recorded Games & Crafts participation (Fall 2026 onward) for reporting ──
+// Source of truth: gcc_session_results (attended = true) and gcc_volunteer_hours.
+// Sign-ups, enrolment and planned sessions are never used. Name-keyed for the
+// existing report functions. Loaded for approved results editors only (D8 pending).
+var GCC_RECORDED = { loaded: false, youth: {}, adults: {}, dates: {}, youthVisits: 0, youthPoints: 0, hours: 0 };
+async function gccLoadRecorded() {
+  if (!gccIsEditorNow()) return;
+  try {
+    var get = async function (p) { var r = await GCC_AUTH.fetch(p, { method: 'GET' }); if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); };
+    var out = await Promise.all([
+      get('/rest/v1/gcc_session_results?select=session_date,youth_id,games_won&attended=is.true'),
+      get('/rest/v1/gcc_volunteer_hours?select=session_date,adult_id,hours')]);
+    var R = { loaded: true, youth: {}, adults: {}, dates: {}, youthVisits: 0, youthPoints: 0, hours: 0 };
+    out[0].forEach(function (x) {
+      var n = YOUTH_NAME_BY_ID[x.youth_id] || x.youth_id, p = 1 + (parseInt(x.games_won, 10) || 0);
+      (R.youth[n] = R.youth[n] || {})[x.session_date] = p;
+      R.dates[x.session_date] = true; R.youthVisits++; R.youthPoints += p;
+    });
+    out[1].forEach(function (x) {
+      var n = (FAC_PROFILES[x.adult_id] && FAC_PROFILES[x.adult_id].name) || x.adult_id, h = parseFloat(x.hours) || 0;
+      (R.adults[n] = R.adults[n] || {})[x.session_date] = h;
+      R.dates[x.session_date] = true; R.hours += h;
+    });
+    GCC_RECORDED = R;
+    var imp = document.getElementById('tab-impact');
+    if (imp && imp.style.display !== 'none' && typeof renderImpactTab === 'function') renderImpactTab();
+  } catch (e) { console.warn('[GCC] recorded participation not loaded'); }
+}
 
 async function gccOpenEntry(d) {
   if (!gccIsEditorNow() || !_gccCanEnter(d)) return;

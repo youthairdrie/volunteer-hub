@@ -16651,10 +16651,14 @@ function _gccWonValid(v) { return v === '' || (/^\d{1,3}$/.test(v) && Number(v) 
 function _gccRowDirty(r) { return !r.saved || r.attended !== r.saved.attended || r.won !== r.saved.won; }
 function gccEntryDirty() { return !!(_gccEntry && _gccEntry.rows.some(_gccRowDirty)); }
 function gccConfirmLeave() {
+  if (typeof gccGridDirty === 'function' && gccGridDirty()) {   // G4
+    if (!confirm('You have unsaved grid changes. Leave without saving?')) return false;
+    _gccGridEdit = null;
+  }
   if (!gccEntryDirty()) return true;
   return confirm('You have unsaved attendance changes for ' + _gccEntry.date + '. Leave without saving?');
 }
-window.addEventListener('beforeunload', function (e) { if (gccEntryDirty()) { e.preventDefault(); e.returnValue = ''; } });
+window.addEventListener('beforeunload', function (e) { if (gccEntryDirty() || (typeof gccGridDirty === 'function' && gccGridDirty())) { e.preventDefault(); e.returnValue = ''; } });
 
 // Calendar pill for editors: Recorded · N youth / Not recorded
 function gccResultPill(d, st) {
@@ -16747,6 +16751,115 @@ async function gccLoadGrid(q) {
   }
   renderGccQuarterView();
 }
+// ── G3/G4: quarterly grids (read + edit) ───────────────────────────────────────
+// Reads gcc_session_results, gcc_roster, gcc_volunteer_hours (editors only).
+// G4 editing: open or closed quarters only, sessions up to today, not cancelled.
+// The database enforces the same rules (G2). Points are always calculated.
+var _gccGridEdit = null;   // { qid, kind: 'youth'|'adult', vals: {key: text}, orig: {key: text}, saving, err, msg }
+function _gccGridEditable(q) { return gccIsEditorNow() && (q.status === 'open' || q.status === 'closed'); }
+function _gccYouthText(x) { return !x ? '' : (!x.attended ? 'A' : (x.games_won == null ? '✓' : String(x.games_won))); }
+function _gccYouthValid(v) { v = String(v).trim(); return v === '' || /^[aA✓pP]$/.test(v) || (/^\d{1,3}$/.test(v) && Number(v) <= GCC_WON_MAX); }
+function _gccHoursValid(v) { v = String(v).trim(); return v === '' || (/^\d{1,2}(\.\d{1,2})?$/.test(v) && Number(v) > 0 && Number(v) <= 12); }
+function gccGridDirty() {
+  var E = _gccGridEdit; if (!E) return false;
+  return Object.keys(E.vals).some(function (k) { return String(E.vals[k]).trim() !== E.orig[k]; });
+}
+function gccGridStart(qid, kind) {
+  if (!gccConfirmLeave()) return;
+  _gccGridEdit = { qid: qid, kind: kind, vals: {}, orig: {}, saving: false, err: '', msg: '' };
+  renderGccQuarterView();
+}
+function gccGridCancel() {
+  if (gccGridDirty() && !confirm('Discard your unsaved grid changes?')) return;
+  _gccGridEdit = null; renderGccQuarterView();
+}
+function gccGridInput(el) {
+  var E = _gccGridEdit; if (!E) return;
+  var k = el.getAttribute('data-k'); E.vals[k] = el.value;
+  var ok = E.kind === 'youth' ? _gccYouthValid(el.value) : _gccHoursValid(el.value);
+  el.style.borderColor = ok ? 'var(--card-border)' : 'var(--badge-red)';
+  _gccGridRefreshSave();
+}
+function _gccGridRefreshSave() {
+  var E = _gccGridEdit, b = document.getElementById('gcc-grid-save'); if (!E || !b) return;
+  var valid = Object.keys(E.vals).every(function (k) { return E.kind === 'youth' ? _gccYouthValid(E.vals[k]) : _gccHoursValid(E.vals[k]); });
+  b.disabled = E.saving || !gccGridDirty() || !valid;
+  b.style.opacity = b.disabled ? '.5' : '';
+}
+async function gccGridSave() {
+  var E = _gccGridEdit; if (!E || E.saving) return;
+  var q = getActiveGccQuarters().filter(function (x) { return x.id === E.qid; })[0]; if (!q) return;
+  var keys = Object.keys(E.vals).filter(function (k) { return String(E.vals[k]).trim() !== E.orig[k]; });
+  if (!keys.length) return;
+  var ups = [], dels = [];
+  keys.forEach(function (k) {
+    var p = k.split('|'), iso = p[0], id = p[1], v = String(E.vals[k]).trim();
+    if (v === '') { dels.push({ iso: iso, id: id }); return; }
+    if (E.kind === 'youth') {
+      var absent = /^[aA]$/.test(v), att = /^[✓pP]$/.test(v);
+      ups.push({ season_id: q.season || GCC_SEASON_ID, session_date: iso, youth_id: id,
+                 attended: !absent, games_won: (absent || att) ? null : parseInt(v, 10) });
+    } else {
+      ups.push({ adult_id: id, session_date: iso, hours: Number(v) });
+    }
+  });
+  if (dels.length && !confirm('Clear ' + dels.length + ' record' + (dels.length > 1 ? 's' : '') + '? The cell' + (dels.length > 1 ? 's' : '') + ' will show “—”.')) return;
+  var table = E.kind === 'youth' ? 'gcc_session_results' : 'gcc_volunteer_hours';
+  var conflict = E.kind === 'youth' ? 'season_id,session_date,youth_id' : 'adult_id,session_date';
+  E.saving = true; E.err = ''; E.msg = ''; _gccGridRefreshSave();
+  var done = 0;
+  try {
+    if (ups.length) {
+      var r = await GCC_AUTH.fetch('/rest/v1/' + table + '?on_conflict=' + conflict, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', 'Prefer': 'resolution=merge-duplicates,return=representation' },
+        body: JSON.stringify(ups) });
+      if (!r.ok) { var j = {}; try { j = await r.json(); } catch (x) {} throw new Error(j.message || ('HTTP ' + r.status)); }
+      done += (await r.json()).length;
+    }
+    for (var i = 0; i < dels.length; i++) {
+      var d = dels[i];
+      var path = '/rest/v1/' + table + '?session_date=eq.' + d.iso + (E.kind === 'youth'
+        ? '&youth_id=eq.' + encodeURIComponent(d.id) + '&season_id=eq.' + encodeURIComponent(q.season || GCC_SEASON_ID)
+        : '&adult_id=eq.' + encodeURIComponent(d.id));
+      var rd = await GCC_AUTH.fetch(path, { method: 'DELETE', headers: { 'Prefer': 'return=representation' } });
+      if (!rd.ok) { var jd = {}; try { jd = await rd.json(); } catch (x) {} throw new Error(jd.message || ('HTTP ' + rd.status)); }
+      done += (await rd.json()).length;
+    }
+    if (done !== ups.length + dels.length) throw new Error('only ' + done + ' of ' + (ups.length + dels.length) + ' changes were confirmed');
+    _gccGridEdit = null;
+    GCC_GRID.cache = {};
+    if (E.kind === 'youth') gccLoadCounts();
+    GCC_GRID.flash = { qid: q.id, msg: 'Saved ' + done + ' change' + (done > 1 ? 's' : '') + ' at ' + new Date().toLocaleTimeString() + '.' };
+  } catch (e) {
+    E.err = (e && (e.code === 'session_expired' || e.code === 'not_signed_in')) ? _gccErrText(e) :
+            'Not saved: ' + _gccEsc((e && e.message) || 'error') + '. Your changes are kept; correct and try again.';
+    GCC_GRID.cache = {};          // re-read what the database holds
+  }
+  E.saving = false;
+  renderGccQuarterView();
+}
+async function gccRosterSet(qid, kind, id, archived) {
+  if (!id) return;
+  if (gccGridDirty() && !confirm('You have unsaved grid changes. Change the roster anyway (your changes are kept)?')) return;
+  var row = { quarter_id: qid, archived: !!archived };
+  row[kind === 'youth' ? 'youth_id' : 'adult_id'] = id;
+  try {
+    var r = await GCC_AUTH.fetch('/rest/v1/gcc_roster?on_conflict=quarter_id,' + (kind === 'youth' ? 'youth_id' : 'adult_id'), {
+      method: 'POST', headers: { 'Content-Type': 'application/json', 'Prefer': 'resolution=merge-duplicates,return=minimal' },
+      body: JSON.stringify(row) });
+    if (!r.ok) { var j = {}; try { j = await r.json(); } catch (x) {} throw new Error(j.message || ('HTTP ' + r.status)); }
+    GCC_GRID.flash = { qid: qid, msg: (archived ? 'Archived ' : 'Added ') + _gccEsc(kind === 'youth' ? (YOUTH_NAME_BY_ID[id] || id) : ((FAC_PROFILES[id] || {}).name || id)) + '.' };
+  } catch (e) {
+    GCC_GRID.flash = { qid: qid, err: true, msg: 'Roster not changed: ' + _gccEsc((e && e.message) || 'error') };
+  }
+  GCC_GRID.cache = {};
+  renderGccQuarterView();
+}
+function gccRosterAdd(qid, kind) {
+  var sel = document.getElementById('gcc-add-' + kind); if (!sel || !sel.value) return;
+  gccRosterSet(qid, kind, sel.value, false);
+}
+
 function gccGridsHtml(q, rows) {
   var box = function (inner) { return '<div class="section-box" style="margin-top:14px">' + inner + '</div>'; };
   var note = function (t) { return '<div style="font-size:.8rem;color:var(--text-muted)">' + t + '</div>'; };
@@ -16759,35 +16872,98 @@ function gccGridsHtml(q, rows) {
   if (C.state === 'loading') return box(head + note('Loading grids…'));
   if (C.state === 'failed') return box(head + note('The grids could not be loaded (' + _gccEsc(C.err) + '). Reload the page to try again.'));
 
+  var editable = _gccGridEditable(q);
+  var E = (_gccGridEdit && _gccGridEdit.qid === q.id) ? _gccGridEdit : null;
   var dates = rows.filter(function (r) { return r.st !== 'cancelled'; }).map(function (r) { return { d: r.d, iso: _gccIso(r.d) }; });
+  var todayIso = _gccTodayIso();
   var cell = function (txt, color, weight, title) {
     return '<td style="text-align:center;color:' + color + ';font-weight:' + weight + '"' + (title ? ' title="' + _gccEsc(title) + '"' : '') + '>' + txt + '</td>';
   };
-  var colHead = function (name) { return '<th style="font-size:.65rem" title="' + _gccEsc(name) + '">' + _gccEsc(String(name).split(' ')[0]) + '</th>'; };
+  var inputCell = function (k, val, origText) {
+    if (E.vals[k] === undefined) { E.orig[k] = origText; }
+    var v = E.vals[k] !== undefined ? E.vals[k] : origText;
+    return '<td style="padding:3px"><input data-k="' + _gccEsc(k) + '" value="' + _gccEsc(v) + '" placeholder="—" maxlength="5" autocomplete="off" ' +
+      'oninput="gccGridInput(this)" style="width:52px;background:rgba(29,127,212,.1);border:1px solid var(--card-border);border-radius:5px;' +
+      'color:var(--text-main);text-align:center;padding:4px;font-size:.8rem"></td>';
+  };
   var byName = function (a, b) { return a.name.localeCompare(b.name); };
+  var colHead = function (p, kind) {
+    var archBtn = (E && E.kind === kind && !p.archived)
+      ? ' <button type="button" class="ws-btn" style="font-size:.6rem;padding:0 5px" title="Archive (history is kept)" ' +
+        'onclick="gccRosterSet(\'' + q.id + '\',\'' + kind + '\',\'' + _gccEsc(p.id) + '\',true)">×</button>' : '';
+    return '<th style="font-size:.65rem" title="' + _gccEsc(p.name) + (p.archived ? ' (archived)' : '') + '">' + _gccEsc(String(p.name).split(' ')[0]) +
+      (p.archived ? ' <span style="opacity:.6">(arch.)</span>' : '') + archBtn + '</th>';
+  };
+  var people = function (kind, recIds) {
+    var ros = {}; C.roster.forEach(function (x) { var id = kind === 'youth' ? x.youth_id : x.adult_id; if (id) ros[id] = x; });
+    var ids = {}; Object.keys(recIds).forEach(function (id) { ids[id] = true; });
+    Object.keys(ros).forEach(function (id) { if (!ros[id].archived) ids[id] = true; });
+    var nameOf = kind === 'youth' ? function (id) { return YOUTH_NAME_BY_ID[id] || id; } : function (id) { return (FAC_PROFILES[id] && FAC_PROFILES[id].name) || id; };
+    var shown = Object.keys(ids).map(function (id) { return { id: id, name: nameOf(id), archived: !!(ros[id] && ros[id].archived) }; }).sort(byName);
+    var hidden = Object.keys(ros).filter(function (id) { return ros[id].archived && !ids[id]; }).map(function (id) { return { id: id, name: nameOf(id) }; }).sort(byName);
+    return { shown: shown, hidden: hidden, ros: ros };
+  };
+  var toolbar = function (kind) {
+    if (!editable) return note(q.status === 'archived' ? 'This quarter is archived and read-only.' : (q.status === 'planned' ? 'This quarter is planned; editing opens when it is opened.' : ''));
+    if (E && E.kind === kind) {
+      return '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:6px 0">' +
+        '<button id="gcc-grid-save" type="button" onclick="gccGridSave()" style="padding:6px 16px;border-radius:8px;border:none;background:var(--ya-teal);color:#fff;font-weight:800;cursor:pointer">' +
+        (E.saving ? 'Saving…' : '💾 Save Changes') + '</button>' +
+        '<button type="button" class="ws-btn" onclick="gccGridCancel()">Cancel</button>' +
+        '<span style="font-size:.75rem;color:var(--text-muted)">' + (kind === 'youth'
+          ? 'Type games won (0 = attended, no wins), A = absent, ✓ = attended (wins not entered), blank = no record.'
+          : 'Type hours (e.g. 1.5, up to 12). Blank = no record.') + ' Sessions after today stay locked.</span>' +
+        (E.err ? '<div style="width:100%;font-size:.8rem;color:var(--badge-red)">⚠ ' + E.err + '</div>' : '') + '</div>';
+    }
+    return '<div style="margin:6px 0"><button type="button" class="ws-btn" style="border-color:var(--ya-blue);color:var(--ya-blue);font-size:.75rem" ' +
+      'onclick="gccGridStart(\'' + q.id + '\',\'' + kind + '\')">✏️ ' + (kind === 'youth' ? 'Edit Mode' : 'Edit Hours') + '</button></div>';
+  };
+  var rosterBar = function (kind, P) {
+    if (!editable) return '';
+    var opts = [];
+    if (kind === 'youth') {
+      Object.keys(YOUTH_NAME_BY_ID).forEach(function (id) { if (!P.ros[id] && !_gccYouthInactive(id)) opts.push({ id: id, name: YOUTH_NAME_BY_ID[id] }); });
+    } else {
+      Object.keys(FAC_PROFILES).forEach(function (id) { var p = FAC_PROFILES[id]; if (!P.ros[id] && p && p.name && p.active !== false) opts.push({ id: id, name: p.name }); });
+    }
+    opts.sort(byName);
+    var restore = P.hidden.map(function (p) {
+      return _gccEsc(p.name) + ' <button type="button" class="ws-btn" style="font-size:.65rem;padding:1px 6px" ' +
+        'onclick="gccRosterSet(\'' + q.id + '\',\'' + kind + '\',\'' + _gccEsc(p.id) + '\',false)">Restore</button>';
+    }).join(' · ');
+    return '<div style="display:flex;align-items:center;gap:8px;margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,.06);flex-wrap:wrap">' +
+      '<span style="font-size:.75rem;font-weight:700;color:var(--text-muted)">＋ ' + (kind === 'youth' ? 'Enrol youth' : 'Add volunteer') + ':</span>' +
+      '<select id="gcc-add-' + kind + '" style="min-width:160px;padding:5px 8px;border-radius:8px;border:1px solid var(--card-border);background:#0f1c2e;color:var(--text-main)">' +
+      '<option value="">— Select ' + (kind === 'youth' ? 'youth' : 'adult') + ' —</option>' +
+      opts.map(function (o) { return '<option value="' + _gccEsc(o.id) + '">' + _gccEsc(o.name) + '</option>'; }).join('') + '</select>' +
+      '<button type="button" class="ws-btn" style="font-size:.75rem" onclick="gccRosterAdd(\'' + q.id + '\',\'' + kind + '\')">Add</button>' +
+      (restore ? '<span style="font-size:.75rem;color:var(--text-muted)">Archived: ' + restore + '</span>' : '') +
+      (kind === 'youth' ? '<span style="font-size:.72rem;color:var(--text-muted)">New youth: add them under Users first.</span>' : '') + '</div>';
+  };
+  var canEditDate = function (dt) { return dt.iso <= todayIso; };
 
   // Youth: points = 1 for attending + 1 per game won (calculated, never stored)
-  var res = {}, yIds = {};
-  C.res.forEach(function (x) { (res[x.session_date] = res[x.session_date] || {})[x.youth_id] = x; yIds[x.youth_id] = true; });
-  C.roster.forEach(function (x) { if (x.youth_id && !x.archived) yIds[x.youth_id] = true; });
-  var youth = Object.keys(yIds).map(function (id) { return { id: id, name: YOUTH_NAME_BY_ID[id] || id }; }).sort(byName);
+  var res = {}, yRec = {};
+  C.res.forEach(function (x) { (res[x.session_date] = res[x.session_date] || {})[x.youth_id] = x; yRec[x.youth_id] = true; });
+  var PY = people('youth', yRec), youth = PY.shown;
   var pts = function (x) { return x && x.attended ? 1 + (parseInt(x.games_won, 10) || 0) : 0; };
-  var yTot = {}, yGrand = 0;
+  var yTot = {}, yGrand = 0, yEdit = E && E.kind === 'youth';
   var yRows = dates.map(function (dt) {
     var day = 0;
     var cols = youth.map(function (y) {
       var x = (res[dt.iso] || {})[y.id];
+      if (x && x.attended) { var p0 = pts(x); day += p0; yTot[y.id] = (yTot[y.id] || 0) + p0; }
+      if (yEdit && canEditDate(dt)) return inputCell(dt.iso + '|' + y.id, null, _gccYouthText(x));
       if (!x) return cell('—', 'var(--text-muted)', 400);
       if (!x.attended) return cell('A', 'var(--text-muted)', 400, 'Absent');
-      var p = pts(x); day += p; yTot[y.id] = (yTot[y.id] || 0) + p;
-      return cell(p, 'var(--ya-teal)', 700, 'Attended · ' + (x.games_won == null ? 'games won not entered' : x.games_won + ' games won'));
+      return cell(pts(x), 'var(--ya-teal)', 700, 'Attended · ' + (x.games_won == null ? 'games won not entered' : x.games_won + ' games won'));
     }).join('');
     yGrand += day;
     return '<tr><td style="font-weight:600;white-space:nowrap">' + _gccEsc(_gccShort(dt.d)) + '</td>' + cols +
            '<td style="font-weight:700;color:var(--ya-gold)">' + day + '</td></tr>';
   }).join('');
   var yHtml = youth.length
-    ? '<div style="overflow-x:auto"><table class="data-table"><thead><tr><th>Date</th>' + youth.map(function (y) { return colHead(y.name); }).join('') +
+    ? '<div style="overflow-x:auto"><table class="data-table"><thead><tr><th>Date</th>' + youth.map(function (y) { return colHead(y, 'youth'); }).join('') +
       '<th>Total</th></tr></thead><tbody>' + yRows +
       '<tr style="border-top:2px solid var(--card-border)"><td style="font-weight:800">' + _gccEsc(q.label) + ' Total</td>' +
       youth.map(function (y) { return '<td style="text-align:center;font-weight:800;color:var(--ya-orange)">' + (yTot[y.id] || 0) + '</td>'; }).join('') +
@@ -16795,17 +16971,17 @@ function gccGridsHtml(q, rows) {
     : note('No youth enrolled or recorded in this quarter yet.');
 
   // Adults: hours as entered (decimals kept)
-  var hrs = {}, aIds = {};
-  C.hours.forEach(function (x) { (hrs[x.session_date] = hrs[x.session_date] || {})[x.adult_id] = parseFloat(x.hours); aIds[x.adult_id] = true; });
-  C.roster.forEach(function (x) { if (x.adult_id && !x.archived) aIds[x.adult_id] = true; });
-  var adults = Object.keys(aIds).map(function (id) { return { id: id, name: (FAC_PROFILES[id] && FAC_PROFILES[id].name) || id }; }).sort(byName);
-  var aTot = {}, aGrand = 0;
+  var hrs = {}, aRec = {};
+  C.hours.forEach(function (x) { (hrs[x.session_date] = hrs[x.session_date] || {})[x.adult_id] = parseFloat(x.hours); aRec[x.adult_id] = true; });
+  var PA = people('adult', aRec), adults = PA.shown;
+  var aTot = {}, aGrand = 0, aEdit = E && E.kind === 'adult';
   var aRows = dates.map(function (dt) {
     var day = 0;
     var cols = adults.map(function (a) {
       var h = (hrs[dt.iso] || {})[a.id];
+      if (h) { day += h; aTot[a.id] = (aTot[a.id] || 0) + h; }
+      if (aEdit && canEditDate(dt)) return inputCell(dt.iso + '|' + a.id, null, h ? String(h) : '');
       if (!h) return cell('—', 'var(--text-muted)', 400);
-      day += h; aTot[a.id] = (aTot[a.id] || 0) + h;
       return cell(h, 'var(--ya-orange)', 700);
     }).join('');
     aGrand += day;
@@ -16813,21 +16989,23 @@ function gccGridsHtml(q, rows) {
            '<td style="font-weight:700;color:var(--ya-orange)">' + (day ? day.toFixed(1) : '—') + '</td></tr>';
   }).join('');
   var aHtml = adults.length
-    ? '<div style="overflow-x:auto"><table class="data-table"><thead><tr><th>Date</th>' + adults.map(function (a) { return colHead(a.name); }).join('') +
+    ? '<div style="overflow-x:auto"><table class="data-table"><thead><tr><th>Date</th>' + adults.map(function (a) { return colHead(a, 'adult'); }).join('') +
       '<th>Total</th></tr></thead><tbody>' + aRows +
       '<tr style="border-top:2px solid var(--card-border)"><td style="font-weight:800">' + _gccEsc(q.label) + ' Total</td>' +
       adults.map(function (a) { return '<td style="text-align:center;font-weight:800;color:var(--ya-orange)">' + (aTot[a.id] ? aTot[a.id].toFixed(1) : '—') + '</td>'; }).join('') +
       '<td style="font-weight:800;color:var(--ya-orange)">' + aGrand.toFixed(1) + '</td></tr></tbody></table></div>'
-    : note('No adult volunteer hours recorded in this quarter yet.');
+    : note('No adult volunteers enrolled or recorded in this quarter yet.');
 
-  return '<div id="gcc-grids">' +
+  var F = (GCC_GRID.flash && GCC_GRID.flash.qid === q.id) ? GCC_GRID.flash : null;
+  var flash = F ? '<div style="margin-top:10px;font-size:.8rem;color:' + (F.err ? 'var(--badge-red)' : 'var(--ya-teal)') + '">' + (F.err ? '⚠ ' : '✔ ') + F.msg + '</div>' : '';
+  return '<div id="gcc-grids">' + flash +
     box('<div class="section-title" style="margin-bottom:4px">📅 ' + _gccEsc(q.label) + ' — Youth Attendance &amp; Points</div>' +
-        note('Read-only. Points = 1 for attending + 1 per game won. A = absent. Enter results in the session list above.') +
-        '<div style="height:8px"></div>' + yHtml) +
+        note('Points = 1 for attending + 1 per game won. A = absent.') + toolbar('youth') + yHtml + rosterBar('youth', PY)) +
     box('<div class="section-title" style="margin-bottom:4px">🙌 ' + _gccEsc(q.label) + ' — Adult Volunteer Hours</div>' +
-        note('Read-only. Hours entry arrives in a later update.') + '<div style="height:8px"></div>' + aHtml) +
+        note('Actual hours worked; sign-ups are not counted.') + toolbar('adult') + aHtml + rosterBar('adult', PA)) +
     '</div>';
 }
+
 
 async function gccOpenEntry(d) {
   if (!gccIsEditorNow() || !_gccCanEnter(d)) return;

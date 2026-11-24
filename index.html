@@ -89,6 +89,9 @@ select option[value=""]{
 .user-info{min-width:0}
 .user-name{font-size:.85rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .user-role-badge{font-size:.67rem;color:var(--ya-orange);text-transform:uppercase;letter-spacing:.04em;font-weight:700}
+/* EL-P: Emerging Leader Partner read-only view (display only; the database enforces access) */
+body.el-partner #page-admin-dashboard .tab-bar,body.el-partner #adult-ws-next-alert,body.el-partner #admin-volunteer-toggle,body.el-partner #page-admin-dashboard > [id^="tab-"]:not(#tab-workshops),body.el-partner #tab-workshops > :not(.cards-grid):not(.elp-keep):not(#youth-att-details),body.el-partner .elp-hide,body.el-partner #add-el-youth-panel,body.el-partner #ws-att-edit-hint,body.el-partner #ws-att-archive-hint{display:none!important}
+body.el-partner .ws-att-cell{cursor:default!important}
 .nav-item{padding:9px 16px;display:flex;align-items:center;gap:10px;cursor:pointer;font-size:.83rem;color:var(--text-muted);transition:all .15s;border-left:3px solid transparent}
 .nav-item:hover{color:var(--text-main);background:rgba(255,255,255,.03)}
 .nav-item.active{color:var(--ya-orange);border-left-color:var(--ya-orange);background:rgba(232,98,10,.07)}
@@ -947,7 +950,7 @@ tr:hover .grd-date-sticky { background: #1a2d47; }
           <div class="stat-card" style="--accent-color:var(--ya-orange)"><div class="stat-label">Level 1 Eligible</div><div class="stat-value" id="a-lvl1">—</div><div class="stat-meta">6+ workshops done</div><div class="stat-icon">🎓</div></div>
           <div class="stat-card" style="--accent-color:var(--ya-green)"><div class="stat-label">Workshops Done</div><div class="stat-value" id="admin-ws-done-count">—</div><div class="stat-meta" id="admin-ws-done-meta">of — scheduled</div><div class="stat-icon">📚</div></div>
         </div>
-        <div class="section-box"><div class="section-title">📈 Attendance by Workshop</div><div id="admin-ws-bars"></div></div>
+        <div class="section-box elp-keep"><div class="section-title">📈 Attendance by Workshop</div><div id="admin-ws-bars"></div></div>
         <details id="youth-att-details" style="margin-bottom:14px">
           <summary style="font-family:Nunito,sans-serif;font-weight:900;font-size:.95rem;color:var(--ya-teal);cursor:pointer;padding:10px 0;list-style:none;display:flex;align-items:center;gap:8px">
             🏆 Youth Certification Status &amp; Workshop Attendance
@@ -957,9 +960,9 @@ tr:hover .grd-date-sticky { background: #1a2d47; }
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:13px;flex-wrap:wrap;gap:8px">
             <div>
               <div class="section-title" style="margin-bottom:2px">🏆 Youth Certification Status &amp; Workshop Attendance</div>
-              <div style="font-size:.78rem;color:var(--text-muted)">Progress columns first · then click any ✔/— cell to toggle attendance · saves instantly</div>
+              <div class="elp-hide" style="font-size:.78rem;color:var(--text-muted)">Progress columns first · then click any ✔/— cell to toggle attendance · saves instantly</div>
             </div>
-            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <div class="elp-hide" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
               <button onclick="toggleAddELYouthPanel()" id="add-el-youth-btn" class="ws-btn" style="border-color:var(--ya-teal);color:var(--ya-teal);font-size:.75rem">+ Add Youth</button>
               <button id="ws-att-edit-btn" onclick="toggleWsAttEditMode()" class="ws-btn" style="border-color:var(--ya-teal);color:var(--ya-teal);font-size:.75rem">✏️ Edit Attendance</button>
               <button onclick="toggleWsAttArchiveMode()" id="ws-att-archive-btn" class="ws-btn" style="border-color:var(--ya-orange);color:var(--ya-orange);font-size:.75rem">📦 Archive</button>
@@ -2200,6 +2203,7 @@ tr:hover .grd-date-sticky { background: #1a2d47; }
                 <option value="youth">🌱 Youth</option>
                 <option value="adult">🙌 Adult Volunteer</option>
                 <option value="admin">⚡ Admin</option>
+                <option value="el_partner">🤝 Emerging Leader Partner</option>
               </select>
             </div>
             <div>
@@ -3561,6 +3565,61 @@ async function saveAdultProfile(){
   else console.log('Adult profile saved:', adultState.name, 'fac:', adultState.facilitated.length, 'vol:', adultState.volunteered.length, 'hrs:', adultState.hours);
 }
 
+// ── renderWorkshopOverview() ─────────────────────────────────────────────
+// The Workshops tab's four overview cards, Attendance by Workshop bars and the
+// Youth Certification grid. Shared by the admin view (renderAdmin) and the
+// read-only Emerging Leader Partner view, so both always use the same logic.
+function renderWorkshopOverview(){
+  var allNames=Object.keys(EL_YOUTH);
+  var eid=function(id){return document.getElementById(id);};
+  var lvl1=allNames.filter(function(n){return getYouthConductedWorkshops(n).length>=6;}).length;
+  if(eid('a-lvl1'))eid('a-lvl1').textContent=lvl1;
+
+  // ── Attendance bars — by Series, collapsible, denominator = 20 ─────────────
+  var bars=eid('admin-ws-bars');
+  if(bars){
+    var allSeries = getAllWsSeries();
+    var barsHtml = '';
+    allSeries.forEach(function(ser){
+      var sessions = getSeriesWsSessions(ser.id).filter(function(w){ return w.conducted && !w.cancelled && !w.adminCancelled; });
+      if (!sessions.length) return;
+      var CAPACITY = 20; // max participants per session
+      var serBars = sessions.map(function(w){
+        var cnt = allNames.filter(function(n){ return (EL_YOUTH[n]||[]).includes(w.id); }).length;
+        var pct = Math.round(cnt / CAPACITY * 100);
+        var shortId = getWsShortId(w);
+        var barColor = pct > 100 ? 'linear-gradient(90deg,var(--ya-orange),var(--badge-red))' : 'linear-gradient(90deg,var(--ya-teal),var(--ya-blue))';
+        var barW = Math.min(pct, 100); // visually cap at 100% but label shows actual
+        return '<div class="prog-bar-wrap"><div class="prog-label"><span><strong style="color:var(--ya-teal);font-size:.72rem;font-family:monospace">['+shortId+']</strong> '+w.name+'</span><span>'+cnt+' / '+CAPACITY+' ('+pct+'%)</span></div><div class="prog-track"><div class="prog-fill" style="width:'+barW+'%;background:'+barColor+'"></div></div></div>';
+      }).join('');
+      barsHtml += '<details style="margin-bottom:8px"><summary style="font-family:Nunito,sans-serif;font-weight:800;font-size:.85rem;color:'+ser.color+';cursor:pointer;padding:6px 0;list-style:none;display:flex;align-items:center;gap:6px">'+ser.icon+' '+ser.name+' <span style="font-size:.72rem;color:var(--text-muted);font-weight:400">('+sessions.length+' sessions)</span></summary><div style="margin-top:6px">'+serBars+'</div></details>';
+    });
+    bars.innerHTML = barsHtml || '<div style="color:var(--text-muted);font-size:.82rem">No conducted workshops yet.</div>';
+  }
+  renderYouthAttendanceTable();
+
+  // ── Dynamic stat cards ───────────────────────────────────────────────────
+  var wsStats = calcWorkshopStats(); // across all series
+  var wsW26   = calcWorkshopStats('winter_2026');
+  var wsF26   = calcWorkshopStats('fall_2026');
+  var wsDoneEl = eid('admin-ws-done-count');
+  var wsMetaEl = eid('admin-ws-done-meta');
+  if(wsDoneEl) wsDoneEl.textContent = wsStats.delivered.length;
+  if(wsMetaEl) wsMetaEl.textContent = 'W26: '+wsW26.delivered.length+' done · F26: '+wsF26.delivered.length+' done';
+
+  var totalAtt = 0;
+  wsStats.delivered.forEach(function(w){
+    allNames.forEach(function(n){
+      if((EL_YOUTH[n]||[]).indexOf(w.id) >= 0) totalAtt++;
+    });
+  });
+  var attEl = eid('admin-total-att');
+  var attMetaEl = eid('admin-total-att-meta');
+  if(attEl) attEl.textContent = totalAtt;
+  if(attMetaEl) attMetaEl.textContent = 'Across ' + wsStats.delivered.length + ' workshop' + (wsStats.delivered.length !== 1 ? 's' : '') + ' (all series)';
+
+}
+
 function renderAdmin(){
   renderScheduleTab();
 
@@ -3623,32 +3682,8 @@ function renderAdmin(){
   // Called on tab open via switchTab, and also after closeOutEvent
 
   var allNames=Object.keys(EL_YOUTH);
-  var lvl1=allNames.filter(function(n){return getYouthConductedWorkshops(n).length>=6;}).length;
   var eid=function(id){return document.getElementById(id);};
-  if(eid('a-lvl1'))eid('a-lvl1').textContent=lvl1;
-
-  // ── Attendance bars — by Series, collapsible, denominator = 20 ─────────────
-  var bars=eid('admin-ws-bars');
-  if(bars){
-    var allSeries = getAllWsSeries();
-    var barsHtml = '';
-    allSeries.forEach(function(ser){
-      var sessions = getSeriesWsSessions(ser.id).filter(function(w){ return w.conducted && !w.cancelled && !w.adminCancelled; });
-      if (!sessions.length) return;
-      var CAPACITY = 20; // max participants per session
-      var serBars = sessions.map(function(w){
-        var cnt = allNames.filter(function(n){ return (EL_YOUTH[n]||[]).includes(w.id); }).length;
-        var pct = Math.round(cnt / CAPACITY * 100);
-        var shortId = getWsShortId(w);
-        var barColor = pct > 100 ? 'linear-gradient(90deg,var(--ya-orange),var(--badge-red))' : 'linear-gradient(90deg,var(--ya-teal),var(--ya-blue))';
-        var barW = Math.min(pct, 100); // visually cap at 100% but label shows actual
-        return '<div class="prog-bar-wrap"><div class="prog-label"><span><strong style="color:var(--ya-teal);font-size:.72rem;font-family:monospace">['+shortId+']</strong> '+w.name+'</span><span>'+cnt+' / '+CAPACITY+' ('+pct+'%)</span></div><div class="prog-track"><div class="prog-fill" style="width:'+barW+'%;background:'+barColor+'"></div></div></div>';
-      }).join('');
-      barsHtml += '<details style="margin-bottom:8px"><summary style="font-family:Nunito,sans-serif;font-weight:800;font-size:.85rem;color:'+ser.color+';cursor:pointer;padding:6px 0;list-style:none;display:flex;align-items:center;gap:6px">'+ser.icon+' '+ser.name+' <span style="font-size:.72rem;color:var(--text-muted);font-weight:400">('+sessions.length+' sessions)</span></summary><div style="margin-top:6px">'+serBars+'</div></details>';
-    });
-    bars.innerHTML = barsHtml || '<div style="color:var(--text-muted);font-size:.82rem">No conducted workshops yet.</div>';
-  }
-  renderYouthAttendanceTable();
+  renderWorkshopOverview();
 
   // ── Helper to build a session row for any series schedule table ──────────
   function wsSessionRow(w, allNms) {
@@ -3744,26 +3779,6 @@ function renderAdmin(){
     });
     futureSeriesDiv.innerHTML = fsHtml;
   }
-
-  // ── Dynamic stat cards ───────────────────────────────────────────────────
-  var wsStats = calcWorkshopStats(); // across all series
-  var wsW26   = calcWorkshopStats('winter_2026');
-  var wsF26   = calcWorkshopStats('fall_2026');
-  var wsDoneEl = eid('admin-ws-done-count');
-  var wsMetaEl = eid('admin-ws-done-meta');
-  if(wsDoneEl) wsDoneEl.textContent = wsStats.delivered.length;
-  if(wsMetaEl) wsMetaEl.textContent = 'W26: '+wsW26.delivered.length+' done · F26: '+wsF26.delivered.length+' done';
-
-  var totalAtt = 0;
-  wsStats.delivered.forEach(function(w){
-    allNames.forEach(function(n){
-      if((EL_YOUTH[n]||[]).indexOf(w.id) >= 0) totalAtt++;
-    });
-  });
-  var attEl = eid('admin-total-att');
-  var attMetaEl = eid('admin-total-att-meta');
-  if(attEl) attEl.textContent = totalAtt;
-  if(attMetaEl) attMetaEl.textContent = 'Across ' + wsStats.delivered.length + ' workshop' + (wsStats.delivered.length !== 1 ? 's' : '') + ' (all series)';
 
   // ── Template Library ─────────────────────────────────────────────────────
   renderWsTemplateList();
@@ -5581,6 +5596,9 @@ function buildMobileTabBar() {
     adult:[
       {id:'adult-dashboard', icon:'🏠', label:'My Activity'},
       {id:'adult-programs', icon:'📅', label:'Programs'},
+    ],
+    el_partner:[
+      {id:'admin-dashboard', icon:'📚', label:'Workshops'},
     ]
   };
 
@@ -6710,14 +6728,14 @@ async function renderCredentialManager() {
     return;
   }
 
-  var roleOrder = { admin: 0, adult: 1, youth: 2 };
+  var roleOrder = { admin: 0, adult: 1, youth: 2, el_partner: 3 };
   var sorted = _cachedProfiles.slice().sort(function(a, b) {
     var rd = (roleOrder[a.role] || 9) - (roleOrder[b.role] || 9);
     return rd !== 0 ? rd : (a.name || '').localeCompare(b.name || '');
   });
 
   function roleTag(role) {
-    var map = { admin: ['⚡ Admin','var(--ya-orange)'], adult: ['🙌 Adult','var(--ya-teal)'], youth: ['🌱 Youth','var(--ya-blue)'] };
+    var map = { admin: ['⚡ Admin','var(--ya-orange)'], adult: ['🙌 Adult','var(--ya-teal)'], youth: ['🌱 Youth','var(--ya-blue)'], el_partner: ['🤝 EL Partner','var(--ya-gold)'] };
     var v = map[role] || ['?','var(--text-muted)'];
     return '<span style="font-size:.7rem;font-weight:700;color:'+v[1]+';padding:2px 7px;border:1px solid '+v[1]+';border-radius:5px">'+v[0]+'</span>';
   }
@@ -6809,6 +6827,8 @@ async function manualLinkProfile() {
   var linkedId = '';
   if (role === 'youth') {
     linkedId = await ensureYouthIdentity(name);
+  } else if (role === 'el_partner') {
+    linkedId = '';   // partners are not linked to a youth or adult record
   } else {
     linkedId = name.toLowerCase().replace(/\s+/g,'_').replace(/[^a-z0-9_]/g,'').substring(0,20);
   }
@@ -13228,6 +13248,7 @@ var EL_ARCHIVED = new Set();
 var EL_ENROLLED = new Set();
 
 function toggleWsAttEditMode(){
+  if(currentRole==='el_partner') return;
   wsAttEditMode = !wsAttEditMode;
   var btn = document.getElementById('ws-att-edit-btn');
   var hint = document.getElementById('ws-att-edit-hint');
@@ -13663,7 +13684,7 @@ function renderYouthAttendanceTable(){
       : '';
 
     return '<tr>'+
-      '<td class="ws-sticky ws-sticky-1"><strong style="font-size:.83rem">'+n+'</strong><div style="font-size:.68rem;color:var(--text-muted)">'+h+' vol hrs'+ageStr+'</div></td>'+
+      '<td class="ws-sticky ws-sticky-1"><strong style="font-size:.83rem">'+n+'</strong>'+(currentRole==='el_partner'?'':'<div style="font-size:.68rem;color:var(--text-muted)">'+h+' vol hrs'+ageStr+'</div>')+'</td>'+
       '<td class="ws-sticky ws-sticky-2" style="text-align:center;vertical-align:middle"><strong>'+c+'</strong><br>'+progressBar+'</td>'+
       '<td class="ws-sticky ws-sticky-3" style="vertical-align:middle">'+st+'</td>'+
       wsCells+
@@ -13674,7 +13695,7 @@ function renderYouthAttendanceTable(){
 }
 
 function toggleYouthWsAdmin(name, wsId, cell){
-  if(!wsAttEditMode) return;
+  if(!wsAttEditMode || currentRole==='el_partner') return;
   var attended = EL_YOUTH[name] || [];
   var idx = attended.indexOf(wsId);
   var nowAttending;
@@ -13730,6 +13751,7 @@ function toggleYouthWsAdmin(name, wsId, cell){
 var wsAttArchiveMode = false;
 
 function toggleWsAttArchiveMode() {
+  if (currentRole==='el_partner') return;
   wsAttArchiveMode = !wsAttArchiveMode;
   var btn  = document.getElementById('ws-att-archive-btn');
   var hint = document.getElementById('ws-att-archive-hint');
@@ -14657,7 +14679,7 @@ var _pubSummaryTimer = null;
 function schedulePublicSummary(delayMs) {
   if (currentRole !== 'admin' || !_hubDataLoaded) return;
   if (_pubSummaryTimer) clearTimeout(_pubSummaryTimer);
-  _pubSummaryTimer = setTimeout(function () { _pubSummaryTimer = null; publishPublicSummary(); },
+  _pubSummaryTimer = setTimeout(function () { _pubSummaryTimer = null; publishPublicSummary(); publishElPartnerSnapshot(); },
                                 delayMs == null ? 4000 : delayMs);
 }
 
@@ -14675,6 +14697,120 @@ async function publishPublicSummary() {
     if (!r.ok) console.warn('[PublicSummary] save failed: HTTP', r.status);
     return r.ok;
   } catch (e) { console.warn('[PublicSummary] save failed:', e && e.message); return false; }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// EMERGING LEADER PARTNER (role 'el_partner') — read-only Workshops view
+// Partners never run the full startup loader and cannot read Hub tables (the
+// database excludes them from hub_is_member()). They read ONE private row,
+// site_config 'el_partner_snapshot', which only admins can write and only
+// active partners (and admins) can read. An admin's browser rebuilds it with the
+// same in-memory data the admin Workshops tab uses (on admin sign-in and after
+// each saved change, debounced together with the public summary), so partner
+// figures match the admin view. Ages and volunteer hours are never included;
+// youth outside the active EL roster appear only as anonymous attendance keys.
+// ═══════════════════════════════════════════════════════════════════════════
+var EL_PARTNER_SNAPSHOT_ROW_ID = 'el_partner_snapshot';
+var EL_PARTNER_SHARE_NAMES = true;   // false → partners see "Youth 01", "Youth 02"… instead of names
+
+function buildElPartnerSnapshot() {
+  invalidateConductedCache();
+  var conducted = _getConductedIdSet();
+  var active = Array.from(EL_ENROLLED).filter(function (n) { return !EL_ARCHIVED.has(n); }).sort();
+  var label = {};
+  active.forEach(function (n, i) { label[n] = EL_PARTNER_SHARE_NAMES ? n : 'Youth ' + (i < 9 ? '0' : '') + (i + 1); });
+  var attendance = {}, other = 0;
+  Object.keys(EL_YOUTH).forEach(function (n) {
+    var ids = (EL_YOUTH[n] || []).filter(function (id) { return conducted.has(id); });
+    if (label[n]) attendance[label[n]] = ids;
+    else if (ids.length) attendance['~' + (++other)] = ids;   // counted in totals, never named
+  });
+  active.forEach(function (n) { if (!attendance[label[n]]) attendance[label[n]] = []; });
+  return {
+    v: 1, generated_at: new Date().toISOString(),
+    active: active.map(function (n) { return label[n]; }),
+    archived_count: EL_ARCHIVED.size,
+    attendance: attendance,
+    sessions: getAllWsSessions().map(function (w) {
+      return { id: w.id, series_id: w.series_id, series_num: w.series_num, template_id: w.template_id || null,
+               name: w.name, date: w.date, conducted: !!w.conducted, cancelled: !!w.cancelled,
+               adminCancelled: !!w.adminCancelled };
+    }),
+    series: getAllWsSeries().map(function (x) {
+      return { id: x.id, name: x.name, icon: x.icon, color: x.color, start_date: x.start_date };
+    }),
+    templates: WS_TEMPLATES.map(function (t) { return { workshop_id: t.workshop_id, short_id: t.short_id }; })
+  };
+}
+
+async function publishElPartnerSnapshot() {
+  if (currentRole !== 'admin' || !_hubDataLoaded) return false;
+  if (!EL_ENROLLED.size && !Object.keys(EL_YOUTH).length) return false;   // EL data not loaded: keep the last snapshot
+  var snap;
+  try { snap = buildElPartnerSnapshot(); } catch (e) { console.warn('[ELPartner] build failed:', e); return false; }
+  try {
+    var r = await hubFetch(SUPA_URL + '/rest/v1/site_config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Prefer': 'resolution=merge-duplicates,return=minimal' },
+      body: JSON.stringify({ id: EL_PARTNER_SNAPSHOT_ROW_ID, value: JSON.stringify(snap) })
+    });
+    if (!r.ok) console.warn('[ELPartner] save failed: HTTP', r.status);
+    return r.ok;
+  } catch (e) { console.warn('[ELPartner] save failed:', e && e.message); return false; }
+}
+
+// Partner sign-in: read the one snapshot row with the partner's own token.
+async function loadElPartnerSnapshot() {
+  var rows = await dbGet('site_config', 'select=value&id=eq.' + EL_PARTNER_SNAPSHOT_ROW_ID + '&limit=1');
+  var raw = rows && rows[0] && rows[0].value;
+  var v = null;
+  try { v = typeof raw === 'string' ? JSON.parse(raw) : raw; } catch (e) { v = null; }
+  return v && v.v === 1 ? v : null;
+}
+
+function enterElPartnerView(profile, snap) {
+  if (typeof GCC_AUTH === 'undefined' || !GCC_AUTH.status().signedIn) return;
+  snap = snap || { active: [], archived_count: 0, attendance: {}, sessions: [], series: [], templates: [] };
+  // Feed the snapshot into the same globals the admin Workshops tab renders from.
+  WORKSHOPS = (snap.sessions || []).slice();
+  WS_FALL_2026 = []; WS_FALL_2026_DB_OVERRIDES = {}; WS_FUTURE_SERIES_SESSIONS = {};
+  WS_SERIES = {}; WS_SERIES_DB = {};
+  (snap.series || []).forEach(function (x) { WS_SERIES[x.id] = Object.assign({ archived: false }, x); });
+  WS_TEMPLATES = (snap.templates || []).slice();
+  EL_YOUTH = snap.attendance || {};
+  EL_ENROLLED = new Set(snap.active || []);
+  EL_ARCHIVED = new Set();
+  for (var i = 0; i < (snap.archived_count || 0); i++) EL_ARCHIVED.add('~archived' + i);
+  YOUTH_HOURS = {}; YOUTH_AGES = {};
+  wsAttEditMode = false; wsAttArchiveMode = false;
+  invalidateConductedCache();
+  currentRole = 'el_partner';
+
+  document.body.classList.add('el-partner');
+  document.getElementById('landing-screen').style.display = 'none';
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  document.getElementById('user-avatar').textContent = '🤝';
+  document.getElementById('user-avatar').style.background = '#281608';
+  document.getElementById('user-name').textContent = (profile && profile.name) || 'Partner';
+  document.getElementById('user-role-badge').textContent = 'Emerging Leader Partner';
+  var pg = document.getElementById('page-admin-dashboard');
+  var t = pg.querySelector('.page-title'), sub = pg.querySelector('.page-sub');
+  if (t) t.innerHTML = 'Emerging Leaders Workshops <span class="hl">📚</span>';
+  if (sub) sub.textContent = 'Youth Airdrie · Read-only partner view' +
+    (snap.generated_at ? ' · Updated ' + new Date(snap.generated_at).toLocaleString() : '');
+  var navEl = document.getElementById('nav-links');
+  navEl.innerHTML = '';
+  var d = document.createElement('div');
+  d.className = 'nav-item';
+  d.innerHTML = '<span class="nav-icon">📚</span>Workshops';
+  d.onclick = function () { showPage('admin-dashboard', d); };
+  navEl.appendChild(d);
+  showPage('admin-dashboard', d);
+  var det = document.getElementById('youth-att-details');
+  if (det) det.open = true;
+  renderWorkshopOverview();
+  buildMobileTabBar();
 }
 
 // Signed-out landing page: public key, one public row, nothing private.
@@ -20604,7 +20740,7 @@ async function attemptEmailLogin() {
 
     // 3. Look up profile in the profiles table by email
     var profileRows = await dbGet('profiles',
-      'select=linked_id,role,active&email=eq.' + encodeURIComponent(userEmail) + '&limit=1');
+      'select=linked_id,role,active,name&email=eq.' + encodeURIComponent(userEmail) + '&limit=1');
 
     if (!profileRows || profileRows.length === 0) {
       try { GCC_AUTH.discard(); } catch (e) {}
@@ -20617,6 +20753,15 @@ async function attemptEmailLogin() {
     if (profile.active === false) {
       try { GCC_AUTH.discard(); } catch (e) {}
       showError('Your account has been deactivated. Please contact an admin.');
+      return;
+    }
+
+    // EL-P: Emerging Leader Partners never run the full loader; they read only
+    //      their read-only Workshops snapshot.
+    if (profile.role === 'el_partner') {
+      btn.textContent = 'Loading Workshops…';
+      enterElPartnerView(profile, await loadElPartnerSnapshot());
+      if (currentRole !== 'el_partner') { try { GCC_AUTH.discard(); } catch (e) {} }
       return;
     }
 

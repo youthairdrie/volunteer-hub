@@ -148,6 +148,16 @@ const visible = (page, sel) => page.evaluate(s => { const e = document.querySele
     const writes = () => adminState.requests.filter(r => r.p === '/rest/v1/profiles' && r.m !== 'GET');
     await admin.evaluate(() => { switchTab('users-admin', document.querySelector('.tab-btn')); });
     await admin.waitForTimeout(300);
+    const secState = () => admin.evaluate(() => ['youth', 'adult', 'partner'].map(k => document.getElementById('users-sec-' + k).open));
+    check('C default: youth + adult collapsed, partners expanded', JSON.stringify(await secState()) === '[false,false,true]', await secState());
+    check('C collapsed hides add form and list', await admin.evaluate(() => ['#new-youth-name', '#users-youth-list', '#new-adult-name', '#users-adult-list'].every(s => !document.querySelector(s).checkVisibility())));
+    await admin.click('#users-sec-youth > summary'); await admin.click('#users-sec-partner > summary');
+    check('C headers toggle independently', JSON.stringify(await secState()) === '[true,false,false]', await secState());
+    check('C chevron rotates when open', await admin.evaluate(() => getComputedStyle(document.querySelector('#users-sec-youth .users-chev')).transform !== 'none' &&
+      getComputedStyle(document.querySelector('#users-sec-adult .users-chev')).transform === 'none'));
+    await admin.evaluate(() => { renderUsersTab(); }); await admin.waitForTimeout(200);
+    check('C state preserved on re-render', JSON.stringify(await secState()) === '[true,false,false]', await secState());
+    await admin.click('#users-sec-youth > summary'); await admin.click('#users-sec-partner > summary');
     check('M panel visible in Users tab', await visible(admin, '#users-partner-list') && await visible(admin, '#new-partner-email'));
     await addP('New Partner', 'New.Partner@Example.test');
     const post = writes()[0] && JSON.parse(writes()[0].body);
@@ -175,6 +185,7 @@ const visible = (page, sel) => page.evaluate(s => { const e = document.querySele
     check('M no success message when the DB returns no row', /Not saved/.test(await fbText()), await fbText());
     await admin.evaluate(() => setElPartnerActive('p3', false)); await admin.waitForTimeout(300);
     check('M deactivate failure reported', dialogs.slice(n).some(d => /Not saved/.test(d)));
+    check('C state preserved after partner saves', JSON.stringify(await secState()) === '[false,false,true]', await secState());
     check('M credentials tab has no partner option', !(await admin.evaluate(() => [...document.querySelectorAll('#manual-link-role option')].some(o => o.value === 'el_partner'))));
     await actx.close();
 

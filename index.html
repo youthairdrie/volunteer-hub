@@ -92,6 +92,12 @@ select option[value=""]{
 /* EL-P: Emerging Leader Partner read-only view (display only; the database enforces access) */
 body.el-partner #page-admin-dashboard .tab-bar,body.el-partner #adult-ws-next-alert,body.el-partner #admin-volunteer-toggle,body.el-partner #page-admin-dashboard > [id^="tab-"]:not(#tab-workshops),body.el-partner #tab-workshops > :not(.cards-grid):not(.elp-keep):not(#youth-att-details),body.el-partner .elp-hide,body.el-partner #add-el-youth-panel,body.el-partner #ws-att-edit-hint,body.el-partner #ws-att-archive-hint{display:none!important}
 body.el-partner .ws-att-cell{cursor:default!important}
+/* Users tab: collapsible sections (state lives on <details>, untouched by re-renders) */
+.users-sec>summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:8px}
+.users-sec>summary::-webkit-details-marker{display:none}
+.users-sec[open]>summary{margin-bottom:14px}
+.users-chev{display:inline-block;transition:transform .2s;font-size:.8em}
+.users-sec[open] .users-chev{transform:rotate(90deg)}
 .nav-item{padding:9px 16px;display:flex;align-items:center;gap:10px;cursor:pointer;font-size:.83rem;color:var(--text-muted);transition:all .15s;border-left:3px solid transparent}
 .nav-item:hover{color:var(--text-main);background:rgba(255,255,255,.03)}
 .nav-item.active{color:var(--ya-orange);border-left-color:var(--ya-orange);background:rgba(232,98,10,.07)}
@@ -2100,8 +2106,8 @@ tr:hover .grd-date-sticky { background: #1a2d47; }
         <div class="two-col" style="gap:18px;align-items:start">
 
           <!-- ── YOUTH PANEL ── -->
-          <div class="section-box">
-            <div style="font-family:Nunito,sans-serif;font-size:1rem;font-weight:900;color:var(--ya-teal);margin-bottom:14px">🌱 Youth Members</div>
+          <div class="section-box"><details class="users-sec" id="users-sec-youth">
+            <summary style="font-family:Nunito,sans-serif;font-size:1rem;font-weight:900;color:var(--ya-teal)"><span class="users-chev">▸</span>🌱 Youth Members</summary>
 
             <!-- Add form -->
             <div style="background:rgba(0,181,160,.05);border:1px solid rgba(0,181,160,.2);border-radius:12px;padding:14px;margin-bottom:16px">
@@ -2124,11 +2130,11 @@ tr:hover .grd-date-sticky { background: #1a2d47; }
 
             <!-- Youth roster -->
             <div id="users-youth-list"></div>
-          </div>
+          </details></div>
 
           <!-- ── ADULT PANEL ── -->
-          <div class="section-box">
-            <div style="font-family:Nunito,sans-serif;font-size:1rem;font-weight:900;color:var(--ya-blue);margin-bottom:14px">👩‍💼 Adult Volunteers</div>
+          <div class="section-box"><details class="users-sec" id="users-sec-adult">
+            <summary style="font-family:Nunito,sans-serif;font-size:1rem;font-weight:900;color:var(--ya-blue)"><span class="users-chev">▸</span>👩‍💼 Adult Volunteers</summary>
 
             <!-- Add form -->
             <div style="background:rgba(29,127,212,.05);border:1px solid rgba(29,127,212,.2);border-radius:12px;padding:14px;margin-bottom:16px">
@@ -2155,13 +2161,13 @@ tr:hover .grd-date-sticky { background: #1a2d47; }
 
             <!-- Adult roster -->
             <div id="users-adult-list"></div>
-          </div>
+          </details></div>
 
         </div>
 
         <!-- ── EMERGING LEADER PARTNER PANEL (role el_partner; read-only Workshops access) ── -->
-        <div class="section-box" style="margin-top:18px">
-          <div style="font-family:Nunito,sans-serif;font-size:1rem;font-weight:900;color:var(--ya-gold);margin-bottom:4px">🤝 Emerging Leader Partners</div>
+        <div class="section-box" style="margin-top:18px"><details class="users-sec" id="users-sec-partner" open>
+          <summary style="font-family:Nunito,sans-serif;font-size:1rem;font-weight:900;color:var(--ya-gold)"><span class="users-chev">▸</span>🤝 Emerging Leader Partners</summary>
           <div style="font-size:.75rem;color:var(--text-muted);margin-bottom:14px">Read-only access to the Emerging Leaders Workshops page. After adding a partner, invite their email from Supabase (Authentication → Users → Invite User) unless they already have a confirmed sign-in.</div>
           <div style="background:rgba(245,166,35,.05);border:1px solid rgba(245,166,35,.2);border-radius:12px;padding:14px;margin-bottom:16px">
             <div style="font-size:.78rem;font-weight:700;color:var(--ya-gold);margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em">＋ Add New Partner</div>
@@ -2173,7 +2179,7 @@ tr:hover .grd-date-sticky { background: #1a2d47; }
             <div id="new-partner-feedback" style="font-size:.78rem;min-height:18px;margin-top:8px"></div>
           </div>
           <div id="users-partner-list"></div>
-        </div>
+        </details></div>
       </div>
 
       <div id="tab-credentials-admin" style="display:none">

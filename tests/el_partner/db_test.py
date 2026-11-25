@@ -93,6 +93,14 @@ try:
                       "select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000000d',true); set local role authenticated; "
                       "select count(*) from public.site_config where id = 'el_partner_snapshot'", '0')
 
+    # ── Partner management boundaries (Users panel writes profiles as the admin) ──
+    expect('admin', "with i as (insert into public.profiles(email, name, role, linked_id) values ('new@example.test', 'N', 'el_partner', null) returning 1) select count(*) from i", '1')
+    expect('admin', "with u as (update public.profiles set name = 'R' where email = 'partner@example.test' and role = 'el_partner' returning 1) select count(*) from u", '1')
+    expect('adult', "insert into public.profiles(email, name, role) values ('x@example.test', 'x', 'el_partner')", error='row-level security')
+    expect('adult', "with u as (update public.profiles set active = false where role = 'el_partner' returning 1) select count(*) from u", '0')
+    expect('partner', "with u as (update public.profiles set name = 'x', active = true returning 1) select count(*) from u", '0')
+    expect('admin', "insert into public.profiles(email, name, role) values ('admin@example.test', 'dup', 'el_partner')", error='duplicate key')
+
     # ── Anonymous ───────────────────────────────────────────────────────────
     expect('anon', "select string_agg(id, ',' order by id) from public.site_config", 'home_content,public_summary')
     expect('anon', 'select count(*) from public.youth', error='permission denied')

@@ -42,11 +42,20 @@ async function mockSupabase(page, state) {
     }
     if (p.startsWith('/auth/v1/')) return json({});
     const t = p.replace('/rest/v1/', '');
+    if (t === 'profiles' && state.profiles && m !== 'GET') {
+      const body = JSON.parse(req.postData() || '{}');
+      if (state.failWrites) return json([], 201);
+      if (m === 'POST') { const row = Object.assign({ id: 'p' + (state.profiles.length + 1) }, body); state.profiles.push(row); return json([row], 201); }
+      const id = (url.searchParams.get('id') || '').replace('eq.', ''), role = (url.searchParams.get('role') || '').replace('eq.', '');
+      const hit = state.profiles.filter(r => r.id === id && (!role || r.role === role));
+      hit.forEach(r => Object.assign(r, body));
+      return json(hit);
+    }
     if (m !== 'GET' && m !== 'HEAD') {
       if (t === 'site_config' && (req.postData() || '').includes('el_partner_snapshot')) state.snapshotPosts.push(req.postData());
       return route.fulfill({ status: 201, body: '' });
     }
-    if (t === 'profiles') return json(state.who ? [USERS[state.who].profile] : []);
+    if (t === 'profiles') return json(state.profiles && !url.search.includes('email=eq.') ? state.profiles : state.who ? [USERS[state.who].profile] : []);
     if (t === 'site_config') {
       if (url.search.includes('el_partner_snapshot')) return json(state.snapshot ? [{ value: state.snapshot }] : []);
       return json([]);
@@ -126,6 +135,47 @@ const visible = (page, sel) => page.evaluate(s => { const e = document.querySele
     await admin.evaluate(() => { toggleYouthWsAdmin && document.querySelector('#youth-ws-att-tbody tr:first-child td.ws-att-cell').click(); toggleWsAttEditMode(); });
     await admin.waitForTimeout(500);
     const adminFinal = await readView(admin);
+
+    // ── Partner management in the Users tab ────────────────────────────────
+    adminState.profiles = [
+      { id: 'p1', email: 'admin@example.test', name: 'Synthetic Admin', role: 'admin', linked_id: 'admin_a', active: true },
+      { id: 'p2', email: 'adult@example.test', name: 'Synthetic Adult', role: 'adult', linked_id: 'adult_a', active: true }];
+    const dialogs = [];
+    admin.on('dialog', d => { dialogs.push(d.message()); d.type() === 'prompt' ? d.accept('Renamed Partner') : d.accept(); });
+    const fbText = () => admin.evaluate(() => document.getElementById('new-partner-feedback').textContent);
+    const addP = async (name, email) => { await admin.fill('#new-partner-name', name); await admin.fill('#new-partner-email', email);
+      await admin.evaluate(() => addElPartner()); await admin.waitForTimeout(200); };
+    const writes = () => adminState.requests.filter(r => r.p === '/rest/v1/profiles' && r.m !== 'GET');
+    await admin.evaluate(() => { switchTab('users-admin', document.querySelector('.tab-btn')); });
+    await admin.waitForTimeout(300);
+    check('M panel visible in Users tab', await visible(admin, '#users-partner-list') && await visible(admin, '#new-partner-email'));
+    await addP('New Partner', 'New.Partner@Example.test');
+    const post = writes()[0] && JSON.parse(writes()[0].body);
+    check('M add partner: role el_partner, linked_id null, lower-case email',
+      post && post.role === 'el_partner' && post.linked_id === null && post.email === 'new.partner@example.test' && post.active === true, post);
+    check('M add confirmed after DB write', /added as an Emerging Leader Partner/.test(await fbText()), await fbText());
+    check('M partner listed', /New Partner/.test(await admin.evaluate(() => document.getElementById('users-partner-list').textContent)));
+    let n = writes().length;
+    await addP('Adult Again', 'ADULT@example.test');
+    check('M rejects email of an existing adult profile', writes().length === n && /already has a adult profile/.test(await fbText()), await fbText());
+    await addP('Dup', 'new.partner@example.test');
+    check('M rejects duplicate partner email', writes().length === n && /already a partner/.test(await fbText()), await fbText());
+    check('M adult profile untouched', JSON.stringify(adminState.profiles[1]) === JSON.stringify({ id: 'p2', email: 'adult@example.test', name: 'Synthetic Adult', role: 'adult', linked_id: 'adult_a', active: true }));
+    await admin.evaluate(() => editElPartnerName('p3')); await admin.waitForTimeout(300);
+    const ed = writes().at(-1);
+    check('M edit changes name only, scoped to the partner row',
+      ed.m === 'PATCH' && ed.q.includes('id=eq.p3') && ed.q.includes('role=eq.el_partner') && JSON.stringify(JSON.parse(ed.body)) === '{"name":"Renamed Partner"}', ed);
+    check('M email read-only (prompt says so; no email field sent)', dialogs.some(d => /cannot be changed/.test(d)));
+    await admin.evaluate(() => setElPartnerActive('p3', false)); await admin.waitForTimeout(300);
+    check('M deactivate', adminState.profiles[2].active === false && /Inactive/.test(await admin.evaluate(() => document.getElementById('users-partner-list').textContent)));
+    await admin.evaluate(() => setElPartnerActive('p3', true)); await admin.waitForTimeout(300);
+    check('M reactivate', adminState.profiles[2].active === true);
+    adminState.failWrites = true; n = dialogs.length;
+    await addP('Fails', 'fails@example.test');
+    check('M no success message when the DB returns no row', /Not saved/.test(await fbText()), await fbText());
+    await admin.evaluate(() => setElPartnerActive('p3', false)); await admin.waitForTimeout(300);
+    check('M deactivate failure reported', dialogs.slice(n).some(d => /Not saved/.test(d)));
+    check('M credentials tab has no partner option', !(await admin.evaluate(() => [...document.querySelectorAll('#manual-link-role option')].some(o => o.value === 'el_partner'))));
     await actx.close();
 
     // ── 2. Emerging Leader Partner ─────────────────────────────────────────

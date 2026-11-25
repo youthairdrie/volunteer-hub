@@ -2158,6 +2158,22 @@ tr:hover .grd-date-sticky { background: #1a2d47; }
           </div>
 
         </div>
+
+        <!-- ── EMERGING LEADER PARTNER PANEL (role el_partner; read-only Workshops access) ── -->
+        <div class="section-box" style="margin-top:18px">
+          <div style="font-family:Nunito,sans-serif;font-size:1rem;font-weight:900;color:var(--ya-gold);margin-bottom:4px">🤝 Emerging Leader Partners</div>
+          <div style="font-size:.75rem;color:var(--text-muted);margin-bottom:14px">Read-only access to the Emerging Leaders Workshops page. After adding a partner, invite their email from Supabase (Authentication → Users → Invite User) unless they already have a confirmed sign-in.</div>
+          <div style="background:rgba(245,166,35,.05);border:1px solid rgba(245,166,35,.2);border-radius:12px;padding:14px;margin-bottom:16px">
+            <div style="font-size:.78rem;font-weight:700;color:var(--ya-gold);margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em">＋ Add New Partner</div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px">
+              <input id="new-partner-name" placeholder="Full name" style="padding:8px 12px;border-radius:8px;border:1px solid var(--card-border);background:rgba(255,255,255,.05);color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem;width:100%;box-sizing:border-box">
+              <input id="new-partner-email" type="email" placeholder="Email address (for login)" style="padding:8px 12px;border-radius:8px;border:1px solid var(--card-border);background:rgba(255,255,255,.05);color:var(--text-main);font-family:DM Sans,sans-serif;font-size:.85rem;width:100%;box-sizing:border-box">
+              <button onclick="addElPartner()" style="padding:8px;border-radius:8px;border:none;background:var(--ya-gold);color:#0d1520;font-family:Nunito,sans-serif;font-weight:800;font-size:.85rem;cursor:pointer">＋ Add Partner</button>
+            </div>
+            <div id="new-partner-feedback" style="font-size:.78rem;min-height:18px;margin-top:8px"></div>
+          </div>
+          <div id="users-partner-list"></div>
+        </div>
       </div>
 
       <div id="tab-credentials-admin" style="display:none">
@@ -2170,6 +2186,7 @@ tr:hover .grd-date-sticky { background: #1a2d47; }
             (1) Add a new user in the <em>Users</em> tab with their email, or edit an existing user to add their email.
             (2) Go to <strong>Supabase Dashboard → Authentication → Users → Invite User</strong> and enter their email.
             (3) They receive an invite email, click the link, and land here to set a password. The app matches their email to their profile automatically.
+            Emerging Leader Partners are added and managed in the <em>Users</em> tab → <strong>🤝 Emerging Leader Partners</strong>; then invite them the same way (step 2).
           </div>
         </div>
 
@@ -2203,7 +2220,6 @@ tr:hover .grd-date-sticky { background: #1a2d47; }
                 <option value="youth">🌱 Youth</option>
                 <option value="adult">🙌 Adult Volunteer</option>
                 <option value="admin">⚡ Admin</option>
-                <option value="el_partner">🤝 Emerging Leader Partner</option>
               </select>
             </div>
             <div>
@@ -6827,8 +6843,6 @@ async function manualLinkProfile() {
   var linkedId = '';
   if (role === 'youth') {
     linkedId = await ensureYouthIdentity(name);
-  } else if (role === 'el_partner') {
-    linkedId = '';   // partners are not linked to a youth or adult record
   } else {
     linkedId = name.toLowerCase().replace(/\s+/g,'_').replace(/[^a-z0-9_]/g,'').substring(0,20);
   }
@@ -19023,6 +19037,81 @@ function renderYouthPendingEntries(name){
 function renderUsersTab(){
   renderYouthRoster();
   renderAdultRoster();
+  renderElPartnerRoster();
+}
+
+// ── Emerging Leader Partners (profiles.role = 'el_partner', linked_id = null) ──
+// Admin-only (the database allows profile writes for admins only). Writes ask
+// for the changed row back and succeed only when exactly that row is returned.
+async function _elpProfileWrite(method, params, body) {
+  try {
+    var r = await hubFetch(SUPA_URL + '/rest/v1/profiles' + (params ? '?' + params : ''), {
+      method: method,
+      headers: { 'apikey': SUPA_KEY, 'Content-Type': 'application/json', 'Prefer': 'return=representation' },
+      body: JSON.stringify(body)
+    });
+    if (!r.ok) { console.warn('[ELPartner] profile write failed: HTTP', r.status, await r.text()); return null; }
+    var rows = await r.json();
+    return Array.isArray(rows) && rows.length === 1 && rows[0].role === 'el_partner' ? rows[0] : null;
+  } catch (e) { console.warn('[ELPartner] profile write failed:', e && e.message); return null; }
+}
+
+async function renderElPartnerRoster() {
+  var el = document.getElementById('users-partner-list');
+  if (!el) return;
+  var rows = (await loadProfiles()).filter(function (p) { return p.role === 'el_partner'; });
+  if (!rows.length) { el.innerHTML = '<div style="color:var(--text-muted);font-size:.82rem">No partners yet.</div>'; return; }
+  el.innerHTML = rows.map(function (p) {
+    var on = p.active !== false, id = _hscEsc(p.id);
+    return '<div class="status-row" style="flex-wrap:wrap;gap:8px"><div style="flex:1;min-width:180px">' +
+      '<div class="status-label">' + _hscEsc(p.name) + '</div><div class="status-date">' + _hscEsc(p.email) + '</div></div>' +
+      '<div style="display:flex;gap:6px;align-items:center">' +
+      (on ? '<span style="font-size:.7rem;color:var(--ya-green)">● Active</span>' : '<span style="font-size:.7rem;color:var(--badge-red)">● Inactive</span>') +
+      '<button class="ws-btn" style="font-size:.73rem" onclick="editElPartnerName(\'' + id + '\')">✏️ Edit</button>' +
+      '<button class="ws-btn" style="font-size:.73rem;border-color:' + (on ? 'var(--badge-red);color:var(--badge-red)' : 'var(--ya-teal);color:var(--ya-teal)') +
+        '" onclick="setElPartnerActive(\'' + id + '\',' + !on + ')">' + (on ? 'Deactivate' : 'Reactivate') + '</button>' +
+      '</div></div>';
+  }).join('');
+}
+
+async function addElPartner() {
+  var name = document.getElementById('new-partner-name').value.trim();
+  var email = document.getElementById('new-partner-email').value.trim().toLowerCase();
+  var fb = document.getElementById('new-partner-feedback');
+  var say = function (c, m) { fb.innerHTML = '<span style="color:' + c + '">' + m + '</span>'; };
+  if (!name) return say('var(--badge-red)', '⚠ Please enter a name.');
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return say('var(--badge-red)', '⚠ Please enter a valid email address.');
+  var existing = (await loadProfiles()).find(function (p) { return String(p.email || '').toLowerCase() === email; });
+  if (existing) {
+    return say('var(--badge-red)', existing.role === 'el_partner'
+      ? '⚠ ' + _hscEsc(email) + ' is already a partner. Use Reactivate below if needed.'
+      : '⚠ ' + _hscEsc(email) + ' already has a ' + _hscEsc(existing.role) + ' profile. It was not changed.');
+  }
+  var row = await _elpProfileWrite('POST', '', { email: email, name: name, role: 'el_partner', linked_id: null, active: true });
+  if (!row) return say('var(--badge-red)', '❌ Not saved. Nothing was changed — check the console and try again.');
+  say('var(--ya-teal)', '✔ <strong>' + _hscEsc(name) + '</strong> added as an Emerging Leader Partner. Invite ' + _hscEsc(email) +
+      ' from Supabase if they do not already have a sign-in.');
+  document.getElementById('new-partner-name').value = '';
+  document.getElementById('new-partner-email').value = '';
+  renderElPartnerRoster();
+}
+
+async function editElPartnerName(id) {
+  var p = (await loadProfiles()).find(function (x) { return x.id === id && x.role === 'el_partner'; });
+  if (!p) return;
+  var name = prompt('Partner name (the email address cannot be changed):', p.name || '');
+  if (name === null || !name.trim() || name.trim() === p.name) return;
+  var row = await _elpProfileWrite('PATCH', 'id=eq.' + encodeURIComponent(id) + '&role=eq.el_partner', { name: name.trim() });
+  if (!row) alert('❌ The name was not saved. Nothing was changed.');
+  renderElPartnerRoster();
+}
+
+async function setElPartnerActive(id, active) {
+  if (!confirm(active ? 'Reactivate this partner? They will be able to sign in again.'
+                      : 'Deactivate this partner? They will no longer be able to sign in or see any data.')) return;
+  var row = await _elpProfileWrite('PATCH', 'id=eq.' + encodeURIComponent(id) + '&role=eq.el_partner', { active: active });
+  if (!row || row.active !== active) alert('❌ Not saved. Nothing was changed.');
+  renderElPartnerRoster();
 }
 
 function renderYouthRoster(){

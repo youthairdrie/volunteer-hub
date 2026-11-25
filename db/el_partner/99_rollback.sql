@@ -1,7 +1,9 @@
 -- ═══════════════════════════════════════════════════════════════════════════
 -- EL-P — ROLLBACK of 01_up.sql
 -- ═══════════════════════════════════════════════════════════════════════════
--- Restores hub_is_member() / hub_is_admin() exactly as backed up, removes the
+-- Undoes 03_gcc_quarters_partner_exclusion.sql (gcc_quarters_read back to
+-- USING true) FIRST, because that policy depends on hub_is_el_partner(). Then
+-- restores hub_is_member() / hub_is_admin() exactly as backed up, removes the
 -- partner policy and helper, and deletes the partner snapshot row.
 -- Redeploy the previous app first (or at the same time) so admins stop
 -- republishing the snapshot. Partner profiles should be deactivated or deleted
@@ -24,6 +26,13 @@ begin
   end loop;
 end $$;
 
+-- 03 addendum: restore the original Games & Crafts read policy before the helper is dropped.
+do $$ begin
+  if exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'gcc_quarters'
+              and policyname = 'gcc_quarters_read' and qual like '%hub_is_el_partner%') then
+    execute 'alter policy gcc_quarters_read on public.gcc_quarters using (true)';
+  end if;
+end $$;
 drop policy if exists elp_site_config_partner_read on public.site_config;
 drop function if exists public.hub_is_el_partner();
 delete from public.site_config where id = 'el_partner_snapshot';

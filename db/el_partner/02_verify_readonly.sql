@@ -24,6 +24,10 @@ select 'anon_cannot_read_snapshot', not exists (
             and 'anon' = any (roles) and qual like '%el_partner_snapshot%'),
        'public site_config policy does not include el_partner_snapshot'
 union all
+select 'gcc_quarters_excludes_partners', count(*) = 1, coalesce(string_agg(qual, '; '), 'gcc_quarters_read not found')
+  from pg_policies where schemaname = 'public' and tablename = 'gcc_quarters' and policyname = 'gcc_quarters_read'
+   and qual like '%hub_is_el_partner%'
+union all
 select 'partner_accounts', true, count(*)::text || ' active el_partner profile(s)'
   from public.profiles where role = 'el_partner' and coalesce(active, true)
 order by 1;

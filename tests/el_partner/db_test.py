@@ -61,6 +61,10 @@ try:
     expect('partner', 'select public.hub_is_member()', 't')
 
     ok, out = psql(file=os.path.join(ROOT, 'db/el_partner/01_up.sql')); check('apply db/el_partner/01_up.sql', ok, out)
+    expect('partner', 'select count(*) from public.gcc_quarters', '1')   # before the 03 addendum
+    ok, out = psql(file=os.path.join(ROOT, 'db/el_partner/03_gcc_quarters_partner_exclusion.sql')); check('apply 03 addendum', ok, out)
+    expect('partner', 'select count(*) from public.gcc_quarters', '0')
+    expect('adult', 'select count(*) from public.gcc_quarters', '1')
     ok, out = psql(file=os.path.join(ROOT, 'db/el_partner/01_up.sql')); check('01_up refuses a second run', not ok and 'already applied' in out, out)
 
     ok, out = psql(file=os.path.join(ROOT, 'db/el_partner/02_verify_readonly.sql'))
@@ -123,6 +127,7 @@ try:
     psql("update public.profiles set active = false where role = 'el_partner'")
     ok, out = psql(file=os.path.join(ROOT, 'db/el_partner/99_rollback.sql')); check('rollback applies', ok, out)
     ok, out = psql("select count(*) from pg_policies where policyname = 'elp_site_config_partner_read'"); check('rollback removed policy', out == '0', out)
+    ok, out = psql("select qual from pg_policies where policyname = 'gcc_quarters_read'"); check('rollback restored gcc_quarters_read USING true', out == 'true', out)
     ok, out = psql("select count(*) from public.site_config where id = 'el_partner_snapshot'"); check('rollback removed snapshot', out == '0', out)
     ok, out = psql(file=os.path.join(ROOT, 'db/el_partner/00_preflight_readonly.sql'))
     check('rollback restored Release 1 helpers', 'hub_is_member_is_release1|t' in out and 'hub_is_admin_is_release1|t' in out, out)

@@ -12,6 +12,8 @@
 --     'el_partner_snapshot'. Only admins can write it (existing admin policy).
 --   • Partners still read only their own profiles row (existing policy) and
 --     cannot change it (only admins write profiles).
+--   • Follow-up: 03_gcc_quarters_partner_exclusion.sql (also applied in production)
+--     hides gcc_quarters from partners.
 -- The migration stops (and changes nothing) if the helpers differ from the
 -- Release 1 definitions it expects, or if profiles has a role CHECK constraint.
 -- ═══════════════════════════════════════════════════════════════════════════

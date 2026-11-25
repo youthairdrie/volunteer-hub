@@ -37,6 +37,11 @@ create function public.gcc_is_editor() returns boolean language sql stable secur
 alter table public.gcc_roster enable row level security;
 create policy gcc_editor_all on public.gcc_roster for all to authenticated using (public.gcc_is_editor()) with check (public.gcc_is_editor());
 grant all on public.gcc_roster to anon, authenticated;
+create table public.gcc_quarters (id text primary key, label text, status_changed_by_email text);
+alter table public.gcc_quarters enable row level security;
+create policy gcc_quarters_read on public.gcc_quarters for select to authenticated using (true);
+grant select on public.gcc_quarters to authenticated;
+insert into public.gcc_quarters values ('q1', 'Synthetic Q1', 'staff@example.test');
 grant usage, select on all sequences in schema public to authenticated;
 
 -- Synthetic people
